@@ -1,0 +1,72 @@
+{
+  "report_id": "113597",
+  "title": "Data Dictionary issues when dropping multiple FTS indexes",
+  "source_sha256": "b36747ad385704582ca6dd5bb47a3e07bd8cfec4a8d8b771aa1f3998056af948",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "626074a6a52c87de20f37f90f8a99c8f7db8be000596b8b3113a6c67ffd9ef54"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "b071453492d1f3733b6dc7703ec605a7e96e23221719506ff9d2889429a6db69"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原 testtab 双全文索引，分两轮重建"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "空表即可"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两种删除方式均不应保留已删索引的 _index_1..6 文件条目；DROP表后该表全部 FTS 条目清除；异常：同时 DROP 两索引残留其中6个已不存在文件的字典条目"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "metadata_difference",
+    "expected": "两种删除方式均不应保留已删索引的 _index_1..6 文件条目；DROP表后该表全部 FTS 条目清除",
+    "failure": "同时 DROP 两索引残留其中6个已不存在文件的字典条目",
+    "limitations": "SQL 已完成字典对照；物理文件不存在的主张必须结合运行时文件清单，不仅凭行数。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立实例",
+    "可读取测试datadir文件列表",
+    "每组使用新建表避免残留污染",
+    "全新隔离 schema/实例；每次 SELECT 同时由runner保存测试库物理文件清单，不能删除未知文件"
+  ],
+  "transformations": [
+    "将自定义客户端提示符序列整理；限定当前库 FTS 文件避免全实例其他表污染"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

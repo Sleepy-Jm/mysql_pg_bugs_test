@@ -1,0 +1,9 @@
+-- Report #110310; source anchors: cmain, c531693, c532078
+-- Static preparation only; not executed. See case.json before any future isolated run.
+CREATE TABLE t0 (c0 INT);
+INSERT INTO t0(c0) VALUES (2030666);
+
+
+
+SELECT 1 FROM t0 WHERE c0 BETWEEN 0 AND CASE WHEN 1 THEN TIME '571:0:0' ELSE 2 END;
+SELECT CAST(sum(c0) AS SIGNED) FROM (SELECT CAST(c0 BETWEEN 0 AND CASE WHEN 1 THEN TIME '571:0:0' ELSE 2 END AS SIGNED) FROM t0) t0 (c0);

@@ -1,0 +1,83 @@
+{
+  "report_id": "110979",
+  "title": "Update assertion error",
+  "source_sha256": "af2376e528a08813fd5a6c7cd2fb51584a47b9bc11e935b3d870b6b9f3888a06",
+  "source_anchors": [
+    "cmain",
+    "c532415"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "40f89929efe87a1f8ae9f56e5602b1539a13f8022d94fcca23f578a5917446dd"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "632d513b37b891d5770abfde1575ae86305cd62a43e5b89e07c669fac36239a5"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "debug实例开启ROW日志；t0(c0 YEAR,c1 INT AS(1)VIRTUAL)并INSERT IGNORE 2100。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。SET BINLOG_ROW_IMAGE=MINIMAL；执行UPDATE t0 SET c0=2000 WHERE utc_date()<>c0并收集警告/断言。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "UPDATE应正常更新或给出受控类型警告，不应 ASSERT_COLUMN_MARKED_FOR_WRITE；记录 UTC_DATE 与受影响行数。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "UPDATE应正常更新或给出受控类型警告，不应 ASSERT_COLUMN_MARKED_FOR_WRITE；记录 UTC_DATE 与受影响行数。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "目标debug构建",
+    "ROW binlog",
+    "目标debug构建、log_bin=ON、binlog_format=ROW；允许设置SESSION BINLOG_ROW_IMAGE。"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标具备YEAR、虚拟列和MINIMAL映像。 本轮仅静态准备。",
+    "8.0.34": "目标具备YEAR、虚拟列和MINIMAL映像。 本轮仅静态准备。",
+    "8.0.35": "目标具备YEAR、虚拟列和MINIMAL映像。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c532415 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "debug实例开启ROW日志；t0(c0 YEAR,c1 INT AS(1)VIRTUAL)并INSERT IGNORE 2100。",
+    "steps": "SET BINLOG_ROW_IMAGE=MINIMAL；执行UPDATE t0 SET c0=2000 WHERE utc_date()<>c0并收集警告/断言。",
+    "oracle": "应正常更新或受控转换，不应ASSERT_COLUMN_MARKED_FOR_WRITE；同样记录当前日期。",
+    "requirements": [
+      "目标debug构建",
+      "ROW binlog"
+    ],
+    "target_applicability": "目标具备YEAR、虚拟列和MINIMAL映像。"
+  }
+}

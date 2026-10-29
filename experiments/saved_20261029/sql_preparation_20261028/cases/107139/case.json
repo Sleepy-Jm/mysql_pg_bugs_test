@@ -1,0 +1,122 @@
+{
+  "report_id": "107139",
+  "title": "CREATE USER IF NOT EXISTS fails if user is definer of view/trigger for nonroot",
+  "source_sha256": "1036e3bf99f2f413744ce1b5689de2978be21a0215235d45be8c812678e15ac9",
+  "source_anchors": [
+    "cmain",
+    "c521910",
+    "c521911",
+    "c521912",
+    "c545749",
+    "c545995"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "needs_safety_review",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "f14fd34f084785366a09b76db00ae82db17b67a26385ccc51a68af8fbd29e458"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "63ea86dca6614a576dd0498763aae8b7c7fce9dac20556ed1bff96b1e69f4b81"
+    },
+    {
+      "path": "root_setup.sql",
+      "role": "setup",
+      "sha256": "4b359dfaa036fa6d96fef4e48a41c3d5d4db436f1564f3a56ccceb014599bdc2"
+    },
+    {
+      "path": "root_trigger.sql",
+      "role": "setup",
+      "sha256": "a61fcf2adf14bf837164e54746ff9119b960dfca840474a9ce532a42e3963345"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "root_setup.sql 创建源文两账号和广泛全局权限；root_trigger.sql 创建 account 与 testinguser DEFINER 的 ins_sum。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "无需插入行；触发条件是 definer 元数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "一次性实例由管理员执行 root_setup.sql；新 superuser 连接执行 reproducer.sql（前）；管理员选中新库执行 root_trigger.sql；另开 superuser 连接执行 reproducer.sql（后）；最后管理员 cleanup.sql。不要把所有文件拼接在同一账号连接。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "比较同一 superuser 在触发器创建前后执行 CREATE USER IF NOT EXISTS 的错误/警告；c521910 的期望是已有账号 no-op 警告。SET_USER_ID 对照仅解释权限条件，不应把所有权限拒绝判为bug；c521911 与后续 c545749 对问题性质有历史争议。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TRIGGER IF EXISTS ins_sum;\nDROP TABLE IF EXISTS account;\nDROP USER IF EXISTS \"testinguser\"@\"localhost\";\nDROP USER IF EXISTS \"superuser\"@\"localhost\";"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "比较同一 superuser 在触发器创建前后执行 CREATE USER IF NOT EXISTS 的错误/警告；c521910 的期望是已有账号 no-op 警告。SET_USER_ID 对照仅解释权限条件，不应把所有权限拒绝判为bug；c521911 与后续 c545749 对问题性质有历史争议。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "用户/权限管理能力",
+    "独立临时账号"
+  ],
+  "transformations": [
+    "采用 c521910 的完整触发器场景；不执行 cmain 对 mysql.sys 的示例；按原文账号角色拆文件。",
+    "将源文括号说明移出 SQL，不缩减源文授予权限以免掩盖安全影响。"
+  ],
+  "blockers": [
+    "广泛全局授权及 DEFINER 账号管理，须先审查隔离实例和清理范围。",
+    "IF NOT EXISTS 与 SET_USER_ID 权限检查的规范性边界仍需确认。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0保留IF NOT EXISTS、definer检查与SET_USER_ID，原序列不依赖外部数据。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0保留IF NOT EXISTS、definer检查与SET_USER_ID，原序列不依赖外部数据。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0保留IF NOT EXISTS、definer检查与SET_USER_ID，原序列不依赖外部数据。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0保留IF NOT EXISTS、definer检查与SET_USER_ID，原序列不依赖外部数据。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c521910, c521911, c521912, c545749, c545995 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/107139.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "uncertain",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "privilege_change",
+      "detail": "创建两账号并授予 FILE/SHUTDOWN/SUPER 等全局权限；只限一次性实例，清理后销毁实例。",
+      "requires_review": true
+    },
+    {
+      "kind": "multi_connection",
+      "detail": "root 与 superuser 三阶段身份切换。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [
+    {
+      "point": "IF NOT EXISTS 与 SET_USER_ID 权限检查的规范性边界仍需确认。",
+      "evidence": "c521911/12 认为缺 SET_USER_ID；c545749 后又确认存在小bug。",
+      "needed": "目标8.0分支精确权限契约或开发者说明，分别判权限错误和no-op错误。"
+    }
+  ],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "广泛全局授权及 DEFINER 账号管理，须先审查隔离实例和清理范围。"
+    ],
+    "restriction": null
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "report_id": "117051",
+  "title": "The table-level SELECT permission will override the database-level DELETE and UPDATE permissions.\"",
+  "source_sha256": "968e82edf1432264988080810ffb12a59143c594a73eb884726c6d6051320668",
+  "source_anchors": [
+    "cmain",
+    "c549847"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "needs_safety_review",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "a39ff4599b6f3c471bd6dc3d48b390f859df675cb30ce749b95e13496c521dd2"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "08db201e4b37d2d32594f9b11f0d676a55d78727dc654a3ac5024f6f02f5e328"
+    },
+    {
+      "path": "admin_setup.sql",
+      "role": "setup",
+      "sha256": "b6421586739bff65b858afd263d2cf4dadaeea0c466a982ecc0575a3a87963eb"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "独占x.t(a INT)，独占u2@%账号。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原两行1和2；公开示例密码仅限一次性实例。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "管理员admin_setup.sql；新u2连接显式USE x后reproducer.sql（使用--force记录DELETE拒绝后SELECT）；管理员cleanup.sql。不要同一root会话运行测试语句。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "确认CURRENT_USER=u2@%且SHOW GRANTS有x.* DELETE/UPDATE及x.t SELECT后，DELETE WHERE a=1应成功删除1行，随后SELECT为空；若实际匹配localhost另账号则属环境不符。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS x.t;\nDROP DATABASE x;\nDROP USER IF EXISTS u2@'%';"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "确认CURRENT_USER=u2@%且SHOW GRANTS有x.* DELETE/UPDATE及x.t SELECT后，DELETE WHERE a=1应成功删除1行，随后SELECT为空；若实际匹配localhost另账号则属环境不符。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "管理授权权限",
+    "独立测试账户"
+  ],
+  "transformations": [
+    "补上原新连接缺失的USE x及CURRENT_USER/SHOW GRANTS身份核验；删除不必要的FLUSH PRIVILEGES，不改变授权集合。"
+  ],
+  "blockers": [
+    "权限修改及新账号需另行确定一次性实例和账号清理范围。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0具备同权限合并逻辑，官方8.0.34线索不直接确认其他目标。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0具备同权限合并逻辑，官方8.0.34线索不直接确认其他目标。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0具备同权限合并逻辑，官方8.0.34线索不直接确认其他目标。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c549847 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/117051.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "multi_connection",
+      "detail": "root准备/清理与u2测试必须独立身份连接。",
+      "requires_review": true
+    },
+    {
+      "kind": "privilege_change",
+      "detail": "创建账号、数据库/表级授权，公开测试口令不能用于已有环境。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "权限修改及新账号需另行确定一次性实例和账号清理范围。"
+    ],
+    "restriction": null
+  }
+}

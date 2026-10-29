@@ -1,0 +1,40 @@
+{
+  "report_id": "113819",
+  "title": "when use show engine innodb cannot show correct information",
+  "task_ids": [
+    "mysql-113819-8.0.33",
+    "mysql-113819-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\d2bc3e04a40c_bug_113819.html",
+  "source_sha256": "d2bc3e04a40cccfd70aa436e1bd0dab211e92f3e69bcdbbe3987be7a4275518d",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nHI ，\nAfter i upgrade  mysqld from 5.7.26 to 8.0.34 ,when i use then statement \"show engine innodb status \" ,the module  FILE I/O is not correct:\n--------\nFILE I/O\n--------\nI/O thread 0 state: waiting for completed aio requests ((null))\nI/O thread 1 state: waiting for completed aio requests (insert buffer thread)\nI/O thread 2 state: waiting for completed aio requests (read thread)\nI/O thread 3 state: waiting for completed aio requests (read thread)\nI/O thread 4 state: waiting for completed aio requests (read thread)\nI/O thread 5 state: waiting for completed aio requests (read thread)\nI/O thread 6 state: waiting for completed aio requests (write thread)\nI/O thread 7 state: waiting for completed aio requests (write thread)\nI/O thread 8 state: waiting for completed aio requests (write thread)\n\nthe thread 0 is null ！and the variable innodb_write_io_threads is 4,\nso this module is not  displaying correctly\n\nHow to repeat:\njust show engine innodb status"
+    },
+    {
+      "anchor": "c540217",
+      "text": "when the mysqld is 5.7.26 ,it display correctly"
+    },
+    {
+      "anchor": "c540219",
+      "text": "Hello xincheng xie,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c540220",
+      "text": "# I'm not sure this is intended but this behavior(unusual) seen only since 8.0.33+ and prior to that it was fine\n\n bin/mysql -uroot -S /tmp/mysql.sock\nWelcome to the MySQL monitor.  Commands end with ; or \\g.\nYour MySQL connection id is 7\nServer version: 8.0.33 MySQL Community Server - GPL\n\nCopyright (c) 2000, 2023, Oracle and/or its affiliates.\n\nOracle is a registered trademark of Oracle Corporation and/or its\naffiliates. Other names may be trademarks of their respective\nowners.\n\nType 'help;' or '\\h' for help. Type '\\c' to clear the current input statement.\n\nmysql> show engine innodb status\\G\n*************************** 1. row ***************************\n.\n--------\nFILE I/O\n--------\nI/O thread 0 state: waiting for completed aio requests ((null))\n\n## 8.0.11-8.0.32 i.e. < 8.0.33 version(s)\n\n bin/mysql -uroot -S /tmp/mysql.sock\nWelcome to the MySQL monitor.  Commands end with ; or \\g.\nYour MySQL connection id is 7\nServer version: 8.0.32 MySQL Community Server - GPL\n\nCopyright (c) 2000, 2023, Oracle and/or its affiliates.\n\nOracle is a registered trademark of Oracle Corporation and/or its\naffiliates. Other names may be trademarks of their respective\nowners.\n\nType 'help;' or '\\h' for help. Type '\\c' to clear the current input statement.\n\nmysql> show engine innodb status\\G\n*************************** 1. row ***************************\n.\n--------\nFILE I/O\n--------\nI/O thread 0 state: waiting for completed aio requests (insert buffer thread)"
+    },
+    {
+      "anchor": "c540261",
+      "text": "Thank you Xincheng,\nThis issue is known to us, it was introduced in 8.0.33 by some bugfix.\nIt will be fixed in 8.0.37 release."
+    },
+    {
+      "anchor": "c540468",
+      "text": "Fixed as of the upcoming MySQL Server 8.0.37 release, and here's the proposed changelog entry from the documentation team:\n\nResults for SHOW ENGINE INNODB STATUS showed an invalid value (NULL) as\nthe first result.\n\nThank you for the bug report."
+    }
+  ]
+}

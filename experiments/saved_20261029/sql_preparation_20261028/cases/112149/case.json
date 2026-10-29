@@ -1,0 +1,86 @@
+{
+  "report_id": "112149",
+  "title": "Inconsistent results caused by SPACE() function and ''||'' operations",
+  "source_sha256": "aaf32e2d1cedf17d9bfc14be313e0a8015a6b88ad1c8a3c1267fc06a22a7d703",
+  "source_anchors": [
+    "cmain",
+    "c535561"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "3b9cc15d0e4cf44fd0b3560aba0346a71c45c041e09084c08ca836024859fbf2"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "not_needed",
+      "detail": "无须建表。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "无须数据；SPACE(5)及原字符串。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "记录两个原表达式空格与NULL的差别及warnings；CASE类型聚合可能改变NULLIF的比较类型，源文单称等价尚不足确立判据。PIPES_AS_CONCAT开/关不可混在同一对照。"
+    },
+    "cleanup": {
+      "status": "not_needed",
+      "detail": "无持久对象；结束专用会话释放 session 设置、变量和 prepared statement。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "记录两个原表达式空格与NULL的差别及warnings；CASE类型聚合可能改变NULLIF的比较类型，源文单称等价尚不足确立判据。PIPES_AS_CONCAT开/关不可混在同一对照。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "保留两条原查询；增加mode和warnings观察，不将预期等价直接当已证明。"
+  ],
+  "blockers": [
+    "CASE包含字符串分支，而简化后可能为数值OR，比较类型是否等价未确定。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c535561 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "uncertain",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [
+    {
+      "point": "CASE包含字符串分支，而简化后可能为数值OR，比较类型是否等价未确定。",
+      "evidence": "cmain 的 THEN P 与 ELSE i||~、对照删除CASE；未提供类型契约证明。",
+      "needed": "目标MySQL的CASE/NULLIF类型推导规则及相同sql_mode下类型元数据/转换warnings。"
+    }
+  ],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

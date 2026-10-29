@@ -1,0 +1,1 @@
+-- Stop and retain the exclusive case container; no host mutation. SET rejected with1231 must leave global value unchanged.

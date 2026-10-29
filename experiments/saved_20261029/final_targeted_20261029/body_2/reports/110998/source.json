@@ -1,0 +1,26 @@
+{
+  "report_id": "110998",
+  "title": "Performance regression with SELECT query when sorting on limited fields",
+  "task_ids": [
+    "mysql-110998-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\235632163d31_bug_110998.html",
+  "source_sha256": "235632163d31a0ef0ef52d52c6e59344682be2809a7317edc5c880331e607e71",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nI am seeing a performance regression after 8.0.19 on a WordPress generated `SELECT ... ORDER BY ... LIMIT` query.\n\nThe query is as follows:\n\nSELECT wp_ale_posts.* FROM wp_ale_posts FORCE INDEX(type_status_date)WHERE (post_type = 'post' AND (post_status = 'publish' OR post_status = 'future' OR post_status = 'draft' OR post_status = 'pending' OR post_status = 'in-progress' OR post_status = 'private')) ORDER BY post_date DESC LIMIT 20, 10;\n\nThis query runs fast on 8.0.19 and is much slower (roughly 30 times on average) on 8.0.20+ servers.\n\nThe query needs a filesort, since the `order by` clause can't be satisfied by the index. The explain results is the same on both versions:\nmysql> explain SELECT wp_ale_posts.* FROM wp_ale_posts FORCE INDEX(type_status_date)WHERE (post_type = 'post' AND (post_status = 'publish' OR post_status = 'future' OR post_status = 'draft' OR post_status = 'pending' OR post_status = 'in-progress' OR post_status = 'private')) ORDER BY post_date DESC LIMIT 20, 10;\n+----+-------------+--------------+------------+-------+------------------+------------------+---------+------+--------+----------+---------------------------------------+\n| id | select_type | table        | partitions | type  | possible_keys    | key              | key_len | ref  | rows   | filtered | Extra                                 |\n+----+-------------+--------------+------------+-------+------------------+------------------+---------+------+--------+----------+---------------------------------------+\n|  1 | SIMPLE      | wp_ale_posts | NULL       | range | type_status_date | type_status_date | 164     | NULL | 929207 |   100.00 | Using index condition; Using filesort |\n+----+-------------+--------------+------------+-------+------------------+------------------+---------+------+--------+----------+---------------------------------------+\n1 row in set, 1 warning (0.09 sec)\n\nHow to repeat:\nI am reproducing with\n\ndocker run --platform linux/amd64 --name mysql-8.0.20 -e MYSQL_ROOT_PASSWORD=ale -d mysql:8.0.20\n\ndocker exec -it mysql:8.0.20 /bin/bash\nmysql -u root -p -e \"create database ale\"\nmysql -u root -p ale < /tmp/wp_ale_posts.sqldump.sql\n\nmysql> SELECT wp_ale_posts.* FROM wp_ale_posts FORCE INDEX(type_status_date)WHERE (post_type = 'post' AND (post_status = 'publish' OR post_status = 'future' OR post_status = 'draft' OR post_status = 'pending' OR post_status = 'in-progress' OR post_status = 'private')) ORDER BY post_date DESC LIMIT 20, 10;\n10 rows in set (3 min 21.78 sec)  \n\nIf I repeat the same steps on 8.0.19 I get:\nmysql> SELECT wp_ale_posts.* FROM wp_ale_posts FORCE INDEX(type_status_date)WHERE (post_type = 'post' AND (post_status = 'publish' OR post_status = 'future' OR post_status = 'draft' OR post_status = 'pending' OR post_status = 'in-progress' OR post_status = 'private')) ORDER BY post_date DESC LIMIT 20, 10;\n10 rows in set (5.29 sec) \n\nSuggested fix:\nI think what changed is that 8.0.19 only reads the items it needs for sorting from disk, while 8.0.20+ (I tested most of the versions) read the entire row.\n\nThis seems to have happened with commit https://github.com/mysql/mysql-server/commit/37e372ae3afd1188de24311ef9f4e96e009e911b, which stopped modifying the read_set used for filesort.\n\nThis, from my understanding, only happens when sorting row IDs, which is the case for WordPress post tables given the presence of `LONGTEXT` for the post content.\n \n\nI tried patching the old behaviour back into newer versions and the query gets fast again, the path I used against 8.0.28 is here:\nhttps://drive.google.com/file/d/1AVGGVyD731JtgvCnQ8tcncXZYRw_CLLq/view?usp=share_link\n\ni am also providing a link to the sqldump I am using for testing, it's quite big at 10GB, so downloading it might take a while. You can download it here:\nhttps://drive.google.com/file/d/1CAGHte_vnjn7wQhkPP4fd-XcdD7wPqlb/view?usp=share_link"
+    },
+    {
+      "anchor": "c532514",
+      "text": "Hi Mr. Crismani,\n\nThank you very much for your bug report.\n\nHowever, we have had so many reports about performance regressions on this same issue, so that this problem is true and very well known.\n\nAmong many very similar and verified reports, we declare that your report is a duplicate of :\n\nhttps://bugs.mysql.com/bug.php?id=108531\n\nMost of these reports are private and hidden. Some optimisations are planned for the version 8.1, while 8.0 will enter a maintenance phase.\n\nWe have added your report as one of the many on the same subject.\n\nDuplicate."
+    },
+    {
+      "anchor": "c532598",
+      "text": "Thank you for the feedback."
+    }
+  ]
+}

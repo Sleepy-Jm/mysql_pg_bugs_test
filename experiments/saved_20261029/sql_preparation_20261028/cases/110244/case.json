@@ -1,0 +1,69 @@
+{
+  "report_id": "110244",
+  "title": "Nesting queries in a projection results in different output",
+  "source_sha256": "f4d85597535ffa581e8cb0ba15757fbd36f3adb9c7c519054e1680115a6fee8f",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "ae338e367328c07a119cc4515e23bc4eb9070a0c5fd0b8f18fd0388a119441a5"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "bbb6cb7a27e04e830269b5a47d97e40de413d0316f37d05912dffa825d56f9f8"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "FRIENDSHIP/LIKES 复合 PK"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "(1,0) 与 (2,0) 各一行"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "Q1/Q2 都返回一行 (NULL,NULL)，空子查询的 NOT IN 为真；异常：外套 SELECT * 后丢失该行"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "Q1/Q2 都返回一行 (NULL,NULL)，空子查询的 NOT IN 为真",
+    "failure": "外套 SELECT * 后丢失该行",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "空目标数据库"
+  ],
+  "transformations": [
+    "把 Q1/Q2 标记改为注释，移除文字说明"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "8.0外连接、NOT IN和派生表优化均适用，不需业务数据。 本轮尚未执行。",
+    "8.0.34": "8.0外连接、NOT IN和派生表优化均适用，不需业务数据。 本轮尚未执行。",
+    "8.0.35": "8.0外连接、NOT IN和派生表优化均适用，不需业务数据。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

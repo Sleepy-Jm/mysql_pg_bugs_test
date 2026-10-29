@@ -1,0 +1,69 @@
+{
+  "report_id": "111261",
+  "title": "Skip scan results in wrong query results",
+  "source_sha256": "657b93a093f914b5e2e7e2d94da5004d4c07a6752d577fd0dc6e84912de5ed80",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "45a1edb646b8ac05b7d70d1e3d6ee3447ecece11ff577a4a1baa0310b1e48d49"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "782d7983b094be30d5aa0de5e9bf94d7e8851464b96fb8be2047a5982b2efa67"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1 复合索引 sid_name 与 insert_numbers 过程"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "循环 1..1000 后复制，共 2000 行，再删 s_id=3"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "必须同一隔离实例，先暂停 purge；原测试末尾恢复 OFF，失败亦在清理连接恢复或销毁实例。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "默认 skip scan 与 FORCE INDEX(primary) 均返回 id 800,1800；异常：默认索引扫描漏行"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "默认 skip scan 与 FORCE INDEX(primary) 均返回 id 800,1800",
+    "failure": "默认索引扫描漏行",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "debug purge控制开关",
+    "隔离测试实例",
+    "一次性 debug 实例；支持 innodb_purge_stop_now；无此调试变量不得继续当原时序复现"
+  ],
+  "transformations": [
+    "修正原 mysql delimiter 写法 //; 和 ;// 为标准命令；保留循环与 purge 恢复"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.34": "目标支持skip scan与InnoDB删除标记；debug用于稳定时序。 本轮尚未执行。",
+    "8.0.35": "目标支持skip scan与InnoDB删除标记；debug用于稳定时序。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

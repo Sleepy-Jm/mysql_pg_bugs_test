@@ -1,0 +1,75 @@
+{
+  "report_id": "85918",
+  "title": "NO_ZERO_DATE prevents use of zero date even in WHERE clause of UPDATE",
+  "source_sha256": "a76b3992c246595b9a3e05da6d8a0be427f52e99223e071a5da7892de128ce68",
+  "source_anchors": [
+    "cmain",
+    "c459209",
+    "c533571",
+    "c535731",
+    "c535732"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "781338561d582025b5c87097fa5af0dacd918faa84d28e7aefb2e2fb6bc5c15c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "e36f9826f3ce17d53cdc7834d0d0a5f347091538d8c3ff87b1b97940981db0f4"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "SQL 中的 CREATE 定义已与源文核对；使用 runner 分配的新库。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "无需插入数据；源文明确空表亦触发错误。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force，逐条保留错误码；结束恢复模式。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "收集相同零日期谓词在 SELECT/UPDATE/UPDATE IGNORE 的错误码；关闭 NO_ZERO_DATE 后 UPDATE 应可执行，空表应保持空。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS zerodate;\nSET SESSION sql_mode=@saved_sql_mode;"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "收集相同零日期谓词在 SELECT/UPDATE/UPDATE IGNORE 的错误码；关闭 NO_ZERO_DATE 后 UPDATE 应可执行，空表应保持空。",
+    "failure": "不能仅凭严格模式1292/1525判 bug：开发者评论明确讨论可能保留此行为，须另行确定规范。",
+    "limitations": "只完成静态准备；源报告中的历史输出不是本次目标版本的执行证据。"
+  },
+  "requirements": [
+    "fresh_isolated_schema",
+    "mysql_client_utf8mb4"
+  ],
+  "transformations": [
+    "补齐原文缺失分号；显式固定 strict+NO_ZERO_DATE 并加入关闭模式对照。"
+  ],
+  "blockers": [
+    "开发者 c459209 表明此严格模式行为可能按设计保留；目标版本规范与 bug 判定仍需确认。"
+  ],
+  "version_notes": {
+    "8.0.32": "8.0支持相同TIMESTAMP/模式操作，8.0.34描述是待验证线索。",
+    "8.0.33": "8.0支持相同TIMESTAMP/模式操作，8.0.34描述是待验证线索。",
+    "8.0.35": "8.0支持相同TIMESTAMP/模式操作，8.0.34描述是待验证线索。"
+  },
+  "source_reading": "核对锚点 cmain, c459209, c533571, c535731, c535732 的定义、输入、触发顺序和历史输出；相关历史修复信息不当作目标版本已验证。"
+}

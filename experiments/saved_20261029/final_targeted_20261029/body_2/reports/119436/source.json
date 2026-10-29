@@ -1,0 +1,18 @@
+{
+  "report_id": "119436",
+  "title": "User Privileges are Missed On Replica Server",
+  "task_ids": [
+    "mysql-119436-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\5c799b35812a_bug_119436.html",
+  "source_sha256": "5c799b35812a4f9372a3d25a068fc86b51e67a95ff7a3081946f8f97089ec7f8",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWe encountered an issue where existing users on one replica suddenly lost several privileges and default roles, even though the corresponding user accounts still exist.\nThis occurred without any intentional privilege modifications in our environment.\n\nEnvironment:\n\nMaster: MySQL 8.0.40 (AWS RDS)\n\nReplicas: MySQL 8.0.35 (EC2)\n\nMulti-source replication setup (two replication sources)\n\nOne source uses:\n\nreplicate-ignore-table=<list_of_tables>\n\nSome tables on replica are created using the BLACKHOLE engine\n\nslave_skip_errors = ALL is enabled due to application requirements\n\nIssue Details:\nOn 19th around 08:00 AM, several users on a specific replica lost privileges, including:\n\ndatabase-level privileges\n\ntable-level privileges\n\nrole inheritance information\n\ndefault role mappings\n\nThese correspond to missing or modified rows in:\n\nmysql.db\n\nmysql.tables_priv\n\nmysql.role_edges\n\nmysql.default_roles\n\nThe user accounts themselves remained present in mysql.user.\n\nOther replicas with similar replication configuration did not show this issue.\n\nRecent Activity Prior to the Issue:\n\nNew roles were created on the master the previous night.\n\nOn the affected replica, the same roles were manually created early morning (~06:45 AM) because they were not present automatically.\n\nThe privilege loss began roughly at 08:00 AM.\n\nSuspected Area:\nPrivilege-related statements such as:\n\nCREATE ROLE\n\nGRANT\n\nSET DEFAULT ROLE\n\nALTER USER\n\ndo not carry a database context in the binlog.\n\nWhen replication filtering rules such as:\n\nreplicate-ignore-table\n\nreplicate-wild-ignore-table\n\nare used, these global-privilege events may be unexpectedly skipped, partially applied, or mis-evaluated by the filter rules because the events have:\n\ndb = ''\ntable = ''\n\nAdditionally, version differences (8.0.40 master → 8.0.35 replica) may impact privilege replication behavior.\n\nWhat We Request MySQL Support to Confirm / Investigate:\n\nWhether privilege-related DDL (GRANT, CREATE ROLE, SET DEFAULT ROLE, ALTER USER) can be unintentionally skipped when replicate-* filters are present, because they lack a specific database context.\n\nWhether MySQL version mismatch between master and replica can lead to partial updates or loss of privilege metadata.\n\nWhether MySQL has known bugs where privilege metadata (mysql.* tables) becomes inconsistent across replicas without producing explicit replication errors.\n\nWhy only one replica experienced privilege loss, despite identical configuration across replicas.\n\nImpact:\nProduction users began receiving permission-denied errors because underlying privilege metadata disappeared.\nPrivileges had to be recreated manually to restore normal functionality\n\nHow to repeat:\nWe are unable to reproduce the same."
+    }
+  ]
+}

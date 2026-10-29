@@ -1,0 +1,84 @@
+{
+  "report_id": "114549",
+  "title": "CAST from DOUBLE to INTEGER sometimes returns 1, sometimes 2",
+  "source_sha256": "fb412e68d68cb8782b666dc2514beeb1a4442ffe5e45148c624531b439d6ddcb",
+  "source_anchors": [
+    "cmain",
+    "c542097",
+    "c544270"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "79fda4fd17b334ff09072c67d6da0cfdb93052b7b0ee82a54cb456af11f9ab94"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "ef0e46d44db8f6b7b035afe743922508d47f319380477729ef6e75c59f3a0f19"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "k(a DOUBLE)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原一行1.9。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "四种DOUBLE来源（显式CAST、DOUBLE列、1.9e0字面量、派生DOUBLE）转SIGNED应采用一致舍入；源行为1对2不一致。最后DECIMAL对照只作参考，不与DOUBLE强行归一。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS k;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "四种DOUBLE来源（显式CAST、DOUBLE列、1.9e0字面量、派生DOUBLE）转SIGNED应采用一致舍入；源行为1对2不一致。最后DECIMAL对照只作参考，不与DOUBLE强行归一。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "采用完整MTR示例中的SQL；保留DECIMAL对照注释，9.0修复规则不作为已回补证明。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c542097, c544270 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/114549.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

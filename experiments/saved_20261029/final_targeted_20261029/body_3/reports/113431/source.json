@@ -1,0 +1,26 @@
+{
+  "report_id": "113431",
+  "title": "Metadata locking - Table creation with FK constraint",
+  "task_ids": [
+    "mysql-113431-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\eb3199ea86f2_bug_113431.html",
+  "source_sha256": "eb3199ea86f2fdd90cf34ad8c35a0020570218805fd89fd2400cd753538285f2",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhile creating table FK constraint, facing meta data locking issue. \n\nHow to repeat:\nFirst create a table\nCREATE TABLE parent_meta_lock_test (SEID BIGINT(19) NOT NULL,\nID BIGINT(19) NOT NULL,\nVALUE1 VARCHAR(255),\nPRIMARY KEY (ID)\n) ENGINE=INNODB;\n\nClient 1;\nmysql> begin;\nQuery OK, 0 rows affected (0.01 sec)\n\nmysql> SELECT * from parent_meta_lock_test limit 1;\nEmpty set (0.02 sec)\n\nClient 2:\nmysql> CREATE TABLE child_meta_lock_test ( ID BIGINT(19) NOT NULL, PARENT_ID BIGINT(19) NOT NULL, PRIMARY KEY (id), CONSTRAINT FOREIGN KEY (PARENT_ID) REFERENCES parent_meta_lock_test (ID) ON DELETE CASCADE) ENGINE=INNODB;\n\nHere Client 2 is waiting for metdata lock for parent_meta_lock_test\n\nmysql> select * from performance_schema.metadata_locks;\n+-------------+--------------------+-----------------------+-------------+-----------------------+---------------------+---------------+-------------+-------------------+-----------------+----------------+\n| OBJECT_TYPE | OBJECT_SCHEMA      | OBJECT_NAME           | COLUMN_NAME | OBJECT_INSTANCE_BEGIN | LOCK_TYPE           | LOCK_DURATION | LOCK_STATUS | SOURCE            | OWNER_THREAD_ID | OWNER_EVENT_ID |\n+-------------+--------------------+-----------------------+-------------+-----------------------+---------------------+---------------+-------------+-------------------+-----------------+----------------+\n| TABLE       | test               | parent_meta_lock_test | NULL        |       105553151881808 | SHARED_READ         | TRANSACTION   | GRANTED     | sql_parse.cc:6140 |              48 |             11 |\n| SCHEMA      | test               | NULL                  | NULL        |       105553151881488 | INTENTION_EXCLUSIVE | TRANSACTION   | GRANTED     | dd_schema.cc:108  |              48 |             11 |\n| GLOBAL      | NULL               | NULL                  | NULL        |       105553151880848 | INTENTION_EXCLUSIVE | STATEMENT     | GRANTED     | sql_base.cc:5475  |              49 |              7 |\n| BACKUP LOCK | NULL               | NULL                  | NULL        |       105553151880768 | INTENTION_EXCLUSIVE | TRANSACTION   | GRANTED     | sql_base.cc:5482  |              49 |              7 |\n| SCHEMA      | test               | NULL                  | NULL        |       105553151880208 | INTENTION_EXCLUSIVE | TRANSACTION   | GRANTED     | sql_base.cc:5462  |              49 |              7 |\n| TABLE       | test               | child_meta_lock_test  | NULL        |       105553151880448 | SHARED              | TRANSACTION   | GRANTED     | sql_parse.cc:6140 |              49 |              7 |\n| SCHEMA      | test               | NULL                  | NULL        |       105553151880528 | INTENTION_EXCLUSIVE | STATEMENT     | GRANTED     | sql_table.cc:9920 |              49 |              7 |\n| TABLE       | test               | parent_meta_lock_test | NULL        |       105553151881888 | EXCLUSIVE           | STATEMENT     | PENDING     | sql_table.cc:9912 |              49 |              7 |\n| TABLE       | performance_schema | metadata_locks        | NULL        |       105553151818512 | SHARED_READ         | TRANSACTION   | GRANTED     | sql_parse.cc:6140 |              50 |             10 |\n+-------------+--------------------+-----------------------+-------------+-----------------------+---------------------+---------------+-------------+-------------------+-----------------+----------------+\n9 rows in set (0.01 sec)\n\nAfter this all upcoming clients which query parent_meta_lock_test are also waiting for metadata lock.\n\nSame issue was not occurring Mysql 5.7.30. when i migrate to Mysql 8 faced this issue."
+    },
+    {
+      "anchor": "c539029",
+      "text": "Hi Mr. C,\n\nThank you for your bug report.\n\nHowever, this is not a bug.\n\nMetadata locks did not function properly in 5.7, which lead to some bugs.\n\nThe functionality that you see now is the expected behaviour.\n\nPlease, read our Reference Manual on this issue.\n\nNot a bug."
+    },
+    {
+      "anchor": "c539094",
+      "text": "Thanks for the clarification."
+    }
+  ]
+}

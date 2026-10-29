@@ -1,0 +1,58 @@
+{
+  "report_id": "106750",
+  "title": "Some clone tests needlessly marked as Linux-only",
+  "task_ids": [
+    "mysql-106750-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\9eaa007fbe6d_bug_106750.html",
+  "source_sha256": "9eaa007fbe6d42d689da788a4c4fd15f825472e8ca66a21a91825a10e608b7bb",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nSeveral testcases in the clone suite are marked as Linux-only, which appears to be a needless limitation: remote_dml_recovery, error_archival, local_dml_auto_tune, remote_dml_auto_tune, remote_dml_upgrade.\n\nRemoving --source include/linux.inc allows them to pass on macOS as-is.\n\nPerhaps they are meant to be not_windows.inc (some of them already are).\n\nremote_dml_upgrade.test also has conflicting condition in it: it sources include/linux.inc and then goes on to check whether it's running under windows:\n\nlet $have_windows = `SELECT CONVERT(@@version_compile_os using latin1) IN (\"Win32\", \"Win64\", \"Windows\")`;\n\nif (!$have_windows) {\n  --source include/have_mysqld_safe.inc\n  --let inst_monitor = 1\n}\n\nHow to repeat:\nOn macOS, remove --source include/linux.inc, and watch tests pass:\n\n[ 16%] clone.remote_dml_recovery                w3  [ pass ]  65839\n[ 33%] clone.error_archival                     w5  [ pass ]  75335\n[ 50%] clone.local_dml_auto_tune                w4  [ pass ]  293623\n[ 66%] clone.remote_dml_auto_tune               w2  [ pass ]  309505\n[ 83%] clone.remote_dml_upgrade                 w1  [ pass ]  343238\n[100%] shutdown_report                          w0  [ pass ]   \n\nSuggested fix:\nRemove --source include/linux.inc\n\nWhile at that, the slowest tests in the above perhaps should be marked as big tests?"
+    },
+    {
+      "anchor": "c520927",
+      "text": "Hello Laurynas,\n\nThank you for the report and feedback!\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c526350",
+      "text": "The patch applies to 8.0.31 too, MTR clone suite passes cleanly."
+    },
+    {
+      "anchor": "c526352",
+      "text": "The patch applies to 8.0.31 too, MTR clone suite passes cleanly."
+    },
+    {
+      "anchor": "c528974",
+      "text": "Applies to 8.0.32 too."
+    },
+    {
+      "anchor": "c531790",
+      "text": "Applies cleanly on 8.0.32 and does not regress MTR"
+    },
+    {
+      "anchor": "c531791",
+      "text": "Oops, 8.0.33"
+    },
+    {
+      "anchor": "c543689",
+      "text": "The previously submitted patch no longer applies cleanly on 8.4.0. Updated."
+    },
+    {
+      "anchor": "c545113",
+      "text": "My contributed patch applies cleanly on 9.0.0 and passes the tests."
+    },
+    {
+      "anchor": "c547948",
+      "text": "The contributed patch applies on 9.1.0 cleanly and passes the tests."
+    },
+    {
+      "anchor": "c557230",
+      "text": "Posted by developer: Bug status updated to 'Patch pending'"
+    }
+  ]
+}

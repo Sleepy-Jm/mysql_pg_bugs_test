@@ -1,0 +1,82 @@
+{
+  "report_id": "111094",
+  "title": "Results ordered incorrectly",
+  "source_sha256": "932a0a0ebde8a03f986aaf0eead4669491fb18499bcc69829f65a8919a3f9c36",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "43fcfbfe45bdf29964734386dcdf454669fc09865339b30599f4f5cdce6e4b5e"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "62acacaeed546f057366e3bc7b4691aa057689d7137f7083f958d481af16a951"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "order_test(id自动递增主键,val utf8mb4_0900_as_cs,KEY val)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "源文Wä、E两行，必须以utf8mb4读取脚本。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两条查询均应按id=1(Wä),id=2(E)排序；0900_as_cs 下首排序表达式对两行均0，第二表达式使Wä先行。需保留输出中的各个布尔排序值。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS order_test;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "两条查询均应按id=1(Wä),id=2(E)排序；0900_as_cs 下首排序表达式对两行均0，第二表达式使Wä先行。需保留输出中的各个布尔排序值。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "保留指定排序规则",
+    "客户端 --default-character-set=utf8mb4。"
+  ],
+  "transformations": [
+    "去除mysql结果表，只保留初始查询与ka控制查询。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标支持0900_as_cs与表达式排序。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标支持0900_as_cs与表达式排序。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标支持0900_as_cs与表达式排序。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/111094.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

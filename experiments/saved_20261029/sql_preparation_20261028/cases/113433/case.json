@@ -1,0 +1,69 @@
+{
+  "report_id": "113433",
+  "title": "Incorrect query results involving the date type.",
+  "source_sha256": "4552fd0665f3cc6831974fffc7bac6b847dc0a713a68abcc5bf56de816f35b3c",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "4a7789d2a8588ae0141ecab35834c9bc4367332ddfea17114942e0d5114b72f8"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "af8d29e3258bde3c05be6ba7dadd5df93b3f569a1f52c02a1d8c02eb3ee4ff36"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "tt INT/BIGINT/YEAR 与 YEAR DESC索引"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "(61,-9223372036854775808,1913)"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "前两个查询是对同一行添加已满足 id=61，结果应一致；异常：附加恒真等值条件改变行保留性"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "前两个查询是对同一行添加已满足 id=61，结果应一致",
+    "failure": "附加恒真等值条件改变行保留性",
+    "limitations": "YEAR 两位整数转换契约另需审查；本用例以同一行加已满足条件的结果一致性为主。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "相同SQL模式"
+  ],
+  "transformations": [
+    "提取 Operation Procedure 完整原 SQL；第三条常量 YEAR 比较单列诊断"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0.32/.33/.34支持该功能，影响待测。 本轮尚未执行。",
+    "8.0.33": "目标8.0.32/.33/.34支持该功能，影响待测。 本轮尚未执行。",
+    "8.0.34": "目标8.0.32/.33/.34支持该功能，影响待测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

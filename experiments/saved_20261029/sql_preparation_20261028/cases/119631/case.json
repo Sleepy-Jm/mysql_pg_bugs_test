@@ -1,0 +1,71 @@
+{
+  "report_id": "119631",
+  "title": "CTE with type conversion and WHERE condition in IN/EXISTS subquery returns all rows instead of filtered rows",
+  "source_sha256": "14ed7131e8443c18b4e30d3c1a8ec1768d9fb4c42fed02a82a2f80afaf2ac85b",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "7c949af68614792cf515ff09629ffe14ac8e2b0153caff55e9ec5dd76cfafe0e"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "a2112f3f66db1303261fbc310ba9c4a58aa2b7c0643867d1cca94bb1c83b6f46"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t_cte1 INT id/t_cte2 VARCHAR20 id"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "两表原3行"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "直接IN、CTE IN、CTE EXISTS均仅(2,20)一行；异常：CTE提取后所有外表行重复返回"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "直接IN、CTE IN、CTE EXISTS均仅(2,20)一行",
+    "failure": "CTE提取后所有外表行重复返回",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立schema",
+    "保存优化器设置",
+    "关联118512只作去重线索"
+  ],
+  "transformations": [
+    "无提示符的DDL/INSERT显式保留；三个查询去终端输出"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "所用CTE/类型转换/半连接在目标版可用；33已有候选，本次仅对其余目标作探索判断。 本轮尚未执行。",
+    "8.0.34": "所用CTE/类型转换/半连接在目标版可用；33已有候选，本次仅对其余目标作探索判断。 本轮尚未执行。",
+    "8.0.35": "所用CTE/类型转换/半连接在目标版可用；33已有候选，本次仅对其余目标作探索判断。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

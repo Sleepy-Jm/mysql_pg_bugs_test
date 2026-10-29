@@ -1,0 +1,76 @@
+{
+  "report_id": "82330",
+  "title": "Don't recursively-evaluate stopword after tokenize",
+  "source_sha256": "5919087ab28975c4ea42c0936f5006be67ba2a6b8f3b78fb7288a4cf6156bc3b",
+  "source_anchors": [
+    "cmain",
+    "c542132"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "98ae26425035f0b1d9ad39104391ff815ac6464f8d3f159b704a25feaa5dcdee"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "10c83f762b02487214d2d13414c322fe726abb3928cc7f775035d1e1b49e2791"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1 + ngram FULLTEXT"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原一行日文与 baby"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "ngram 分词后子词命中停用词的行为是否违反目标版契约尚未确定，不能把 baby 为空直接当错误"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "报告希望 baby 能检出该行；ngram_token_size=2 下停用词过滤的产品语义需进一步确认",
+    "failure": "仅 Empty set 尚不能自动判为 bug",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "ngram解析器",
+    "查看全文索引缓存权限",
+    "ngram_token_size=2（启动参数）及默认停用词配置"
+  ],
+  "transformations": [
+    "移除修改全局 innodb_ft_aux_table 的非必要诊断；补字符集与 ngram/停用词配置输出"
+  ],
+  "blockers": [
+    "ngram 分词后子词命中停用词的行为是否违反目标版契约尚未确定，不能把 baby 为空直接当错误"
+  ],
+  "version_notes": {
+    "8.0.32": "8.0具有同一ngram/停用词机制；适用性明确，四小版本的实际结果待测。 本轮尚未执行。",
+    "8.0.33": "8.0具有同一ngram/停用词机制；适用性明确，四小版本的实际结果待测。 本轮尚未执行。",
+    "8.0.34": "8.0具有同一ngram/停用词机制；适用性明确，四小版本的实际结果待测。 本轮尚未执行。",
+    "8.0.35": "8.0具有同一ngram/停用词机制；适用性明确，四小版本的实际结果待测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain, c542132 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

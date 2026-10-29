@@ -1,0 +1,7 @@
+-- Report #113036; source anchors: cmain, c537920
+-- Static preparation only; not executed. See case.json before any future isolated run.
+CREATE TABLE t0 ( c29 INT , c53 DOUBLE ( 82 , 11 ) DEFAULT ( -1312010754708079168 ) ) ;
+INSERT INTO t0 VALUES ( 14 , -1606648902726106250 IN ( 17 , -2142816117635615462 , -124 ) ) , ( 11 , 102 ) ;
+CREATE INDEX i0 ON t0 ( c29 ) ;
+INSERT INTO t0 VALUES ( DEFAULT , DEFAULT ) , ( DEFAULT , DEFAULT ) ;
+SELECT t0 . c53 AS c43 FROM ( SELECT ( SELECT c29 AS c38 FROM ( SELECT c53 AS c16 FROM t0 ORDER BY c16 ) AS t1 ( c34 ) LIMIT 1 ) AS c22 FROM t0 ) AS t2 JOIN t0 ON t0 . c29 = t2 . c22 ;

@@ -1,0 +1,91 @@
+{
+  "report_id": "111449",
+  "title": "void Diagnostics_area::set_eof_status(THD*): Assertion `!is_set()' failed.",
+  "source_sha256": "b688db174a5bb9badf625f5b2d795e32df2692d5b3088182739cb56c660bf29d",
+  "source_anchors": [
+    "cmain",
+    "c533666",
+    "c533667",
+    "c535184"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "a12d957b66913599eb8a957ba51294e09f39871570b5dbf00f5da0b0c1109f18"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "ab2f735d76d1512e71a89fe8fcf78eda543dcf81f83f3a82c08df1edc67f5d13"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原文SQL完整建表/视图，保留特殊DDL和操作符；对象列见reproducer.sql。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原文所有INSERT保持；空表也保留原状态，不增补随机数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "HANDLER READ 中非法 MEMBER 类型应受控返回3146（或同类类型错误），不能触发 Diagnostics_area::set_eof_status 断言。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "HANDLER READ 中非法 MEMBER 类型应受控返回3146（或同类类型错误），不能触发 Diagnostics_area::set_eof_status 断言。",
+    "failure": "不应出现报告所述服务器断言/异常退出；受控 SQL 错误须单独记录，连接存活/服务日志而非仅客户端错误作为判据。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "目标debug构建"
+  ],
+  "transformations": [
+    "取cmain标记SQL块；去除test123 DROP/CREATE/USE包装，改为由runner提供全新schema；原对象名和触发语句不变。",
+    "将源配置中的sql_mode显式设为会话值；堆栈中的另一份大查询不混入简化用例。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c533666, c533667, c535184 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "原文要求 WITH_DEBUG；记录与 release 构建的差异。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "report_id": "118177",
+  "title": "Unnecessary filter operator in the execution plan",
+  "task_ids": [
+    "mysql-118177-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\7040965f34f8_bug_118177.html",
+  "source_sha256": "7040965f34f87c9a36eb3b02251076d528e46c0b08fdf81ab823b9416dcbe6ec",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nCREATE TABLE t1 (f1 INTEGER, f2 INTEGER, PRIMARY KEY (f1), KEY(f2, f1));\nINSERT INTO t1 (\nWITH RECURSIVE\na(i) AS (SELECT 0 UNION ALL SELECT i+1 FROM a WHERE i < 9 ),\nb(i) AS (SELECT x.i + y.i * 10 + z.i * 100 FROM a x, a y, a z)\nSELECT b.i, b.i %2 FROM b ORDER BY i);\nANALYZE TABLE t1;\nTable   Op      Msg_type        Msg_text\ntest.t1 analyze status  OK\nEXPLAIN SELECT * FROM t1 WHERE f2 = 1 AND f1 <= 100 ORDER BY f1 DESC LIMIT 1;\nid      select_type     table   partitions      type    possible_keys   key     key_len ref     rows    filtered        Extra\n1       SIMPLE  t1      NULL    range   PRIMARY,f2      f2      9       NULL    50      100.00  Using where; Backward index scan; Using index\nWarnings:\nNote    1003    /* select#1 */ select `test`.`t1`.`f1` AS `f1`,`test`.`t1`.`f2` AS `f2` from `test`.`t1` where ((`test`.`t1`.`f2` = 1) and (`test`.`t1`.`f1` <= 100)) order by `test`.`t1`.`f1` desc limit 1\nEXPLAIN ANALYZE SELECT * FROM t1 WHERE f2 = 1 AND f1 <= 100 ORDER BY f1 DESC LIMIT 1;\nEXPLAIN\n-> Limit: 1 row(s)  (cost=10.3 rows=1) (actual time=0.331..0.332 rows=1 loops=1)\n    -> Filter: ((t1.f2 = 1) and (t1.f1 <= 100))  (cost=10.3 rows=50) (actual time=0.33..0.33 rows=1 loops=1)\n        -> Covering index range scan on t1 using f2 over (f2 = 1 AND f1 <= 100) (reverse)  (cost=10.3 rows=50) (actual time=0.306..0.306 rows=1 loops=1)\n\nThe index is (f2, f1), and the covering index range scan has already explicitly defined the scan range (f2=1 AND f1<=100), meaning there is theoretically no need for additional filtering at the Server layer.\n\nHow to repeat:\nCREATE TABLE t1 (f1 INTEGER, f2 INTEGER, PRIMARY KEY (f1), KEY(f2, f1));\nINSERT INTO t1 (\nWITH RECURSIVE\na(i) AS (SELECT 0 UNION ALL SELECT i+1 FROM a WHERE i < 9 ),\nb(i) AS (SELECT x.i + y.i * 10 + z.i * 100 FROM a x, a y, a z)\nSELECT b.i, b.i %2 FROM b ORDER BY i);\nANALYZE TABLE t1;\n\nEXPLAIN SELECT * FROM t1 WHERE f2 = 1 AND f1 <= 100 ORDER BY f1 DESC LIMIT 1;\ni\nEXPLAIN ANALYZE SELECT * FROM t1 WHERE f2 = 1 AND f1 <= 100 ORDER BY f1 DESC LIMIT 1;"
+    },
+    {
+      "anchor": "c552664",
+      "text": "Hello Bob Wong,\n\nThank you for the report and test case.\n\nregards,\nUmesh"
+    }
+  ]
+}

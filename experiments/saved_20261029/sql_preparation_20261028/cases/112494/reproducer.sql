@@ -1,0 +1,7 @@
+-- MySQL report #112494; source anchors: cmain
+-- Prepared offline; NOT EXECUTED. Run only in a disposable isolated environment.
+CREATE TABLE t0 ( c60 INT , c54 INT ) ;
+INSERT INTO t0 VALUES ( DEFAULT , DEFAULT ) , ( DEFAULT , DEFAULT ) ;
+ALTER TABLE t0 ADD COLUMN c27 INT AFTER c54 ;
+INSERT INTO t0 VALUES ( DEFAULT , DEFAULT , DEFAULT ) , ( DEFAULT , DEFAULT , DEFAULT ) ;
+SELECT t1 . c37 AS c54 , IF ( t2 . c6 , t1 . c37 , 34 ) AS c7 FROM ( SELECT c27 AS c37 FROM t0 ) AS t1 CROSS JOIN ( SELECT c60 AS c6 FROM t0 ) AS t2 ON t1 . c37 IN ( SELECT c27 AS c40 FROM t0 ) IS NOT FALSE HAVING FIND_IN_SET ( 14 , '\\ngL}x!ma0lQGBY1 1]s`9]o' ) IN ( SELECT t2 . c6 = t1 . c37 IN ( RAND ( ) NOT IN ( '.N1WD5d' = -63 ) ) IS NOT UNKNOWN AS c56 ) ORDER BY c7 LIMIT 26 ;

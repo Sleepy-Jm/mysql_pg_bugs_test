@@ -1,0 +1,1 @@
+DROP TABLE t2,t1;

@@ -1,0 +1,1 @@
+-- Stop and retain this exclusively owned per-case container and its isolated datadir.

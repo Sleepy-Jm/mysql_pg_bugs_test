@@ -1,0 +1,3 @@
+-- MySQL report #107109; source anchors: cmain
+-- Static preparation only; not executed. Use a fresh isolated schema/instance as specified in case.json.
+-- Session-only settings are removed by closing the dedicated connection.

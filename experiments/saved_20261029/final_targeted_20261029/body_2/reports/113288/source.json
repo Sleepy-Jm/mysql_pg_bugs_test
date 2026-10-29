@@ -1,0 +1,38 @@
+{
+  "report_id": "113288",
+  "title": "Explain plan shows dynamic range, but bug causes no chance to use for LEFT JOIN",
+  "task_ids": [
+    "mysql-113288-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\ffb24756217b_bug_113288.html",
+  "source_sha256": "ffb24756217bd942ebc990115630c17b404049fb9c3fbdd5b9062d983da5ec42",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nFor an SQL using INNER JOIN, the explained plan shows that dynamic range could be used in the execution. The SQL is executed efficiently due to RANGE ACCESS being dynamically chosen for most prefix-joined rows during execution.\n\nBut when using LEFT JOIN, though the explained output shows the same plan with INNER JOIN, no RANGE ACCESS is chosen during execution, which causes poor performance.\n\nHow to repeat:\nLoad the data I've uploaded and execute the following SQL:\n\nmysql-8.0.33 > EXPLAIN SELECT COUNT(0)\nFROM t1\n\tJOIN t2\n\tON t2.value = t1.name\n\t\tOR t2.id = t1.sequence\nWHERE (t1.status = 'NG')\n\tOR (t1.status = 'FA')\n\tOR (t1.status = 'IT');\n+----+-------------+-------+------------+------+-------------------+------+---------+------+-------+----------+------------------------------------------------+\n| id | select_type | table | partitions | type | possible_keys     | key  | key_len | ref  | rows  | filtered | Extra                                          |\n+----+-------------+-------+------------+------+-------------------+------+---------+------+-------+----------+------------------------------------------------+\n|  1 | SIMPLE      | t1    | NULL       | ALL  | idx_name          | NULL | NULL    | NULL | 12857 |    27.10 | Using where                                    |\n|  1 | SIMPLE      | t2    | NULL       | ALL  | PRIMARY,idx_value | NULL | NULL    | NULL |  9239 |    19.00 | Range checked for each record (index map: 0x3) |\n+----+-------------+-------+------------+------+-------------------+------+---------+------+-------+----------+------------------------------------------------+\n\nmysql-8.0.33 > SELECT COUNT(0) FROM t1 JOIN t2 ON ((t2.value = t1.name) or (t2.id = t1.sequence)) WHERE ((t1.status = 'NG') or (t1.status = 'FA') or (t1.status = 'IT'));\n+----------+\n| COUNT(0) |\n+----------+\n|     9509 |\n+----------+\n1 row in set (0.32 sec)\n\nAs shown above, it takes only 0.32s to execute INNER JOIN. Now we change INNER JOIN to LEFT JOIN:\n\nmysql-8.0.33 > EXPLAIN SELECT COUNT(0)\nFROM t1\n\tLEFT JOIN t2\n\tON t2.value = t1.name\n\t\tOR t2.id = t1.sequence\nWHERE (t1.status = 'NG')\n\tOR (t1.status = 'FA')\n\tOR (t1.status = 'IT');\n+----+-------------+-------+------------+------+-------------------+------+---------+------+-------+----------+------------------------------------------------+\n| id | select_type | table | partitions | type | possible_keys     | key  | key_len | ref  | rows  | filtered | Extra                                          |\n+----+-------------+-------+------------+------+-------------------+------+---------+------+-------+----------+------------------------------------------------+\n|  1 | SIMPLE      | t1    | NULL       | ALL  | NULL              | NULL | NULL    | NULL | 12857 |    27.10 | Using where                                    |\n|  1 | SIMPLE      | t2    | NULL       | ALL  | PRIMARY,idx_value | NULL | NULL    | NULL |  9239 |   100.00 | Range checked for each record (index map: 0x3) |\n+----+-------------+-------+------------+------+-------------------+------+---------+------+-------+----------+------------------------------------------------+\n\nmysql-8.0.33 > SELECT COUNT(0) FROM t1 LEFT JOIN t2 ON ((t2.value = t1.name) or (t2.id = t1.sequence)) WHERE ((t1.status = 'NG') or (t1.status = 'FA') or (t1.status = 'IT'));\n+----------+\n| COUNT(0) |\n+----------+\n|     9517 |\n+----------+\n1 row in set (29.69 sec)\n\nFor the same plan, it takes 29.69s to finish execution for LEFT JOIN. It's weird.\n\nSuggested fix:\nThe reason is that, for LEFT JOIN the original JOIN condition has been wrapped with Item_func_trig_cond at the execution stage. Function get_mm_tree() doesn't deal with this type of Item properly and doesn't construct the tree. So it won't try RANGE ACCESS.\n\nWe can deal with it in get_mm_tree() as the following patch shows. After this patch, the LEFT JOIN will execute as efficiently as INNER JOIN. \n\nmysql-8.0.33-with-patch > EXPLAIN SELECT COUNT(0) FROM t1 LEFT JOIN t2 ON ((t2.value = t1.name) or (t2.id = t1.sequence)) WHERE ((t1.status = 'NG') or (t1.status = 'FA') or (t1.status = 'IT'));\n+----+-------------+-------+------------+------+-------------------+------+---------+------+-------+----------+------------------------------------------------+\n| id | select_type | table | partitions | type | possible_keys     | key  | key_len | ref  | rows  | filtered | Extra                                          |\n+----+-------------+-------+------------+------+-------------------+------+---------+------+-------+----------+------------------------------------------------+\n|  1 | SIMPLE      | t1    | NULL       | ALL  | NULL              | NULL | NULL    | NULL | 12857 |    27.10 | Using where                                    |\n|  1 | SIMPLE      | t2    | NULL       | ALL  | PRIMARY,idx_value | NULL | NULL    | NULL |  9239 |   100.00 | Range checked for each record (index map: 0x3) |\n+----+-------------+-------+------------+------+-------------------+------+---------+------+-------+----------+------------------------------------------------+\n\nmysql-8.0.33-with-patch > SELECT COUNT(0) FROM t1 LEFT JOIN t2 ON ((t2.value = t1.name) or (t2.id = t1.sequence)) WHERE ((t1.status = 'NG') or (t1.status = 'FA') or (t1.status = 'IT'));\n+----------+\n| COUNT(0) |\n+----------+\n|     9517 |\n+----------+\n1 row in set (0.28 sec)"
+    },
+    {
+      "anchor": "c538530",
+      "text": "Hello Hope Lee,\n\nThank you for the report and contribution.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c557377",
+      "text": "Posted by developer: Bug status updated to 'Patch pending'"
+    },
+    {
+      "anchor": "c557425",
+      "text": "Posted by developer: Bug status updated to 'Patch approved'"
+    },
+    {
+      "anchor": "c557426",
+      "text": "Posted by developer: Bug status updated to 'Documenting'"
+    },
+    {
+      "anchor": "c558292",
+      "text": "Posted by developer:\n \nAdded the following note to the MySQL Server 8.4.11, 9.7.2, and 26.7.0 release notes:\n\n\tSome LEFT JOIN queries with OR conditions displayed dynamic\n        range access in EXPLAIN, but still performed full scans of the\n        inner table at execution time. This occurred because the\n        optimizer did not recognize eligible outer-join predicates when\n        evaluating range access. \n        The optimizer now considers these\n        predicates for dynamic range analysis, allowing eligible LEFT\n        JOIN queries to use an index range scan re-planned for each\n        outer row instead of repeatedly scanning the full inner table.\n        Our thanks to Hope Lee for the contribution."
+    }
+  ]
+}

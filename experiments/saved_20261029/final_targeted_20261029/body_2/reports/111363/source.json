@@ -1,0 +1,30 @@
+{
+  "report_id": "111363",
+  "title": "If you use \"UNION ALL\" for items with Japanese double-byte characters in a subqu",
+  "task_ids": [
+    "mysql-111363-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\83dcf7f9d7ce_bug_111363.html",
+  "source_sha256": "83dcf7f9d7ceca3633e0afe2757e2fb33e3a1d11de4fd7210ea73fd3a0dc6daa",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nIf you use \"UNION ALL\" for items with Japanese double-byte characters in a subqu\n\nHow to repeat:\nPrepare the table and data with the following SQL.\nCREATE TABLE TEST01(A VARCHAR (4)) ;\nINSERT INTO TEST01(A) VALUES ('あ'); \n\nData cannot be extracted with the following SQL.\nSELECT\n    * \nFROM\n    ( \n        SELECT\n            A \n        FROM\n            TEST01 \n        UNION ALL \n        SELECT\n            A \n        FROM\n            TEST01\n    ) SUB \nWHERE\n    SUB.A = 'あ'\n;"
+    },
+    {
+      "anchor": "c533436",
+      "text": "Hello Yuya Matsuo,\n\nThank you for the report and test case.\nIMHO this is duplicate of Bug #109699, which is fixed in  MySQL Server 8.0.33. Please see Bug #109699 for more details.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c533437",
+      "text": "- fixed in 8.0.33\n\n ./mtr bug111363 --nocheck-testcases\nLogging: ./mtr  bug111363 --nocheck-testcases\nMySQL Version 8.0.33\nChecking supported features\nUsing 'all' suites\nCollecting tests\nChecking leftover processes\nRemoving old var directory\n - WARNING: Using the 'mysql-test/var' symlink\nCreating var directory '/export/home/tmp/ushastry/mysql-8.0.33/mysql-test/var'\nInstalling system database\nUsing parallel: 1\n\n==============================================================================\n                  TEST NAME                       RESULT  TIME (ms) COMMENT\n------------------------------------------------------------------------------\nCREATE TABLE TEST01(A VARCHAR (4)) ;\nINSERT INTO TEST01(A) VALUES ('あ');\nSELECT\n*\nFROM\n(\nSELECT\nA\nFROM\nTEST01\nUNION ALL\nSELECT\nA\nFROM\nTEST01\n) SUB\nWHERE\nSUB.A = 'あ'\n;\nA\nあ\nあ\n\n- 8.0.32 affected \n\n./mtr bug111363 --nocheck-testcases\nLogging: ./mtr  bug111363 --nocheck-testcases\nMySQL Version 8.0.32\nChecking supported features\nUsing 'all' suites\nCollecting tests\nChecking leftover processes\nRemoving old var directory\n - WARNING: Using the 'mysql-test/var' symlink\nCreating var directory '/export/home/tmp/ushastry/mysql-8.0.32/mysql-test/var'\nInstalling system database\nUsing parallel: 1\n\n==============================================================================\n                  TEST NAME                       RESULT  TIME (ms) COMMENT\n------------------------------------------------------------------------------\nCREATE TABLE TEST01(A VARCHAR (4)) ;\nINSERT INTO TEST01(A) VALUES ('あ');\nSELECT\n*\nFROM\n(\nSELECT\nA\nFROM\nTEST01\nUNION ALL\nSELECT\nA\nFROM\nTEST01\n) SUB\nWHERE\nSUB.A = 'あ'\n;\nA\nWarnings:\nWarning 1300    Cannot convert string '\\xE3\\x81\\x82' from utf8mb4 to binary\nWarning 1300    Cannot convert string '\\xE3\\x81\\x82' from utf8mb4 to binary\n\n- 8.0.32 with workaround\n ./mtr bug111363 --nocheck-testcases\nLogging: ./mtr  bug111363 --nocheck-testcases\nMySQL Version 8.0.32\nChecking supported features\nUsing 'all' suites\nCollecting tests\nChecking leftover processes\nRemoving old var directory\n - WARNING: Using the 'mysql-test/var' symlink\nCreating var directory '/export/home/tmp/ushastry/mysql-8.0.32/mysql-test/var'\nInstalling system database\nUsing parallel: 1\n\n==============================================================================\n                  TEST NAME                       RESULT  TIME (ms) COMMENT\n------------------------------------------------------------------------------\nset optimizer_switch=\"derived_condition_pushdown=off\";\nCREATE TABLE TEST01(A VARCHAR (4)) ;\nINSERT INTO TEST01(A) VALUES ('あ');\nSELECT\n*\nFROM\n(\nSELECT\nA\nFROM\nTEST01\nUNION ALL\nSELECT\nA\nFROM\nTEST01\n) SUB\nWHERE\nSUB.A = 'あ'\n;\nA\nあ\nあ"
+    },
+    {
+      "anchor": "c533443",
+      "text": "Thank you for your reply.\nWe have confirmed that the issue has been resolved by upgrading to \"Ver: 8.0.33\"."
+    }
+  ]
+}

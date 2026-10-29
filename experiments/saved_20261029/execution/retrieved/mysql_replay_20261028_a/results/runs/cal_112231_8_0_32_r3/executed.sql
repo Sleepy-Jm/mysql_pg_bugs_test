@@ -1,0 +1,18 @@
+USE `replay_c2b0a045483702e8ff1d1c71`;
+SET time_zone="+00:00";
+DROP TEMPORARY TABLE IF EXISTS tbTestBad2;
+CREATE TEMPORARY TABLE tbTestBad2 (id int unsigned) ENGINE InnoDB;
+INSERT INTO tbTestBad2 SELECT 1 AS id;
+
+DROP PROCEDURE IF EXISTS spTestBad;
+
+DELIMITER $$
+CREATE PROCEDURE IF NOT EXISTS spTestBad()
+  BEGIN
+    SELECT 1, (SUM( 1 ) OVER()) + 0 FROM tbTestBad2 ;
+    SELECT * FROM tbTestBad2;
+  END$$
+DELIMITER ;
+
+CALL spTestBad();
+CALL spTestBad();

@@ -1,0 +1,84 @@
+{
+  "report_id": "110771",
+  "title": "Failed to update NULL to empty value on instant col for REDUNDANT table",
+  "source_sha256": "f92e3080aeca9c6461bdab502e5e8ec2c3891c1f5446a756cc761fab0da254fa",
+  "source_anchors": [
+    "cmain",
+    "c533650",
+    "c546398"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "db01c0a0f018d9d8229d05df6b32162261eafec43f3900ffca5fd919b74e805c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "0d86f40b2ea9ba9c3ea239ad96400c26fcae7ac57e0af2dd31f5fda22a736f79"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "REDUNDANT InnoDB t1(a INT,b INT,KEY(b))三行0..2。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。INSTANT ADD c VARCHAR25 DEFAULT NULL，再UPDATE c为空串 WHERE a=0；SELECT并CHECK。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "a=0 行 c 应为非NULL空串(LENGTH=0)，其余两行 c 为NULL，a/b不变；debug不应断言、release不应不更新或损坏。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "a=0 行 c 应为非NULL空串(LENGTH=0)，其余两行 c 为NULL，a/b不变；debug不应断言、release不应不更新或损坏。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。",
+    "移除MTR include/session控制，补SELECT观测，使用单引号空串。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮仅静态准备。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮仅静态准备。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c533650, c546398 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "REDUNDANT InnoDB t1(a INT,b INT,KEY(b))三行0..2。",
+    "steps": "INSTANT ADD c VARCHAR25 DEFAULT NULL，再UPDATE c为空串 WHERE a=0；SELECT并CHECK。",
+    "oracle": "应为空串且其他列完整，不能断言/数据损坏；debug与release结果分记。",
+    "requirements": [
+      "独立测试实例",
+      "保存完整SQL、配置、输出与错误日志"
+    ],
+    "target_applicability": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。"
+  }
+}

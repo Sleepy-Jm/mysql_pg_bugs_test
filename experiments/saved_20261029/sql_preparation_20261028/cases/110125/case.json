@@ -1,0 +1,70 @@
+{
+  "report_id": "110125",
+  "title": "Unexpected query result fetched from an indexed column",
+  "source_sha256": "e9de2c6a405c128594803f6eb5e4b12698dcc273f267ca905ad61c5a18340e71",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "f05f1c1d4b06b75cd025fe4108ddbb152c978fbe0a8b3d6ec3ede96bf7454fa8"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "17f026263336128899b256cfea0b343d5d1d3370c79a3a2519fcf836693bfcc9"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 DOUBLE ZEROFILL)，降序索引 i0"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "INSERT DELAYED IGNORE 插入 0"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "SELECT 空集，负数不等于 DOUBLE ZEROFILL 中的 0；异常：返回一行 0"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "SELECT 空集，负数不等于 DOUBLE ZEROFILL 中的 0",
+    "failure": "返回一行 0",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立库",
+    "记录sql_mode"
+  ],
+  "transformations": [
+    "保留 DELAYED 的历史兼容语句，目标可能给弃用警告；DDL/INSERT 失败时不可判谓词结果"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0支持ZEROFILL/索引及该表达式，所有数据自包含。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持ZEROFILL/索引及该表达式，所有数据自包含。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持ZEROFILL/索引及该表达式，所有数据自包含。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

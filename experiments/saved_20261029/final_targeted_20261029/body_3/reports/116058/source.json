@@ -1,0 +1,26 @@
+{
+  "report_id": "116058",
+  "title": "row_examined in slowlog is not correct when using index_merge",
+  "task_ids": [
+    "mysql-116058-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\399b302b0984_bug_116058.html",
+  "source_sha256": "399b302b0984bea3dab41108c0f1459b1fa1159d426f82683440ac1dc7b7a89f",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nrow_examined in slowlog is not correct when using index_merge\n\nHow to repeat:\n1. prepare table and data\nCREATE TABLE `test_merge` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` int DEFAULT NULL,\n  `c2` int DEFAULT NULL,\n  `c3` varchar(10) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `idx_c1` (`c1`),\n  KEY `idx_c2` (`c2`)\n) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n\nINSERT INTO `test_merge` VALUES (1,1,2,'a'),(2,1,3,'a'),(3,1,4,'a'),(4,1,5,'a'),(5,3,2,'a'),(6,4,2,'a'),(7,5,2,'a'),(8,6,2,'a'),(9,2,2,'a'),(10,2,3,'a'),(11,2,4,'a'),(12,2,5,'a'),(13,2,6,'a');\n\n2. execute sql and observe slowlog comparing with performance_schema.table_io_waits_summary_by_index_usage\n\nexplain select * from test_merge where c1=1 and c2=2;   -- Ensure Extra： Using intersect(idx_c1,idx_c2);\n\ntruncate table performance_schema.table_io_waits_summary_by_index_usage;\n\nselect OBJECT_TYPE,OBJECT_SCHEMA,OBJECT_NAME,INDEX_NAME,COUNT_STAR,COUNT_READ,COUNT_WRITE,COUNT_FETCH,COUNT_INSERT,COUNT_UPDATE,COUNT_DELETE  from performance_schema.table_io_waits_summary_by_index_usage where object_schema='test'\nand object_name='test_merge';   -- count_xxx: 0\n\nset long_query_time=0;\n\nselect * from test_merge where c1=1 and c2=2;\n\n-- slow log：Rows_examined: 0   not correct\n# Time: 2024-09-11T09:05:32.035131Z\n# User@Host: root[root] @ xxx [xxx]  Id:  2438\n# Query_time: 0.000474  Lock_time: 0.000003 Rows_sent: 1  Rows_examined: 0 Execution_time: 0.000471\nSET timestamp=1726045532;\nselect * from test_merge where c1=1 and c2=2;\n\nselect OBJECT_TYPE,OBJECT_SCHEMA,OBJECT_NAME,INDEX_NAME,COUNT_STAR,COUNT_READ,COUNT_WRITE,COUNT_FETCH,COUNT_INSERT,COUNT_UPDATE,COUNT_DELETE  from performance_schema.table_io_waits_summary_by_index_usage where object_schema='test'\nand object_name='test_merge';   -- count_xxx increased"
+    },
+    {
+      "anchor": "c546881",
+      "text": "Hello Luodan Zhang,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c546890",
+      "text": "It looks similiar with https://bugs.mysql.com/bug.php?id=112959"
+    }
+  ]
+}

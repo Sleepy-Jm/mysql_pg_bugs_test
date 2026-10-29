@@ -1,0 +1,38 @@
+{
+  "report_id": "110678",
+  "title": "oct query with wrong result",
+  "task_ids": [
+    "mysql-110678-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\dbc2cb1b319e_bug_110678.html",
+  "source_sha256": "dbc2cb1b319e69141f6f638237935efe95fe4544e1ffb369cadf2c7ef59fb99b",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nRun these queries:\n\nCREATE TABLE t0 (c0 TIME, c1 TINYBLOB AS (t0.c0) STORED);\nINSERT INTO t0(c0) VALUES (TIME '5:26:10'),(NULL),(NULL),(TIME '63:46:49'),(TIME '18:59:49'),(TIME '76:43:4'),(TIME '49:2:52'),(NULL),(TIME '15:9:0'),(TIME '64:0:35'),(TIME '19:11:21');\n\nThen this pair:\n\nSELECT 1 FROM t0 WHERE oct(DATE '1118-9-2') > t0.c1;\nSELECT CAST(sum(c1) AS SIGNED) FROM (SELECT CAST(oct(DATE '1118-9-2') > t0.c1 AS SIGNED) FROM t0) t1 (c1);\n\nAlthough they are equivalent, the first query returns 4 rows, while the global aggregate on the second query returns 3. The number of rows of the first should be the same as the sum result. By looking more carefully it seems the first query is wrong.\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the queries above."
+    },
+    {
+      "anchor": "c531618",
+      "text": "HI Mr. Ferreira,\n\nThank you for your bug report.\n\nHowever, we can not repeat the behaviour with our 8.0.32 binary.\n\nBoth queries return zero rows in the result set, which is expected behaviour.\n\nFor the first query, the expression is always FALSE, since you are comparing octal numbers with TIME, which is of the different type.\n\nFor the second query, a derived table returns only NULLs, zeros and three times it returns 1, which makes the entire second query returning a single row with a value of 3. This is because your second query is an aggregated one ......\n\nNot a bug."
+    },
+    {
+      "anchor": "c531620",
+      "text": "On my setup, I get different results. Have you tried using a schema other than the default one?"
+    },
+    {
+      "anchor": "c531621",
+      "text": "Hi,\n\nWe created a new schema for this bug .....\n\nSo, the answer is YES."
+    },
+    {
+      "anchor": "c531640",
+      "text": "Can you try with the same server parameters as me?\n\nmysqld --no-defaults --user=mysql --basedir=... --datadir=... --plugin-dir=... --log-error=... --log-error-verbosity=3 --pid-file=... --port=3306 --mysqlx-port=3307 --slave-parallel-type=LOGICAL_CLOCK --slave-parallel-workers=4 --slave-preserve-commit-order=ON --enforce-gtid-consistency --gtid-mode=ON --binlog-format=ROW --server-id=1 --core-file --default-authentication-plugin=mysql_native_password"
+    },
+    {
+      "anchor": "c531757",
+      "text": "Hi,\n\nIt comes to the same result."
+    }
+  ]
+}

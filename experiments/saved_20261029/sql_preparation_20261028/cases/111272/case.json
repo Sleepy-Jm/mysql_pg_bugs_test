@@ -1,0 +1,82 @@
+{
+  "report_id": "111272",
+  "title": "Inconsistent behaviors on string comparison with/without index",
+  "source_sha256": "767838fc9a3ab0d2b02d32f5ee94a0c20349f69cab9da0e6324bdb778c0b7fbb",
+  "source_anchors": [
+    "cmain",
+    "c533174"
+  ],
+  "target_versions": [
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "c6ee17bd2d033613959c0b5769f69dfdbfbada35fd84e8eb8a741a3731b7b86b"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "7fffa33abf84e341ca8ebf81c2a25f6ae9c1462c36a5fa21bd93ad3cd6a106a9"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "正文t1(c1 TINYTEXT,KEY i0(c1(1)))插入原始组合字符与^1o，明确记录目标默认字符集/排序规则。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。运行c1>'?ykFo|1'，删索引后同样查询；保存HEX(c1)防止组合符被改写。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两次同谓词查询的多重集应一致；保存原始组合字符字节和字符集/排序规则，不先验断言任意排序规则都返回2行。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "两次同谓词查询的多重集应一致；保存原始组合字符字节和字符集/排序规则，不先验断言任意排序规则都返回2行。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "原始Unicode字节",
+    "记录字符集/排序规则",
+    "sql_mode 不含 ANSI_QUOTES；数据库字符集utf8mb4/排序规则应记录并对照源环境，原文未给默认排序规则。"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。",
+    "保留原数据字符未正规化；原两次DROP/CREATE仅操作runner隔离库内t1。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.34": "目标支持TINYTEXT前缀索引；默认排序规则须固定。 本轮仅静态准备。",
+    "8.0.35": "目标支持TINYTEXT前缀索引；默认排序规则须固定。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c533174 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "正文t1(c1 TINYTEXT,KEY i0(c1(1)))插入原始组合字符与^1o，明确记录目标默认字符集/排序规则。",
+    "steps": "运行c1>'?ykFo|1'，删索引后同样查询；保存HEX(c1)防止组合符被改写。",
+    "oracle": "同一字符集数据的同一谓词不能因前缀索引漏行。",
+    "requirements": [
+      "原始Unicode字节",
+      "记录字符集/排序规则"
+    ],
+    "target_applicability": "目标支持TINYTEXT前缀索引；默认排序规则须固定。"
+  }
+}

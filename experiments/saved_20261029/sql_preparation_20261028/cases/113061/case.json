@@ -1,0 +1,71 @@
+{
+  "report_id": "113061",
+  "title": "The result of avg(distinct xx）is different between from primary and secondary",
+  "source_sha256": "353d29526d353595ad12cca90e991b281da0d1194c1dd449c927b83ba9bda25f",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "7e10c2c4f542d686fdf4881e199dfc9dfcf98b284a86dc52aa35ab42b955ac0e"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "8a3e190c4ba1e87c75d926bc4a2310326e6c0643fc4e2aecdfb2829209e44fbb"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原 t1(a PK,b utf8_bin,c,idx_b_l,idx_c_l)"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原10行字符串完整保留"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "PRIMARY 与二级索引路径同一 DISTINCT 数值聚合应一致；原候选正确集合数值0,3,5,6，SUM=14 AVG=3.5；异常：二级索引把不同字符串重复数值重复累计为 SUM37/AVG3.7"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "PRIMARY 与二级索引路径同一 DISTINCT 数值聚合应一致；原候选正确集合数值0,3,5,6，SUM=14 AVG=3.5",
+    "failure": "二级索引把不同字符串重复数值重复累计为 SUM37/AVG3.7",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "普通 SELECT 中转换警告单列；不能把警告当异常"
+  ],
+  "transformations": [
+    "提取建表/10条 INSERT 和4个查询，补显式去重/数值投影诊断"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

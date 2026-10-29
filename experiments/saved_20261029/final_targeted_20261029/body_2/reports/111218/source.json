@@ -1,0 +1,30 @@
+{
+  "report_id": "111218",
+  "title": "Logic bug: logic equal sqls return different results",
+  "task_ids": [
+    "mysql-111218-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\00d0b7d019b1_bug_111218.html",
+  "source_sha256": "00d0b7d019b1f50ec72036b1eaddd48dc4111167af2538063688f010c7003b5a",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nResults of two logic-equal sql queries on Mysql are different, which means a logic bug.\n\nHow to repeat:\nCREATE TABLE stu_info(\n\tid INT AUTO_INCREMENT PRIMARY KEY, \n\tiname VARCHAR(20), \n\tgender CHAR(1), \n\tdepartment VARCHAR(10), \n\tage TINYINT, \n\tprovince VARCHAR(10), \n\temail VARCHAR(50), \n\tmobilephone CHAR(11)\n);\nINSERT INTO stu_info(iname,gender,department,age,province,email,mobilephone) VALUES \n\t('张勇','男','数学系',23,'河南','sfddf123dd@163.com','13323564321'), \n\t('王兵','男','数学系',25,'江苏','lss1993@163.com','17823774329'), \n\t('刘伟','男','计算机系',21,'江苏','qawsed112@126.com','13834892240'), \n\t('张峰','男','管理系',22,'上海','102945328@qq.com','13923654481'), \n\t('董敏','女','生物系',22,'浙江','82378339@qq.com','13428439022'), \n\t('徐晓红','女','计算机系',24,'浙江','xixiaohong@gmail.com','13720097528'), \n\t('赵伊美','女','数学系',21,'江苏','zhaomeimei@163.com','13417723980'), \n\t('王建国','男','管理系',24,'浙江','9213228402@qq.com','13768329901'), \n\t('刘清','女','统计系',23,'安徽','lq1128@gmail.com','17823651180'), \n\t('赵家和','男','计算机系',28,'山东','dcrzdbjh@163.com','13827811311');\nCREATE TABLE stu_score( id INT , Excel TINYINT, Tableau TINYINT, MySQL TINYINT ); \nINSERT INTO stu_score VALUES \n\t(1,87,72,88), \n\t(3,90,66,72), \n\t(2,90,70,86), \n\t(4,88,82,76), \n\t(8,92,67,80), \n\t(10,88,82,89), \n\t(5,79,66,60), \n\t(7,91,78,90), \n\t(6,82,79,88), \n\t(9,85,70,85);\n\nselect stu_score.id,stu_info.gender from stu_score,stu_info where stu_info.id = stu_score.id and stu_score.id < 10 and stu_score.Excel < 10;\nEmpty set (0.00 sec)\n\nselect stu_info.gender ,(select stu_score.id from stu_score where stu_info.id = stu_score.id and stu_score.id < 10 and stu_score.Excel < 10) as sub from  stu_info ;\n+--------+------+\n| gender | sub  |\n+--------+------+\n| 男     | NULL |\n| 男     | NULL |\n| 男     | NULL |\n| 男     | NULL |\n| 女     | NULL |\n| 女     | NULL |\n| 女     | NULL |\n| 男     | NULL |\n| 女     | NULL |\n| 男     | NULL |\n+--------+------+\n10 rows in set (0.00 sec)"
+    },
+    {
+      "anchor": "c533028",
+      "text": "Hi Mr. Li,\n\nThank you for your bug report.\n\nHowever, it is not a bug.\n\nYour first bug is a simple inner join, where no condition is satisfied. Hence you get no results.\n\nYour second query is a query on a single table, where second field in the SELECT list is the query from the above sentence. Since, second field yields no results, you get NULL in all result rows from the second query.\n\nIn short, you can not expect that a join and a simple, single query return the same results ....\n\nNot a bug."
+    },
+    {
+      "anchor": "c533067",
+      "text": "There are three examples:\nThe first example: two logic-equal queries, which return the same result.\nselect stu_info.province,stu_score.MySQL from stu_info,stu_score where stu_score.id = stu_info.id and stu_score.Excel < 10 and stu_score.Tableau < 10;\nEmpty set (0.00 sec)\nselect stu_score.MySQL ,(select stu_info.province from stu_info where stu_score.id = stu_info.id) as sub from  stu_score where stu_score.Excel < 10 and stu_score.Tableau < 10;\nEmpty set (0.01 sec)\n\nThe second example: two logic-equal queries, which return the same result\nselect stu_info.department,stu_score.id from stu_info,stu_score where stu_score.id = stu_info.id and stu_info.gender = \"f\" and stu_score.Excel < 10;\nEmpty set (0.00 sec)\nselect stu_score.id ,(select stu_info.department from stu_info where stu_score.id = stu_info.id and stu_info.gender = \"f\") as sub from  stu_score where stu_score.Excel < 10;\nEmpty set (0.00 sec)\n\nThe third example: two logic-equal queries, which return different results.\nselect stu_score.id,stu_info.gender from stu_score,stu_info where stu_info.id = stu_score.id and stu_score.id < 10 and stu_score.Excel < 10;\nEmpty set (0.00 sec)\nselect stu_info.gender ,(select stu_score.id from stu_score where stu_info.id = stu_score.id and stu_score.id < 10 and stu_score.Excel < 10) as sub from  stu_info ;\n+--------+------+\n| gender | sub  |\n+--------+------+\n| 男     | NULL |\n| 男     | NULL |\n| 男     | NULL |\n| 男     | NULL |\n| 女     | NULL |\n| 女     | NULL |\n| 女     | NULL |\n| 男     | NULL |\n| 女     | NULL |\n| 男     | NULL |\n+--------+------+\n10 rows in set (0.00 sec)\n\nSo my conclusion on theses three examples are, there is a logic bug in MySQL 8.0.33. \nPlease change the status of this page."
+    },
+    {
+      "anchor": "c533078",
+      "text": "Hi Mrs. Li,\n\nThank you for your comment.\n\nMySQL is a relational database, which means that it follows SQL standards.\n\nIn SQL, there is no notion like logic-equal.\n\nYour third case is a comparison from the outputs from two totally different types of queries, as defined by SQL standards. MySQL follows the current SQL standard, which is from 2016.\n\nFirst query is an INNER JOIN, while second query is NOT a JOIN at all, but a query on a single table, where one of the fields in the SELECT list is a separate query on another table. There is nothing remotely similar in those two queries, much less equal.\n\nNot a bug."
+    }
+  ]
+}

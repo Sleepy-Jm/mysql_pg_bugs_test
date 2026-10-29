@@ -1,0 +1,26 @@
+{
+  "report_id": "111855",
+  "title": "getTableName() gives empty or null results",
+  "task_ids": [
+    "mysql-111855-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\bc4055bbc4ba_bug_111855.html",
+  "source_sha256": "bc4055bbc4ba87a4a6b44fd0f4cf325fc80c267de960aa72f1ea8adfe964f6c6",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThe output of getTableName may vary depending on the query and data. It may either return the table name or null/empty.\n\nHow to repeat:\nTable structure and data:\n\nCREATE TABLE test1(\n a int not null auto_increment primary key,\n b int not null,\n c int not null\n);\n\nCREATE TABLE test2(\n d int not null auto_increment primary key,\n e int not null,\n f int not null\n);\n\nCREATE TABLE test3(\n g int not null auto_increment primary key,\n h int not null,\n i int not null\n);\n\nINSERT INTO test1 VALUES (1,1,1);\nINSERT INTO test2 VALUES (1,1,1);\nINSERT INTO test3 VALUES (1,1,1);\n\nCode:\n\nimport java.sql.Connection;\nimport java.sql.DriverManager;\nimport java.sql.ResultSet;\nimport java.sql.ResultSetMetaData;\nimport java.sql.SQLException;\nimport java.sql.Statement;\n\npublic class PerconaTest {\n\n    public static void main(String[] args) throws Exception {\n        String password = \"msandbox\";\n        String jdbc = \"jdbc:mysql://127.0.0.1:5740/test?useSSL=false&user=root&password=\" + password;\n        Connection conn = DriverManager.getConnection(jdbc);\n        test(conn, \"SELECT test2.*, test1.b, CONCAT(test1.c), GROUP_CONCAT(DISTINCT(test3.g)) FROM test1 JOIN test2 ON (test1.b=test2.d AND test1.c = test2.e) JOIN test3 ON (test1.b=test3.h AND test1.c=test3.i) GROUP BY test2.d ORDER BY test3.h LIMIT 1\");\n        test(conn, \"SELECT test2.*, test1.b, CONCAT(test1.c) FROM test1 JOIN test2 ON (test1.b=test2.d AND test1.c = test2.e) JOIN test3 ON (test1.b=test3.h AND test1.c=test3.i) GROUP BY test2.d ORDER BY test3.h LIMIT 1\");\n        test(conn, \"SELECT test2.*, test1.b, CONCAT(test1.c), GROUP_CONCAT(DISTINCT(test3.g)) FROM test1 JOIN test2 ON (test1.b=test2.d AND test1.c = test2.e) JOIN test3 ON (test1.b=test3.h AND test1.c=test3.i) GROUP BY test2.d\");\n    }\n\n    private static void test(Connection conn, String query) throws SQLException {\n        Statement stmt = conn.createStatement();\n        ResultSet rs = stmt.executeQuery(query);\n\n        ResultSetMetaData md = rs.getMetaData();\n        System.out.println(\"Query: \" + query);\n        System.out.println(\"   All column metadata getTableName; getColumnName\");\n        for (int i = 1; i <= md.getColumnCount(); i++) {\n            System.out.println(\"Table Name: \" + md.getTableName(i));\n            System.out.println(\"   Col \" + i + \": \" + md.getTableName(i) + \".\" + md.getColumnName(i));\n        }\n        stmt.close();\n    }\n}\n\nOutput:\n\nQuery: SELECT test2.*, test1.b, CONCAT(test1.c), GROUP_CONCAT(DISTINCT(test3.g)) FROM test1 JOIN test2 ON (test1.b=test2.d AND test1.c = test2.e) JOIN test3 ON (test1.b=test3.h AND test1.c=test3.i) GROUP BY test2.d ORDER BY test3.h LIMIT 1\n   All column metadata getTableName; getColumnName\nTable Name: \n   Col 1: .d\nTable Name: \n   Col 2: .e\nTable Name: \n   Col 3: .f\nTable Name: \n   Col 4: .b\nTable Name: \n   Col 5: .CONCAT(test1.c)\nTable Name: \n   Col 6: .GROUP_CONCAT(DISTINCT(test3.g))\nQuery: SELECT test2.*, test1.b, CONCAT(test1.c) FROM test1 JOIN test2 ON (test1.b=test2.d AND test1.c = test2.e) JOIN test3 ON (test1.b=test3.h AND test1.c=test3.i) GROUP BY test2.d ORDER BY test3.h LIMIT 1\n   All column metadata getTableName; getColumnName\nTable Name: test2\n   Col 1: test2.d\nTable Name: test2\n   Col 2: test2.e\nTable Name: test2\n   Col 3: test2.f\nTable Name: test1\n   Col 4: test1.b\nTable Name: \n   Col 5: .CONCAT(test1.c)\nQuery: SELECT test2.*, test1.b, CONCAT(test1.c), GROUP_CONCAT(DISTINCT(test3.g)) FROM test1 JOIN test2 ON (test1.b=test2.d AND test1.c = test2.e) JOIN test3 ON (test1.b=test3.h AND test1.c=test3.i) GROUP BY test2.d\n   All column metadata getTableName; getColumnName\nTable Name: test2\n   Col 1: test2.d\nTable Name: test2\n   Col 2: test2.e\nTable Name: test2\n   Col 3: test2.f\nTable Name: test1\n   Col 4: test1.b\nTable Name: \n   Col 5: .CONCAT(test1.c)\nTable Name: \n   Col 6: .GROUP_CONCAT(DISTINCT(test3.g))\n\nSuggested fix:\nIt should show every table name."
+    },
+    {
+      "anchor": "c534684",
+      "text": "Hello Yunus UYANIK,\n\nThank you for the report and feedback.\nChecked against C/J 8.0.33/8.1.0 and observed reported behavior.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c555118",
+      "text": "This issue was observed while running with MySQL 5.7. Not a problem in higher versions. This won't be fixed."
+    }
+  ]
+}

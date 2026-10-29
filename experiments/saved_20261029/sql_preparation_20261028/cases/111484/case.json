@@ -1,0 +1,83 @@
+{
+  "report_id": "111484",
+  "title": "wrong result when rewriting scalar subquery in json function parameters",
+  "source_sha256": "7ed3c6066a531f1e00bcffc3adfccf76d4af6d8fc6c7b829facf09c2a0c4f5cb",
+  "source_anchors": [
+    "cmain",
+    "c533732"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d4c520fee8ab830883a14ec93f45f18ee9ee72d36ba4074f7f1dade5f6410980"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "16ce8352c53a8c61fb853172d978c42cc17f26bab62ef8d0b857472a69ef2c9d"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t_doc(id INT,doc JSON)，t_search_string(id INT,search_string VARCHAR(20))。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "保留原文三条JSON文档和ele%/ele%/tw|%%搜索串。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "OFF/ON均应为3行：id1路径集合match11/match12，id2为match21/match22，id3为match31/match32；JSON路径数组次序不作为差异，重复id及NULL为观察点。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "OFF/ON均应为3行：id1路径集合match11/match12，id2为match21/match22，id3为match31/match32；JSON路径数组次序不作为差异，重复id及NULL为观察点。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "去除输出表；显式设置OFF基线及ON对照，保存恢复会话optimizer_switch。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c533732 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

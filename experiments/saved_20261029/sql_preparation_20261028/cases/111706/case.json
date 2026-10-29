@@ -1,0 +1,70 @@
+{
+  "report_id": "111706",
+  "title": "Incorrect result",
+  "source_sha256": "0381c691370e2de7455a29fb126022b8071a8e162d67c6a0186ca5ea69f553b2",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "7eb5355ebddf6e49273169ac4ab47196a2e62b9950619bbc4adf5e4113475f46"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "31e20bb32dfc7a3498c3f2c87dc3af446a65be3b5c53aabe4c838628121a8a2b"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "由原 DESCRIBE 重建 t0 TEXT 与 t1 UNIQUE TINYINT UNSIGNED ZEROFILL/FLOAT"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "由原 SELECT 表重建 8/5 行；与 #111699 相同"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "ON/OFF 都三行 (NULL,0,z)]s),(NULL,0,IcK5A),(NULL,0,空串)，顺序不限；异常：ON 重复为 9 行"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "ON/OFF 都三行 (NULL,0,z)]s),(NULL,0,IcK5A),(NULL,0,空串)，顺序不限",
+    "failure": "ON 重复为 9 行",
+    "limitations": "默认引擎/字符集在原 DESCRIBE 未列出，需固定记录；不是完全物理副本。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "DESCRIBE 与结果表转换成 CREATE/INSERT；与报告 #111699 精确相同数据用于构造，全部值在本报告也列出"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

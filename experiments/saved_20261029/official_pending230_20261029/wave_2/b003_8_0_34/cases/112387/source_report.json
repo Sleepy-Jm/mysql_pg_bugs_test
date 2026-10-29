@@ -1,0 +1,119 @@
+{
+  "report_id": "112387",
+  "source_sha256": "ed1519f96aab15fde94fc7917de1bd8f3ca08b7802e2d22299eae6decb18de28",
+  "tasks": [
+    {
+      "task_id": "mysql-112387-8.0.35",
+      "report_id": "112387",
+      "title": "Inconsistent results caused by \"UNION ALL\" with empty subqueries",
+      "target_version": "8.0.35",
+      "adjacent_comparison_version": "8.0.34",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=112387",
+      "source_snapshot_from_plan_root": "原文快照/bug_112387.html",
+      "source_anchors": [
+        "cmain",
+        "c536188"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain",
+          "c536188"
+        ],
+        "reason": "UNION ALL空分支删除前后的IN结果差异具有完整数据和逻辑对照。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "t0(c4 double)两行-66.49、NULL；t1(c8 varchar(200))一行NULL。",
+        "steps": "执行cmain两个NOT(NULL IN(...))相关查询，差别仅为UNION ALL一个空子查询。",
+        "oracle": "删除空集合分支应保持结果；预期保留c4为NULL行，同时记录类型推导以排除非等价转换。",
+        "requirements": [
+          "完整SQL"
+        ],
+        "target_applicability": "8.0.35支持该查询；112394重复关系必须由合并层保留，不能计两独立bug。"
+      },
+      "source_environment": {
+        "OS": "Any",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server"
+      },
+      "explicit_requirements": [
+        "完整SQL"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    }
+  ],
+  "source": {
+    "id": "112387",
+    "title": "Inconsistent results caused by \"UNION ALL\" with empty subqueries",
+    "header": {
+      "Bug #112387": "Inconsistent results caused by \"UNION ALL\" with empty subqueries",
+      "Submitted": "19 Sep 2023 12:53",
+      "Modified": "21 Sep 2023 9:16",
+      "Reporter": "Zuming Jiang",
+      "Email Updates": "",
+      "Status": "Duplicate",
+      "Impact on me": "None",
+      "Category": "MySQL Server",
+      "Severity": "S3 (Non-critical)",
+      "Version": "5.6, 5.7, 8.0.0-8.0.34",
+      "OS": "Any",
+      "Assigned to": "",
+      "CPU Architecture": "Any"
+    },
+    "comments": [
+      {
+        "anchor": "cmain",
+        "date": "19 Sep 2023 12:53",
+        "author": "Zuming Jiang",
+        "text": "Description:\nDear MySQL developers,\n\nI used my new fuzzer to fuzz MySQL and found a logic bug that make MySQL server output inconsistent results:\n\nHow to repeat:\n*** Set up the database ***\n\ncreate table t0 (c4 double);\ncreate table t1 (c8 varchar(200));\ninsert into t1 values (null);\ninsert into t0 values (-66.49);\ninsert into t0 values (null);\n\n*** Test Case 1 ***\n\nselect * from t0\nwhere\nnot (null in (\n    select 1 from (select 1) as subq where false\n    union all\n    select\n        ref_5.c8 as c_0\n      from\n        t1 as ref_5\n      where t0.c4 >= t0.c4));\n\nBecause \"select 1 from (select 1) as subq where false\" produce an empty set, anything union all empty set is itself. Therefore, I remove \"select 1 from (select 1) as subq where false union all\", and get the Test Case 2:\n\n*** Test Case 2 ***\n\nselect * from t0\nwhere\nnot (null in (\n    select\n        ref_5.c8 as c_0\n      from\n        t1 as ref_5\n      where t0.c4 >= t0.c4));\n\n*** Expected results ***\n\nTest Case 1 and Test Case 2 return the same results.\n\n*** Actual results ***\n\nTest Case 1 and Test Case 2 return inconsistent results.\n\nTest Case 1 return:\n\nEmpty set (0.00 sec)\n\nTest Case 2 return:\n\n+------+\n| c4   |\n+------+\n| NULL |\n+------+\n\n*** Note ***\n\nThe bug can be reproduced in version 5.6, 5.7, 8.0.0 - 8.0.34. In version 5.5, both Test Case 1 and 2 return the same results:\n\n+------+\n| c4   |\n+------+\n| NULL |\n+------+"
+      },
+      {
+        "anchor": "c536143",
+        "date": "19 Sep 2023 14:51",
+        "author": "Zuming Jiang",
+        "text": "change severity to S2"
+      },
+      {
+        "anchor": "c536188",
+        "date": "21 Sep 2023 9:16",
+        "author": "MySQL Verification Team",
+        "text": "Hi Mr. Jiang,\n\nThank you for your bug report.\n\nWe have repeated a test case and it is truly a proper bug.\n\nWe have analysed our code and your queries and concluded that this (true and veritable) bug is a duplicate of the following bug:\n\nhttps://bugs.mysql.com/bug.php?id=112394\n\nWe simply do not verify multiple bugs that are caused by the same error in our code.\n\nHence, this is a true bug, but a duplicate of the above bug.\n\nDuplicate."
+      }
+    ],
+    "targets": {
+      "8.0.34": {
+        "field": true,
+        "hits": [
+          {
+            "anchor": "cmain",
+            "author": "Zuming Jiang",
+            "snippets": [
+              "ase 2 return:  +------+ | c4   | +------+ | NULL | +------+  *** Note ***  The bug can be reproduced in version 5.6, 5.7, 8.0.0 - 8.0.34. In version 5.5, both Test Case 1 and 2 return the same results:  +------+ | c4   | +------+ | NULL | +------+"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

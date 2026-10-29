@@ -1,0 +1,22 @@
+{
+  "report_id": "112705",
+  "title": "sys.schema_table_statistics reset values upon index addition or removal",
+  "task_ids": [
+    "mysql-112705-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\26e987617a12_bug_112705.html",
+  "source_sha256": "26e987617a125370511264e34e648c7639338199ff58b1a5a06621e8621850fc",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nHi MySQL Team!\n\nWhen you add or remove an index, for some reason, rows statistics available in sys schema are reset for a table.\n\nHow to repeat:\nmysql > select @@version,@@version_comment;\n+-----------+------------------------------+\n| @@version | @@version_comment            |\n+-----------+------------------------------+\n| 8.0.34    | MySQL Community Server - GPL |\n+-----------+------------------------------+\n1 row in set (0.00 sec)\n\nmysql > create table t1 (id int, a int);\nQuery OK, 0 rows affected (0.02 sec)\n\nmysql > insert into t1 values (1,1),(2,2),(3,3);\nQuery OK, 3 rows affected (0.01 sec)\nRecords: 3  Duplicates: 0  Warnings: 0\n\nmysql > delete from t1 limit 1;\nQuery OK, 1 row affected (0.01 sec)\n\nmysql > select table_schema,table_name,rows_fetched,rows_inserted,rows_updated,rows_deleted,io_write_requests from sys.schema_table_statistics where table_schema='db1';\n+--------------+------------+--------------+---------------+--------------+--------------+-------------------+\n| table_schema | table_name | rows_fetched | rows_inserted | rows_updated | rows_deleted | io_write_requests |\n+--------------+------------+--------------+---------------+--------------+--------------+-------------------+\n| db1          | t1         |            1 |             3 |            0 |            1 |                10 |\n+--------------+------------+--------------+---------------+--------------+--------------+-------------------+\n1 row in set (0.01 sec)\n\nmysql > alter table t1 add key(id);\nQuery OK, 0 rows affected (0.02 sec)\nRecords: 0  Duplicates: 0  Warnings: 0\n\nmysql > select table_schema,table_name,rows_fetched,rows_inserted,rows_updated,rows_deleted,io_write_requests from sys.schema_table_statistics where table_schema='db1';\n+--------------+------------+--------------+---------------+--------------+--------------+-------------------+\n| table_schema | table_name | rows_fetched | rows_inserted | rows_updated | rows_deleted | io_write_requests |\n+--------------+------------+--------------+---------------+--------------+--------------+-------------------+\n| db1          | t1         |            0 |             0 |            0 |            0 |                17 |\n+--------------+------------+--------------+---------------+--------------+--------------+-------------------+\n1 row in set (0.00 sec)\n\nSuggested fix:\nPreserve row stats during schema changes."
+    },
+    {
+      "anchor": "c536927",
+      "text": "Hello Przemyslaw,\n\nThank you for the report and feedback. \n\nThanks,\nUmesh"
+    }
+  ]
+}

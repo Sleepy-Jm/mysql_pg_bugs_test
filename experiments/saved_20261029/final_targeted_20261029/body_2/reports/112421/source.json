@@ -1,0 +1,30 @@
+{
+  "report_id": "112421",
+  "title": "zero and null value, left or right join result wrong",
+  "task_ids": [
+    "mysql-112421-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\33777e29848b_bug_112421.html",
+  "source_sha256": "33777e29848b055246874468045f3ea74dc71e8abd8d059042d86c01c3e80a0a",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nexists zero and null value, left join or right join result wrong\n\nHow to repeat:\ndrop table if exists test1;\ncreate table test1 (id decimal(12,2));\ninsert into test1 values (0.00),(NULL);\n\ndrop table if exists test2;\ncreate table test2 (id decimal(12,2));\ninsert into test2 values (0.00),(NULL);\n\nselect * from test1 c left join test2 d on c.id=d.id;\nselect * from test1 c right join test2 d on c.id=d.id;\n\n8.0.32 detail:\nroot@localhost:db01 8.0.32 09:39:51> select * from test1;\n+------+\n| id   |\n+------+\n| 0.00 |\n| NULL |\n+------+\n2 rows in set (0.00 sec)\n\nroot@localhost:db01 8.0.32 09:40:04> select * from test2;\n+------+\n| id   |\n+------+\n| 0.00 |\n| NULL |\n+------+\n2 rows in set (0.00 sec)\n\nroot@localhost:db01 8.0.32 09:40:05> select * from test1 c left join test2 d on c.id=d.id;\n+------+------+\n| id   | id   |\n+------+------+\n| 0.00 | NULL |\n| 0.00 | 0.00 |\n| NULL | NULL |\n+------+------+\n3 rows in set (0.00 sec)\n\n5.7.38 detail:\nroot@localhost:db01 5.7.38-log 09:41:23> select * from test1;\n+------+\n| id   |\n+------+\n| 0.00 |\n| NULL |\n+------+\n2 rows in set (0.00 sec)\n\nroot@localhost:db01 5.7.38-log 09:41:27> select * from test2;\n+------+\n| id   |\n+------+\n| 0.00 |\n| NULL |\n+------+\n2 rows in set (0.01 sec)\n\nroot@localhost:db01 5.7.38-log 09:41:44> select * from test1 c left join test2 d on c.id=d.id;\n+------+------+\n| id   | id   |\n+------+------+\n| 0.00 | 0.00 |\n| NULL | NULL |\n+------+------+\n2 rows in set (0.00 sec)\n\nso, 8.0.32 version, can zero and NULL be joined?\n\nSuggested fix:\n\nzero and NULL value cannot be joined"
+    },
+    {
+      "anchor": "c536218",
+      "text": "Hi Mr. chen,\n\nThank you for your bug report.\n\nWe ran your test case with latest 8.0 and 8.1.\n\nBoth return correct results. We ran 4 (four) selects. SELECT from each of the table, SELECT with a left join and SELECT with a right join. All results are correct and as they should be:\n\n+------+\n| id   |\n+------+\n| 0.00 |\n| NULL |\n+------+\n+------+\n| id   |\n+------+\n| 0.00 |\n| NULL |\n+------+\n+------+------+\n| id   | id   |\n+------+------+\n| 0.00 | 0.00 |\n| NULL | NULL |\n+------+------+\n+------+------+\n| id   | id   |\n+------+------+\n| 0.00 | 0.00 |\n| NULL | NULL |\n+------+------+\n\nCan't repeat."
+    },
+    {
+      "anchor": "c536251",
+      "text": "Is it related to the proofreading set?\n\nType 'help;' or '\\h' for help. Type '\\c' to clear the current input statement.\n\nroot@localhost:(none) 8.0.32 10:33:46> show variables like \"%collation%\";\n+-------------------------------+--------------------+\n| Variable_name                 | Value              |\n+-------------------------------+--------------------+\n| collation_connection          | utf8mb4_general_ci |\n| collation_database            | utf8mb4_general_ci |\n| collation_server              | utf8mb4_general_ci |\n| default_collation_for_utf8mb4 | utf8mb4_general_ci |\n+-------------------------------+--------------------+\n4 rows in set (0.01 sec)"
+    },
+    {
+      "anchor": "c536288",
+      "text": "Hi,\n\nNo, it isn't we used the same settings.\n\nIf you are not using package downloaded from our site, dev.mysql.com, then it could be the cause."
+    }
+  ]
+}

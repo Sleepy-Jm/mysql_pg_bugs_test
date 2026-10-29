@@ -1,0 +1,22 @@
+{
+  "report_id": "114058",
+  "title": "The return value of the CAST(... AS UNSIGNED) expression is out of range.",
+  "task_ids": [
+    "mysql-114058-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\12de10003a81_bug_114058.html",
+  "source_sha256": "12de10003a814534f94a2d23482f84f786c9e04ff3a43668b8c8fdc4953ec4c4",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nmysql> select version();\n+-----------+\n| version() |\n+-----------+\n| 8.0.35    |\n+-----------+\n1 row in set (0.00 sec)\n\nmysql>\nmysql> CREATE TABLE t0 (c0 TINYINT);\nQuery OK, 0 rows affected (0.21 sec)\n\nmysql> INSERT INTO t0(c0) VALUES (-30);\nQuery OK, 1 row affected (0.01 sec)\n\nmysql> SELECT CAST(t0.c0 AS UNSIGNED) FROM t0;\n+-------------------------+\n| CAST(t0.c0 AS UNSIGNED) |\n+-------------------------+\n|    18446744073709551586 |\n+-------------------------+\n1 row in set (0.00 sec)\n\nmysql>\n\nThe type of t0.c0 is TINYINT, and the corresponding type of CAST(t0.c0 AS UNSIGNED) is TINYINT UNSIGNED, with a value range from 0 to 255.\nThe corresponding type for 18446744073709551586 is BIGINT UNSIGNED.\n\nHow to repeat:\nmysql> CREATE TABLE t0 (c0 TINYINT);\nQuery OK, 0 rows affected (0.21 sec)\n\nmysql> INSERT INTO t0(c0) VALUES (-30);\nQuery OK, 1 row affected (0.01 sec)\n\nmysql> SELECT CAST(t0.c0 AS UNSIGNED) FROM t0;\n+-------------------------+\n| CAST(t0.c0 AS UNSIGNED) |\n+-------------------------+\n|    18446744073709551586 |\n+-------------------------+\n1 row in set (0.00 sec)\n\nmysql>"
+    },
+    {
+      "anchor": "c540664",
+      "text": "Hi Mr. Wong,\n\nThank you very much for your bug report.\n\nHowever, this is not a bug.\n\nUnsigned numbers do not have negative values. Also, since you did not precise the width of the integer column, it has defaulted to the longest integer column type available.\n\nThis type of conversion is prohibited by SQL standard, which means that (by the standard) you would get no result, but the error message.  Hence,  it is up to each RDBMS implementation to define its own conversion rules. MySQL has chosen the best available one and it will not be changed.\n\nNot a bug."
+    }
+  ]
+}

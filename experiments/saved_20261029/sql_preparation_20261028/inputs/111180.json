@@ -1,0 +1,154 @@
+{
+  "report_id": "111180",
+  "source_sha256": "14f9e1e011031d94bf0d6ade67b37495d603bb7305cc858fb78d90e562bf5d13",
+  "tasks": [
+    {
+      "task_id": "mysql-111180-8.0.32",
+      "report_id": "111180",
+      "title": "binlog rotate will cause query missing in slow log",
+      "target_version": "8.0.32",
+      "adjacent_comparison_version": "8.0.31",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=111180",
+      "source_snapshot_from_plan_root": "原文快照/bug_111180.html",
+      "source_anchors": [
+        "cmain",
+        "c532956",
+        "c532963"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain",
+          "c532956",
+          "c532963"
+        ],
+        "reason": "完整100000行过程、GTID和小binlog轮转对照，8.0.32可探索，后评8.0.33正常需保留否定边界。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "GTID ON/ROW日志，slow_query_log TABLE，long_query_time=1；正文t1及insert_test过程装100000行。",
+        "steps": "新连接继承阈值；max_binlog_size=4096执行更新并独立计时，改1GB后同量更新；对照mysql.slow_log。",
+        "oracle": "只有独立测时确实超1秒才要求慢日志收录，轮转不应抹去原查询耗时。",
+        "requirements": [
+          "GTID/binlog设置权限",
+          "独立查询计时"
+        ],
+        "target_applicability": "仅未有直接否定的8.0.32探索，8.0.34/35待补复发证据。"
+      },
+      "source_environment": {
+        "OS": "Any",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server: Logging"
+      },
+      "explicit_requirements": [
+        "GTID/binlog设置权限",
+        "独立查询计时"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    }
+  ],
+  "source": {
+    "id": "111180",
+    "title": "binlog rotate will cause query missing in slow log",
+    "header": {
+      "Bug #111180": "binlog rotate will cause query missing in slow log",
+      "Submitted": "29 May 2023 6:19",
+      "Modified": "29 May 2023 12:10",
+      "Reporter": "nanzhou lin",
+      "Email Updates": "",
+      "Status": "Verified",
+      "Impact on me": "None",
+      "Category": "MySQL Server: Logging",
+      "Severity": "S3 (Non-critical)",
+      "Version": "5.7*, 5.7.42, 5.7.44",
+      "OS": "Any",
+      "Assigned to": "",
+      "CPU Architecture": "Any"
+    },
+    "comments": [
+      {
+        "anchor": "cmain",
+        "date": "29 May 2023 6:19",
+        "author": "nanzhou lin",
+        "text": "Description:\nif sql produce binlog over max_binlog_size , it will save gtids of last binlog into table and utime_after_clock will be updated cause sql missing in sql slow log. such as one update sql execute 10s, the long_query_time value is 1, but this sql not in slow slog.\n\nHow to repeat:\n--source include/not_valgrind.inc\n--source include/have_binlog_format_row.inc\n--source include/have_debug.inc\n--source include/not_embedded.inc\n--echo #############################################################\n--echo #                 Test preparation                          #\n--echo #############################################################\ncreate table t1(id int, name varchar(20));\nset global max_binlog_size = 4096;\nset global slow_query_log= ON;\nset global log_output='table';\nset global long_query_time=1;\nshow variables like '%long%';\n\nconnect (con1,localhost,root,,);\n--echo # Switch to connection con1\nconnection con1;\nshow variables like '%long%';\ndelimiter $$;\ncreate procedure insert_test(in max_num int(10))\nbegin\ndeclare i int default 0;\n\nset autocommit=0;\nrepeat\nset i=i+1;\ninsert into t1 (id) values(i);\nuntil i=max_num\nend repeat;\ncommit;\nend $$\n\ndelimiter ;$$\ncall insert_test(100000);\nset autocommit=1;\n\nupdate t1 set name = 'test202305290';\n\nselect * from mysql.slow_log;\n\nset global max_binlog_size = 1073741824;\n\nupdate t1 set name = 'test202305291';\nselect * from mysql.slow_log;\n\n# we find the sql 'update t1 set name = 'test202305290';' is not in slow log, but another sql 'update t1 set name = 'test202305291';' in slow log."
+      },
+      {
+        "anchor": "c532948",
+        "date": "29 May 2023 8:33",
+        "author": "MySQL Verification Team",
+        "text": "Hello nanzhou lin,\n\nThank you for the report and test case.\nI couldn't reproduce with 5.7.42 and 8.0.33 builds. Could you please try 8.0.33 and confirm if you are still seeing the issue? Thank you.\n\n- 8.0.33\n ./mtr bug111180 --debug-server --nocheck-testcases\nLogging: ./mtr  bug111180 --debug-server --nocheck-testcases\nMySQL Version 8.0.33\nChecking supported features\n - Binaries are debug compiled\nUsing 'all' suites\nCollecting tests\nChecking leftover processes\nRemoving old var directory\n - WARNING: Using the 'mysql-test/var' symlink\nCreating var directory '/export/home/tmp/ushastry/mysql-8.0.33/mysql-test/var'\nInstalling system database\nUsing parallel: 1\n\n==============================================================================\n                  TEST NAME                       RESULT  TIME (ms) COMMENT\n------------------------------------------------------------------------------\n#############################################################\n#                 Test preparation                          #\n#############################################################\ncreate table t1(id int, name varchar(20));\nset global max_binlog_size = 4096;\nset global slow_query_log= ON;\nset global log_output='table';\nset global long_query_time=1;\nshow variables like '%long%';\nVariable_name   Value\nlong_query_time 10.000000\nperformance_schema_events_stages_history_long_size      1000\nperformance_schema_events_statements_history_long_size  1000\nperformance_schema_events_transactions_history_long_size        1000\nperformance_schema_events_waits_history_long_size       10000\n# Switch to connection con1\nshow variables like '%long%';\nVariable_name   Value\nlong_query_time 1.000000\nperformance_schema_events_stages_history_long_size      1000\nperformance_schema_events_statements_history_long_size  1000\nperformance_schema_events_transactions_history_long_size        1000\nperformance_schema_events_waits_history_long_size       10000\ncreate procedure insert_test(in max_num int(10))\nbegin\ndeclare i int default 0;\nset autocommit=0;\nrepeat\nset i=i+1;\ninsert into t1 (id) values(i);\nuntil i=max_num\nend repeat;\ncommit;\nend $$\nWarnings:\nWarning 1681    Integer display width is deprecated and will be removed in a future release.\ncall insert_test(100000);\nset autocommit=1;\nupdate t1 set name = 'test202305290';\nselect * from mysql.slow_log;\nstart_time      user_host       query_time      lock_time       rows_sent       rows_examined   db      last_insert_id  insert_id       server_id       sql_text        thread_id\n2023-05-29 11:00:57.667172      root[root] @ localhost []       00:00:28.136389 00:00:00.000007 0       0       test    0       0       1       call insert_test(100000)        9\n2023-05-29 11:01:34.635214      root[root] @ localhost []       00:00:36.964532 00:00:00.000006 0       100000  test    0       0       1       update t1 set name = 'test202305290'    9\nset global max_binlog_size = 1073741824;\nupdate t1 set name = 'test202305291';\nselect * from mysql.slow_log;\nstart_time      user_host       query_time      lock_time       rows_sent       rows_examined   db      last_insert_id  insert_id       server_id       sql_text        thread_id\n2023-05-29 11:00:57.667172      root[root] @ localhost []       00:00:28.136389 00:00:00.000007 0       0       test    0       0       1       call insert_test(100000)        9\n2023-05-29 11:01:34.635214      root[root] @ localhost []       00:00:36.964532 00:00:00.000006 0       100000  test    0       0       1       update t1 set name = 'test202305290'    9\n2023-05-29 11:01:47.846700      root[root] @ localhost []       00:00:13.210822 00:00:00.000007 0       100000  test    0       0       1       update t1 set name = 'test202305291'    9\n[ 50%] main.bug111180                            [ pass ]  78386\n[100%] shutdown_report                           [ pass ]\n------------------------------------------------------------------------------\n\n- 5.7.42\n./mtr bug111180 --debug-server --nocheck-testcases\nLogging: ./mtr  bug111180 --debug-server --nocheck-testcases\nMySQL Version 5.7.42\nChecking supported features...\n - SSL connections supported\n - binaries are debug compiled\nCollecting tests...\nChecking leftover processes...\nRemoving old var directory...\nCreating var directory '/export/home/tmp/ushastry/mysql-5.7.42/mysql-test/var'...\nInstalling system database...\nUsing parallel: 1\n\n==============================================================================\n\nTEST                                      RESULT   TIME (ms) or COMMENT\n--------------------------------------------------------------------------\n\nworker[1] Using MTR_BUILD_THREAD 300, with reserved ports 13000..13009\n#############################################################\n#                 Test preparation                          #\n#############################################################\ncreate table t1(id int, name varchar(20));\nset global max_binlog_size = 4096;\nset global slow_query_log= ON;\nset global log_output='table';\nset global long_query_time=1;\nshow variables like '%long%';\nVariable_name   Value\nlong_query_time 10.000000\nperformance_schema_events_stages_history_long_size      1000\nperformance_schema_events_statements_history_long_size  1000\nperformance_schema_events_transactions_history_long_size        1000\nperformance_schema_events_waits_history_long_size       10000\n# Switch to connection con1\nshow variables like '%long%';\nVariable_name   Value\nlong_query_time 1.000000\nperformance_schema_events_stages_history_long_size      1000\nperformance_schema_events_statements_history_long_size  1000\nperformance_schema_events_transactions_history_long_size        1000\nperformance_schema_events_waits_history_long_size       10000\ncreate procedure insert_test(in max_num int(10))\nbegin\ndeclare i int default 0;\nset autocommit=0;\nrepeat\nset i=i+1;\ninsert into t1 (id) values(i);\nuntil i=max_num\nend repeat;\ncommit;\nend $$\ncall insert_test(100000);\nset autocommit=1;\nupdate t1 set name = 'test202305290';\nselect * from mysql.slow_log;\nstart_time      user_host       query_time      lock_time       rows_sent       rows_examined   db      last_insert_id  insert_id       server_id       sql_text        thread_id\n2023-05-29 11:29:28.740865      root[root] @ localhost []       00:00:23.305604 00:00:00.000117 0       0       test    0       0       1       call insert_test(100000)        3\n2023-05-29 11:29:56.829732      root[root] @ localhost []       00:00:28.084774 00:00:00.000183 0       100000  test    0       0       1       update t1 set name = 'test202305290'    3\nset global max_binlog_size = 1073741824;\nupdate t1 set name = 'test202305291';\nselect * from mysql.slow_log;\nstart_time      user_host       query_time      lock_time       rows_sent       rows_examined   db      last_insert_id  insert_id       server_id       sql_text        thread_id\n2023-05-29 11:29:28.740865      root[root] @ localhost []       00:00:23.305604 00:00:00.000117 0       0       test    0       0       1       call insert_test(100000)        3\n2023-05-29 11:29:56.829732      root[root] @ localhost []       00:00:28.084774 00:00:00.000183 0       100000  test    0       0       1       update t1 set name = 'test202305290'    3\n2023-05-29 11:30:05.576754      root[root] @ localhost []       00:00:08.746219 00:00:00.000181 0       100000  test    0       0       1       update t1 set name = 'test202305291'    3\n[ 50%] main.bug111180                           [ pass ]  60177\n[100%] shutdown_report                          [ pass ]\n\nregards,\nUmesh"
+      },
+      {
+        "anchor": "c532956",
+        "date": "29 May 2023 12:00",
+        "author": "nanzhou lin",
+        "text": "it need set gtid_mode=on;\nplease try run this test again:\n\n--source include/not_valgrind.inc\n--source include/have_binlog_format_row.inc\n--source include/have_debug.inc\n--source include/not_embedded.inc\n--echo #############################################################\n--echo #                 Test preparation                          #\n--echo #############################################################\ncreate table t1(id int, name varchar(20));\nset global max_binlog_size = 4096;\nset global slow_query_log= ON;\nset global log_output='table';\nset global long_query_time=1;\nshow variables like '%long_query_time%';\nshow variables like '%gtid_mode%';\n\nconnect (con1,localhost,root,,);\n--echo # Switch to connection con1\nconnection con1;\nshow variables like '%long_query_time%';\ndelimiter $$;\ncreate procedure insert_test(in max_num int(10))\nbegin\ndeclare i int default 0;\n\nset autocommit=0;\nrepeat\nset i=i+1;\ninsert into t1 (id) values(i);\nuntil i=max_num\nend repeat;\ncommit;\nend $$\n\ndelimiter ;$$\ncall insert_test(100000);\nset autocommit=1;\n\nupdate t1 set name = 'test202305290';\n\nselect * from mysql.slow_log;\n\nset global max_binlog_size = 1073741824;\n\nupdate t1 set name = 'test202305291';\nselect * from mysql.slow_log;\n\ntest results:\nMySQL Version 5.7.42\nChecking supported features...\n - SSL connections supported\n - binaries are debug compiled\nCollecting tests...\n - adding combinations for binlog_gtid\nChecking leftover processes...\nRemoving old var directory...\nCreating var directory '/u01/lnz/mysql57_42/mysql-test/var'...\nInstalling system database...\nUsing parallel: 1\n\n==============================================================================\n\nTEST                                      RESULT   TIME (ms) or COMMENT\n--------------------------------------------------------------------------\n\nworker[1] Using MTR_BUILD_THREAD 300, with reserved ports 13000..13009\n[ 25%] binlog_gtid.2 'mix'                      [ skipped ]  Doesn't support --binlog-format='mixed'\n#############################################################\n#                 Test preparation                          #\n#############################################################\ncreate table t1(id int, name varchar(20));\nset global max_binlog_size = 4096;\nset global slow_query_log= ON;\nset global log_output='table';\nset global long_query_time=1;\nshow variables like '%long_query_time%';\nVariable_name\tValue\nlong_query_time\t10.000000\nshow variables like '%gtid_mode%';\nVariable_name\tValue\ngtid_mode\tON\n# Switch to connection con1\nshow variables like '%long_query_time%';\nVariable_name\tValue\nlong_query_time\t1.000000\ncreate procedure insert_test(in max_num int(10))\nbegin\ndeclare i int default 0;\nset autocommit=0;\nrepeat\nset i=i+1;\ninsert into t1 (id) values(i);\nuntil i=max_num\nend repeat;\ncommit;\nend $$\ncall insert_test(100000);\nset autocommit=1;\nupdate t1 set name = 'test202305290';\nselect * from mysql.slow_log;\nstart_time\tuser_host\tquery_time\tlock_time\trows_sent\trows_examined\tdb\tlast_insert_id\tinsert_id\tserver_id\tsql_text\tthread_id\n2023-05-29 14:57:17.211511\troot[root] @ localhost []\t00:00:19.992521\t00:00:00.000115\t0\t0\ttest\t0\t0\t1\tcall insert_test(100000)\t4\nset global max_binlog_size = 1073741824;\nupdate t1 set name = 'test202305291';\nselect * from mysql.slow_log;\nstart_time\tuser_host\tquery_time\tlock_time\trows_sent\trows_examined\tdb\tlast_insert_id\tinsert_id\tserver_id\tsql_text\tthread_id\n2023-05-29 14:57:17.211511\troot[root] @ localhost []\t00:00:19.992521\t00:00:00.000115\t0\t0\ttest\t0\t0\t1\tcall insert_test(100000)\t4\n2023-05-29 14:57:49.391855\troot[root] @ localhost []\t00:00:07.752099\t00:00:00.000180\t0\t100000\ttest\t0\t0\t1\tupdate t1 set name = 'test202305291'\t4"
+      },
+      {
+        "anchor": "c532959",
+        "date": "29 May 2023 12:02",
+        "author": "MySQL Verification Team",
+        "text": "Thank you for the feedback.\nLet me re-run and get back to you if anything further needed.\n\nregards,\nUmesh"
+      },
+      {
+        "anchor": "c532962",
+        "date": "29 May 2023 12:10",
+        "author": "MySQL Verification Team",
+        "text": "- 5.7.42 - affected\n\n ./mtr bug111180 --debug-server --nocheck-testcases --mysqld='--gtid_mode=ON' --mysqld='--log-bin' --mysqld='--log-slave-updates' --mysqld='--enforce-gtid-consistency' --mysqld='--server-id=1'\nLogging: ./mtr  bug111180 --debug-server --nocheck-testcases --mysqld=--gtid_mode=ON --mysqld=--log-bin --mysqld=--log-slave-updates --mysqld=--enforce-gtid-consistency --mysqld=--server-id=1\nMySQL Version 5.7.42\nChecking supported features...\n - SSL connections supported\n - binaries are debug compiled\nCollecting tests...\nChecking leftover processes...\nRemoving old var directory...\nCreating var directory '/export/home/tmp/ushastry/mysql-5.7.42/mysql-test/var'...\nInstalling system database...\nUsing parallel: 1\n\n==============================================================================\n\nTEST                                      RESULT   TIME (ms) or COMMENT\n--------------------------------------------------------------------------\n\nworker[1] Using MTR_BUILD_THREAD 300, with reserved ports 13000..13009\n#############################################################\n#                 Test preparation                          #\n#############################################################\ncreate table t1(id int, name varchar(20));\nset global max_binlog_size = 4096;\nset global slow_query_log= ON;\nset global log_output='table';\nset global long_query_time=1;\nshow variables like '%long%';\nVariable_name   Value\nlong_query_time 10.000000\nperformance_schema_events_stages_history_long_size      1000\nperformance_schema_events_statements_history_long_size  1000\nperformance_schema_events_transactions_history_long_size        1000\nperformance_schema_events_waits_history_long_size       10000\n# Switch to connection con1\nshow variables like '%long%';\nVariable_name   Value\nlong_query_time 1.000000\nperformance_schema_events_stages_history_long_size      1000\nperformance_schema_events_statements_history_long_size  1000\nperformance_schema_events_transactions_history_long_size        1000\nperformance_schema_events_waits_history_long_size       10000\ncreate procedure insert_test(in max_num int(10))\nbegin\ndeclare i int default 0;\nset autocommit=0;\nrepeat\nset i=i+1;\ninsert into t1 (id) values(i);\nuntil i=max_num\nend repeat;\ncommit;\nend $$\ncall insert_test(100000);\nset autocommit=1;\nupdate t1 set name = 'test202305290';\nselect * from mysql.slow_log;\nstart_time      user_host       query_time      lock_time       rows_sent       rows_examined   db      last_insert_id  insert_id       server_id       sql_text        thread_id\n2023-05-29 15:06:47.243112      root[root] @ localhost []       00:00:23.332690 00:00:00.000124 0       0       test    0       0       1       call insert_test(100000)        3\nset global max_binlog_size = 1073741824;\nupdate t1 set name = 'test202305291';\nselect * from mysql.slow_log;\nstart_time      user_host       query_time      lock_time       rows_sent       rows_examined   db      last_insert_id  insert_id       server_id       sql_text        thread_id\n2023-05-29 15:06:47.243112      root[root] @ localhost []       00:00:23.332690 00:00:00.000124 0       0       test    0       0       1       call insert_test(100000)        3\n2023-05-29 15:07:24.300751      root[root] @ localhost []       00:00:08.672039 00:00:00.000183 0       100000  test    0       0       1       update t1 set name = 'test202305291'    3\n[ 50%] main.bug111180                           [ pass ]  60419\n[100%] shutdown_report                          [ pass ]\n--------------------------------------------------------------------------\nThe servers were restarted 0 times\nSpent 60.419 of 67 seconds executing testcases\n\nCompleted: All 2 tests were successful."
+      },
+      {
+        "anchor": "c532963",
+        "date": "29 May 2023 12:13",
+        "author": "MySQL Verification Team",
+        "text": "- 8.0.33 seems to be OK\n\n ./mtr bug111180 --debug-server --nocheck-testcases --mysqld='--gtid_mode=ON' --mysqld='--log-bin' --mysqld='--log-slave-updates' --mysqld='--enforce-gtid-consistency' --mysqld='--server-id=1'\nLogging: ./mtr  bug111180 --debug-server --nocheck-testcases --mysqld=--gtid_mode=ON --mysqld=--log-bin --mysqld=--log-slave-updates --mysqld=--enforce-gtid-consistency --mysqld=--server-id=1\nMySQL Version 8.0.33\nChecking supported features\n - Binaries are debug compiled\nUsing 'all' suites\nCollecting tests\nChecking leftover processes\nRemoving old var directory\n - WARNING: Using the 'mysql-test/var' symlink\nCreating var directory '/export/home/tmp/ushastry/mysql-8.0.33/mysql-test/var'\nInstalling system database\nUsing parallel: 1\n\n==============================================================================\n                  TEST NAME                       RESULT  TIME (ms) COMMENT\n------------------------------------------------------------------------------\n#############################################################\n#                 Test preparation                          #\n#############################################################\ncreate table t1(id int, name varchar(20));\nset global max_binlog_size = 4096;\nset global slow_query_log= ON;\nset global log_output='table';\nset global long_query_time=1;\nshow variables like '%long%';\nVariable_name   Value\nlong_query_time 10.000000\nperformance_schema_events_stages_history_long_size      1000\nperformance_schema_events_statements_history_long_size  1000\nperformance_schema_events_transactions_history_long_size        1000\nperformance_schema_events_waits_history_long_size       10000\n# Switch to connection con1\nshow variables like '%long%';\nVariable_name   Value\nlong_query_time 1.000000\nperformance_schema_events_stages_history_long_size      1000\nperformance_schema_events_statements_history_long_size  1000\nperformance_schema_events_transactions_history_long_size        1000\nperformance_schema_events_waits_history_long_size       10000\ncreate procedure insert_test(in max_num int(10))\nbegin\ndeclare i int default 0;\nset autocommit=0;\nrepeat\nset i=i+1;\ninsert into t1 (id) values(i);\nuntil i=max_num\nend repeat;\ncommit;\nend $$\nWarnings:\nWarning 1681    Integer display width is deprecated and will be removed in a future release.\ncall insert_test(100000);\nset autocommit=1;\nupdate t1 set name = 'test202305290';\nselect * from mysql.slow_log;\nstart_time      user_host       query_time      lock_time       rows_sent       rows_examined   db      last_insert_id  insert_id       server_id       sql_text        thread_id\n2023-05-29 15:11:02.710098      root[root] @ localhost []       00:00:27.749990 00:00:00.000007 0       0       test    0       0       1       call insert_test(100000)        9\n2023-05-29 15:11:39.699036      root[root] @ localhost []       00:00:36.985884 00:00:00.000010 0       100000  test    0       0       1       update t1 set name = 'test202305290'    9\nset global max_binlog_size = 1073741824;\nupdate t1 set name = 'test202305291';\nselect * from mysql.slow_log;\nstart_time      user_host       query_time      lock_time       rows_sent       rows_examined   db      last_insert_id  insert_id       server_id       sql_text        thread_id\n2023-05-29 15:11:02.710098      root[root] @ localhost []       00:00:27.749990 00:00:00.000007 0       0       test    0       0       1       call insert_test(100000)        9\n2023-05-29 15:11:39.699036      root[root] @ localhost []       00:00:36.985884 00:00:00.000010 0       100000  test    0       0       1       update t1 set name = 'test202305290'    9\n2023-05-29 15:11:52.928097      root[root] @ localhost []       00:00:13.228370 00:00:00.000005 0       100000  test    0       0       1       update t1 set name = 'test202305291'    9\n[ 50%] main.bug111180                            [ pass ]  78042\n[100%] shutdown_report                           [ pass ]\n------------------------------------------------------------------------------\nThe servers were restarted 0 times\nThe servers were reinitialized 0 times\nSpent 78.042 of 96 seconds executing testcases\n\nCompleted: All 2 tests were successful."
+      }
+    ],
+    "targets": {
+      "8.0.33": {
+        "field": false,
+        "hits": [
+          {
+            "anchor": "c532948",
+            "author": "MySQL Verification Team",
+            "snippets": [
+              "Hello nanzhou lin,  Thank you for the report and test case. I couldn't reproduce with 5.7.42 and 8.0.33 builds. Could you please try 8.0.33 and confirm if you are still seeing the issue? Thank you.  - 8.0.33  ./mtr bug111180 --debug-server --nocheck-testcases Logging: ./mtr  bug111180 --debug-server --",
+              "lo nanzhou lin,  Thank you for the report and test case. I couldn't reproduce with 5.7.42 and 8.0.33 builds. Could you please try 8.0.33 and confirm if you are still seeing the issue? Thank you.  - 8.0.33  ./mtr bug111180 --debug-server --nocheck-testcases Logging: ./mtr  bug111180 --debug-server --nocheck-testcases MySQL Version 8.0.",
+              "reproduce with 5.7.42 and 8.0.33 builds. Could you please try 8.0.33 and confirm if you are still seeing the issue? Thank you.  - 8.0.33  ./mtr bug111180 --debug-server --nocheck-testcases Logging: ./mtr  bug111180 --debug-server --nocheck-testcases MySQL Version 8.0.33 Checking supported features  - Binaries are debug compiled Using ",
+              "33  ./mtr bug111180 --debug-server --nocheck-testcases Logging: ./mtr  bug111180 --debug-server --nocheck-testcases MySQL Version 8.0.33 Checking supported features  - Binaries are debug compiled Using 'all' suites Collecting tests Checking leftover processes Removing old var directory  - WARNING: Using the 'mysql-test/var' symlink Cr",
+              "Removing old var directory  - WARNING: Using the 'mysql-test/var' symlink Creating var directory '/export/home/tmp/ushastry/mysql-8.0.33/mysql-test/var' Installing system database Using parallel: 1  ==============================================================================                   TEST NAME                       RESULT  "
+            ]
+          },
+          {
+            "anchor": "c532963",
+            "author": "MySQL Verification Team",
+            "snippets": [
+              "- 8.0.33 seems to be OK   ./mtr bug111180 --debug-server --nocheck-testcases --mysqld='--gtid_mode=ON' --mysqld='--log-bin' --mysqld='--log-slave-updates' --mysqld='--enforce-gtid-consistency' --mysqld='--ser",
+              "_mode=ON --mysqld=--log-bin --mysqld=--log-slave-updates --mysqld=--enforce-gtid-consistency --mysqld=--server-id=1 MySQL Version 8.0.33 Checking supported features  - Binaries are debug compiled Using 'all' suites Collecting tests Checking leftover processes Removing old var directory  - WARNING: Using the 'mysql-test/var' symlink Cr",
+              "Removing old var directory  - WARNING: Using the 'mysql-test/var' symlink Creating var directory '/export/home/tmp/ushastry/mysql-8.0.33/mysql-test/var' Installing system database Using parallel: 1  ==============================================================================                   TEST NAME                       RESULT  "
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

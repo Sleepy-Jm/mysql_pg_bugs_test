@@ -1,0 +1,22 @@
+{
+  "report_id": "110703",
+  "title": "SQL execute return error \"BIGINT UNSIGNED value is out of range\"",
+  "task_ids": [
+    "mysql-110703-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\3cb310ab5246_bug_110703.html",
+  "source_sha256": "3cb310ab52469fdb4941607a605042df5e641ac2e2b9cee3d16b567e67774a96",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nReturn error when execute SQL command. \nMySQL should not return error for this scenario.\n\nmysql> select version();\n+-----------+\n| version() |\n+-----------+\n| 8.0.32    |\n+-----------+\n1 row in set (0.00 sec)\n\nmysql> CREATE TABLE t1 (c0 BIGINT UNSIGNED, c1 MEDIUMINT UNSIGNED);\nQuery OK, 0 rows affected (0.03 sec)\n\nmysql> INSERT INTO t1(c0,c1) VALUES (162,24);\nQuery OK, 1 row affected (0.01 sec)\n\nmysql> select * from t1 where c0 = (c1 - c0);\nERROR 1690 (22003): BIGINT UNSIGNED value is out of range in '(`test`.`t1`.`c1` - `test`.`t1`.`c0`)'\n\nHow to repeat:\nCREATE TABLE t1 (c0 BIGINT UNSIGNED, c1 MEDIUMINT UNSIGNED);\nINSERT INTO t1(c0,c1) VALUES (162,24);\nselect * from t1 where c0 = (c1 - c0);\n\nSuggested fix:\nUse `Item_func_minus::decimal_op` instead of `Item_func_minus::int_op` to handle this scenario."
+    },
+    {
+      "anchor": "c531672",
+      "text": "This is how negative values from unsigned integer operations are supposed\nto be handled, so it is not a bug.\nYou can overcome the problem by using explicit CAST operations in the SQL query."
+    }
+  ]
+}

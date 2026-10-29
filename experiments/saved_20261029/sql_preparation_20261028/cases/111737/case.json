@@ -1,0 +1,69 @@
+{
+  "report_id": "111737",
+  "title": "Double tick in string literals does not work for CREATE TABLE with NO_BACKSLASH_",
+  "source_sha256": "7aa69e71d701f257ca7f01385a713b48f31c060019bbecee0ecd20d62ec21c56",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "e21144f6869de0feb07f57322af3204eecb1ee76d3403e376ba58d93108efed3"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "9f49e3d76232739313cf80cd6b24021d41af3920b3c4a275b7670f56fa5c0704"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "tab utf8mb4_bin，CHECK REGEXP"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "仅标量字符串"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force；需保留 SQL 原始引号，不经字符串转义二次改写。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两种 SQL mode 中合法双引号转义的 CHECK 均应创建成功；SELECT 为 0/1；异常：NO_BACKSLASH_ESCAPES 下 DDL 内部重序列化报 1064"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "两种 SQL mode 中合法双引号转义的 CHECK 均应创建成功；SELECT 为 0/1",
+    "failure": "NO_BACKSLASH_ESCAPES 下 DDL 内部重序列化报 1064",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "保持原始引号字节"
+  ],
+  "transformations": [
+    "把原操作说明转为显式 SQL mode/DDL 序列；保留三个连续单引号字节"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标支持CHECK/REGEXP及该SQL mode，与111892应归并相关性。 本轮尚未执行。",
+    "8.0.34": "目标支持CHECK/REGEXP及该SQL mode，与111892应归并相关性。 本轮尚未执行。",
+    "8.0.35": "目标支持CHECK/REGEXP及该SQL mode，与111892应归并相关性。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

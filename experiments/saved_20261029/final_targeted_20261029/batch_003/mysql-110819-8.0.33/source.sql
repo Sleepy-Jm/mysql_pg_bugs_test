@@ -1,0 +1,7 @@
+CREATE DATABASE bug_db;
+CREATE TABLE bug_db.bug_t(id INT NOT NULL AUTO_INCREMENT, col_str VARCHAR(255), col_int INT, PRIMARY KEY (id), INDEX col_str (col_str), INDEX col_int_ind (col_int));
+INSERT INTO bug_db.bug_t(id,col_str,col_int) VALUES (1,"a",1),(2,"a",1),(3,"a",1);
+SELECT @@SESSION.optimizer_switch;
+SELECT id FROM bug_db.bug_t t1 WHERE EXISTS (SELECT 1 FROM bug_db.bug_t t2 WHERE t1.id > t2.id AND t1.col_str=t2.col_str AND t1.col_int=t2.col_int);
+SET optimizer_switch='semijoin=off';
+SELECT id FROM bug_db.bug_t t1 WHERE EXISTS (SELECT 1 FROM bug_db.bug_t t2 WHERE t1.id > t2.id AND t1.col_str=t2.col_str AND t1.col_int=t2.col_int);

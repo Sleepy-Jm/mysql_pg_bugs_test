@@ -1,0 +1,70 @@
+{
+  "report_id": "110732",
+  "title": "mysql server lost connection when i enter a sql query",
+  "source_sha256": "1f145f1ec0a916db1a607289a6c78109c301bec8217fa22c17c3cb6c4c9e87f2",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "3151d99a7bf8831f344fa4a27e3d063ceb167e5a97762278aabb454a0fbc5c4f"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "ba670fa641a426deb4c3bead8557932d3f1ea3c4be6ab56452470eb1a106a85d"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "v0 INT NOT NULL 及原 CHECK"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "无行数据"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "空表查询为空集，连接存活；异常：SELECT 崩溃/断连"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "空表查询为空集，连接存活",
+    "failure": "SELECT 崩溃/断连",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "记录sql_mode",
+    "独立库"
+  ],
+  "transformations": [
+    "保留未使用 WINDOW 及混合 ORDER BY 原样"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持CHECK和窗口定义；没有未知数据前提，待查其他目标的健壮性。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持CHECK和窗口定义；没有未知数据前提，待查其他目标的健壮性。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持CHECK和窗口定义；没有未知数据前提，待查其他目标的健壮性。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

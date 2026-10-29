@@ -1,0 +1,30 @@
+[
+  {
+    "anchor": "cmain",
+    "text": "Description:\nRun these queries:\n\nCREATE TABLE t1 (c0 INT);\nINSERT INTO t1(c0) VALUES (1), (2);\nSET @@SESSION.OPTIMIZER_SWITCH = 'subquery_to_derived=on';\nINSERT IGNORE INTO t1 (c0) (SELECT (SELECT t1.c0 FROM t1) FROM t1);\n\nThe insert will trigger an assertion error at sql/iterators/hash_join_iterator.cc:183:\nassert(thd()->is_error() ||\n       thd()->killed);\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the queries above."
+  },
+  {
+    "anchor": "c532365",
+    "text": "Hello Pedro Ferreira,\n\nThank you for the report and feedback.\nObserved that 8.0.33 debug build is affected.\n\nregards,\nUmesh"
+  },
+  {
+    "anchor": "c533110",
+    "text": "Reproduced again today with:\n\nCREATE TABLE t0 (c0 INT);\nCREATE TABLE t1 (c0 INT);\nINSERT INTO t0(c0) VALUES (1),(2),(3);\nSET @@SESSION.OPTIMIZER_SWITCH = 'subquery_to_derived=on';\nINSERT IGNORE INTO t1 (c0) (SELECT 1 FROM (SELECT 1) x(x) STRAIGHT_JOIN (SELECT 1) y(y) ON b'00' = (SELECT b'01' FROM t0));"
+  },
+  {
+    "anchor": "c541304",
+    "text": "Posted by developer:\n \nThis happens because the transform will raise an error if there is more than one row in the subquery, but in another place\nthan the untransformed query. When INSERT has IGNORE as here, we install a non-strict error handler, which downgrades the\nerror we give: R_SUBQUERY_NO_1_ROW to a warning.\nLater, in HashJoinIterator::Init(), we get an error return from MaterializeIterator<Profiler>::Init()\nwhich checks for more than one row here:\n\n       if (m_reject_multiple_rows && stored_rows > 1) {\n          my_error(ER_SUBQUERY_NO_1_ROW, MYF(0));\n          return true;\n\nbut then HashJoinIterator::Init() seeing the error return asserts that the current THD::is_error is true, which it does not due to\nthe ignore downgrade."
+  },
+  {
+    "anchor": "c541315",
+    "text": "Posted by developer:\n \nIn production (non-debug) builds, there is no crash, but the results differ:\nwithout the transform, two NULL values are inserted.\nWith the transform, no rows are inserted and no warning is given."
+  },
+  {
+    "anchor": "c542409",
+    "text": "Documented fix as follows in the MySQL 9.0.0 changelog:\n\n    ER_SUBQUERY_NO_1_ROW has been removed from the list of errors\n    which are ignored by statements which include the IGNORE\n    keyword. This has been done for the following reasons:\n\n        ·Ignoring such errors sometimes led to insertion of NULL into\n        non-nullable columns (for untransformed subqueries), or of\n        no row at all (subqueries using subquery_to_derived).\n\n        ·When subqueries were transformed to join with derived\n        tables, the behavior differed from that of untransformed\n        queries.\n      \n    Following an upgrade to this release, this change can make an\n    UPDATE, DELETE, or INSERT statement which includes the IGNORE\n    keyword raise errors if it contains a SELECT statement with a\n    scalar subquery that produces more than one row.\n\n    For more information, see \"The Effect of IGNORE on Statement\n    Execution\".\n\nAlso removed ER_SUBQUERY_NO_1_ROW from the list in the indicated section of the 9.0 Manual.\n\nClosed."
+  },
+  {
+    "anchor": "c544525",
+    "text": "Bug #109459 Insert ignore subquery error\n\nwas marked as a duplicate."
+  }
+]

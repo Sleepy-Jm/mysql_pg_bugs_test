@@ -1,0 +1,26 @@
+{
+  "report_id": "117917",
+  "title": "InnoDB: Failing assertion: lock->lock_word == X_LOCK_DECR",
+  "task_ids": [
+    "mysql-117917-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\620d56a37027_bug_117917.html",
+  "source_sha256": "620d56a37027ff22e7201585ae762dc7ae03715668f90682b2ba8941217537d9",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen the main thread knocks out the table definition cache, the index on the table is not unlocked, and someone else is using the index, triggering concurrent security issues.\nWhen table->n_ref_count==0 and btr_search_t->ref_count==0, the table can be eliminated. The AHI switch is not turned on. It is suspected that mysqld does not perform concurrent protection on table->n_ref_count, causing the crash.\n\nInnoDB: Assertion failure in thread in file sync0rw.cc line 313\nInnoDB: Failing assertion: lock->lock_word == X_LOCK_DECR\nInnoDB: We intentionally generate a memory trap.\nInnoDB: Submit a detailed bug report to http://bugs.mysql.com.\nInnoDB: If you get repeated assertion failures or crashes, even\nInnoDB: immediately after the mysqld startup, there may be\nInnoDB: corruption in the InnoDB tablespace. Please refer to\nInnoDB: http://dev.mysql.com/doc/refman/5.7/en/forcing-innodb-recovery.html\nInnoDB: about forcing recovery.\n17:25:36 UTC - mysqld got signal 6 ;\nThis could be because you hit a bug. It is also possible that this binary\nInnoDB: about forcing recovery.\n17:25:36 UTC - mysqld got signal 6 ;\nThis could be because you hit a bug. It is also possible that this binary\nor one of the libraries it was linked against is corrupt, improperly built,\nor misconfigured. This error can also be caused by malfunctioning hardware.\nAttempting to collect some information that could help diagnose the problem.\nAs this is a crash and something is definitely wrong, the information\ncollection process might fail.\nIt is possible that mysqld could use up to \nkey_buffer_size + (read_buffer_size + sort_buffer_size)*max_threads = 100384 K  bytes of memory\nHope that's ok; if not, decrease some variables in the equation.\nThread pointer: 0x0\nAttempting backtrace. You can use the following information to find out\nwhere mysqld died. If you see no messages after this, something went\nterribly wrong...\nstack_bottom = 0 thread_stack 0x80000\n/usr/local/mysql/bin/mysqld(my_print_stacktrace+0x3c)[0x55a3f43d13ac]\n/usr/local/mysql/bin/mysqld(handle_fatal_signal+0x50b)[0x55a3f3a9b9fb]\n#0  dict_index_remove_from_cache_low (table=table@entry=0x7fbfc64814a0, index=0x7fbfc64894a0, lru_evict=lru_evict@entry=1) at /workdir1/jinxing/rds/rds_57/mysql-server/storage/innobase/dict/dict0dict.cc:3056\n#1  0x0000563d4be91ca5 in dict_table_remove_from_cache_low (table=0x7fbfc64814a0, lru_evict=1) at /workdir1/jinxing/rds/rds_57/mysql-server/storage/innobase/dict/dict0dict.cc:2381\n#2  0x0000563d4be95ccc in dict_make_room_in_cache (max_tables=400, pct_check=pct_check@entry=50) at /workdir1/jinxing/rds/rds_57/mysql-server/storage/innobase/dict/dict0dict.cc:1745\n#3  0x0000563d4bd47654 in srv_master_evict_from_table_cache (pct_check=pct_check@entry=50) at /workdir1/jinxing/rds/rds_57/mysql-server/storage/innobase/srv/srv0srv.cc:2056\n#4  0x0000563d4bd4f028 in srv_master_do_active_tasks () at /workdir1/jinxing/rds/rds_57/mysql-server/storage/innobase/srv/srv0srv.cc:2229\n#5  0x0000563d4bd4f639 in srv_master_thread (arg=<optimized out>) at /workdir1/jinxing/rds/rds_57/mysql-server/storage/innobase/srv/srv0srv.cc:2461\n#6  0x00007fc00fa31e15 in start_thread () from /lib64/libpthread.so.0\n#7  0x00007fc00e796fed in clone () from /lib64/libc.so.6\n\nHow to repeat:\nThe crash was triggered by high concurrent DDL/DML and frequent elimination of indexed tables.\n\nSuggested fix:\nIt may be that table->n_ref_count is not properly monitored."
+    },
+    {
+      "anchor": "c551772",
+      "text": "Hi,\n\n8.0.32 is rather old, can you reproduce this with latest 8.0?\n\nThanks"
+    },
+    {
+      "anchor": "c552393",
+      "text": "No feedback was provided for this bug for over a month, so it is\nbeing suspended automatically. If you are able to provide the\ninformation that was originally requested, please do so and change\nthe status of the bug back to \"Open\"."
+    }
+  ]
+}

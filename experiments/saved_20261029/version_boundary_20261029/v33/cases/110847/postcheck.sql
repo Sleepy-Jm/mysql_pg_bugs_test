@@ -1,0 +1,1 @@
+-- Historical target had no separate postcheck; all controls are in unchanged source SQL.

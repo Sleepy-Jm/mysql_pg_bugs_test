@@ -1,0 +1,96 @@
+{
+  "report_id": "112475",
+  "title": "Assertion Failure in /mysql-8.0.34/sql/sql_select.cc:2303",
+  "source_sha256": "d93ea72de4b5a6f70bd4f5a6f192e8a5421a7397042c963f6b09abcaa07aa77b",
+  "source_anchors": [
+    "cmain",
+    "c536346"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "5d312394d9710a5c8eceb460a50219db88504f994622974f811c2d738a07b920"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "9cb5c3997a817bd2bbdd3202667a67d4491f38686f6015c0265c02f48dbda081"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "CTAS生成t0(c14)，随后改名t1。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "CTAS原-89、两行DEFAULT，再插12和121；不把DEFAULT换成硬编码。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "不得出现calc_length_and_keyparts断言；发布版1815 Internal error: Key not found单独记error_difference。若输入因SQL mode或版本功能受控拒绝，记录为受控错误/前置条件，不据此宣称复现；服务器须保持存活。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t0,t1;"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "不得出现calc_length_and_keyparts断言；发布版1815 Internal error: Key not found单独记error_difference。若输入因SQL mode或版本功能受控拒绝，记录为受控错误/前置条件，不据此宣称复现；服务器须保持存活。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "debug及发布构建分别记录",
+    "完整原文SQL",
+    "有限重复和栈",
+    "保存ONLY_FULL_GROUP_BY、NO_BACKSLASH_ESCAPES等SQL mode，不擅自修复原式。"
+  ],
+  "transformations": [
+    "源文建表、数据、DDL、最终触发语句按原序原字节保留；仅剥离断言/GDB说明并增加清理。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c536346 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/112475.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "原报告指出目标debug构建；需记录精确构建和SQL mode，发布结果单列。",
+      "requires_review": true
+    },
+    {
+      "kind": "other",
+      "detail": "含RAND：有限重复、逐次保存输出和日志；数值结果不作为等价判据。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "report_id": "109796",
+  "title": "STR_TO_DATE() invalid input doesn't returns NULL but invalid DATE",
+  "task_ids": [
+    "mysql-109796-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\ce16a6f4dffc_bug_109796.html",
+  "source_sha256": "ce16a6f4dffcd4751dc1bcf056f618910a8ea4e16782f4f7ddd4faa0c2cb6c21",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThe doc about STR_TO_DATE() https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_str-to-date says :\n\n> If the date, time, or datetime value extracted from str is illegal, STR_TO_DATE() returns NULL and produces a warning\n> [...]\n> Range checking on the parts of date values is as described in Section 11.2.2, “The DATE, DATETIME, and TIMESTAMP Types”.\n\nThe doc https://dev.mysql.com/doc/refman/8.0/en/datetime.html says :\n\n> The server requires that month and day values be valid, and not merely in the range 1 to 12 and 1 to 31, respectively. With strict mode disabled, invalid dates such as '2004-04-31' are converted to '0000-00-00' and a warning is generated. With strict mode enabled, invalid dates generate an error.\n\nIt seems not be taken in account.\n\nHow to repeat:\nset @@sql_mode = 'ANSI,TRADITIONAL';\n\nselect all @@sql_mode; -- REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,ONLY_FULL_GROUP_BY,ANSI,STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,TRADITIONAL,NO_ENGINE_SUBSTITUTION\n\nselect all date('2022-04-31'); -- NULL => OK\n\nselect all str_to_date('2022-04-31', '%Y-%m-%d'); -- 2022-04-31 => NULL expected\n\nselect all date(str_to_date('2022-04-31', '%Y-%m-%d')); -- 2022-04-31 => NULL expected"
+    },
+    {
+      "anchor": "c529247",
+      "text": "Hello Sébastien F.,\n\nThank you for the report and test case.\nVerified as described.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c542812",
+      "text": "When I execute the SQL snippet on MySQL 8.0.37 I now get the awaited values.\n\nCan we consider this bug corrected ?"
+    },
+    {
+      "anchor": "c543503",
+      "text": "It looks like a duplicate of 108782, which was fixed in 8.0.35."
+    },
+    {
+      "anchor": "c555879",
+      "text": "Has been fixed."
+    }
+  ]
+}

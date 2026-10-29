@@ -1,0 +1,30 @@
+{
+  "report_id": "110940",
+  "title": "Querying VarChar column using 0 in WHERE clause incorrectly returns ALL ROWS",
+  "task_ids": [
+    "mysql-110940-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\86b6caa4e26e_bug_110940.html",
+  "source_sha256": "86b6caa4e26e6b39f861ae1c9395e3486e4952c9042cc780f86ade2476dd7025",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nRunning a query against a table comparing a VarChar value to the value 0 in the WHERE clause incorrectly causes ALL results to be returned (as if there *were* no WHERE clause)\n\nFor example, the following:\n\nSCENARIO:\nTable: bugtest\nHas a column defined:   username varchar(255)   (indexed unique)\nHas rows with data, none of them NULL\n\nERROR: Running the following query returns ALL rows in the table\n\nSELECT * \nFROM bugtest \nWHERE username = 0; \n\nEXPECTED RESULT:   No rows returned\n\nHow to repeat:\n-- ---------------------\n-- create the test table\n-- ---------------------\nCREATE TABLE bugtest (\n  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n  `username` VARCHAR(255) NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE INDEX `username_UNIQUE` (`username` ASC) VISIBLE);\n\n-- ---------------------\n-- Insert some test data\n-- ---------------------\ninsert into bugtest (username) values (\"rob\"), (\"mary\"), (\"sue\"), (\"bubba\"), (\"casper\"), (\"dart vader\");\n\n-- ---------------------\n-- Run test queries\n-- ---------------------\n\nselect * from bugtest where username=\"bubba\"; -- correctly returns 1 row\nselect * from bugtest where username is NULL; -- correctly returns 0 rows\nselect * from bugtest where username = \"\";  -- correctly returns no rows\n\nselect * from bugtest where username = 0; -- !!! BUG: returns ALL ROWS?!!!\n\nSuggested fix:\nFix so that if an integer value 0 is used in a WHERE clause comparing to a VarChar column, it correctly returns NO rows."
+    },
+    {
+      "anchor": "c532327",
+      "text": "Hi Mr. Roghkopf,\n\nThank you for your bug report.\n\nHowever, this is not a bug.\n\nAll type-safe relational database systems return the error on the query like the one that you reported.\n\nMySQL tries to be user-friendly. Hence, in the comparison between the string and integer, both sides of the expression are converted to the floating point numbers. Hence, the result is correct.\n\nIt is also basic SQL knowledge that 0 (zero) IS NOT and unknown entity, while NULL is also known as UNKNOWN !!!!!!\n\nWith the best intentions in our mind, we would like to  recommend to you to read some textbooks on the SQL language .......\n\nThis is all described in our Reference Manual.\n\nDefinitely not a bug."
+    },
+    {
+      "anchor": "c532336",
+      "text": "> All type-safe relational database systems return \n> the error on the query like the one that you reported.\n\nIf MySQL returned an error, I'd agree.  If you look at my query & result set though, no error was raised.\n\nYou note that \"all relational databases\" would behave the same as MySQL -- I ran this query in MS SQL Server and confirmed -- they properly report this as an error, whereas MySQL does not.\n\nHere's what SQL Server returns:\n   Msg 245, Level 16, State 1, Line 22\n   Conversion failed when converting the varchar value 'bubba' to data type int.\n\n> MySQL tries to be user-friendly. Hence, in the comparison between the string \n> and integer, both sides of the expression are converted to the floating point \n> numbers. Hence, the result is correct.\n\nI understand.  In that example, the username char data is converted to floating point, so every value converts to 0; since 0=0 all results are returned.  \n\n> It is also basic SQL knowledge that 0 (zero) IS NOT and \n> unknown entity, while NULL is also known as UNKNOWN !!!!!!\n> With the best intentions in our mind, we would like to \n> recommend to you to read some textbooks on the SQL language .\n> Definitely not a bug.\n\nWhy are you discussing zero and NULL here?  My bug report was with all results being returned instead of an error being raised or no results returned.  Maybe you're just trying to explain why my 2nd query comparing with NULL properly returned no results?  I have no questions there.. it worked properly.\n\nThat last comment of yours was a pretty rude reply -- I worked extensively with MS SQL Server for 16 years optimizing SPs and queries for large banks who were needed help getting better performance from their systems .. although I'm currently a tad rusty, and definitely new to MySQL specifics, I'm beyond the basics with general SQL language, data modeling, etc..\n\nTHAT all said -- thank you for your reply.  With the auto-type-conversion happening and the strings converting to 0, I can understand why MySQL returned these results and you say it's not a bug.\n\nHow can I configure MySQL to return an error instead of doing an auto-type-conversion like this?  I believe strong typing would avoid this, and I'd rather be deliberate with my conversions.  (we discovered this because of a bug in our code where the wrong type parameter was being passed in)"
+    },
+    {
+      "anchor": "c532337",
+      "text": "Hi,\n\nMySQL was never designed with a strict typing in mind. One of the basic principles of MySQL design, from the very beginning until today, is that MySQL will do all in its power to return any result for each query that programmer / designer decided to throw at it.\n\nHence, MySQL never was,  is not and (probably) will never be a strict-typing RDBMS. This is also true for all of its numerous clones as well. \n\nThanks to this behaviour, MySQL has become the most widely used and popular RDBMS in the world.\n\nHence, there is no option to run MySQL into strict-typing RDBMS."
+    }
+  ]
+}

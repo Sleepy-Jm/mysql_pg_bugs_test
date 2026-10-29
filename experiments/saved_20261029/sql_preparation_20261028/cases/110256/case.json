@@ -1,0 +1,84 @@
+{
+  "report_id": "110256",
+  "title": "An incorrect query result for an indexed decimal column",
+  "source_sha256": "6583b357c4019f84f1f1d9909e95055ba5bdad2746ef845bf4f104cc61874595",
+  "source_anchors": [
+    "cmain",
+    "c530389"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "9fd9dff23772f83a96715c9dad0aff71975e1aa21b5653326d5c5b4234697cd7"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "606217972eef38333c2b057aa82ff6bc2eed35fe54e7c37033e8de111bd2263b"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 DECIMAL)，降序索引 i0。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原文空字符串 INSERT DELAYED IGNORE；不得改写成数值0以免改动转换路径。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "对同一已装载数据、相同谓词，索引存在/删除后的结果多重集应一致。源文期望0行值被保留；先核对 INSERT IGNORE 的实际值0及警告，不把DELAYED忽略警告判bug。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t0;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "对同一已装载数据、相同谓词，索引存在/删除后的结果多重集应一致。源文期望0行值被保留；先核对 INSERT IGNORE 的实际值0及警告，不把DELAYED忽略警告判bug。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "隔离表",
+    "保留原始含制表符字面值",
+    "固定 SQL mode，尤其双引号字符串语义；记录实际装载值及 warnings。"
+  ],
+  "transformations": [
+    "保留真实 TAB 与空串输入；追加按文字描述的删索引对照。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标支持DECIMAL降序索引与LEAST转换；重复关系需合并110209。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标支持DECIMAL降序索引与LEAST转换；重复关系需合并110209。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标支持DECIMAL降序索引与LEAST转换；重复关系需合并110209。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c530389 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/110256.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

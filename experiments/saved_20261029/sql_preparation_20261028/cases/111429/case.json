@@ -1,0 +1,70 @@
+{
+  "report_id": "111429",
+  "title": "Incorrect result when timestamp col apply <=> to the result of subquery",
+  "source_sha256": "33ba8359a931db58445bc8d635c2326da6eb3546b1e39a28f361f786a437961a",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "ee8fbe1997d03bb28ba58f60a5c43a621c299d7045a5b07ee8ef71df70088bbc"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "9ac614e76700ee9b2a061f027a460f39389271711459d0baa45c58d8bcccceeb"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "bugtest TIMESTAMP(6)、BINARY(11) 及两个索引"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原 5 行，后三行 binary_col NULL"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "前两条行比较均只一行 (NULL,1997-03-04 12:20:00.000000)；异常：子查询行比较错误返回 1998/1999 行"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "前两条行比较均只一行 (NULL,1997-03-04 12:20:00.000000)",
+    "failure": "子查询行比较错误返回 1998/1999 行",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "固定时区",
+    "核对 INSERT 成功五行"
+  ],
+  "transformations": [
+    "修复第 5 个 VALUES 元组多余左括号；固定 UTC，保持 NULL 与 _binary 数据原样"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标支持 NULL安全行比较和 TIMESTAMP 索引，已有可确定对照。 本轮尚未执行。",
+    "8.0.34": "目标支持 NULL安全行比较和 TIMESTAMP 索引，已有可确定对照。 本轮尚未执行。",
+    "8.0.35": "目标支持 NULL安全行比较和 TIMESTAMP 索引，已有可确定对照。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

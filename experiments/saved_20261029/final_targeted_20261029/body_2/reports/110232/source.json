@@ -1,0 +1,30 @@
+{
+  "report_id": "110232",
+  "title": "\"Killed\" counter is not updated with \"log_slow_extra\" enabled",
+  "task_ids": [
+    "mysql-110232-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\d7568ce68f4b_bug_110232.html",
+  "source_sha256": "d7568ce68f4b605474463fe5b7dc6921855ddbe5a43eac6aee083749c866d92e",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nI am recently testing the parameter \"log_slow_extra\" in MySQL 8.0.32. During my testing, I am trying to see some number in \"Killed: \" counter. But, it seems not getting updated.\n\nI tried to kill / terminate the SQL query in different ways. But, there is no change in \"Killed: \" counter.\n\nfrom doc,  https://dev.mysql.com/doc/refman/8.0/en/slow-query-log.html\n\nErrno: error_number\nThe statement error number, or 0 if no error occurred.\n\nKilled: N\nIf the statement was terminated, the error number indicating why, or 0 if the statement terminated normally.\n\nHow to repeat:\nScenerio 1: ( terminate the query itself )\n--------------------------------------------\n\nmysql> SELECT /*+ MAX_EXECUTION_TIME(200) */ count(*) FROM test;\nERROR 1317 (70100): Query execution was interrupted\n\nfrom slow log,\n\n# Time: 2023-02-28T10:44:40.189599Z\n# User@Host: root[root] @ localhost []  Id:     9\n# Query_time: 0.238536  Lock_time: 0.000016 Rows_sent: 0  Rows_examined: 0 Thread_id: 9 Errno: 1317 Killed: 0 Bytes_received: 63 Bytes_sent: 83 Read_first: 0 Read_last: 0 Read_key: 0 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 0 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2023-02-28T10:44:39.951063Z End: 2023-02-28T10:44:40.189599Z\nSET timestamp=1677581079;\nSELECT /*+ MAX_EXECUTION_TIME(200) */ count(*) FROM test;\n\nAs you see above, I can see the \"Errno: \" counter updated. But, \"Killed: \" counter not updated.\n\nScenerio 2: ( Manually KILL the query ) \n-----------------------------------------\n\nmysql> update sri.test set name='killed';\n-- query aborted\nERROR 1317 (70100): Query execution was interrupted\n\nfrom slow log,\n\n# Time: 2023-02-28T11:07:33.979372Z\n# User@Host: root[root] @ localhost []  Id:    16\n# Query_time: 79.549593  Lock_time: 3.051690 Rows_sent: 0  Rows_examined: 2745264 Thread_id: 16 Errno: 1317 Killed: 0 Bytes_received: 40 Bytes_sent: 44 Read_first: 1 Read_last: 0 Read_key: 1 Read_next: 0 Read_prev: 0 Read_rnd: 0 Read_rnd_next: 2745265 Sort_merge_passes: 0 Sort_range_count: 0 Sort_rows: 0 Sort_scan_count: 0 Created_tmp_disk_tables: 0 Created_tmp_tables: 0 Start: 2023-02-28T11:06:14.429779Z End: 2023-02-28T11:07:33.979372Z\nSET timestamp=1677582374;\nupdate sri.test set name='killed';\n\nAs you see above, I can see the \"Errno: \" counter updated. But, \"Killed: \" counter not updated.\n\nSuggested fix:\nWhen killing the Query, it would be great if we see the \"Killed: \" counter updated. \n\nThanks!"
+    },
+    {
+      "anchor": "c530322",
+      "text": "Hi Mr. Pandian,\n\nThank you for your bug report.\n\nHowever , .........\n\nMySQL Enterprise Audit  is a commercial product/plugin and using community Bugs DB is not an appropriate place to report issues against this product/plugin. If you are Oracle customer, please open SR and we will assist you via our Support team.\n\nThank you very much.\n\nNot a bug."
+    },
+    {
+      "anchor": "c530357",
+      "text": "Hello Pandian,\n\nThank you for the report and feedback.\nVerified as described.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c530360",
+      "text": "Related - Bug #98220"
+    }
+  ]
+}

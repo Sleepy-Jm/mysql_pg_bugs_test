@@ -1,0 +1,99 @@
+{
+  "report_id": "120312",
+  "title": "Wrong result for MIN(TIME) UNION ALL DATE after view extraction",
+  "source_sha256": "004ff5aeb3c77c6dec4a990e38aaa39e7261d53555a0154a834145732c64b942",
+  "source_anchors": [
+    "cmain",
+    "c556733"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "5b27a093e68f183add56844762a10293c0378dc43fddcc2fa78bff1fbad7e528"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "52565d639ef2a343ad1c48fef4f246b03b106cc777b9e73777a215d51df31c84"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t3(pk SMALLINT PK,c5 TIME,category CHAR2 NOT NULL)与V_cuc28_alt。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原(1,12:34:56,ok)单行，DATE2025-03-14不变。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "记录原MIN(TIME) UNION DATE与视图提取后两结果及列类型；是否应共享同一TIME到DATETIME转换规则仍需类型元数据/规则证明，不能选任一侧为正确答案。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "记录原MIN(TIME) UNION DATE与视图提取后两结果及列类型；是否应共享同一TIME到DATETIME转换规则仍需类型元数据/规则证明，不能选任一侧为正确答案。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "同一会话与日期边界内比较",
+    "记录结果列类型与长度"
+  ],
+  "transformations": [
+    "去除原t1库DROP/CREATE/USE包装，runner分配新schema；增加日期/时区/mode快照。"
+  ],
+  "blockers": [
+    "MIN(TIME)和视图列的类型聚合/转换时机是否允许不同结果尚未独立确认。"
+  ],
+  "version_notes": {
+    "8.0.32": "四目标具备TIME、MIN、视图和UNION ALL；尚未证明受影响。 本轮未实测。",
+    "8.0.33": "四目标具备TIME、MIN、视图和UNION ALL；尚未证明受影响。 本轮未实测。",
+    "8.0.34": "四目标具备TIME、MIN、视图和UNION ALL；尚未证明受影响。 本轮未实测。",
+    "8.0.35": "四目标具备TIME、MIN、视图和UNION ALL；尚未证明受影响。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c556733 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "uncertain",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "other",
+      "detail": "两查询必须同一会话且不跨日期边界；保存列类型，不能只比显示文本。",
+      "requires_review": false
+    }
+  ],
+  "uncertainties": [
+    {
+      "point": "MIN(TIME)和视图列的类型聚合/转换时机是否允许不同结果尚未独立确认。",
+      "evidence": "cmain只给出0000日期与执行日12:34:56差异；未给目标版本结果列元数据。",
+      "needed": "目标版两结果的MYSQL_TYPE、精度、warnings及TIME/DATE UNION转换契约；同会话同日期内比较。"
+    }
+  ],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

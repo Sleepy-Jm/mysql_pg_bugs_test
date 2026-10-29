@@ -1,0 +1,38 @@
+{
+  "report_id": "112362",
+  "title": "WHERE NOT IN with subquery is much slower on 8.1 than 5.7",
+  "task_ids": [
+    "mysql-112362-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\84c4d9f80637_bug_112362.html",
+  "source_sha256": "84c4d9f80637be5f9e43f440805de0dbc61ca7fbdc429688b96a4f57a585b995",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nA query that was executing very quickly in MySQL 5.7.42 now executes much more slowly in MySQL 8.0.32 and 8.1.0. Instead of performing an index range scan, MySQL executes a full index scan; on a large table this may examine millions of rows, greatly impacting performance.\n\nHow to repeat:\nCreate the following two tables:\n\nCREATE TABLE a\n(\n  a_id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,\n  value VARCHAR(100) NOT NULL COLLATE utf8mb4_bin,\n  UNIQUE KEY ix_value_unique (value)\n);\n\nCREATE TABLE b\n(\n  b_id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,\n  value VARCHAR(100) NOT NULL COLLATE utf8mb4_bin,\n  KEY ix_value (VALUE)\n);\n\n`a` will store a small number (thousands) of unique keys; `b` will store a large number (millions) of rows whose values may or may not exist in `a`.\n\nA sample mysqldump file that creates 10,000 `a` values and 10,000,000 `b` values is available at https://drive.google.com/file/d/1KMRWIgMhejPzzBo9BQdJxTVt9tOXTQsh/view?usp=sharing\n\nRun the following query to find all rows in `b` that don't have a matching value in `a`:\n\nSELECT DISTINCT value FROM b\nWHERE value NOT IN (SELECT value FROM a);\n\nIn MySQL 5.7.42 this returns \"Empty set (0.07 sec)\"\nIn MySQL 8.1.0 this returns \"Empty set (2.31 sec)\"\n\nThis is 33 times slower. In a production application that this was taken from, the performance was 95 times slower.\n\nA workaround in MySQL 8.1.0 is to execute the following query instead:\n\nWITH\n  b2 AS (SELECT DISTINCT value FROM b),\n  a2 AS (SELECT VALUE value FROM a)\nSELECT value FROM b2\nWHERE value NOT IN (SELECT value FROM a2);\n\nIt doesn't seem necessary that these CTEs should be necessary to force the query planner to pick a more optimal plan. (Additionally, this syntax is not valid on MySQL 5.7 so the application has to change its query based on which server version it's running against.)\n\nThe plan for 5.7 is:\n\n+----+-------------+-------+------------+-------+-----------------+-----------------+---------+------+-------+----------+---------------------------------------+\n| id | select_type | table | partitions | type  | possible_keys   | key             | key_len | ref  | rows  | filtered | Extra                                 |\n+----+-------------+-------+------------+-------+-----------------+-----------------+---------+------+-------+----------+---------------------------------------+\n|  1 | PRIMARY     | b     | NULL       | range | ix_value        | ix_value        | 402     | NULL | 10001 |   100.00 | Using where; Using index for group-by |\n|  2 | SUBQUERY    | a     | NULL       | index | ix_value_unique | ix_value_unique | 402     | NULL | 10000 |   100.00 | Using index                           |\n+----+-------------+-------+------------+-------+-----------------+-----------------+---------+------+-------+----------+---------------------------------------+\n\nThe plan for 8.1 is:\n\n+----+--------------+-------------+------------+--------+---------------------+---------------------+---------+--------------+---------+----------+-----------------------------------+\n| id | select_type  | table       | partitions | type   | possible_keys       | key                 | key_len | ref          | rows    | filtered | Extra                             |\n+----+--------------+-------------+------------+--------+---------------------+---------------------+---------+--------------+---------+----------+-----------------------------------+\n|  1 | SIMPLE       | b           | NULL       | index  | ix_value            | ix_value            | 402     | NULL         | 9111855 |   100.00 | Using index; Using temporary      |\n|  1 | SIMPLE       | <subquery2> | NULL       | eq_ref | <auto_distinct_key> | <auto_distinct_key> | 403     | test.b.value |       1 |   100.00 | Using where; Not exists; Distinct |\n|  2 | MATERIALIZED | a           | NULL       | index  | ix_value_unique     | ix_value_unique     | 402     | NULL         |   10000 |   100.00 | Using index                       |\n+----+--------------+-------------+------------+--------+---------------------+---------------------+---------+--------------+---------+----------+-----------------------------------+\n\nYou can see that many more rows (almost 10 million) are examined."
+    },
+    {
+      "anchor": "c536129",
+      "text": "Hi Mr. Grainger,\n\nThank you for your bug report.\n\nHowever, there are literally hundreds of bug reports , which show significant slowdown for the read or write DMLs between 5.7 and 8.0/8.1.\n\nThis is a widely known fact.\n\nWe have found these bugs in this forum that show that behaviour:\n\n https://bugs.mysql.com/bug.php?id=94387, https://bugs.mysql.com/bug.php?id=93734,\nhttps://bugs.mysql.com/bug.php?id=94283\n\nHowever, we have found one bug, with exactly WHERE NOT IN, but this is an internally reported bug, which is not visible to you.\n\nHence, the performance degradation from 5.7 to 8.0 / 8.1 is very well known fact.\n\nDuplicate."
+    },
+    {
+      "anchor": "c536305",
+      "text": "Hello Bradley Grainger,\n\nThank you for the report and test case.\nVerified as described.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c536349",
+      "text": "Posted by developer:\n \nPretty strange nobody have noticed this regression before.\nThe \"problem\" with semi-join and anti-join is that it converts a single-table\nquery into a multi-table query, by dragging in the subquery tables, and\nthe index range scan algorithm is only implemented for single-table queries.\n\nUntil this has been fixed, there is a simple workaround that you can try:\ndisable semi-join (and anti-join) conversion by this command:\n\n  set optimizer_switch='semijoin=off';\n\nor use the equivalent query hint."
+    },
+    {
+      "anchor": "c549544",
+      "text": "Documented fix as follows in the MySQL 8.0.41, 8.4.4, and 9.2.0 changelogs:\n\n    In MySQL 8.0 and later, queries of the form SELECT DISTINCT ...\n    FROM t1 WHERE NOT IN(SELECT ...) were transformed into an\n    antijoin if possible, causing the optimizer not to choose a\n    group skip scan for table t1 whereas it would have been chosen\n    in MySQL 5.7. This resulted in a performance degradation for\n    such queries. Group skip scan is not chosen, since the query is\n    now no longer a single-table query following the antijoin\n    transformation, and this access method is enabled only for\n    single table queries. The same behaviour can be seen for queries\n    which are transformed into semijoins as well. In such cases,\n    group skip scan access method can still be used if the access\n    method is used only for duplicate removal (that is, DISTINCT or\n    GROUP BY without aggregate functions).\n\n    To fix this, we enable group skip scan when there is only one\n    table in the original query, irrespective of the number of\n    semijoin tables present after internal transformations as long\n    as the query contains no aggregate functions.\n\nClosed."
+    },
+    {
+      "anchor": "c549564",
+      "text": "Thank you, Jon."
+    }
+  ]
+}

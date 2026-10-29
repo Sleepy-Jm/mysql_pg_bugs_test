@@ -1,0 +1,94 @@
+{
+  "report_id": "111310",
+  "title": "Prepared statement with CTE memory leak",
+  "source_sha256": "232f86eec0eb62df7df1a0a48e6d9f82af8a76c4b3822c1cb1834a596e113376",
+  "source_anchors": [
+    "cmain",
+    "c533334",
+    "c533335"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "needs_safety_review",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d7827095558fa26efe96ed47d59308d5f05dcc8776bc092308e17d7a9931d67c"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "not_needed",
+      "detail": "无须建表；CTE 与会话prepared statement。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "无须数据；原文DATETIME参数。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "顺序运行3条SQL后，外部在未来协议中正常关闭专用实例并收集LSan；本轮只保留操作说明，不执行关闭。不要提前DEALLOCATE改变原路径。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "在原文要求的正常关闭实例后的 LSan 输出中，不应出现归因于 Item_param/String::copy 路径的56字节泄漏；需空实例同构建对照排除背景泄漏。普通SELECT输出不能完成此oracle。"
+    },
+    "cleanup": {
+      "status": "not_needed",
+      "detail": "无持久对象；结束专用会话释放 session 设置、变量和 prepared statement。"
+    }
+  },
+  "oracle": {
+    "kind": "memory_leak",
+    "expected": "在原文要求的正常关闭实例后的 LSan 输出中，不应出现归因于 Item_param/String::copy 路径的56字节泄漏；需空实例同构建对照排除背景泄漏。普通SELECT输出不能完成此oracle。",
+    "failure": "不应出现报告所述服务器断言/异常退出；受控 SQL 错误须单独记录，连接存活/服务日志而非仅客户端错误作为判据。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "LSan构建",
+    "完整退出泄漏报告"
+  ],
+  "transformations": [
+    "保留正文3条SQL；正常关闭实例步骤记录为人工条件，不写自动服务控制脚本。"
+  ],
+  "blockers": [
+    "判定依赖关闭专用实例，后续须审定实例归属和关闭范围。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c533334, c533335 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "WITH_DEBUG、ASan/UBSan并启用LeakSanitizer；保存完整退出日志。",
+      "requires_review": true
+    },
+    {
+      "kind": "restart",
+      "detail": "SQL后按原文正常关闭专用实例；不是执行SHUTDOWN的本轮授权。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "判定依赖关闭专用实例，后续须审定实例归属和关闭范围。"
+    ],
+    "restriction": null
+  }
+}

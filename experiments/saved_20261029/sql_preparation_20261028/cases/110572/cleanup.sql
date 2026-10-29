@@ -1,0 +1,3 @@
+-- MySQL report #110572; source anchors: cmain, c531341
+-- Static preparation only; not executed. Use a fresh isolated schema/instance as specified in case.json.
+-- Dedicated session ends to reset optimizer_switch.

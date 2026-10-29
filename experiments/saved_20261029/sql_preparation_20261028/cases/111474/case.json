@@ -1,0 +1,110 @@
+{
+  "report_id": "111474",
+  "title": "hypergraph_optimizer SEGV",
+  "source_sha256": "b63ea3084419a558cd8738a7f9b2dd8f5269b1e045e2b7ffd7cc0458e355d4ff",
+  "source_anchors": [
+    "cmain",
+    "c533720",
+    "c533721",
+    "c536550"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "needs_safety_review",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "0108569b9521719ccd36048aff9e4155dd732d64e8367b6f67a7a7bb4ed341fe"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "29a8f310934070a7adb87a78f19185d53914a9b095ac65cfb7823b7302bd34c0"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 INT)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "第一条INSERT的ROW(2)必须在开启hypergraph前；ROW_COUNT依赖前序命令，不插入额外SQL在两条原INSERT之间。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "启用受支持的debug hypergraph后原INSERT/VALUES/EXCEPT序列不应SEGV或ASan/UBSan异常；普通发布版拒绝hypergraph属于环境不满足，不记复现。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t0;\nSET SESSION optimizer_switch=@case_optimizer;"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "启用受支持的debug hypergraph后原INSERT/VALUES/EXCEPT序列不应SEGV或ASan/UBSan异常；普通发布版拒绝hypergraph属于环境不满足，不记复现。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "目标debug/HG支持",
+    "原配置"
+  ],
+  "transformations": [
+    "保留原4条SQL的相邻顺序；只在序列之前保存optimizer_switch，结束独立清理恢复；原构建/启动命令不执行。"
+  ],
+  "blockers": [
+    "原配置放宽文件访问限制并启用本地导入，须单独审查其必要性和隔离条件；本轮不应用。"
+  ],
+  "version_notes": {
+    "8.0.32": "8.0 debug可启用HG；8.3修复不代表8.0回补。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "8.0 debug可启用HG；8.3修复不代表8.0回补。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "8.0 debug可启用HG；8.3修复不代表8.0回补。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c533720, c533721, c536550 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/111474.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "需要debug支持hypergraph；8.3修复公告不证明8.0已修。",
+      "requires_review": true
+    },
+    {
+      "kind": "heavy_resource",
+      "detail": "源配置innodb_buffer_pool_size=4G，未来需明确资源上限，不能默认2GB容器。",
+      "requires_review": true
+    },
+    {
+      "kind": "global_configuration",
+      "detail": "源cmain完整mysqld配置含skip-log-bin、P_S off等，未来冻结差异。",
+      "requires_review": true
+    },
+    {
+      "kind": "file_access",
+      "detail": "源配置secure_file_priv为空且验证命令local-infile=1；即使非触发SQL也保留真实条件待审。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "原配置放宽文件访问限制并启用本地导入，须单独审查其必要性和隔离条件；本轮不应用。"
+    ],
+    "restriction": null
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "report_id": "111379",
+  "title": "Assertion `context->query_block == thd->lex->current_query_block()' failed",
+  "source_sha256": "60795d5ed74ebadd62a4f09ea389f74176cfe456bde2c51bef5c2dacf8de9c18",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d2e1cdc390ae4e1baa331367205d0d440d5a03dba110489a4fe83cc79d25c21c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "377168a7cff5a3ab0ed87b5561938ae9919c7203e04849d8166ba556a5fea1ba"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "debug目标，sql_mode=NO_ENGINE_SUBSTITUTION；v0(c1 INT)空表。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。执行正文GROUP BY c1 HAVING c1 MEMBER OF(EXISTS((TABLE v0 LOCK IN SHARE MODE) ORDER BY c1))。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "无效 MEMBER OF/EXISTS 组合可安全拒绝；不得 query_block 上下文断言退出。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "无效 MEMBER OF/EXISTS 组合可安全拒绝；不得 query_block 上下文断言退出。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "debug构建",
+    "目标debug构建；源启动参数performance_schema=OFF/mysqlx=OFF需记录。"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。",
+    "移除原test123数据库重建，由runner分配新隔离schema；将配置文件SQL_MODE固定为会话设置。保留故意无效语句。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标支持涉及的TABLE/JSON谓词解析功能，是否受影响待实测。 本轮仅静态准备。",
+    "8.0.34": "目标支持涉及的TABLE/JSON谓词解析功能，是否受影响待实测。 本轮仅静态准备。",
+    "8.0.35": "目标支持涉及的TABLE/JSON谓词解析功能，是否受影响待实测。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "debug目标，sql_mode=NO_ENGINE_SUBSTITUTION；v0(c1 INT)空表。",
+    "steps": "执行正文GROUP BY c1 HAVING c1 MEMBER OF(EXISTS((TABLE v0 LOCK IN SHARE MODE) ORDER BY c1))。",
+    "oracle": "允许拒绝不合法组合，但不得query_block上下文断言或崩溃。",
+    "requirements": [
+      "debug构建"
+    ],
+    "target_applicability": "目标支持涉及的TABLE/JSON谓词解析功能，是否受影响待实测。"
+  }
+}

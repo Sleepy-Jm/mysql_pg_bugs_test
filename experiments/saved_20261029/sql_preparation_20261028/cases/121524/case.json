@@ -1,0 +1,127 @@
+{
+  "report_id": "121524",
+  "title": "ST_Transform() truncates the target SRID to 32 bits: ST_Transform(g, 4294971526) transforms to SRID 4230 instead of rais",
+  "source_sha256": "af34cc84fdedb4944a2027e140975aa8452c1ca5a39f45f718e625cf9ddfe1a6",
+  "source_anchors": [
+    "cmain",
+    "c560395"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_tool_restriction",
+  "execution_status": "not_executed",
+  "scripts": [],
+  "checks": {
+    "schema": {
+      "status": "blocked",
+      "detail": "仅核对原文材料，尚未整理/核验 SQL。纯空间标量函数，无需自建表。"
+    },
+    "data": {
+      "status": "blocked",
+      "detail": "仅核对原文材料，尚未整理/核验 SQL。小POINT几何、SRID4326/4230及越界整数常量完整。"
+    },
+    "sequence": {
+      "status": "blocked",
+      "detail": "仅核对原文材料，尚未整理/核验 SQL。目标SRID越界的两种转换，与相同范围参数在ST_GeomFromText中的受控拒绝对照；记录warnings与实际结果SRID。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "仅核对原文材料，尚未整理/核验 SQL。目标SRID超32位范围应按范围规则拒绝，不能静默截成4230/1；正常SRS缺失诊断与范围错误需要分开。"
+    },
+    "cleanup": {
+      "status": "not_needed",
+      "detail": "本轮未执行也未生成此例 SQL，无实际对象需清理；未来用例清理方案尚未准备。"
+    }
+  },
+  "oracle": {
+    "kind": "not_finalized",
+    "expected": "目标SRID超32位范围应按范围规则拒绝，不能静默截成4230/1；正常SRS缺失诊断与范围错误需要分开。",
+    "failure": "没有完成最终 SQL 与对应检测器，不能据此自动判定异常。",
+    "limitations": "仅资料登记；未执行数据库，尚未验证 Bug 是否存在。"
+  },
+  "requirements": [
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "内置SRS4326/4230可用及对应ST_Transform实现支持",
+    "保留原始整数常量与函数诊断，不能提前在客户端窄化"
+  ],
+  "transformations": [
+    "无 SQL 转换；仅将只读原文核对结果登记为未完成项。"
+  ],
+  "blockers": [
+    "该分片已写56/61份后中断；最后progress记录reading batch6中的6份均已完成，因此日志不能定位触发报告。当前编号属于未完成清单，不表示其本身触发限制。",
+    "正文自包含；未要求安装新SRS或插件。",
+    "尚未整理脚本；若目标版不支持相关转换或SRS不可用，应记环境/能力前置失败，不判复现。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮无脚本、无实际执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮无脚本、无实际执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮无脚本、无实际执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮无脚本、无实际执行。"
+  },
+  "source_reading": "本地保存的完整描述、How to repeat、建议与评论；未访问外部链接或附件，不生成SQL。",
+  "preparation_assessment": {
+    "sql_completeness": "unavailable",
+    "oracle_sufficiency": "unavailable",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "other",
+      "detail": "独立测试实例",
+      "requires_review": true
+    },
+    {
+      "kind": "other",
+      "detail": "保存完整SQL、配置、输出与错误日志",
+      "requires_review": true
+    },
+    {
+      "kind": "other",
+      "detail": "内置SRS4326/4230可用及对应ST_Transform实现支持",
+      "requires_review": true
+    },
+    {
+      "kind": "other",
+      "detail": "保留原始整数常量与函数诊断，不能提前在客户端窄化",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [
+    {
+      "point": "正文自包含；未要求安装新SRS或插件。",
+      "evidence": "cmain, c560395；见受中断批次资料登记.json 的 source_material_presence。",
+      "needed": "后续另行完成对应脚本与逐条核验；本轮不重试受阻的生成步骤。"
+    },
+    {
+      "point": "尚未整理脚本；若目标版不支持相关转换或SRS不可用，应记环境/能力前置失败，不判复现。",
+      "evidence": "cmain, c560395；见受中断批次资料登记.json 的 source_material_presence。",
+      "needed": "后续另行完成对应脚本与逐条核验；本轮不重试受阻的生成步骤。"
+    }
+  ],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "空间转换参数范围检查与结果完整性问题；无持久对象、文件访问或账户操作，本轮不执行。"
+    ],
+    "restriction": {
+      "scope": "static_completion_2 SQL preparation turn",
+      "report_specific_trigger_identified": false,
+      "reported_message": "This content was flagged for possible cybersecurity risk.",
+      "failure_step": "该分片已写56/61份后中断；最后progress记录reading batch6中的6份均已完成，因此日志不能定位触发报告。当前编号属于未完成清单，不表示其本身触发限制。",
+      "action": "只读资料登记，不生成/改写SQL，不重试受阻步骤。"
+    }
+  },
+  "source_material_presence": {
+    "schema": "纯空间标量函数，无需自建表。",
+    "data": "小POINT几何、SRID4326/4230及越界整数常量完整。",
+    "execution_sequence": "目标SRID越界的两种转换，与相同范围参数在ST_GeomFromText中的受控拒绝对照；记录warnings与实际结果SRID。",
+    "expected_behavior_and_oracle": "目标SRID超32位范围应按范围规则拒绝，不能静默截成4230/1；正常SRS缺失诊断与范围错误需要分开。",
+    "cleanup": "本次只读登记未生成/核验清理脚本；后续需按所选核心/扩展变体分别列出对象与会话设置恢复。"
+  },
+  "preparation_note": "此记录用于保证357份范围有去向；不能将覆盖登记计作脚本完成。限制只定位到分片，未识别具体触发报告。"
+}

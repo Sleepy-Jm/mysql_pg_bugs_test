@@ -1,0 +1,22 @@
+{
+  "report_id": "111483",
+  "title": "Different truncated result between select and delete",
+  "task_ids": [
+    "mysql-111483-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\6490c6e5107d_bug_111483.html",
+  "source_sha256": "6490c6e5107dabe6d4538f8da3b882c17f295fcec68360054069a8cad295dac5",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThe truncation between double and string performs differently for predicates in select and delete. \nWhen select with predicate `1e0 + '--1'`, it truncates string '--1' and returns 1e0. But delete with the same predicate reports a error and can't delete 1e0.\n\nHow to repeat:\ninit:\ncreate table t (a double);\ninsert into t values(1e0);\n\nselect * from t0 where a = 1e0 + \"--1\"; -- return 1e0, i.e. 1\ndelete from t0 where a = 1e0 + \"--1\"; -- report ERROR 1292 (22007): Truncated incorrect DOUBLE value: '--1'"
+    },
+    {
+      "anchor": "c533764",
+      "text": "Hi Mr. Weng,\n\nThank you for your bug report.\n\nHowever, it is not a bug.\n\nIn SELECT, MySQL does its best to accommodate two completely different data types.being DOUBLE and CHAR / VARCHAR. This SELECT usually returns a warning, when that (warning) command is executed. That is because SELECT is a read-only statement and can not change data.\n\nHowever, with DELETE, more strict typing is required in order to prevent the erasure by mistake.\n\nNot a bug."
+    }
+  ]
+}

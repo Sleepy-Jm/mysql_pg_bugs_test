@@ -1,0 +1,74 @@
+{
+  "report_id": "33085",
+  "title": "Stored functions crash server when used in select list and group by",
+  "source_sha256": "79f6fc8f7e1df8ce13ef0fa4df33069d72da796d3c66086a9052a0baf1f7cc63",
+  "source_anchors": [
+    "cmain",
+    "c146848"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "3374391c9f9137c5d82ee9342de18c1e39bd15b7c19736816c60614e06753640"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "19e91165bbdc663db574b5ce4d2214fc56099cb6b91f8ca946d2672a083411c3"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "f1(INT) 原函数 + t1(i INT)"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "1,2 两行"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "常量 f1(1) 分组返回 (1,2)；列参数对照返回 (1,1),(2,1)；异常：崩溃，或结果不符合分组关系"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "常量 f1(1) 分组返回 (1,2)；列参数对照返回 (1,1),(2,1)",
+    "failure": "崩溃，或结果不符合分组关系",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "CREATE ROUTINE权限",
+    "必要时配置log_bin_trust_function_creators",
+    "存储函数创建权限；允许 NOT DETERMINISTIC NO SQL 函数"
+  ],
+  "transformations": [
+    "补列参数原文对照；补 cleanup"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "存储函数和GROUP BY存在于四个目标；目标影响未知可由运行确认。 本轮尚未执行。",
+    "8.0.33": "存储函数和GROUP BY存在于四个目标；目标影响未知可由运行确认。 本轮尚未执行。",
+    "8.0.34": "存储函数和GROUP BY存在于四个目标；目标影响未知可由运行确认。 本轮尚未执行。",
+    "8.0.35": "存储函数和GROUP BY存在于四个目标；目标影响未知可由运行确认。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain, c146848 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

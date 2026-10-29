@@ -1,0 +1,38 @@
+{
+  "report_id": "110011",
+  "title": "inconsistent behavior with group by and order by",
+  "task_ids": [
+    "mysql-110011-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\c0358804f8e0_bug_110011.html",
+  "source_sha256": "c0358804f8e0bdc7e9f5f26a256ea7302300b34b1d4430aac02561775ea00b50",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nGROUP BY monthname([value])\nORDER BY month([value]);\n\nand \n\nGROUP BY dayname([value])\nORDER BY weekday([value]);\n\nWorks as expected in 8.0.31, does not appear to work in 8.0.32\n\nHow to repeat:\nTry this in 8.0.32\n\nuse sakila;\n\nselect monthname(payment_date), sum(amount)\nfrom payment\ngroup by monthname(payment_date)\norder by month(payment_date);\n\nand \n\nselect dayname(payment_date), sum(amount)\nfrom payment\ngroup by dayname(payment_date)\norder by weekday(payment_date);"
+    },
+    {
+      "anchor": "c529769",
+      "text": "Hi Mr. Macarty,\n\nThank you for your bug report.\n\nPlease, provide us with a full test case, including the table(s), so that we can attempt to reproduce what you are observing.\n\nWaiting on your feedback."
+    },
+    {
+      "anchor": "c529771",
+      "text": "use sakila;\n\nselect monthname(payment_date), sum(amount)\nfrom payment\ngroup by monthname(payment_date)\norder by month(payment_date);"
+    },
+    {
+      "anchor": "c529809",
+      "text": "Hi Mr. Macarty,\n\nWe used ONLY_FULL_GROUP_BY, since this is defined by standards and got the following results:\n\nmysql> select payment_date, monthname(payment_date), sum(amount) from payment group by monthname(payment_date) order by month(payment_date);\n+---------------------+-------------------------+-------------+\n| payment_date        | monthname(payment_date) | sum(amount) |\n+---------------------+-------------------------+-------------+\n| 2006-02-14 15:16:03 | February                |      514.18 |\n| 2005-05-25 11:30:37 | May                     |     4823.44 |\n| 2005-06-15 00:54:12 | June                    |     9629.89 |\n| 2005-07-08 03:17:05 | July                    |    28368.91 |\n| 2005-08-01 08:51:04 | August                  |    24070.14 |\n+---------------------+-------------------------+-------------+\n5 rows in set (0.22 sec)\n\nmysql> select payment_date, dayname(payment_date), sum(amount) from payment group by monthname(payment_date) order by month(payment_date);\n+---------------------+-----------------------+-------------+\n| payment_date        | dayname(payment_date) | sum(amount) |\n+---------------------+-----------------------+-------------+\n| 2006-02-14 15:16:03 | Tuesday               |      514.18 |\n| 2005-05-25 11:30:37 | Wednesday             |     4823.44 |\n| 2005-06-15 00:54:12 | Wednesday             |     9629.89 |\n| 2005-07-08 03:17:05 | Friday                |    28368.91 |\n| 2005-08-01 08:51:04 | Monday                |    24070.14 |\n+---------------------+-----------------------+-------------+\n5 rows in set (0.23 sec)\n\nWhat results do you get with the queries like above ???\n\nNext, what did you set your sql_mode to ?????\n\nWe are waiting on your feedback."
+    },
+    {
+      "anchor": "c529834",
+      "text": "I see. So is ONLY_FULL_GROUP_BY disabled by default in 8.0.32?"
+    },
+    {
+      "anchor": "c529870",
+      "text": "Hi Mr. Macarty,\n\nNo, it is not disabled in 8.0.32. All our packages contain binaries whose sql_mode obligatory contains ONLY_FULL_GROUP_BY.\n\nOr , as it is written in our Reference Manual:\n\n\"\nThe default SQL mode in MySQL 8.0 includes these modes: ONLY_FULL_GROUP_BY, STRICT_TRANS_TABLES, NO_ZERO_IN_DATE, NO_ZERO_DATE, ERROR_FOR_DIVISION_BY_ZERO, and NO_ENGINE_SUBSTITUTION.\n\n\""
+    }
+  ]
+}

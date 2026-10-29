@@ -1,0 +1,73 @@
+{
+  "report_id": "113256",
+  "title": "DATA_FREE displayed wrong when checking \"PARTITIONS\" table",
+  "source_sha256": "f5ed0ddbcbef2ce4f158fec11925cb80c844671fe22fe29e7adb6381fa4eff47",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "6bfd9a5d5ba7dada7e6dd1331edec55c4cbd6569a793e1b963f8c4de21b40078"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "d921d4af1c0cf7453f102e10848504da931cec9c4abe7013589a79c0ab37a472"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原两个分区 temp_table"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "1..40000，合成过程忠实代替原 shell 循环"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "DATA_FREE 的表级估算与分区级统计是否须严格相等需要契约确认，不能单凭原数值差异自动判 bug"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "对齐统计时间后核对分区 DATA_FREE 汇总与表级值",
+    "failure": "现有报告出现各分区0而表级4194304，需按统计口径确认",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "InnoDB分区",
+    "相同统计时间点",
+    "建议 autocommit=1；需记录加载方式改变可能影响页布局，原数值非固定期望"
+  ],
+  "transformations": [
+    "shell 逐次 INSERT 改为完整存储过程循环；显式关闭统计缓存并 ANALYZE 作为对齐控制"
+  ],
+  "blockers": [
+    "DATA_FREE 的表级估算与分区级统计是否须严格相等需要契约确认，不能单凭原数值差异自动判 bug"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0支持相同信息模式和分区功能，待执行验证。 本轮尚未执行。",
+    "8.0.33": "目标8.0支持相同信息模式和分区功能，待执行验证。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持相同信息模式和分区功能，待执行验证。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

@@ -1,0 +1,129 @@
+{
+  "report_id": "114060",
+  "source_sha256": "8365723f1fe723291228a86edf1e947335e17eaef16d425cef3d53cd0af65fdd",
+  "tasks": [
+    {
+      "task_id": "mysql-114060-8.0.32",
+      "report_id": "114060",
+      "title": "Unreasonable SQL Error (1054)",
+      "target_version": "8.0.32",
+      "adjacent_comparison_version": "8.0.31",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=114060",
+      "source_snapshot_from_plan_root": "原文快照/bug_114060.html",
+      "source_anchors": [
+        "cmain"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain"
+        ],
+        "reason": "无表嵌套派生聚合LEFT JOIN用例完整，较早目标可检查错误1054。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "无需持久表，记录optimizer_switch与固定当前时间以便结果可解释。",
+        "steps": "执行cmain完整DATE(dt2)派生表过滤查询。",
+        "oracle": "别名在定义的派生输出中可见，不应错误报告Unknown column；结果是否为空受日期条件影响不作异常。",
+        "requirements": [
+          "同SQL模式"
+        ],
+        "target_applicability": "8.0.33已报告正常，只保留8.0.32探索，后续目标需复发依据。"
+      },
+      "source_environment": {
+        "OS": "Ubuntu",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server"
+      },
+      "explicit_requirements": [
+        "同SQL模式"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    }
+  ],
+  "source": {
+    "id": "114060",
+    "title": "Unreasonable SQL Error (1054)",
+    "header": {
+      "Bug #114060": "Unreasonable SQL Error (1054)",
+      "Submitted": "20 Feb 2024 10:13",
+      "Modified": "20 Feb 2024 13:42",
+      "Reporter": "Eugeny Nt",
+      "Email Updates": "",
+      "Status": "Can't repeat",
+      "Impact on me": "None",
+      "Category": "MySQL Server",
+      "Severity": "S3 (Non-critical)",
+      "Version": "8.0.28",
+      "OS": "Ubuntu",
+      "Assigned to": "",
+      "CPU Architecture": "Any"
+    },
+    "comments": [
+      {
+        "anchor": "cmain",
+        "date": "20 Feb 2024 10:13",
+        "author": "Eugeny Nt",
+        "text": "Description:\nI cannot execute my query because of error like \"/* SQL Error (1054): Unknown column 'tmp_24.dt2' in 'on clause' */\".\n\nI made a simple example how to reproduce the bug. It works on 8.0.33, but not on 8.0.28\n\nHow to repeat:\nSELECT *\nFROM (\n\tSELECT DATE(`dt2`) AS `dt3` \n\tFROM (\n\t\tSELECT * FROM (\n\t\t\tSELECT 1 AS `c1`, 1 AS `c2` \n\t\t) t1\n\t\tLEFT JOIN (\n\t\t\tSELECT `f1`, `f2`, MAX(`dt`) AS `dt2` \n\t\t\tFROM (\n\t\t\t\tSELECT 1 AS `f1`, 1 AS `f2`, NOW() AS `dt`\n\t\t\t) tmp_23 \n\t\t\tGROUP BY `f1`, `f2`\n\t\t) tmp_24 \n\t\tON ((`c1` <=> `f1`) AND (`c2` <=> `f2`))\n\t) tmp_25\n) tmp_26\nWHERE `dt3` < '2024-02-05'"
+      },
+      {
+        "anchor": "c540666",
+        "date": "20 Feb 2024 11:13",
+        "author": "MySQL Verification Team",
+        "text": "Hi Mr. Nt,\n\nThank you very much for your bug report.\n\nHowever, we are not able to repeat it with 8.0.36:\n\nSELECT *\n     FROM (\n       SELECT DATE(`dt2`) AS `dt3`\n       FROM (\n         SELECT * FROM (\n           SELECT 1 AS `c1`, 1 AS `c2`\n         ) t1\n         LEFT JOIN (\n           SELECT `f1`, `f2`, MAX(`dt`) AS `dt2`\n           FROM (\n             SELECT 1 AS `f1`, 1 AS `f2`, NOW() AS `dt`\n           ) tmp_23\n           GROUP BY `f1`, `f2`\n         ) tmp_24\n         ON ((`c1` <=> `f1`) AND (`c2` <=> `f2`))\n       ) tmp_25\n     ) tmp_26\n     WHERE `dt3` < '2024-02-05';\n\nEmpty set (0.03 sec)\n\nWe also ran \"SHOW WARNINGS\" and we did not get a single warning.\n\nCan't repeat."
+      },
+      {
+        "anchor": "c540669",
+        "date": "20 Feb 2024 12:50",
+        "author": "Eugeny Nt",
+        "text": "I reported MySQL 8.0.28 version."
+      },
+      {
+        "anchor": "c540671",
+        "date": "20 Feb 2024 13:32",
+        "author": "MySQL Verification Team",
+        "text": "Hi,\n\nMySQL 8.0.28 is not a version. MySQL 8.0.28 is a bug fix release, just like 8.0.36 is a bug fix release.\n\nHence, we only test with the latest release, since upgrading within 8.0 is trivial."
+      },
+      {
+        "anchor": "c540674",
+        "date": "20 Feb 2024 13:42",
+        "author": "Eugeny Nt",
+        "text": "Ok, I see. Thank you."
+      }
+    ],
+    "targets": {
+      "8.0.33": {
+        "field": false,
+        "hits": [
+          {
+            "anchor": "cmain",
+            "author": "Eugeny Nt",
+            "snippets": [
+              " SQL Error (1054): Unknown column 'tmp_24.dt2' in 'on clause' */\".  I made a simple example how to reproduce the bug. It works on 8.0.33, but not on 8.0.28  How to repeat: SELECT * FROM ( \tSELECT DATE(`dt2`) AS `dt3`  \tFROM ( \t\tSELECT * FROM ( \t\t\tSELECT 1 AS `c1`, 1 AS `c2`  \t\t) t1 \t\tLEFT JOIN ( \t\t\tSELECT `f1`, `f2`, MAX(`dt`) AS `dt2"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

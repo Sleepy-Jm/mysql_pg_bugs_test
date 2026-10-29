@@ -1,0 +1,82 @@
+{
+  "report_id": "110825",
+  "title": "Explicit COLLATE clause output in SHOW CREATE TABLE incorrectly",
+  "source_sha256": "3799b4f4cd81398b97a983941da59c8e6e4c273caa373b20f062b3a0cb2df345",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "eed74b1a4f195751c2a45c63aa05f9acc2bf473b833c4bc2c0f0260751c1ff5e"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "ec37d576a39fc7b49128302f366de6359943def32b90cac06c4f0ee790293cc6"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t(v VARCHAR100 NOT NULL) InnoDB默认utf8mb4/utf8mb4_unicode_ci，列未显式指定字符集。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。SHOW CREATE后以其输出重建，再次SHOW CREATE并比较列选项；保留每次原DDL。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "字符集/排序规则元数据应一致；SHOW CREATE 两次是否逐步增加显式 CHARACTER SET 单列为DDL序列化差异，不当数据错误。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "metadata_difference",
+    "expected": "字符集/排序规则元数据应一致；SHOW CREATE 两次是否逐步增加显式 CHARACTER SET 单列为DDL序列化差异，不当数据错误。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "独立库",
+    "记录数据库默认字符集"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。",
+    "按源示例重建第二DDL，非动态执行输出；记录此局限。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0具有相同DDL展示及字符集继承流程，无外部数据依赖。 本轮仅静态准备。",
+    "8.0.34": "目标8.0具有相同DDL展示及字符集继承流程，无外部数据依赖。 本轮仅静态准备。",
+    "8.0.35": "目标8.0具有相同DDL展示及字符集继承流程，无外部数据依赖。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "t(v VARCHAR100 NOT NULL) InnoDB默认utf8mb4/utf8mb4_unicode_ci，列未显式指定字符集。",
+    "steps": "SHOW CREATE后以其输出重建，再次SHOW CREATE并比较列选项；保留每次原DDL。",
+    "oracle": "结构元数据应保持一致；展示不稳定单列为序列化现象，不未经验证声称数据错误。",
+    "requirements": [
+      "独立库",
+      "记录数据库默认字符集"
+    ],
+    "target_applicability": "目标8.0具有相同DDL展示及字符集继承流程，无外部数据依赖。"
+  }
+}

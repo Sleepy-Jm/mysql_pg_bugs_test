@@ -1,0 +1,54 @@
+{
+  "report_id": "113562",
+  "title": "COLLATION behaves differently if set on CREATE TABLE vs ALTER TABLE",
+  "task_ids": [
+    "mysql-113562-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\2d8211691dc4_bug_113562.html",
+  "source_sha256": "2d8211691dc4889d2596f43a9ba2b46af5a4e4b51c54ebc2176aaff4bc9bede8",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nSorting behaves differently when the COLLATE setting for a table is set on CREATE TABLE DDL or via ALTER TABLE post creation of a table.\n\nExample: \n\nCREATE TABLE IF NOT EXISTS bad ( col varchar(512) ) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;\nCREATE TABLE IF NOT EXISTS good ( col varchar(512) );\nALTER TABLE good CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;\n\nSorting by column `col` will behave differently in the `good` vs `bad` table.\n\nHow to repeat:\nhttps://gist.github.com/joaomneto/c27c6fb98c0a741e3e59be0aae23a3b5\n\nCreate both tables:\n\n```\nCREATE TABLE IF NOT EXISTS bad ( col varchar(512) ) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;\nCREATE TABLE IF NOT EXISTS good ( col varchar(512) );\nALTER TABLE good CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;\n```\n\nInsert test data:\n\n```\nINSERT INTO good (col) VALUES ('tag_1'), ('tag_4'), ('tag.x');\nINSERT INTO bad (col) VALUES ('tag_1'), ('tag_4'), ('tag.x');\n```\n\nSelect data sorted by column `col`\n\n```\nSELECT col FROM good GROUP BY col ORDER BY col DESC;\nSELECT col FROM bad GROUP BY col ORDER BY col DESC;\n```\n\nFirst select on the good table will produce:\n\n```\ntag.x\ntag_4\ntag_1\n```\n\nSecond select on the bad table will produce:\n\n```\ntag_4\ntag_1\ntag.x\n```"
+    },
+    {
+      "anchor": "c539462",
+      "text": "This behaviour does not occur in MySQL 5.7."
+    },
+    {
+      "anchor": "c539466",
+      "text": "Hello Joao Neto,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c539493",
+      "text": "Posted by developer:\n \nNot a bug. In 5.7 those table would be equal, but in 8.0 and later they will not.\n\nmysql> show create table bad\\G\n*************************** 1. row ***************************\n       Table: bad\nCreate Table: CREATE TABLE `bad` (\n  `col` varchar(512) COLLATE utf8mb4_general_ci DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci\n1 row in set (0,01 sec)\n\nmysql> show create table good\\G\n*************************** 1. row ***************************\n       Table: good\nCreate Table: CREATE TABLE `good` (\n  `col` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci\n1 row in set (0,00 sec)\n\nthe reason is that utfmb4 has a different deafult collation in 8.0 and later than in 5.7, and in the two collations, '_' and '.' collates differently:\n\nmysql> select '.' > '_' collate utf8mb4_0900_ai_ci;\n+--------------------------------------+\n| '.' > '_' collate utf8mb4_0900_ai_ci |\n+--------------------------------------+\n|                                    1 |\n+--------------------------------------+\n1 row in set (0,00 sec)\n\nmysql> select '.' > '_' collate utf8mb4_general_ci;\n+--------------------------------------+\n| '.' > '_' collate utf8mb4_general_ci |\n+--------------------------------------+\n|                                    0 |\n+--------------------------------------+\n1 row in set (0,00 sec)\n\n(Note that in the given example '.' is used before 'x' in the string 'tag.x')."
+    },
+    {
+      "anchor": "c539495",
+      "text": "Posted by developer:\n \nThis is expected behavior. utf8mb4 has different default collations in 5.7 vs 8.0 and later. See detailed explanation in previous comment."
+    },
+    {
+      "anchor": "c539509",
+      "text": "I understand that there is a different default collation. But I am forcing the collation to utf8mb4_general_ci, and I should be able to do that both via create or alter table. But when doing via create table I get a different sorting behaviour than if I do it via an alter table."
+    },
+    {
+      "anchor": "c539536",
+      "text": "Sorry, I read your comment more attentively. Why on the bad table does the column have a different collation than what is set on the table?"
+    },
+    {
+      "anchor": "c539537",
+      "text": "Sorry, I mean on the `good` table"
+    },
+    {
+      "anchor": "c539540",
+      "text": "Posted by developer:\n \nThe statement\n\n    ALTER TABLE good CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;\n\nwill not change the character set nor the collation of any existing column in the table. The statement will change the default charset and collation of the table, which will be applied as default charset/collation to new columns added to the table. If you want to change the collation of the existing column \"col\", you need to do:\n\n    ALTER TABLE good MODIFY COLUMN col varchar(512) COLLATE utf8mb4_general_ci;"
+    },
+    {
+      "anchor": "c539585",
+      "text": "Oh. I understand now. Thank you."
+    }
+  ]
+}

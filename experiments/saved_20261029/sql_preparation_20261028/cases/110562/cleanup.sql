@@ -1,0 +1,3 @@
+-- MySQL report #110562; source anchors: cmain, c531648
+-- Static preparation only; not executed. Use a fresh isolated schema/instance as specified in case.json.
+-- No persistent objects.

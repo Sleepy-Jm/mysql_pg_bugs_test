@@ -1,0 +1,112 @@
+{
+  "report_id": "111180",
+  "title": "binlog rotate will cause query missing in slow log",
+  "source_sha256": "14f9e1e011031d94bf0d6ade67b37495d603bb7305cc858fb78d90e562bf5d13",
+  "source_anchors": [
+    "cmain",
+    "c532956",
+    "c532962",
+    "c532963"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "status": "needs_safety_review",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "535f7e446a8de8fb11f325d1008d8f831d2603bc664002f544b70c18322a4681"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "7add38ad7fb00a38db8e8886f4806b1a2e264077a4cba5a70d6f70f52202dd39"
+    },
+    {
+      "path": "connection_b.sql",
+      "role": "second_connection",
+      "sha256": "5fdc48f9de3a95dad95d3ccfdac26939d324b9de4ac6f81f5c07e0085abe7ba3"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(id INT,name VARCHAR(20))，procedure insert_test。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原文循环1..100000，未减少行数。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "阶段1在管理员连接A运行 reproducer.sql，并保留其旧全局值变量；阶段2新建连接B选中同一schema，运行 connection_b.sql，独立外部计时每条UPDATE；最后回连接A运行cleanup.sql。本轮不建立连接、不计时执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "仅对外部独立计时超过1秒的 UPDATE 要求其SQL出现在 mysql.slow_log。小binlog轮转不应遗漏第一条慢UPDATE；未超过阈值不是bug。c532963 的8.0.33否定结果保留，不外推其他目标。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "logging_difference",
+    "expected": "仅对外部独立计时超过1秒的 UPDATE 要求其SQL出现在 mysql.slow_log。小binlog轮转不应遗漏第一条慢UPDATE；未超过阈值不是bug。c532963 的8.0.33否定结果保留，不外推其他目标。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "GTID/binlog设置权限",
+    "独立查询计时"
+  ],
+  "transformations": [
+    "移除MTR框架命令，拆分两连接 SQL；修正mysql客户端 DELIMITER格式。",
+    "增加旧全局变量保存及恢复；GTID/binlog启动条件仅记录，不执行配置。"
+  ],
+  "blockers": [
+    "更改实例全局日志设置，必须审定一次性实例及日志保留/销毁范围。"
+  ],
+  "version_notes": {
+    "8.0.32": "仅未有直接否定的8.0.32探索，8.0.34/35待补复发证据。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c532956, c532962, c532963 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "原MTR have_debug；GTID ON、ROW binlog、log_bin 与 server_id 条件来自c532956/c532962。",
+      "requires_review": true
+    },
+    {
+      "kind": "multi_connection",
+      "detail": "新连接B必须继承 long_query_time=1；A保存恢复值。",
+      "requires_review": true
+    },
+    {
+      "kind": "global_configuration",
+      "detail": "改变binlog大小、慢日志和log_output；仅一次性实例，恢复A中的旧值。",
+      "requires_review": true
+    },
+    {
+      "kind": "heavy_resource",
+      "detail": "100000行及binlog日志，真实执行可能数十秒；后续需资源上限。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "更改实例全局日志设置，必须审定一次性实例及日志保留/销毁范围。"
+    ],
+    "restriction": null
+  }
+}

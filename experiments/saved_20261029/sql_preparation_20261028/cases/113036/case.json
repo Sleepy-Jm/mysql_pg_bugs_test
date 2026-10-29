@@ -1,0 +1,86 @@
+{
+  "report_id": "113036",
+  "title": "Assertion Failure in /mysql-8.0.34/sql/field.cc:4318",
+  "source_sha256": "dc2ca4b95d6f13f087efcd83520a9abfa10d4801e8d3a7fbf08a013fbf7c03aa",
+  "source_anchors": [
+    "cmain",
+    "c537920"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "8036bb42009111014994ff472769b411a91c103cec79e4442ef505aecd41ceb8"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "79b35fc2e7e9927a8de06a38ac25917b864f96530d84e6d6d7a779ee76195f5a"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c29 INT,c53 DOUBLE(82,11) DEFAULT原64位常量)，c29索引i0。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "保留首两行表达式输入及后两行DEFAULT，不把浮点默认常量转成近似短数。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "不得Field_double::val_real断言或进程异常；原无ORDER BY的LIMIT1不能用于跨次精确值等价判定，受控SQL错误单独记。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t0;"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "不得Field_double::val_real断言或进程异常；原无ORDER BY的LIMIT1不能用于跨次精确值等价判定，受控SQL错误单独记。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "目标debug构建"
+  ],
+  "transformations": [
+    "完整保留首段五条SQL；仅移去GDB/历史说明。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0.32/.33具备这些功能；8.0.35受影响只是线索。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0.32/.33具备这些功能；8.0.35受影响只是线索。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c537920 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/113036.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "源目标debug；DOUBLE(M,D)弃用警告不是复现。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

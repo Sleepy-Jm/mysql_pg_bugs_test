@@ -1,0 +1,86 @@
+{
+  "report_id": "92556",
+  "title": "[ERROR] [MY-011825] [InnoDB] ... the row size .. for a record on index leaf page",
+  "source_sha256": "14556f5c0d4d5f6fa4b5ddd9389fa73bdc2f43a2d7bfb62c502ce7404f71583e",
+  "source_anchors": [
+    "cmain",
+    "c479861",
+    "c479885"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "c6894cdbfa5606bdb44ceec77fdb246c0dc9c1073e80893c7d716e2824cdb8d8"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "1aab4a581d27e539d89033b565be84bba0f35b64c2d8eecabb41739a86f014c1"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "使用cmain完整c0至c198表定义，InnoDB ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=1，记录页大小及sql_mode。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。执行CREATE TABLE并同时采集客户端1118错误和InnoDB日志。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "允许拒绝过宽行；对比客户端1118与错误日志的页内大小限制是否一致。不能把1118拒绝或BLOB零字节前缀本身判为缺陷。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "允许拒绝过宽行；对比客户端1118与错误日志的页内大小限制是否一致。不能把1118拒绝或BLOB零字节前缀本身判为缺陷。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "隔离库",
+    "错误日志读取",
+    "记录 innodb_page_size、innodb_strict_mode、sql_mode，并可读取错误日志。"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持压缩InnoDB与给定类型，DDL自包含；只待确认错误信息是否仍不准确。 本轮仅静态准备。",
+    "8.0.33": "目标8.0支持压缩InnoDB与给定类型，DDL自包含；只待确认错误信息是否仍不准确。 本轮仅静态准备。",
+    "8.0.34": "目标8.0支持压缩InnoDB与给定类型，DDL自包含；只待确认错误信息是否仍不准确。 本轮仅静态准备。",
+    "8.0.35": "目标8.0支持压缩InnoDB与给定类型，DDL自包含；只待确认错误信息是否仍不准确。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c479861, c479885 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "使用cmain完整c0至c198表定义，InnoDB ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=1，记录页大小及sql_mode。",
+    "steps": "执行CREATE TABLE并同时采集客户端1118错误和InnoDB日志。",
+    "oracle": "允许拒绝过宽行；检查客户端8126限制与实际压缩叶页498限制是否误导，不将0字节BLOB前缀或拒绝建表本身判为错误；崩溃另记。",
+    "requirements": [
+      "隔离库",
+      "错误日志读取"
+    ],
+    "target_applicability": "目标8.0支持压缩InnoDB与给定类型，DDL自包含；只待确认错误信息是否仍不准确。"
+  }
+}

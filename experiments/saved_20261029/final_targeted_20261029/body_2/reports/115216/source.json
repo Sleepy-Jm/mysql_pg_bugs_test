@@ -1,0 +1,26 @@
+{
+  "report_id": "115216",
+  "title": "range_optimizer_max_mem_size calculation on with large IN queries",
+  "task_ids": [
+    "mysql-115216-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\490977d961bb_bug_115216.html",
+  "source_sha256": "490977d961bbd682c926e5eac7e2ab0dda1102b2f8cfcbd6318d395ec5d86d55",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nAfter upgrading from 5.7 to 8.0.34 and see a similar issue we found that queries with large IN clause ran a full table scan.  Table has more than 140 million rows, so a full table scan causes catastrophic CPU utilization.\n\nMySQL 5.7\nrange_optimizer_max_mem_size = 8388608\nmy_large_table collation: general_ci\n\nEXPLAIN SELECT * FROM my_large_table WHERE id IN (1, 2, 3, ... 10000);\n-- type: range\n-- key: PRIMARY\n-- extra: Using where\n\nMySQL 8.0.34\nrange_optimizer_max_mem_size = 8388608\nmy_large_table: utf8mb3_general_ci\n\nEXPLAIN SELECT * FROM my_large_table WHERE id IN (1, 2, 3, ... 10000);\n-- type: ALL\n-- key: NULL\n-- Using where; Using parallel query (30 columns, 0 filters, 1 exprs; 0 extra)\n\nUpdating `range_optimizer_max_mem_size=0` on MySQL 8.0.34 of course fixes this.\n\nAccording to the documentatation, 10,000 items in the IN clause should result in \n\n230 bytes * 10000 (IN CLAUSE ids) = 2,300,000.  This is 6,088,608 bytes under the range_optimizer_max_mem_size value.\n\nThis ticket indicates that the bug exists in MySQL documentation.\n\nhttps://bugs.mysql.com/bug.php?id=115062\n\nHowever, something changed from 5.7 to 8.  I'm thinking it's not a bug in the documentation, but rather a bug in the way MySQL 8 estimate the amount of memory needed to process a range expression.\n\nI found others with the same issue:\nhttps://dba.stackexchange.com/questions/325361/performance-issues-after-upgrading-from-mys... https://dba.stackexchange.com/a/294729\n\nHow to repeat:\n- Create a table with more than 10,000 rows\n- Query the table using an IN clause with 10,000 ids\n\nNote: for our table, if I decrease the number of IDs in the IN clause to 6,418 then range is used, but 6,419 IDs causes a full table scan."
+    },
+    {
+      "anchor": "c543951",
+      "text": "upgrading severity"
+    },
+    {
+      "anchor": "c543952",
+      "text": "Hi Mr. Renieish,\n\nThank you for your bug report.\n\nHowever, we can not further process your report.\n\nFirst of all, this is a forum for reports with the repeatable test cases. Each of those test cases consists of a set of SQL statements that always leads to the problem in question.\n\nNext, we can not verify performance degradation reports, like yours. First of all, There are so many new features developed between 5.7 and 8.0, with literally thousands of patches pushed, so that it is not possible to find the one that lead to the great dip in the performance.\n\nHence, you can compare, for example, 8.0.30 with 8.0.37 or any two previous releases.\n\nNext, you have to  specify what is the performance degradation that you measured between two 8.0 releases.\n\nI hope that we were clear enough.\n\nWe are waiting on your full feedback."
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "report_id": "110194",
+  "title": "DD upgrade leaves dictonary tables in temporary schema dd_upgrade_targets_80030",
+  "task_ids": [
+    "mysql-110194-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\457fa95563ca_bug_110194.html",
+  "source_sha256": "457fa95563cae592f285e100e5b3b4e40d582df975d7fb07a2eb81c3b1d8e4bd",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nAfter upgrading DD tables, server leaves them in the temporary schema 'dd_upgrade_targets_80XX' XX is the server version that is used for upgrade. \n\nAfter upgrade, for example catalogs table is in dd_upgrade_targets_80XX\n\n        \"type\": 1,\n        \"id\": 363,\n        \"object\":\n                {\n    \"mysqld_version_id\": 80030,\n    \"dd_version\": 80023,\n    \"sdi_version\": 80019,\n    \"dd_object_type\": \"Table\",\n    \"dd_object\": {\n        \"name\": \"catalogs\",\n        \"mysql_version_id\": 80030,\n        \"created\": 20230220170946,\n        \"last_altered\": 20230220170946,\n        \"hidden\": 1,\n        \"options\": \"avg_row_length=0;encrypt_type=N;explicit_encryption=0;explicit_tablespace=1;key_block_size=0;keys_disabled=0;pack_record=1;row_type=2;stats_auto_recalc=0;stats_persistent=0;stats_sample_pages=0;\",\n        \"columns\": [\n            {\n                \"name\": \"id\",\n                \"type\": 9,\n                \"is_nullable\": false,\n                \"is_zerofill\": false,\n                \"is_unsigned\": true,\n                \"is_auto_increment\": true,\n                \"is_virtual\": false,\n                \"hidden\": 1,\n                \"ordinal_position\": 1,\n                \"char_length\": 20,\n                \"numeric_precision\": 20,\n                \"numeric_scale\": 0,\n                \"numeric_scale_null\": false,\n                \"datetime_precision\": 0,\n                \"datetime_precision_null\": 1,\n                \"has_no_default\": false,\n                   ....\n             ..\n           ]\n    \"schema_ref\": \"dd_upgrade_targets_80030\",        ----->\n        \"se_private_id\": 1075, \n        \"engine\": \"InnoDB\",\n        \"last_checked_for_upgrade_version_id\": 0,\n        \"comment\": \"\",\n        \"se_private_data\": \"autoinc=0;version=0;\",\n        \"engine_attribute\": \"\",\n        \"secondary_engine_attribute\": \"\",\n        \"row_format\": 2,\n        \"partition_type\": 0,\n        \"partition_expression\": \"\",\n        \"partition_expression_utf8\": \"\",\n        \"default_partitioning\": 0,\n        \"subpartition_type\": 0,\n        \"subpartition_expression\": \"\",\n        \"subpartition_expression_utf8\": \"\",\n\nHow to repeat:\nCreate a datadir using mysql 8.0.22 (or lower is fine too)\nupgrade to 8.0.30\nibd2sdi  ./mysql.ibd |grep \"schema_ref\"\n\n\"schema_ref\"\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"dd_upgrade_targets_80030\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n        \"schema_ref\": \"mysql\",\n\nSuggested fix:\nUpdate the schema_ref at end of upgrade"
+    },
+    {
+      "anchor": "c530275",
+      "text": "# This issue seems to be fixed in latest GA as I'm not longer seeing when upgraded from 8.0.23 -> 8.0.32. Will confirm for reported version before informing this to Satya"
+    },
+    {
+      "anchor": "c530283",
+      "text": "Need help reproducing the bug?"
+    },
+    {
+      "anchor": "c530293",
+      "text": "Hello Satya,\n\nThank you for the report and feedback.\nVerified as described.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c530294",
+      "text": "Interestingly, issue seen only when upgraded from 8.0.22(or lower) to higher(8.0.32 confirmed), where as if you upgrade from 8.0.23 then issue is not seen at least during my tests."
+    },
+    {
+      "anchor": "c531396",
+      "text": "yes, we need version < 8.0.23 because the DD_VERSION didn't change from 8.0.23.\n\nSo a server version < 8.0.23 should be upgraded to the latest."
+    }
+  ]
+}

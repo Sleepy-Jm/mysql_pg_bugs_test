@@ -1,0 +1,42 @@
+{
+  "report_id": "113410",
+  "title": "hang creating InnoDB Cluster",
+  "task_ids": [
+    "mysql-113410-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\9c8c03e8013e_bug_113410.html",
+  "source_sha256": "9c8c03e8013ed7f4d2f4a0cf34e3aa3127f41ff8deea5abdf0f69d87146f6814",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nwhile creating a 4 node InnoDB cluster from scratch,\n3 node cluster is created fine but mysqlsh hangs while attempting to add node 4.\nAttaching a few logs for your convenience.\n\nWorkaround 1: interrupt spinning mysqlsh, shutdown instance 4, restart it, reattempt adding it to cluster. Worked for me\n\nWorkaround 2: instead of sequence in 4.sh, start and add instances one by one,\nshutting down each instance after adding it.\n\nHow to repeat:\nexecute attached script 4.sh"
+    },
+    {
+      "anchor": "c539122",
+      "text": "Hi,\n\nI'm having issues reproducing this with \"normal\" 4 linux servers.\nDid you only managed to reproduce this with \"linux inside windows\" ?\n\nBtw, you are aware that you should always have odd number of servers in innodb cluster?"
+    },
+    {
+      "anchor": "c539125",
+      "text": "atm I'm just testing it so I'm using Linux Windows sandboxes on a single laptop.\nI'm aware that odd number is better though I can't say I'm sure why.\nI hit the spin every now and then like when I was creating a cluster set.\nIt's a slightly annoying feature in that I have to remember to use shorter mysqlsh scripts when adding sandboxes to whichever, essentially add each sandbox using a separate invocation of mysqlsh.\nI wonder what would happen if you try to use real Linux, not under Windows, but still sandboxes, that is, on a single Linux server."
+    },
+    {
+      "anchor": "c539135",
+      "text": "Hi,\n\n>  can't say I'm sure why.\n\nsplit brain detection works much better with odd number of servers\n\n>  wonder what would happen if you try to use real Linux, not under Windows, but still sandboxes, that is, on a single Linux server.\n\nI did test on single Linux server, no issues. \n\nall best"
+    },
+    {
+      "anchor": "c539285",
+      "text": "I'll try to find time to trace mysqlsh so let's keep the bug in needs feedback.\nIt may be something around Windows, WSL and Linux interaction. \nLooks like mysqlsh sends something to mysqld but the latter never receives.\nSo mysqlsh waits for response that never arrives.\nStrange mysqlsh is in a spin whereas I'd expect it to be in some form of polling."
+    },
+    {
+      "anchor": "c539301",
+      "text": "Ok, thanks for checking. It looks like WSL issue from what I can see as with regular Linux setup it works as expected and is pretty well tested."
+    },
+    {
+      "anchor": "c540080",
+      "text": "No feedback was provided for this bug for over a month, so it is\nbeing suspended automatically. If you are able to provide the\ninformation that was originally requested, please do so and change\nthe status of the bug back to \"Open\"."
+    }
+  ]
+}

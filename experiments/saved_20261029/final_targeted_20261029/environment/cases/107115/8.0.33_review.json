@@ -1,0 +1,74 @@
+{
+  "task_id": "mysql-107115-8.0.33",
+  "report_id": "107115",
+  "target_versions": [
+    "8.0.33"
+  ],
+  "official_version_field": "8.0.27, 8.0.28, 8.0.33",
+  "source_url": "https://bugs.mysql.com/bug.php?id=107115",
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\1fc99511caec_bug_107115.html",
+  "source_sha256": "1fc99511caeccf94f525bd6fe8db2488a01231d0ae04b3a51817129d69758ca8",
+  "source_anchors": [
+    "cmain",
+    "c521812",
+    "c521815"
+  ],
+  "source_comments_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\final_targeted_20261029\\environment\\cases\\107115\\source_comments.json",
+  "source_review_complete": true,
+  "review_scope": "Environment necessity and relevant primary-source claims/comments; executable SQL independently checked only for ready items. Long stack frames are retained but not treated as extra setup instructions.",
+  "prior_gaps": [
+    "原文要求SET GLOBAL及原始错误包字节/UTF8边界审查；属于全局状态与错误消息编码专门实验，不纳入普通SQL批次。"
+  ],
+  "ready": false,
+  "actual_executions": 0,
+  "gaps": [
+    "Dedicated runner/environment preflight and complete postchecks not yet available; SQL must be reviewed for that runner before admission."
+  ],
+  "sql_paths": [
+    "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\pending230\\cdebb2732d28_reproducer.sql"
+  ],
+  "cleanup_paths": [],
+  "original_environment": {
+    "actual": [],
+    "runs": [],
+    "requirements": [
+      "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+      "可设置global变量",
+      "能保留错误包文本字节",
+      "一次性实例；SYSTEM_VARIABLES_ADMIN；mysql --force --default-character-set=utf8mb4；保存 stdout/stderr 原始字节"
+    ],
+    "conditions": [
+      {
+        "kind": "global_configuration",
+        "detail": "SQL 含此类操作，需逐条确认真实目的与清理边界：reproducer.sql",
+        "requires_review": true,
+        "basis": "conservative_sql_operation_scan",
+        "requirement_strength": "stated_condition_needs_preflight"
+      }
+    ]
+  },
+  "original_oracle": {
+    "normal": "受控1231且无半个多字节字符",
+    "reported": "1231消息结尾损坏字符",
+    "prerequisites": [
+      "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+      "可设置global变量",
+      "能保留错误包文本字节",
+      "一次性实例；SYSTEM_VARIABLES_ADMIN；mysql --force --default-character-set=utf8mb4；保存 stdout/stderr 原始字节"
+    ],
+    "expected_errors": [],
+    "kind": "error_difference",
+    "source_oracle": {
+      "kind": "error_difference",
+      "expected": "SET 应受控拒绝 1231；保存原始错误字节并以 UTF-8 解码不能产生半个字符",
+      "failure": "错误消息尾部出现损坏的多字节字符；单纯截断长度不算缺陷",
+      "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+    }
+  },
+  "environment_group": "release_error_bytes_global",
+  "build_necessity": "Requires disposable instance with permission for SET GLOBAL ft_boolean_syntax and raw utf8mb4 error capture. Debug version in transcript is incidental: target is malformed multibyte error message, not an assertion. Verify exact 1231 stage and invalid trailing bytes; question marks alone may be a client decoding artifact.",
+  "required_environment": [
+    "Requires disposable instance with permission for SET GLOBAL ft_boolean_syntax and raw utf8mb4 error capture. Debug version in transcript is incidental: target is malformed multibyte error message, not an assertion. Verify exact 1231 stage and invalid trailing bytes; question marks alone may be a client decoding artifact."
+  ],
+  "review_completed_at_utc": "2026-10-29T07:01:59.357954+00:00"
+}

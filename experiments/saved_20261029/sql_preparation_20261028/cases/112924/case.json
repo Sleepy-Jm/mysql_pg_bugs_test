@@ -1,0 +1,109 @@
+{
+  "report_id": "112924",
+  "title": "PSI batch mode assertion error",
+  "source_sha256": "a274c3329f90a39e61521a1384b8af671462ab086c308d478b96d6354f9d2149",
+  "source_anchors": [
+    "cmain",
+    "c537644",
+    "c537833",
+    "c538044",
+    "c538046",
+    "c539248"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "needs_safety_review",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "311565ed7fae3b3d90cec8aa0b7b5ec04389aa10d4b223bf0b2d462590ee3509"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "0cd0684e8c7b16dd40d9a120e9f1ac2ad1252a3c3ba966488dfe71daa96fc91a"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原t3/t7/t0、i4索引、窗口视图t1均保留。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "保留10行t7和全部日期/NULL/VALUES/RAND相关输入；不减少脚本。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "所有前置语句逐条记录后，最终GREATEST查询不得触发m_psi_batch_mode断言。前置建表/插入失败必须标记先决状态不成立，不能跳过后声称复现失败。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "所有前置语句逐条记录后，最终GREATEST查询不得触发m_psi_batch_mode断言。前置建表/插入失败必须标记先决状态不成立，不能跳过后声称复现失败。",
+    "failure": "不应出现报告所述服务器断言/异常退出；受控 SQL 错误须单独记录，连接存活/服务日志而非仅客户端错误作为判据。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "目标debug构建",
+    "记录sql_mode/时区及日期处理"
+  ],
+  "transformations": [
+    "提取完整Run these queries段；配置仅作为执行条件保存，不生成服务安装/重启脚本。"
+  ],
+  "blockers": [
+    "来源配置包含放宽secure-file-priv与实例日志/GTID设置，单列待审；SQL本身不新增文件访问操作。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0具备所需窗口/VALUES等功能；8.3修复不表示8.0回补。 本轮未实测。",
+    "8.0.33": "目标8.0具备所需窗口/VALUES等功能；8.3修复不表示8.0回补。 本轮未实测。",
+    "8.0.34": "目标8.0具备所需窗口/VALUES等功能；8.3修复不表示8.0回补。 本轮未实测。",
+    "8.0.35": "目标8.0具备所需窗口/VALUES等功能；8.3修复不表示8.0回补。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c537644, c537833, c538044, c538046, c539248 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "c537833指定GCC11.4、WITH_DEBUG/ASan/UBSan及Boost1.77。",
+      "requires_review": true
+    },
+    {
+      "kind": "global_configuration",
+      "detail": "c537833配置含server_id=1、GTID ON、enforce_gtid_consistency、utf8mb4_0900_bin、slow_query_log、innodb_extend_and_initialize、secure-file-priv空；同时出现skip-log-bin/log_bin=ON，后续须记录实际有效值，不能猜测。",
+      "requires_review": true
+    },
+    {
+      "kind": "other",
+      "detail": "记录sql_mode、时区及所有前置语句的错误；动态时间/uuid不作为固定结果值。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "来源配置包含放宽secure-file-priv与实例日志/GTID设置，单列待审；SQL本身不新增文件访问操作。"
+    ],
+    "restriction": null
+  }
+}

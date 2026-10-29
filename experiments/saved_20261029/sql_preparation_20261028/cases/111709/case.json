@@ -1,0 +1,76 @@
+{
+  "report_id": "111709",
+  "title": "Error missing tablespace if innodb-validate-tablespace-paths=OFF",
+  "source_sha256": "31c4e36d5a6ec7ac72bfd2a5b21dd0a2fbc92b8b9b9aaa5fa892bf58a8d568ec",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "bd755de88cf368c57378e52d462b3102c60ed1bd25cd5a59f0450489778eb972"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "33165a4cc9b5fb4c9653e38079e1e8e5096dbd086c459a45e96c7457f8226f93"
+    },
+    {
+      "path": "after_restart.sql",
+      "role": "after_restart",
+      "sha256": "df1753b718030da7d0a4efc33d6a464769d53f5f05fca018e8a7b6c3119e3351"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "test 库、ts1 通用表空间、重启后 test.t1"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "不需行数据"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "管理员先执行 reproducer.sql；等待正常停止后用同一实例配置/数据目录，加 --innodb-validate-tablespace-paths=OFF 重启，再执行 after_restart.sql；ON 对照必须从同等新实例重复整个序列。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "正常停库后原文件未移动，OFF 重启后 CREATE TABLE 应成功；异常：已有 ts1 报 1812 找不到表空间"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "本用例要求一次性实例。SQL 清理只清本例对象；运行结束销毁该实例/数据目录恢复全局设置、日志或表空间状态。若未执行，不进行清理。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "正常停库后原文件未移动，OFF 重启后 CREATE TABLE 应成功",
+    "failure": "已有 ts1 报 1812 找不到表空间",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "可重启测试实例",
+    "通用表空间权限",
+    "一次性实例；SHUTDOWN/CREATE TABLESPACE 权限；runner 支持保留数据目录重启"
+  ],
+  "transformations": [
+    "按源文重启边界拆成两个完整 SQL 文件；保留固定 test/ts1 名称限定一次性实例"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标提供该启动加速参数与通用表空间。 本轮尚未执行。",
+    "8.0.34": "目标提供该启动加速参数与通用表空间。 本轮尚未执行。",
+    "8.0.35": "目标提供该启动加速参数与通用表空间。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

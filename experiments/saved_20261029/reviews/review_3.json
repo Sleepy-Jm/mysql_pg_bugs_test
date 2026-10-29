@@ -1,0 +1,3336 @@
+{
+  "reports": {
+    "117409": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读全部评论导航、正文描述和复现段；正向117409全文、117422的c550663全文、117867的完整DDL已展开核对；长堆栈仅读相关段。未执行。",
+      "source_report_sha256": "1a258e40491dbfd4d04a2a2b1995bdf663c04aeaa4a803b2f7c978d3bb45e23b",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain"
+          ],
+          "reason": "两张表的完整DDL、数据与等值连接排序对照均具备；可探索同一等价排序增加filesort的计划现象，不能单凭filesort判定缺陷。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "按cmain建立t1/t2及k索引，插入给定小数据并复制扩展。",
+            "steps": "比较ORDER BY t1.k与ORDER BY t1.k,t2.k两条等价排序的EXPLAIN和重复执行统计；其他加入pk的变体单独记录。",
+            "oracle": "结果应保持相同排序语义；记录冗余filesort/临时表及耗时，计划差异本身不计wrong_result或已确认性能bug。",
+            "requirements": [
+              "固定数据与优化器设置",
+              "保持两条主要查询的等值连接前提"
+            ],
+            "target_applicability": "等值连接、B树索引和ORDER BY在目标版本存在；仅影响及优化行为未知。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain"
+          ],
+          "reason": "两张表的完整DDL、数据与等值连接排序对照均具备；可探索同一等价排序增加filesort的计划现象，不能单凭filesort判定缺陷。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "按cmain建立t1/t2及k索引，插入给定小数据并复制扩展。",
+            "steps": "比较ORDER BY t1.k与ORDER BY t1.k,t2.k两条等价排序的EXPLAIN和重复执行统计；其他加入pk的变体单独记录。",
+            "oracle": "结果应保持相同排序语义；记录冗余filesort/临时表及耗时，计划差异本身不计wrong_result或已确认性能bug。",
+            "requirements": [
+              "固定数据与优化器设置",
+              "保持两条主要查询的等值连接前提"
+            ],
+            "target_applicability": "等值连接、B树索引和ORDER BY在目标版本存在；仅影响及优化行为未知。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain"
+          ],
+          "reason": "两张表的完整DDL、数据与等值连接排序对照均具备；可探索同一等价排序增加filesort的计划现象，不能单凭filesort判定缺陷。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "按cmain建立t1/t2及k索引，插入给定小数据并复制扩展。",
+            "steps": "比较ORDER BY t1.k与ORDER BY t1.k,t2.k两条等价排序的EXPLAIN和重复执行统计；其他加入pk的变体单独记录。",
+            "oracle": "结果应保持相同排序语义；记录冗余filesort/临时表及耗时，计划差异本身不计wrong_result或已确认性能bug。",
+            "requirements": [
+              "固定数据与优化器设置",
+              "保持两条主要查询的等值连接前提"
+            ],
+            "target_applicability": "等值连接、B树索引和ORDER BY在目标版本存在；仅影响及优化行为未知。"
+          }
+        }
+      }
+    },
+    "117422": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读全部评论导航、正文描述和复现段；正向117409全文、117422的c550663全文、117867的完整DDL已展开核对；长堆栈仅读相关段。未执行。",
+      "source_report_sha256": "26e3b77fcccc5df42224090a1191ef123093aab75ea6374ece0fa162df90d854",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain",
+            "c550652",
+            "c550663",
+            "c550664"
+          ],
+          "reason": "两种SLEEP存储过程和slow_log配置完整，能用调用前后时钟检验Start/End；不把Time与Start误当同字段。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "config",
+            "setup": "启用slow_query_log、FILE输出、long_query_time=1及log_slow_extra；建立带消息与不带消息的两个SLEEP(30)过程。",
+            "steps": "按cmain及c550663分别调用，保存调用前后NOW/客户端时间和对应完整慢日志。",
+            "oracle": "Start应对应调用起点、End对应终点；结合约30秒间隔及无消息对照定位偏移。Time字段另记，不以它等于Start作为判错。",
+            "requirements": [
+              "能读取慢日志并修改测试实例配置",
+              "时区一致",
+              "创建过程权限"
+            ],
+            "target_applicability": "来源说明log_slow_extra在8.0.14引入，早于四目标；过程与日志条件可构造，未声称目标已有异常。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain",
+            "c550652",
+            "c550663",
+            "c550664"
+          ],
+          "reason": "两种SLEEP存储过程和slow_log配置完整，能用调用前后时钟检验Start/End；不把Time与Start误当同字段。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "config",
+            "setup": "启用slow_query_log、FILE输出、long_query_time=1及log_slow_extra；建立带消息与不带消息的两个SLEEP(30)过程。",
+            "steps": "按cmain及c550663分别调用，保存调用前后NOW/客户端时间和对应完整慢日志。",
+            "oracle": "Start应对应调用起点、End对应终点；结合约30秒间隔及无消息对照定位偏移。Time字段另记，不以它等于Start作为判错。",
+            "requirements": [
+              "能读取慢日志并修改测试实例配置",
+              "时区一致",
+              "创建过程权限"
+            ],
+            "target_applicability": "来源说明log_slow_extra在8.0.14引入，早于四目标；过程与日志条件可构造，未声称目标已有异常。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain",
+            "c550652",
+            "c550663",
+            "c550664"
+          ],
+          "reason": "两种SLEEP存储过程和slow_log配置完整，能用调用前后时钟检验Start/End；不把Time与Start误当同字段。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "config",
+            "setup": "启用slow_query_log、FILE输出、long_query_time=1及log_slow_extra；建立带消息与不带消息的两个SLEEP(30)过程。",
+            "steps": "按cmain及c550663分别调用，保存调用前后NOW/客户端时间和对应完整慢日志。",
+            "oracle": "Start应对应调用起点、End对应终点；结合约30秒间隔及无消息对照定位偏移。Time字段另记，不以它等于Start作为判错。",
+            "requirements": [
+              "能读取慢日志并修改测试实例配置",
+              "时区一致",
+              "创建过程权限"
+            ],
+            "target_applicability": "来源说明log_slow_extra在8.0.14引入，早于四目标；过程与日志条件可构造，未声称目标已有异常。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain",
+            "c550652",
+            "c550663",
+            "c550664"
+          ],
+          "reason": "两种SLEEP存储过程和slow_log配置完整，能用调用前后时钟检验Start/End；不把Time与Start误当同字段。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "config",
+            "setup": "启用slow_query_log、FILE输出、long_query_time=1及log_slow_extra；建立带消息与不带消息的两个SLEEP(30)过程。",
+            "steps": "按cmain及c550663分别调用，保存调用前后NOW/客户端时间和对应完整慢日志。",
+            "oracle": "Start应对应调用起点、End对应终点；结合约30秒间隔及无消息对照定位偏移。Time字段另记，不以它等于Start作为判错。",
+            "requirements": [
+              "能读取慢日志并修改测试实例配置",
+              "时区一致",
+              "创建过程权限"
+            ],
+            "target_applicability": "来源说明log_slow_extra在8.0.14引入，早于四目标；过程与日志条件可构造，未声称目标已有异常。"
+          }
+        }
+      }
+    },
+    "117758": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读全部评论导航、正文描述和复现段；正向117409全文、117422的c550663全文、117867的完整DDL已展开核对；长堆栈仅读相关段。未执行。",
+      "source_report_sha256": "b75a1cd400862ee53db419d6c39c309fd67f5578dffe0dc411fe628087fec363",
+      "version_results": {
+        "8.0.33": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c551441"
+          ],
+          "reason": "只有生产大库损坏/启动断言，How to repeat明确Unknown，无法据堆栈重建测试。",
+          "missing_material": [
+            "损坏形成过程",
+            "最小数据与触发操作",
+            "排除既有文件损坏或硬件因素"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c551441"
+          ],
+          "reason": "只有生产大库损坏/启动断言，How to repeat明确Unknown，无法据堆栈重建测试。",
+          "missing_material": [
+            "损坏形成过程",
+            "最小数据与触发操作",
+            "排除既有文件损坏或硬件因素"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c551441"
+          ],
+          "reason": "只有生产大库损坏/启动断言，How to repeat明确Unknown，无法据堆栈重建测试。",
+          "missing_material": [
+            "损坏形成过程",
+            "最小数据与触发操作",
+            "排除既有文件损坏或硬件因素"
+          ]
+        }
+      }
+    },
+    "117829": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读全部评论导航、正文描述和复现段；正向117409全文、117422的c550663全文、117867的完整DDL已展开核对；长堆栈仅读相关段。未执行。",
+      "source_report_sha256": "5672e46f3e5f54853f1725db8c2ff73f66e5adc7415b22df9a338cfb40342ddd",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c551607"
+          ],
+          "reason": "5.7 ARM副本偶发purge崩溃，明确不能固定复现，没有SQL负载与数据。",
+          "missing_material": [
+            "可重复负载及数据",
+            "ARM副本配置",
+            "目标8.0可比触发条件"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c551607"
+          ],
+          "reason": "5.7 ARM副本偶发purge崩溃，明确不能固定复现，没有SQL负载与数据。",
+          "missing_material": [
+            "可重复负载及数据",
+            "ARM副本配置",
+            "目标8.0可比触发条件"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c551607"
+          ],
+          "reason": "5.7 ARM副本偶发purge崩溃，明确不能固定复现，没有SQL负载与数据。",
+          "missing_material": [
+            "可重复负载及数据",
+            "ARM副本配置",
+            "目标8.0可比触发条件"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c551607"
+          ],
+          "reason": "5.7 ARM副本偶发purge崩溃，明确不能固定复现，没有SQL负载与数据。",
+          "missing_material": [
+            "可重复负载及数据",
+            "ARM副本配置",
+            "目标8.0可比触发条件"
+          ]
+        }
+      }
+    },
+    "117867": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读全部评论导航、正文描述和复现段；正向117409全文、117422的c550663全文、117867的完整DDL已展开核对；长堆栈仅读相关段。未执行。",
+      "source_report_sha256": "244ca94e84dad1b489e2611073e5b31fa3a8b0a229885afbd9352c54381c11a5",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain",
+            "c551667",
+            "c551668",
+            "c551764"
+          ],
+          "reason": "虽原文提test.sql附件，但后评给出了完整两表DDL及重复行生成方式，可以独立重建DISTINCT LEFT JOIN性能用例。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "按c551668建两张InnoDB表；依c551667插入一条授权行和18011条相同role行。",
+            "steps": "运行cmain DISTINCT LEFT JOIN及EXPLAIN ANALYZE、Handler计数，重复测量；可另用不投影右表的等价去JOIN查询作诊断对照。",
+            "oracle": "结果应为unit_oid=1；记录右侧重复扫描次数与耗时。与同环境对照量化后再认定性能回退，不能将计划差异直接计bug。",
+            "requirements": [
+              "相同sql_mode/字符集/配置",
+              "不依赖未下载附件；数据由已读评论构造"
+            ],
+            "target_applicability": "DISTINCT、LEFT JOIN与对应索引功能在四目标可使用，目标是否有额外扫描待实验。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain",
+            "c551667",
+            "c551668",
+            "c551764"
+          ],
+          "reason": "虽原文提test.sql附件，但后评给出了完整两表DDL及重复行生成方式，可以独立重建DISTINCT LEFT JOIN性能用例。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "按c551668建两张InnoDB表；依c551667插入一条授权行和18011条相同role行。",
+            "steps": "运行cmain DISTINCT LEFT JOIN及EXPLAIN ANALYZE、Handler计数，重复测量；可另用不投影右表的等价去JOIN查询作诊断对照。",
+            "oracle": "结果应为unit_oid=1；记录右侧重复扫描次数与耗时。与同环境对照量化后再认定性能回退，不能将计划差异直接计bug。",
+            "requirements": [
+              "相同sql_mode/字符集/配置",
+              "不依赖未下载附件；数据由已读评论构造"
+            ],
+            "target_applicability": "DISTINCT、LEFT JOIN与对应索引功能在四目标可使用，目标是否有额外扫描待实验。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain",
+            "c551667",
+            "c551668",
+            "c551764"
+          ],
+          "reason": "虽原文提test.sql附件，但后评给出了完整两表DDL及重复行生成方式，可以独立重建DISTINCT LEFT JOIN性能用例。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "按c551668建两张InnoDB表；依c551667插入一条授权行和18011条相同role行。",
+            "steps": "运行cmain DISTINCT LEFT JOIN及EXPLAIN ANALYZE、Handler计数，重复测量；可另用不投影右表的等价去JOIN查询作诊断对照。",
+            "oracle": "结果应为unit_oid=1；记录右侧重复扫描次数与耗时。与同环境对照量化后再认定性能回退，不能将计划差异直接计bug。",
+            "requirements": [
+              "相同sql_mode/字符集/配置",
+              "不依赖未下载附件；数据由已读评论构造"
+            ],
+            "target_applicability": "DISTINCT、LEFT JOIN与对应索引功能在四目标可使用，目标是否有额外扫描待实验。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "anchors": [
+            "cmain",
+            "c551667",
+            "c551668",
+            "c551764"
+          ],
+          "reason": "虽原文提test.sql附件，但后评给出了完整两表DDL及重复行生成方式，可以独立重建DISTINCT LEFT JOIN性能用例。",
+          "missing_material": [],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "按c551668建两张InnoDB表；依c551667插入一条授权行和18011条相同role行。",
+            "steps": "运行cmain DISTINCT LEFT JOIN及EXPLAIN ANALYZE、Handler计数，重复测量；可另用不投影右表的等价去JOIN查询作诊断对照。",
+            "oracle": "结果应为unit_oid=1；记录右侧重复扫描次数与耗时。与同环境对照量化后再认定性能回退，不能将计划差异直接计bug。",
+            "requirements": [
+              "相同sql_mode/字符集/配置",
+              "不依赖未下载附件；数据由已读评论构造"
+            ],
+            "target_applicability": "DISTINCT、LEFT JOIN与对应索引功能在四目标可使用，目标是否有额外扫描待实验。"
+          }
+        }
+      }
+    },
+    "117999": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读全部评论导航、正文描述和复现段；正向117409全文、117422的c550663全文、117867的完整DDL已展开核对；长堆栈仅读相关段。未执行。",
+      "source_report_sha256": "b714c7502e8beade4f24305b115b68e6a08a3bbbef18627bbf86c158ea20b77a",
+      "version_results": {
+        "8.0.33": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552064"
+          ],
+          "reason": "给出JSON多值索引查询，但没有实际JSON数据和并发负载；维护者也要求完整定义及演示数据。",
+          "missing_material": [
+            "完整建表与JSON样本",
+            "并发连接数和写入/读取时序",
+            "稳定触发用例"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552064"
+          ],
+          "reason": "给出JSON多值索引查询，但没有实际JSON数据和并发负载；维护者也要求完整定义及演示数据。",
+          "missing_material": [
+            "完整建表与JSON样本",
+            "并发连接数和写入/读取时序",
+            "稳定触发用例"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552064"
+          ],
+          "reason": "给出JSON多值索引查询，但没有实际JSON数据和并发负载；维护者也要求完整定义及演示数据。",
+          "missing_material": [
+            "完整建表与JSON样本",
+            "并发连接数和写入/读取时序",
+            "稳定触发用例"
+          ]
+        }
+      }
+    },
+    "118114": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读全部评论导航、正文描述和复现段；正向117409全文、117422的c550663全文、117867的完整DDL已展开核对；长堆栈仅读相关段。未执行。",
+      "source_report_sha256": "670c7c2170da98e5a05a4ce19ab9fe73f8b0b0e14bf123116fb1829f6c2fb057",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552289"
+          ],
+          "reason": "查询文本截断可能来自采集长度配置或客户端显示；仅凭longtext类型不能建立应显示全部文本的判错标准。",
+          "missing_material": [
+            "原始OCTET_LENGTH(INFO)而非客户端截断显示",
+            "相关P_S文本采集长度配置",
+            "目标版本允许截断的规则与可测验收条件"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552289"
+          ],
+          "reason": "查询文本截断可能来自采集长度配置或客户端显示；仅凭longtext类型不能建立应显示全部文本的判错标准。",
+          "missing_material": [
+            "原始OCTET_LENGTH(INFO)而非客户端截断显示",
+            "相关P_S文本采集长度配置",
+            "目标版本允许截断的规则与可测验收条件"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552289"
+          ],
+          "reason": "查询文本截断可能来自采集长度配置或客户端显示；仅凭longtext类型不能建立应显示全部文本的判错标准。",
+          "missing_material": [
+            "原始OCTET_LENGTH(INFO)而非客户端截断显示",
+            "相关P_S文本采集长度配置",
+            "目标版本允许截断的规则与可测验收条件"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552289"
+          ],
+          "reason": "查询文本截断可能来自采集长度配置或客户端显示；仅凭longtext类型不能建立应显示全部文本的判错标准。",
+          "missing_material": [
+            "原始OCTET_LENGTH(INFO)而非客户端截断显示",
+            "相关P_S文本采集长度配置",
+            "目标版本允许截断的规则与可测验收条件"
+          ]
+        }
+      }
+    },
+    "118169": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读全部评论导航、正文描述和复现段；正向117409全文、117422的c550663全文、117867的完整DDL已展开核对；长堆栈仅读相关段。未执行。",
+      "source_report_sha256": "993f91f1c0d04679d770a02b9bad22cffc8e8242e3be7b034711c289fa493dc7",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552534",
+            "c554905"
+          ],
+          "reason": "仅指向macOS debug的MTR测试名，未取得测试文件/升级fixture，也未确认这些材料在四个旧目标版本中一致。",
+          "missing_material": [
+            "目标版本对应MTR用例及升级数据fixture",
+            "可比macOS/LLVM/debug构建环境",
+            "断言的完整日志"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552534",
+            "c554905"
+          ],
+          "reason": "仅指向macOS debug的MTR测试名，未取得测试文件/升级fixture，也未确认这些材料在四个旧目标版本中一致。",
+          "missing_material": [
+            "目标版本对应MTR用例及升级数据fixture",
+            "可比macOS/LLVM/debug构建环境",
+            "断言的完整日志"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552534",
+            "c554905"
+          ],
+          "reason": "仅指向macOS debug的MTR测试名，未取得测试文件/升级fixture，也未确认这些材料在四个旧目标版本中一致。",
+          "missing_material": [
+            "目标版本对应MTR用例及升级数据fixture",
+            "可比macOS/LLVM/debug构建环境",
+            "断言的完整日志"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "c552534",
+            "c554905"
+          ],
+          "reason": "仅指向macOS debug的MTR测试名，未取得测试文件/升级fixture，也未确认这些材料在四个旧目标版本中一致。",
+          "missing_material": [
+            "目标版本对应MTR用例及升级数据fixture",
+            "可比macOS/LLVM/debug构建环境",
+            "断言的完整日志"
+          ]
+        }
+      }
+    },
+    "118366": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读全部评论导航、正文描述和复现段；正向117409全文、117422的c550663全文、117867的完整DDL已展开核对；长堆栈仅读相关段。未执行。",
+      "source_report_sha256": "a857ab1308859918dd11a8c2e334a5f292dfc868a9d7aaa0766ab39aee5aee5b",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain"
+          ],
+          "reason": "只有内存/swap快照和Run large queries，没有查询、数据、配置或异常阈值，无法把正常OS换页当成MySQL缺陷。",
+          "missing_material": [
+            "具体SQL负载与数据",
+            "内存/内核和MySQL配置",
+            "可重复的增长曲线和正常对照"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain"
+          ],
+          "reason": "只有内存/swap快照和Run large queries，没有查询、数据、配置或异常阈值，无法把正常OS换页当成MySQL缺陷。",
+          "missing_material": [
+            "具体SQL负载与数据",
+            "内存/内核和MySQL配置",
+            "可重复的增长曲线和正常对照"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain"
+          ],
+          "reason": "只有内存/swap快照和Run large queries，没有查询、数据、配置或异常阈值，无法把正常OS换页当成MySQL缺陷。",
+          "missing_material": [
+            "具体SQL负载与数据",
+            "内存/内核和MySQL配置",
+            "可重复的增长曲线和正常对照"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain"
+          ],
+          "reason": "只有内存/swap快照和Run large queries，没有查询、数据、配置或异常阈值，无法把正常OS换页当成MySQL缺陷。",
+          "missing_material": [
+            "具体SQL负载与数据",
+            "内存/内核和MySQL配置",
+            "可重复的增长曲线和正常对照"
+          ]
+        }
+      }
+    },
+    "118570": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读全部评论导航、正文描述和复现段；正向117409全文、117422的c550663全文、117867的完整DDL已展开核对；长堆栈仅读相关段。未执行。",
+      "source_report_sha256": "8151d2a5309b8909e128cd297349b04bc22a9a8db8c95b6fe40a61b164287142",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "f34226"
+          ],
+          "reason": "有mysqlslap及INSERT语句，但预置数据仅在未取得的6MB附件，缺表定义；提交与目标小版本的关系也未确定。",
+          "missing_material": [
+            "insert.sql附件或等价完整schema/数据",
+            "c17d86b与四目标版本关系",
+            "控制噪声后的性能比较标准"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "f34226"
+          ],
+          "reason": "有mysqlslap及INSERT语句，但预置数据仅在未取得的6MB附件，缺表定义；提交与目标小版本的关系也未确定。",
+          "missing_material": [
+            "insert.sql附件或等价完整schema/数据",
+            "c17d86b与四目标版本关系",
+            "控制噪声后的性能比较标准"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "f34226"
+          ],
+          "reason": "有mysqlslap及INSERT语句，但预置数据仅在未取得的6MB附件，缺表定义；提交与目标小版本的关系也未确定。",
+          "missing_material": [
+            "insert.sql附件或等价完整schema/数据",
+            "c17d86b与四目标版本关系",
+            "控制噪声后的性能比较标准"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "anchors": [
+            "cmain",
+            "f34226"
+          ],
+          "reason": "有mysqlslap及INSERT语句，但预置数据仅在未取得的6MB附件，缺表定义；提交与目标小版本的关系也未确定。",
+          "missing_material": [
+            "insert.sql附件或等价完整schema/数据",
+            "c17d86b与四目标版本关系",
+            "控制噪声后的性能比较标准"
+          ]
+        }
+      }
+    },
+    "118787": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、How to repeat和全部评论导航；长环境/日志仅首尾，关键缺口及119030完整建表造数过程单独展开。",
+      "source_report_sha256": "176bf3c5277154279dd6b68d9160496e30ca25c44941d8ca3b7ca5112c40471f",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "报告明确不知道触发方法；现有连接告警不能构成可重复的崩溃场景。",
+          "missing_material": [
+            "触发SQL或工作负载、配置及可用崩溃栈"
+          ],
+          "anchors": [
+            "cmain",
+            "c553924"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "报告明确不知道触发方法；现有连接告警不能构成可重复的崩溃场景。",
+          "missing_material": [
+            "触发SQL或工作负载、配置及可用崩溃栈"
+          ],
+          "anchors": [
+            "cmain",
+            "c553924"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "报告明确不知道触发方法；现有连接告警不能构成可重复的崩溃场景。",
+          "missing_material": [
+            "触发SQL或工作负载、配置及可用崩溃栈"
+          ],
+          "anchors": [
+            "cmain",
+            "c553924"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "报告明确不知道触发方法；现有连接告警不能构成可重复的崩溃场景。",
+          "missing_material": [
+            "触发SQL或工作负载、配置及可用崩溃栈"
+          ],
+          "anchors": [
+            "cmain",
+            "c553924"
+          ]
+        }
+      }
+    },
+    "118842": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、How to repeat和全部评论导航；长环境/日志仅首尾，关键缺口及119030完整建表造数过程单独展开。",
+      "source_report_sha256": "c27a2b3007913cce5186f9bedd3fc959bbada4e3c0897c679e824699f7f4d38a",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "虽有双主复制/MIXED线索和支持确认，未提供可执行的DDL、数据与触发事务序列；切ROW后仍有问题，内部缺陷是否同因未闭合。",
+          "missing_material": [
+            "公开的最小复制拓扑、建表数据和并发操作序列",
+            "内部缺陷及ROW后现象的对应关系"
+          ],
+          "anchors": [
+            "cmain",
+            "c554311",
+            "c554364"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "虽有双主复制/MIXED线索和支持确认，未提供可执行的DDL、数据与触发事务序列；切ROW后仍有问题，内部缺陷是否同因未闭合。",
+          "missing_material": [
+            "公开的最小复制拓扑、建表数据和并发操作序列",
+            "内部缺陷及ROW后现象的对应关系"
+          ],
+          "anchors": [
+            "cmain",
+            "c554311",
+            "c554364"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "虽有双主复制/MIXED线索和支持确认，未提供可执行的DDL、数据与触发事务序列；切ROW后仍有问题，内部缺陷是否同因未闭合。",
+          "missing_material": [
+            "公开的最小复制拓扑、建表数据和并发操作序列",
+            "内部缺陷及ROW后现象的对应关系"
+          ],
+          "anchors": [
+            "cmain",
+            "c554311",
+            "c554364"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "虽有双主复制/MIXED线索和支持确认，未提供可执行的DDL、数据与触发事务序列；切ROW后仍有问题，内部缺陷是否同因未闭合。",
+          "missing_material": [
+            "公开的最小复制拓扑、建表数据和并发操作序列",
+            "内部缺陷及ROW后现象的对应关系"
+          ],
+          "anchors": [
+            "cmain",
+            "c554311",
+            "c554364"
+          ]
+        }
+      }
+    },
+    "118936": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、How to repeat和全部评论导航；长环境/日志仅首尾，关键缺口及119030完整建表造数过程单独展开。",
+      "source_report_sha256": "23643a9748f355cf9a2dd0a73a7156e1634f4769cf19ade5a9b3dd18ab78871a",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "只给特殊字符密码和安装失败现象，没有说明安装器、密码设置入口及客户端传参/转义，无法区分转义错误与服务端认证问题。",
+          "missing_material": [
+            "安装器/客户端版本与完整操作入口",
+            "脱敏后的设置及登录命令和原始错误码"
+          ],
+          "anchors": [
+            "cmain",
+            "c554228"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "只给特殊字符密码和安装失败现象，没有说明安装器、密码设置入口及客户端传参/转义，无法区分转义错误与服务端认证问题。",
+          "missing_material": [
+            "安装器/客户端版本与完整操作入口",
+            "脱敏后的设置及登录命令和原始错误码"
+          ],
+          "anchors": [
+            "cmain",
+            "c554228"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "只给特殊字符密码和安装失败现象，没有说明安装器、密码设置入口及客户端传参/转义，无法区分转义错误与服务端认证问题。",
+          "missing_material": [
+            "安装器/客户端版本与完整操作入口",
+            "脱敏后的设置及登录命令和原始错误码"
+          ],
+          "anchors": [
+            "cmain",
+            "c554228"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "只给特殊字符密码和安装失败现象，没有说明安装器、密码设置入口及客户端传参/转义，无法区分转义错误与服务端认证问题。",
+          "missing_material": [
+            "安装器/客户端版本与完整操作入口",
+            "脱敏后的设置及登录命令和原始错误码"
+          ],
+          "anchors": [
+            "cmain",
+            "c554228"
+          ]
+        }
+      }
+    },
+    "119030": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、How to repeat和全部评论导航；长环境/日志仅首尾，关键缺口及119030完整建表造数过程单独展开。",
+      "source_report_sha256": "36a55e1dc85aa2fe88ba3b6be12a76b1815255dd3ec18bc9c70530ec3baf0b7e",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "有完整建表、千万行数据生成及INTERSECT性能场景，可在目标版本做功能性能探索；9.3/9.4比较不证明8.0受影响或回归。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c554417",
+            "c554474"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "依cmain建空表t1(c0 INT8)、t2(c0 INT8)，运行batch_insert_numbers过程生成1至10000000；固定资源、镜像来源和缓存条件。",
+            "steps": "执行SELECT * FROM t2 INTERSECT SELECT * FROM t1，重复采集墙钟、执行计划、warnings、内存和IO；四版本相同数据配置比较；必要时对比Docker/WSL与原生环境。",
+            "oracle": "结果应为空；异常时延需在相同资源下重复成立且排除容器/WSL配置影响，不能以单次耗时或9.4数据直接确认8.0缺陷。",
+            "requirements": [
+              "INTERSECT可用性预检",
+              "足够的千万行存储和统一资源限制",
+              "性能重复采样与环境记录"
+            ],
+            "target_applicability": "目标8.0四版本具有INTERSECT场景；是否出现报告中的性能症状未知，仅为探索。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "有完整建表、千万行数据生成及INTERSECT性能场景，可在目标版本做功能性能探索；9.3/9.4比较不证明8.0受影响或回归。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c554417",
+            "c554474"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "依cmain建空表t1(c0 INT8)、t2(c0 INT8)，运行batch_insert_numbers过程生成1至10000000；固定资源、镜像来源和缓存条件。",
+            "steps": "执行SELECT * FROM t2 INTERSECT SELECT * FROM t1，重复采集墙钟、执行计划、warnings、内存和IO；四版本相同数据配置比较；必要时对比Docker/WSL与原生环境。",
+            "oracle": "结果应为空；异常时延需在相同资源下重复成立且排除容器/WSL配置影响，不能以单次耗时或9.4数据直接确认8.0缺陷。",
+            "requirements": [
+              "INTERSECT可用性预检",
+              "足够的千万行存储和统一资源限制",
+              "性能重复采样与环境记录"
+            ],
+            "target_applicability": "目标8.0四版本具有INTERSECT场景；是否出现报告中的性能症状未知，仅为探索。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "有完整建表、千万行数据生成及INTERSECT性能场景，可在目标版本做功能性能探索；9.3/9.4比较不证明8.0受影响或回归。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c554417",
+            "c554474"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "依cmain建空表t1(c0 INT8)、t2(c0 INT8)，运行batch_insert_numbers过程生成1至10000000；固定资源、镜像来源和缓存条件。",
+            "steps": "执行SELECT * FROM t2 INTERSECT SELECT * FROM t1，重复采集墙钟、执行计划、warnings、内存和IO；四版本相同数据配置比较；必要时对比Docker/WSL与原生环境。",
+            "oracle": "结果应为空；异常时延需在相同资源下重复成立且排除容器/WSL配置影响，不能以单次耗时或9.4数据直接确认8.0缺陷。",
+            "requirements": [
+              "INTERSECT可用性预检",
+              "足够的千万行存储和统一资源限制",
+              "性能重复采样与环境记录"
+            ],
+            "target_applicability": "目标8.0四版本具有INTERSECT场景；是否出现报告中的性能症状未知，仅为探索。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "有完整建表、千万行数据生成及INTERSECT性能场景，可在目标版本做功能性能探索；9.3/9.4比较不证明8.0受影响或回归。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c554417",
+            "c554474"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "依cmain建空表t1(c0 INT8)、t2(c0 INT8)，运行batch_insert_numbers过程生成1至10000000；固定资源、镜像来源和缓存条件。",
+            "steps": "执行SELECT * FROM t2 INTERSECT SELECT * FROM t1，重复采集墙钟、执行计划、warnings、内存和IO；四版本相同数据配置比较；必要时对比Docker/WSL与原生环境。",
+            "oracle": "结果应为空；异常时延需在相同资源下重复成立且排除容器/WSL配置影响，不能以单次耗时或9.4数据直接确认8.0缺陷。",
+            "requirements": [
+              "INTERSECT可用性预检",
+              "足够的千万行存储和统一资源限制",
+              "性能重复采样与环境记录"
+            ],
+            "target_applicability": "目标8.0四版本具有INTERSECT场景；是否出现报告中的性能症状未知，仅为探索。"
+          }
+        }
+      }
+    },
+    "119049": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、How to repeat和全部评论导航；长环境/日志仅首尾，关键缺口及119030完整建表造数过程单独展开。",
+      "source_report_sha256": "ec1de5d8f8a68ad4ee7a01516b41888375b00f4ea02e2123d58a988dde3323a2",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "复现脚本存在截断/语法损坏的INSERT，作者明确先关闭待完善；不能把猜测修复后的脚本当成原场景已具备条件。",
+          "missing_material": [
+            "作者补全的可执行数据生成脚本",
+            "稳定负载及性能差异确认"
+          ],
+          "anchors": [
+            "cmain",
+            "c554397"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "复现脚本存在截断/语法损坏的INSERT，作者明确先关闭待完善；不能把猜测修复后的脚本当成原场景已具备条件。",
+          "missing_material": [
+            "作者补全的可执行数据生成脚本",
+            "稳定负载及性能差异确认"
+          ],
+          "anchors": [
+            "cmain",
+            "c554397"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "复现脚本存在截断/语法损坏的INSERT，作者明确先关闭待完善；不能把猜测修复后的脚本当成原场景已具备条件。",
+          "missing_material": [
+            "作者补全的可执行数据生成脚本",
+            "稳定负载及性能差异确认"
+          ],
+          "anchors": [
+            "cmain",
+            "c554397"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "复现脚本存在截断/语法损坏的INSERT，作者明确先关闭待完善；不能把猜测修复后的脚本当成原场景已具备条件。",
+          "missing_material": [
+            "作者补全的可执行数据生成脚本",
+            "稳定负载及性能差异确认"
+          ],
+          "anchors": [
+            "cmain",
+            "c554397"
+          ]
+        }
+      }
+    },
+    "119238": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、复现段及评论首尾导航；348/349主报完整编译诊断、350末段及352完整步骤展开，未下载附件或外链。",
+      "source_report_sha256": "f41ddaf97d026af5ad7e029938bf31259beb5809e7f7fcb41f4bb1da458297de",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "错误发生于macOS/ARM Homebrew LLVM20的Router构建且显式强制不支持编译器；与四版服务端验证环境及支持工具链的对应尚未建立。",
+          "missing_material": [
+            "目标版本对应源码位置、支持编译器对照及平台构建条件"
+          ],
+          "anchors": [
+            "cmain",
+            "c554844"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "错误发生于macOS/ARM Homebrew LLVM20的Router构建且显式强制不支持编译器；与四版服务端验证环境及支持工具链的对应尚未建立。",
+          "missing_material": [
+            "目标版本对应源码位置、支持编译器对照及平台构建条件"
+          ],
+          "anchors": [
+            "cmain",
+            "c554844"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "错误发生于macOS/ARM Homebrew LLVM20的Router构建且显式强制不支持编译器；与四版服务端验证环境及支持工具链的对应尚未建立。",
+          "missing_material": [
+            "目标版本对应源码位置、支持编译器对照及平台构建条件"
+          ],
+          "anchors": [
+            "cmain",
+            "c554844"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "错误发生于macOS/ARM Homebrew LLVM20的Router构建且显式强制不支持编译器；与四版服务端验证环境及支持工具链的对应尚未建立。",
+          "missing_material": [
+            "目标版本对应源码位置、支持编译器对照及平台构建条件"
+          ],
+          "anchors": [
+            "cmain",
+            "c554844"
+          ]
+        }
+      }
+    },
+    "119246": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、复现段及评论首尾导航；348/349主报完整编译诊断、350末段及352完整步骤展开，未下载附件或外链。",
+      "source_report_sha256": "3f02297f0005f680f61822aa6128f749652e2855882f234112d5b179849afe0d",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "同报告混合9.x、8.4与8.0.46的多个编译错误，尚未证明四目标版本有对应源码和同工具链问题。",
+          "missing_material": [
+            "四目标版本实际对应的报错位置和最小构建条件",
+            "受支持工具链对照"
+          ],
+          "anchors": [
+            "cmain",
+            "c557455"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "同报告混合9.x、8.4与8.0.46的多个编译错误，尚未证明四目标版本有对应源码和同工具链问题。",
+          "missing_material": [
+            "四目标版本实际对应的报错位置和最小构建条件",
+            "受支持工具链对照"
+          ],
+          "anchors": [
+            "cmain",
+            "c557455"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "同报告混合9.x、8.4与8.0.46的多个编译错误，尚未证明四目标版本有对应源码和同工具链问题。",
+          "missing_material": [
+            "四目标版本实际对应的报错位置和最小构建条件",
+            "受支持工具链对照"
+          ],
+          "anchors": [
+            "cmain",
+            "c557455"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "同报告混合9.x、8.4与8.0.46的多个编译错误，尚未证明四目标版本有对应源码和同工具链问题。",
+          "missing_material": [
+            "四目标版本实际对应的报错位置和最小构建条件",
+            "受支持工具链对照"
+          ],
+          "anchors": [
+            "cmain",
+            "c557455"
+          ]
+        }
+      }
+    },
+    "119369": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、复现段及评论首尾导航；348/349主报完整编译诊断、350末段及352完整步骤展开，未下载附件或外链。",
+      "source_report_sha256": "80bb32dea891f090550e43d091386da16cb2067381e0cdeb8e52388523c2a906",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "提出sys视图多余类型转换，后评为空结果执行计划，未给有事务锁等待的可比较性能负载或错误输出，不能仅凭CAST存在认定可测缺陷。",
+          "missing_material": [
+            "可重复锁等待负载和样本规模",
+            "相同结果下有/无转换的开销或错误结果证据"
+          ],
+          "anchors": [
+            "cmain",
+            "c555670"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "提出sys视图多余类型转换，后评为空结果执行计划，未给有事务锁等待的可比较性能负载或错误输出，不能仅凭CAST存在认定可测缺陷。",
+          "missing_material": [
+            "可重复锁等待负载和样本规模",
+            "相同结果下有/无转换的开销或错误结果证据"
+          ],
+          "anchors": [
+            "cmain",
+            "c555670"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "提出sys视图多余类型转换，后评为空结果执行计划，未给有事务锁等待的可比较性能负载或错误输出，不能仅凭CAST存在认定可测缺陷。",
+          "missing_material": [
+            "可重复锁等待负载和样本规模",
+            "相同结果下有/无转换的开销或错误结果证据"
+          ],
+          "anchors": [
+            "cmain",
+            "c555670"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "提出sys视图多余类型转换，后评为空结果执行计划，未给有事务锁等待的可比较性能负载或错误输出，不能仅凭CAST存在认定可测缺陷。",
+          "missing_material": [
+            "可重复锁等待负载和样本规模",
+            "相同结果下有/无转换的开销或错误结果证据"
+          ],
+          "anchors": [
+            "cmain",
+            "c555670"
+          ]
+        }
+      }
+    },
+    "119458": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、复现段及评论首尾导航；348/349主报完整编译诊断、350末段及352完整步骤展开，未下载附件或外链。",
+      "source_report_sha256": "e7a04f870fa7b5926e2d13617b01f63286e7ce6c1b23328d613358b3d5c4030c",
+      "version_results": {
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "正文说明双通道、恢复配置和挂起，但触发测试与配置只在未读取的附件中，尚无可执行恢复序列。",
+          "missing_material": [
+            "gr_file_pos_replica_recovery_bug.test与.cnf附件内容",
+            "复制初始数据及崩溃触发点"
+          ],
+          "anchors": [
+            "cmain",
+            "f34377",
+            "f34378"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "正文说明双通道、恢复配置和挂起，但触发测试与配置只在未读取的附件中，尚无可执行恢复序列。",
+          "missing_material": [
+            "gr_file_pos_replica_recovery_bug.test与.cnf附件内容",
+            "复制初始数据及崩溃触发点"
+          ],
+          "anchors": [
+            "cmain",
+            "f34377",
+            "f34378"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "正文说明双通道、恢复配置和挂起，但触发测试与配置只在未读取的附件中，尚无可执行恢复序列。",
+          "missing_material": [
+            "gr_file_pos_replica_recovery_bug.test与.cnf附件内容",
+            "复制初始数据及崩溃触发点"
+          ],
+          "anchors": [
+            "cmain",
+            "f34377",
+            "f34378"
+          ]
+        }
+      }
+    },
+    "119508": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、复现段及评论首尾导航；348/349主报完整编译诊断、350末段及352完整步骤展开，未下载附件或外链。",
+      "source_report_sha256": "48b73d9ed6266d5d75a5dfd0971b0b2c0c35b80828b2c99365132f9ca36802ac",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "只列出创建表/视图和并发ALTER脚本名，没有脚本内容；原环境为Percona，尚缺可迁移到官方MySQL的完整场景。",
+          "missing_material": [
+            "五个复现脚本及建表、视图、数据内容",
+            "并发批次和官方MySQL环境适配"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "只列出创建表/视图和并发ALTER脚本名，没有脚本内容；原环境为Percona，尚缺可迁移到官方MySQL的完整场景。",
+          "missing_material": [
+            "五个复现脚本及建表、视图、数据内容",
+            "并发批次和官方MySQL环境适配"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "只列出创建表/视图和并发ALTER脚本名，没有脚本内容；原环境为Percona，尚缺可迁移到官方MySQL的完整场景。",
+          "missing_material": [
+            "五个复现脚本及建表、视图、数据内容",
+            "并发批次和官方MySQL环境适配"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "只列出创建表/视图和并发ALTER脚本名，没有脚本内容；原环境为Percona，尚缺可迁移到官方MySQL的完整场景。",
+          "missing_material": [
+            "五个复现脚本及建表、视图、数据内容",
+            "并发批次和官方MySQL环境适配"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        }
+      }
+    },
+    "119572": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读主报描述/复现步骤及评论导航；355完整三条查询、356完整前提及357完整数据和两执行方式已展开，353长栈仅首尾。",
+      "source_report_sha256": "151340f6c7ce236b6b7441e173a52a3ad51a3ce61d929becfe91457a2f7b8b63",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "debug构建下有完整DECIMAL参数、optimizer_trace及强制reprepare序列，可在四目标探索断言。后版验证不等于四目标已复现。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555363"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "debug构建；开启optimizer_trace；建t1(dc2 DECIMAL(16,10))并插入1.1111111111。",
+            "steps": "照cmain PREPARE SELECT dc2+?；以@a=1.12345678901234执行；ALTER TABLE COMMENT触发reprepare；再次EXECUTE。",
+            "oracle": "服务器不得出现decimal2string/div_by_pow10的x>=0断言或崩溃；保留执行结果和错误日志，必要时多次新实例复现未初始化内存症状。",
+            "requirements": [
+              "目标版本debug构建",
+              "optimizer_trace",
+              "独立测试实例"
+            ],
+            "target_applicability": "DECIMAL、预处理参数和DDL触发重准备属于目标版本可测试功能，具体缓冲区实现及受影响性待执行确认。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "debug构建下有完整DECIMAL参数、optimizer_trace及强制reprepare序列，可在四目标探索断言。后版验证不等于四目标已复现。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555363"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "debug构建；开启optimizer_trace；建t1(dc2 DECIMAL(16,10))并插入1.1111111111。",
+            "steps": "照cmain PREPARE SELECT dc2+?；以@a=1.12345678901234执行；ALTER TABLE COMMENT触发reprepare；再次EXECUTE。",
+            "oracle": "服务器不得出现decimal2string/div_by_pow10的x>=0断言或崩溃；保留执行结果和错误日志，必要时多次新实例复现未初始化内存症状。",
+            "requirements": [
+              "目标版本debug构建",
+              "optimizer_trace",
+              "独立测试实例"
+            ],
+            "target_applicability": "DECIMAL、预处理参数和DDL触发重准备属于目标版本可测试功能，具体缓冲区实现及受影响性待执行确认。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "debug构建下有完整DECIMAL参数、optimizer_trace及强制reprepare序列，可在四目标探索断言。后版验证不等于四目标已复现。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555363"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "debug构建；开启optimizer_trace；建t1(dc2 DECIMAL(16,10))并插入1.1111111111。",
+            "steps": "照cmain PREPARE SELECT dc2+?；以@a=1.12345678901234执行；ALTER TABLE COMMENT触发reprepare；再次EXECUTE。",
+            "oracle": "服务器不得出现decimal2string/div_by_pow10的x>=0断言或崩溃；保留执行结果和错误日志，必要时多次新实例复现未初始化内存症状。",
+            "requirements": [
+              "目标版本debug构建",
+              "optimizer_trace",
+              "独立测试实例"
+            ],
+            "target_applicability": "DECIMAL、预处理参数和DDL触发重准备属于目标版本可测试功能，具体缓冲区实现及受影响性待执行确认。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "debug构建下有完整DECIMAL参数、optimizer_trace及强制reprepare序列，可在四目标探索断言。后版验证不等于四目标已复现。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555363"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "debug构建；开启optimizer_trace；建t1(dc2 DECIMAL(16,10))并插入1.1111111111。",
+            "steps": "照cmain PREPARE SELECT dc2+?；以@a=1.12345678901234执行；ALTER TABLE COMMENT触发reprepare；再次EXECUTE。",
+            "oracle": "服务器不得出现decimal2string/div_by_pow10的x>=0断言或崩溃；保留执行结果和错误日志，必要时多次新实例复现未初始化内存症状。",
+            "requirements": [
+              "目标版本debug构建",
+              "optimizer_trace",
+              "独立测试实例"
+            ],
+            "target_applicability": "DECIMAL、预处理参数和DDL触发重准备属于目标版本可测试功能，具体缓冲区实现及受影响性待执行确认。"
+          }
+        }
+      }
+    },
+    "119585": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读主报描述/复现步骤及评论导航；355完整三条查询、356完整前提及357完整数据和两执行方式已展开，353长栈仅首尾。",
+      "source_report_sha256": "ead75c8901d24124d71ea0f25d6fe1116e5249bc5f245c4c418023c308073ec5",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "主报通过修改随机函数模拟极端情况，未提供原始构建可运行的SQL/并发负载；RDTSC分桶说明不能代替实际崩溃触发。",
+          "missing_material": [
+            "未修改MySQL下的并发SQL负载与同步数组配置",
+            "或明确隔离的单元故障注入测试及外部可达性证明"
+          ],
+          "anchors": [
+            "cmain",
+            "c558053"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "主报通过修改随机函数模拟极端情况，未提供原始构建可运行的SQL/并发负载；RDTSC分桶说明不能代替实际崩溃触发。",
+          "missing_material": [
+            "未修改MySQL下的并发SQL负载与同步数组配置",
+            "或明确隔离的单元故障注入测试及外部可达性证明"
+          ],
+          "anchors": [
+            "cmain",
+            "c558053"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "主报通过修改随机函数模拟极端情况，未提供原始构建可运行的SQL/并发负载；RDTSC分桶说明不能代替实际崩溃触发。",
+          "missing_material": [
+            "未修改MySQL下的并发SQL负载与同步数组配置",
+            "或明确隔离的单元故障注入测试及外部可达性证明"
+          ],
+          "anchors": [
+            "cmain",
+            "c558053"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "主报通过修改随机函数模拟极端情况，未提供原始构建可运行的SQL/并发负载；RDTSC分桶说明不能代替实际崩溃触发。",
+          "missing_material": [
+            "未修改MySQL下的并发SQL负载与同步数组配置",
+            "或明确隔离的单元故障注入测试及外部可达性证明"
+          ],
+          "anchors": [
+            "cmain",
+            "c558053"
+          ]
+        }
+      }
+    },
+    "119630": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读主报描述/复现步骤及评论导航；355完整三条查询、356完整前提及357完整数据和两执行方式已展开，353长栈仅首尾。",
+      "source_report_sha256": "3771991e28f8a60ad6c528ea48800d0e8cc92d134aa6a30b06685bacce5983e4",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "建表数据和三种等价IN查询完整；9.5跨分支修复不构成8.0修复边界，适合探索目标版本。重复报告关系保留，候选不是独立根因数。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555698",
+            "c555719"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "照cmain创建两个id/val与varchar id/num_val表，各插入3行。",
+            "steps": "依次执行直接IN CAST子查询、带NO_MERGE的派生表IN查询和无hint同查询；记录结果多重集及计划。",
+            "oracle": "三者均应仅返回(2,20)一行；出现全部行或重复行判为wrong_result线索。",
+            "requirements": [
+              "保存optimizer_switch和SQL模式",
+              "同连接相同数据"
+            ],
+            "target_applicability": "目标四版支持派生表/CAST/IN；原.33已在既有候选，本次仅审.32/.34/.35。9.5修复不外推8.0。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "建表数据和三种等价IN查询完整；9.5跨分支修复不构成8.0修复边界，适合探索目标版本。重复报告关系保留，候选不是独立根因数。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555698",
+            "c555719"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "照cmain创建两个id/val与varchar id/num_val表，各插入3行。",
+            "steps": "依次执行直接IN CAST子查询、带NO_MERGE的派生表IN查询和无hint同查询；记录结果多重集及计划。",
+            "oracle": "三者均应仅返回(2,20)一行；出现全部行或重复行判为wrong_result线索。",
+            "requirements": [
+              "保存optimizer_switch和SQL模式",
+              "同连接相同数据"
+            ],
+            "target_applicability": "目标四版支持派生表/CAST/IN；原.33已在既有候选，本次仅审.32/.34/.35。9.5修复不外推8.0。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "建表数据和三种等价IN查询完整；9.5跨分支修复不构成8.0修复边界，适合探索目标版本。重复报告关系保留，候选不是独立根因数。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555698",
+            "c555719"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "照cmain创建两个id/val与varchar id/num_val表，各插入3行。",
+            "steps": "依次执行直接IN CAST子查询、带NO_MERGE的派生表IN查询和无hint同查询；记录结果多重集及计划。",
+            "oracle": "三者均应仅返回(2,20)一行；出现全部行或重复行判为wrong_result线索。",
+            "requirements": [
+              "保存optimizer_switch和SQL模式",
+              "同连接相同数据"
+            ],
+            "target_applicability": "目标四版支持派生表/CAST/IN；原.33已在既有候选，本次仅审.32/.34/.35。9.5修复不外推8.0。"
+          }
+        }
+      }
+    },
+    "119654": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读主报描述/复现步骤及评论导航；355完整三条查询、356完整前提及357完整数据和两执行方式已展开，353长栈仅首尾。",
+      "source_report_sha256": "32f31f218b8e4838608cbba1e257fab6f7b0252dd56773e97f13acdc7714c0ef",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "只给mysqlbackup_page_track_set入口和大量flush/reset点描述，未提供函数部署方式、有效LSN和形成32归档文件的可执行负载。",
+          "missing_material": [
+            "页跟踪UDF/组件与版本适配",
+            "具体页修改、刷盘、reset点生成序列和有效LSN"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "只给mysqlbackup_page_track_set入口和大量flush/reset点描述，未提供函数部署方式、有效LSN和形成32归档文件的可执行负载。",
+          "missing_material": [
+            "页跟踪UDF/组件与版本适配",
+            "具体页修改、刷盘、reset点生成序列和有效LSN"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "只给mysqlbackup_page_track_set入口和大量flush/reset点描述，未提供函数部署方式、有效LSN和形成32归档文件的可执行负载。",
+          "missing_material": [
+            "页跟踪UDF/组件与版本适配",
+            "具体页修改、刷盘、reset点生成序列和有效LSN"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "只给mysqlbackup_page_track_set入口和大量flush/reset点描述，未提供函数部署方式、有效LSN和形成32归档文件的可执行负载。",
+          "missing_material": [
+            "页跟踪UDF/组件与版本适配",
+            "具体页修改、刷盘、reset点生成序列和有效LSN"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        }
+      }
+    },
+    "119692": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读主报描述/复现步骤及评论导航；355完整三条查询、356完整前提及357完整数据和两执行方式已展开，353长栈仅首尾。",
+      "source_report_sha256": "cca3c95e8bdad9bbd7c7fc4fea2e6d193ff3db57f5073ed431b451294d18539c",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "完整小数据集和普通/预处理EXPLAIN ANALYZE对照可直接整理为性能探索；单次时延和计划不同不能直接记缺陷。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555613"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "cmain创建t0、t2 FLOAT ZEROFILL；t0两行59976104、t2六行0.8228615521965937。",
+            "steps": "执行常量COUNT(CAST(... AS DOUBLE))连接查询的EXPLAIN ANALYZE，再执行带?参数的同等预处理查询；交替顺序并重复测量，记录真实查询结果与耗时。",
+            "oracle": "结果计数应12；在预热和相同资源下比较持续的明显时延差。计划差异单独记录，不自动算wrong_result或版本引入。",
+            "requirements": [
+              "EXPLAIN ANALYZE",
+              "等价参数值",
+              "重复采样消除首次执行缓存偏差"
+            ],
+            "target_applicability": "目标版本具备所用查询/预处理和执行分析功能；8.0.44发现不证明四目标受影响。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "完整小数据集和普通/预处理EXPLAIN ANALYZE对照可直接整理为性能探索；单次时延和计划不同不能直接记缺陷。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555613"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "cmain创建t0、t2 FLOAT ZEROFILL；t0两行59976104、t2六行0.8228615521965937。",
+            "steps": "执行常量COUNT(CAST(... AS DOUBLE))连接查询的EXPLAIN ANALYZE，再执行带?参数的同等预处理查询；交替顺序并重复测量，记录真实查询结果与耗时。",
+            "oracle": "结果计数应12；在预热和相同资源下比较持续的明显时延差。计划差异单独记录，不自动算wrong_result或版本引入。",
+            "requirements": [
+              "EXPLAIN ANALYZE",
+              "等价参数值",
+              "重复采样消除首次执行缓存偏差"
+            ],
+            "target_applicability": "目标版本具备所用查询/预处理和执行分析功能；8.0.44发现不证明四目标受影响。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "完整小数据集和普通/预处理EXPLAIN ANALYZE对照可直接整理为性能探索；单次时延和计划不同不能直接记缺陷。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555613"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "cmain创建t0、t2 FLOAT ZEROFILL；t0两行59976104、t2六行0.8228615521965937。",
+            "steps": "执行常量COUNT(CAST(... AS DOUBLE))连接查询的EXPLAIN ANALYZE，再执行带?参数的同等预处理查询；交替顺序并重复测量，记录真实查询结果与耗时。",
+            "oracle": "结果计数应12；在预热和相同资源下比较持续的明显时延差。计划差异单独记录，不自动算wrong_result或版本引入。",
+            "requirements": [
+              "EXPLAIN ANALYZE",
+              "等价参数值",
+              "重复采样消除首次执行缓存偏差"
+            ],
+            "target_applicability": "目标版本具备所用查询/预处理和执行分析功能；8.0.44发现不证明四目标受影响。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "完整小数据集和普通/预处理EXPLAIN ANALYZE对照可直接整理为性能探索；单次时延和计划不同不能直接记缺陷。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555613"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "cmain创建t0、t2 FLOAT ZEROFILL；t0两行59976104、t2六行0.8228615521965937。",
+            "steps": "执行常量COUNT(CAST(... AS DOUBLE))连接查询的EXPLAIN ANALYZE，再执行带?参数的同等预处理查询；交替顺序并重复测量，记录真实查询结果与耗时。",
+            "oracle": "结果计数应12；在预热和相同资源下比较持续的明显时延差。计划差异单独记录，不自动算wrong_result或版本引入。",
+            "requirements": [
+              "EXPLAIN ANALYZE",
+              "等价参数值",
+              "重复采样消除首次执行缓存偏差"
+            ],
+            "target_applicability": "目标版本具备所用查询/预处理和执行分析功能；8.0.44发现不证明四目标受影响。"
+          }
+        }
+      }
+    },
+    "119716": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读复现建表/数据/查询及全部评论导航；361补读完整重复执行结果，359崩溃栈仅首尾与调用路径，360撤回及维护者保留范围已读。",
+      "source_report_sha256": "a203b71ad493832a980905e5eb6574b66a9e878ea47c1ab1af43af4a957e63c5",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "有完整常量/参数化查询与big_tables配置，可做性能探索；不能预设普通查询一定应快于预处理查询。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555663"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "依cmain创建TINYINT t0，INSERT IGNORE写入给定超范围值，保存warnings；big_tables=ON。",
+            "steps": "运行cmain的DISTINCT/EXISTS/CAST/IN表达式普通EXPLAIN ANALYZE与参数-1892716661的预处理版本，交换先后顺序重复比较。",
+            "oracle": "先确认两查询结果等价；相同环境下重复测量临时表和耗时差异。单次计划或性能差异仅为线索，需排除预热与测量噪声。",
+            "requirements": [
+              "记录SQL模式与截断warnings",
+              "重复采样",
+              "统一缓存与资源"
+            ],
+            "target_applicability": "目标版支持相关SQL与big_tables，8.0.44结果不能推定目标受影响。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "有完整常量/参数化查询与big_tables配置，可做性能探索；不能预设普通查询一定应快于预处理查询。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555663"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "依cmain创建TINYINT t0，INSERT IGNORE写入给定超范围值，保存warnings；big_tables=ON。",
+            "steps": "运行cmain的DISTINCT/EXISTS/CAST/IN表达式普通EXPLAIN ANALYZE与参数-1892716661的预处理版本，交换先后顺序重复比较。",
+            "oracle": "先确认两查询结果等价；相同环境下重复测量临时表和耗时差异。单次计划或性能差异仅为线索，需排除预热与测量噪声。",
+            "requirements": [
+              "记录SQL模式与截断warnings",
+              "重复采样",
+              "统一缓存与资源"
+            ],
+            "target_applicability": "目标版支持相关SQL与big_tables，8.0.44结果不能推定目标受影响。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "有完整常量/参数化查询与big_tables配置，可做性能探索；不能预设普通查询一定应快于预处理查询。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555663"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "依cmain创建TINYINT t0，INSERT IGNORE写入给定超范围值，保存warnings；big_tables=ON。",
+            "steps": "运行cmain的DISTINCT/EXISTS/CAST/IN表达式普通EXPLAIN ANALYZE与参数-1892716661的预处理版本，交换先后顺序重复比较。",
+            "oracle": "先确认两查询结果等价；相同环境下重复测量临时表和耗时差异。单次计划或性能差异仅为线索，需排除预热与测量噪声。",
+            "requirements": [
+              "记录SQL模式与截断warnings",
+              "重复采样",
+              "统一缓存与资源"
+            ],
+            "target_applicability": "目标版支持相关SQL与big_tables，8.0.44结果不能推定目标受影响。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "有完整常量/参数化查询与big_tables配置，可做性能探索；不能预设普通查询一定应快于预处理查询。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555663"
+          ],
+          "test_spec": {
+            "kind": "performance",
+            "setup": "依cmain创建TINYINT t0，INSERT IGNORE写入给定超范围值，保存warnings；big_tables=ON。",
+            "steps": "运行cmain的DISTINCT/EXISTS/CAST/IN表达式普通EXPLAIN ANALYZE与参数-1892716661的预处理版本，交换先后顺序重复比较。",
+            "oracle": "先确认两查询结果等价；相同环境下重复测量临时表和耗时差异。单次计划或性能差异仅为线索，需排除预热与测量噪声。",
+            "requirements": [
+              "记录SQL模式与截断warnings",
+              "重复采样",
+              "统一缓存与资源"
+            ],
+            "target_applicability": "目标版支持相关SQL与big_tables，8.0.44结果不能推定目标受影响。"
+          }
+        }
+      }
+    },
+    "119772": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读复现建表/数据/查询及全部评论导航；361补读完整重复执行结果，359崩溃栈仅首尾与调用路径，360撤回及维护者保留范围已读。",
+      "source_report_sha256": "f48b45b39e69400562cd4cf94c130af0f732c45656a4551d573fc2188199e3b4",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "How to repeat给出空表DDL和完整优化期崩溃查询；跨分支9.2修复不排除8.0探索。重复链需后续根因去重。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555785"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立debug实例中新建空表t0(c0 SMALLINT UNSIGNED)，避免原记录中已存在同名表干扰。",
+            "steps": "执行cmain完整NOT IN/LEAST的SELECT表达式，记录连接、服务进程及错误日志。",
+            "oracle": "不得发生Item_func_min_max::int_op断言/崩溃；正常空集或SQL错误分别记录，连接丢失须由服务端栈确认。",
+            "requirements": [
+              "debug构建",
+              "全新测试schema",
+              "保存崩溃栈"
+            ],
+            "target_applicability": "所用无符号整数和优化表达式适用于目标语法；9.2修复与8.0影响分开判断。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "How to repeat给出空表DDL和完整优化期崩溃查询；跨分支9.2修复不排除8.0探索。重复链需后续根因去重。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555785"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立debug实例中新建空表t0(c0 SMALLINT UNSIGNED)，避免原记录中已存在同名表干扰。",
+            "steps": "执行cmain完整NOT IN/LEAST的SELECT表达式，记录连接、服务进程及错误日志。",
+            "oracle": "不得发生Item_func_min_max::int_op断言/崩溃；正常空集或SQL错误分别记录，连接丢失须由服务端栈确认。",
+            "requirements": [
+              "debug构建",
+              "全新测试schema",
+              "保存崩溃栈"
+            ],
+            "target_applicability": "所用无符号整数和优化表达式适用于目标语法；9.2修复与8.0影响分开判断。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "How to repeat给出空表DDL和完整优化期崩溃查询；跨分支9.2修复不排除8.0探索。重复链需后续根因去重。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555785"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立debug实例中新建空表t0(c0 SMALLINT UNSIGNED)，避免原记录中已存在同名表干扰。",
+            "steps": "执行cmain完整NOT IN/LEAST的SELECT表达式，记录连接、服务进程及错误日志。",
+            "oracle": "不得发生Item_func_min_max::int_op断言/崩溃；正常空集或SQL错误分别记录，连接丢失须由服务端栈确认。",
+            "requirements": [
+              "debug构建",
+              "全新测试schema",
+              "保存崩溃栈"
+            ],
+            "target_applicability": "所用无符号整数和优化表达式适用于目标语法；9.2修复与8.0影响分开判断。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "How to repeat给出空表DDL和完整优化期崩溃查询；跨分支9.2修复不排除8.0探索。重复链需后续根因去重。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c555785"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立debug实例中新建空表t0(c0 SMALLINT UNSIGNED)，避免原记录中已存在同名表干扰。",
+            "steps": "执行cmain完整NOT IN/LEAST的SELECT表达式，记录连接、服务进程及错误日志。",
+            "oracle": "不得发生Item_func_min_max::int_op断言/崩溃；正常空集或SQL错误分别记录，连接丢失须由服务端栈确认。",
+            "requirements": [
+              "debug构建",
+              "全新测试schema",
+              "保存崩溃栈"
+            ],
+            "target_applicability": "所用无符号整数和优化表达式适用于目标语法；9.2修复与8.0影响分开判断。"
+          }
+        }
+      }
+    },
+    "119908": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读复现建表/数据/查询及全部评论导航；361补读完整重复执行结果，359崩溃栈仅首尾与调用路径，360撤回及维护者保留范围已读。",
+      "source_report_sha256": "9ad00e44f23943b96418970ef1635490c4789254a4cba170315d5cf6025e169a",
+      "version_results": {
+        "8.0.32": {
+          "decision": "human_ambiguity",
+          "reason": "作者撤回原乱码结论，但维护者保留另一个实现问题；现有SQL不能直接当成被保留缺陷的有效复现。",
+          "missing_material": [
+            "维护者保留问题的精确定义与复现",
+            "客户端原始返回字节及正确字符集判定"
+          ],
+          "anchors": [
+            "c555998",
+            "c555999"
+          ]
+        },
+        "8.0.33": {
+          "decision": "human_ambiguity",
+          "reason": "作者撤回原乱码结论，但维护者保留另一个实现问题；现有SQL不能直接当成被保留缺陷的有效复现。",
+          "missing_material": [
+            "维护者保留问题的精确定义与复现",
+            "客户端原始返回字节及正确字符集判定"
+          ],
+          "anchors": [
+            "c555998",
+            "c555999"
+          ]
+        },
+        "8.0.34": {
+          "decision": "human_ambiguity",
+          "reason": "作者撤回原乱码结论，但维护者保留另一个实现问题；现有SQL不能直接当成被保留缺陷的有效复现。",
+          "missing_material": [
+            "维护者保留问题的精确定义与复现",
+            "客户端原始返回字节及正确字符集判定"
+          ],
+          "anchors": [
+            "c555998",
+            "c555999"
+          ]
+        },
+        "8.0.35": {
+          "decision": "human_ambiguity",
+          "reason": "作者撤回原乱码结论，但维护者保留另一个实现问题；现有SQL不能直接当成被保留缺陷的有效复现。",
+          "missing_material": [
+            "维护者保留问题的精确定义与复现",
+            "客户端原始返回字节及正确字符集判定"
+          ],
+          "anchors": [
+            "c555998",
+            "c555999"
+          ]
+        }
+      }
+    },
+    "119965": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读复现建表/数据/查询及全部评论导航；361补读完整重复执行结果，359崩溃栈仅首尾与调用路径，360撤回及维护者保留范围已读。",
+      "source_report_sha256": "469305cbdafedc9743c048bbbb6b322adba198264302ee12b869fd5ea0fc27b5",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "完整分区表、生成列、五行数据和重复NATURAL JOIN可用于检查同会话结果稳定性。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c556087"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "SQL_MODE为空，按cmain建立带生成列/函数索引的16分区t3，并插入全部五行原始数据，固定时区。",
+            "steps": "同一会话不改表，连续多次执行SELECT t3.c8,ta1.vc2,t3.c1 FROM t3 NATURAL JOIN t3 AS ta1，保存每次结果多重集、warnings和计划。",
+            "oracle": "同一数据和会话条件下结果多重集不应从2行变1行；不将无ORDER BY的单纯行顺序变化记为错误。",
+            "requirements": [
+              "保持全部字面量与DDL",
+              "固定时区/SQL模式",
+              "结果按多重集比较"
+            ],
+            "target_applicability": "目标版本支持分区、生成列及函数索引；原.35既有候选，本次补审.32/.33/.34。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "完整分区表、生成列、五行数据和重复NATURAL JOIN可用于检查同会话结果稳定性。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c556087"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "SQL_MODE为空，按cmain建立带生成列/函数索引的16分区t3，并插入全部五行原始数据，固定时区。",
+            "steps": "同一会话不改表，连续多次执行SELECT t3.c8,ta1.vc2,t3.c1 FROM t3 NATURAL JOIN t3 AS ta1，保存每次结果多重集、warnings和计划。",
+            "oracle": "同一数据和会话条件下结果多重集不应从2行变1行；不将无ORDER BY的单纯行顺序变化记为错误。",
+            "requirements": [
+              "保持全部字面量与DDL",
+              "固定时区/SQL模式",
+              "结果按多重集比较"
+            ],
+            "target_applicability": "目标版本支持分区、生成列及函数索引；原.35既有候选，本次补审.32/.33/.34。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "完整分区表、生成列、五行数据和重复NATURAL JOIN可用于检查同会话结果稳定性。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c556087"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "SQL_MODE为空，按cmain建立带生成列/函数索引的16分区t3，并插入全部五行原始数据，固定时区。",
+            "steps": "同一会话不改表，连续多次执行SELECT t3.c8,ta1.vc2,t3.c1 FROM t3 NATURAL JOIN t3 AS ta1，保存每次结果多重集、warnings和计划。",
+            "oracle": "同一数据和会话条件下结果多重集不应从2行变1行；不将无ORDER BY的单纯行顺序变化记为错误。",
+            "requirements": [
+              "保持全部字面量与DDL",
+              "固定时区/SQL模式",
+              "结果按多重集比较"
+            ],
+            "target_applicability": "目标版本支持分区、生成列及函数索引；原.35既有候选，本次补审.32/.33/.34。"
+          }
+        }
+      }
+    },
+    "119997": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读复现建表/数据/查询及全部评论导航；361补读完整重复执行结果，359崩溃栈仅首尾与调用路径，360撤回及维护者保留范围已读。",
+      "source_report_sha256": "d632c6ea05310b6f245a48b5239304de86d968308340016734cb8954049fa584",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "有模拟AIO配置及源码竞争解释，但没有可重复的工作负载/数据规模和性能基准，官方同时指出可能配置不当，不能只按线程数直接安排缺陷验证。",
+          "missing_material": [
+            "代表性读写/清理负载、表数据及存储环境",
+            "吞吐/锁等待的重复测量与合理线程数对照"
+          ],
+          "anchors": [
+            "cmain",
+            "c556225",
+            "c556301"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "有模拟AIO配置及源码竞争解释，但没有可重复的工作负载/数据规模和性能基准，官方同时指出可能配置不当，不能只按线程数直接安排缺陷验证。",
+          "missing_material": [
+            "代表性读写/清理负载、表数据及存储环境",
+            "吞吐/锁等待的重复测量与合理线程数对照"
+          ],
+          "anchors": [
+            "cmain",
+            "c556225",
+            "c556301"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "有模拟AIO配置及源码竞争解释，但没有可重复的工作负载/数据规模和性能基准，官方同时指出可能配置不当，不能只按线程数直接安排缺陷验证。",
+          "missing_material": [
+            "代表性读写/清理负载、表数据及存储环境",
+            "吞吐/锁等待的重复测量与合理线程数对照"
+          ],
+          "anchors": [
+            "cmain",
+            "c556225",
+            "c556301"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "有模拟AIO配置及源码竞争解释，但没有可重复的工作负载/数据规模和性能基准，官方同时指出可能配置不当，不能只按线程数直接安排缺陷验证。",
+          "missing_material": [
+            "代表性读写/清理负载、表数据及存储环境",
+            "吞吐/锁等待的重复测量与合理线程数对照"
+          ],
+          "anchors": [
+            "cmain",
+            "c556225",
+            "c556301"
+          ]
+        }
+      }
+    },
+    "120185": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/完整关键复现SQL及评论导航，363查询末段、365完整用例另展开，366关键工作负载和末尾复现约束另读；367修复讨论首尾及版本差异已读。",
+      "source_report_sha256": "cffafee0a7e05e8d31de7338b4a8e7fc5ff844bc14d8594f74ae8933f1d92fec",
+      "version_results": {
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "六表数据及嵌套CTE查询完整，目标32已在原队列，后版正常没有给出四目标内修复边界，可探索其余三版。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c556505",
+            "c556507"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "debug构建；按cmain建mysql_1至mysql_6、十二行数据及tmp2/tmp7；记录SQL模式，非完整GROUP BY需单独记录允许该语法的模式。",
+            "steps": "执行cmain完整同名内外CTE、LEFT JOIN标量子查询、IN/OR条件及最终FOR SHARE查询；记录warnings、结果及服务端日志。",
+            "oracle": "不应发生add_key_fields的cond->is_bool_func断言；语法/分组错误与崩溃分开，不当作已触发报告。",
+            "requirements": [
+              "debug构建",
+              "固定SQL模式与时区",
+              "完整原始查询而非简写"
+            ],
+            "target_applicability": "目标版具备CTE及相关连接优化功能，8.0.45/8.4.3正常不定位32至35中修复。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "六表数据及嵌套CTE查询完整，目标32已在原队列，后版正常没有给出四目标内修复边界，可探索其余三版。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c556505",
+            "c556507"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "debug构建；按cmain建mysql_1至mysql_6、十二行数据及tmp2/tmp7；记录SQL模式，非完整GROUP BY需单独记录允许该语法的模式。",
+            "steps": "执行cmain完整同名内外CTE、LEFT JOIN标量子查询、IN/OR条件及最终FOR SHARE查询；记录warnings、结果及服务端日志。",
+            "oracle": "不应发生add_key_fields的cond->is_bool_func断言；语法/分组错误与崩溃分开，不当作已触发报告。",
+            "requirements": [
+              "debug构建",
+              "固定SQL模式与时区",
+              "完整原始查询而非简写"
+            ],
+            "target_applicability": "目标版具备CTE及相关连接优化功能，8.0.45/8.4.3正常不定位32至35中修复。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "六表数据及嵌套CTE查询完整，目标32已在原队列，后版正常没有给出四目标内修复边界，可探索其余三版。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c556505",
+            "c556507"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "debug构建；按cmain建mysql_1至mysql_6、十二行数据及tmp2/tmp7；记录SQL模式，非完整GROUP BY需单独记录允许该语法的模式。",
+            "steps": "执行cmain完整同名内外CTE、LEFT JOIN标量子查询、IN/OR条件及最终FOR SHARE查询；记录warnings、结果及服务端日志。",
+            "oracle": "不应发生add_key_fields的cond->is_bool_func断言；语法/分组错误与崩溃分开，不当作已触发报告。",
+            "requirements": [
+              "debug构建",
+              "固定SQL模式与时区",
+              "完整原始查询而非简写"
+            ],
+            "target_applicability": "目标版具备CTE及相关连接优化功能，8.0.45/8.4.3正常不定位32至35中修复。"
+          }
+        }
+      }
+    },
+    "120281": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/完整关键复现SQL及评论导航，363查询末段、365完整用例另展开，366关键工作负载和末尾复现约束另读；367修复讨论首尾及版本差异已读。",
+      "source_report_sha256": "959819efe53f65182218afdf47dace92989ea531a4e30febf786c41a9b6c7f67",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "报告给出可独立准备的单主单从配置及sysbench标准负载方向，能够安排复制死锁探索；并非已保证触发。",
+          "missing_material": [],
+          "anchors": [
+            "cmain"
+          ],
+          "test_spec": {
+            "kind": "replication",
+            "setup": "独立主从实例，开启binlog；副本replica_parallel_workers=4、LOGICAL_CLOCK、replica_preserve_commit_order=ON；使用sysbench oltp_read_write标准prepare生成数据。",
+            "steps": "按报告用8个线程在主库持续运行oltp_read_write，定期采集副本worker状态、复制进度及提交等待；实验前冻结并记录sysbench版本、数据规模、持续时间和binlog配置。",
+            "oracle": "副本持续无进展且多个worker相互等待提交的状态需用线程栈/事务依赖确认；普通延迟和短暂等待不算永久死锁。",
+            "requirements": [
+              "隔离复制拓扑",
+              "sysbench标准脚本",
+              "足够长的可控观察窗口与线程栈采集"
+            ],
+            "target_applicability": "目标版支持并行复制与保序提交，报告8.0.42触发不证明四目标受影响。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "报告给出可独立准备的单主单从配置及sysbench标准负载方向，能够安排复制死锁探索；并非已保证触发。",
+          "missing_material": [],
+          "anchors": [
+            "cmain"
+          ],
+          "test_spec": {
+            "kind": "replication",
+            "setup": "独立主从实例，开启binlog；副本replica_parallel_workers=4、LOGICAL_CLOCK、replica_preserve_commit_order=ON；使用sysbench oltp_read_write标准prepare生成数据。",
+            "steps": "按报告用8个线程在主库持续运行oltp_read_write，定期采集副本worker状态、复制进度及提交等待；实验前冻结并记录sysbench版本、数据规模、持续时间和binlog配置。",
+            "oracle": "副本持续无进展且多个worker相互等待提交的状态需用线程栈/事务依赖确认；普通延迟和短暂等待不算永久死锁。",
+            "requirements": [
+              "隔离复制拓扑",
+              "sysbench标准脚本",
+              "足够长的可控观察窗口与线程栈采集"
+            ],
+            "target_applicability": "目标版支持并行复制与保序提交，报告8.0.42触发不证明四目标受影响。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "报告给出可独立准备的单主单从配置及sysbench标准负载方向，能够安排复制死锁探索；并非已保证触发。",
+          "missing_material": [],
+          "anchors": [
+            "cmain"
+          ],
+          "test_spec": {
+            "kind": "replication",
+            "setup": "独立主从实例，开启binlog；副本replica_parallel_workers=4、LOGICAL_CLOCK、replica_preserve_commit_order=ON；使用sysbench oltp_read_write标准prepare生成数据。",
+            "steps": "按报告用8个线程在主库持续运行oltp_read_write，定期采集副本worker状态、复制进度及提交等待；实验前冻结并记录sysbench版本、数据规模、持续时间和binlog配置。",
+            "oracle": "副本持续无进展且多个worker相互等待提交的状态需用线程栈/事务依赖确认；普通延迟和短暂等待不算永久死锁。",
+            "requirements": [
+              "隔离复制拓扑",
+              "sysbench标准脚本",
+              "足够长的可控观察窗口与线程栈采集"
+            ],
+            "target_applicability": "目标版支持并行复制与保序提交，报告8.0.42触发不证明四目标受影响。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "报告给出可独立准备的单主单从配置及sysbench标准负载方向，能够安排复制死锁探索；并非已保证触发。",
+          "missing_material": [],
+          "anchors": [
+            "cmain"
+          ],
+          "test_spec": {
+            "kind": "replication",
+            "setup": "独立主从实例，开启binlog；副本replica_parallel_workers=4、LOGICAL_CLOCK、replica_preserve_commit_order=ON；使用sysbench oltp_read_write标准prepare生成数据。",
+            "steps": "按报告用8个线程在主库持续运行oltp_read_write，定期采集副本worker状态、复制进度及提交等待；实验前冻结并记录sysbench版本、数据规模、持续时间和binlog配置。",
+            "oracle": "副本持续无进展且多个worker相互等待提交的状态需用线程栈/事务依赖确认；普通延迟和短暂等待不算永久死锁。",
+            "requirements": [
+              "隔离复制拓扑",
+              "sysbench标准脚本",
+              "足够长的可控观察窗口与线程栈采集"
+            ],
+            "target_applicability": "目标版支持并行复制与保序提交，报告8.0.42触发不证明四目标受影响。"
+          }
+        }
+      }
+    },
+    "120302": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/完整关键复现SQL及评论导航，363查询末段、365完整用例另展开，366关键工作负载和末尾复现约束另读；367修复讨论首尾及版本差异已读。",
+      "source_report_sha256": "968da2cdeb8469c731ab772f4fc11bdfb709cc67e470893fd80d490de4dc545b",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "完整DATETIME数据、VIEW/CTE UNION自连接对照，可检验结果一致性。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c556704"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "专用schema内t0(c0 DATETIME)，插入2345-03-17 14:34:49；依cmain建YEAR(c0) UNION视图。",
+            "steps": "执行视图两次引用自连接和相同CTE两次引用自连接（含vc_0>0），记录完整结果、元数据和warnings。",
+            "oracle": "两个等价形式应返回相同结果；YEAR值2345不应在没有YEAR列强制转换的查询中变为0000。比较实际输出确认wrong_result。",
+            "requirements": [
+              "一致SQL模式",
+              "同一数据快照",
+              "结果与列类型记录"
+            ],
+            "target_applicability": "目标版支持CTE、VIEW和UNION，此9.6报告仅作为可执行探索场景。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "完整DATETIME数据、VIEW/CTE UNION自连接对照，可检验结果一致性。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c556704"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "专用schema内t0(c0 DATETIME)，插入2345-03-17 14:34:49；依cmain建YEAR(c0) UNION视图。",
+            "steps": "执行视图两次引用自连接和相同CTE两次引用自连接（含vc_0>0），记录完整结果、元数据和warnings。",
+            "oracle": "两个等价形式应返回相同结果；YEAR值2345不应在没有YEAR列强制转换的查询中变为0000。比较实际输出确认wrong_result。",
+            "requirements": [
+              "一致SQL模式",
+              "同一数据快照",
+              "结果与列类型记录"
+            ],
+            "target_applicability": "目标版支持CTE、VIEW和UNION，此9.6报告仅作为可执行探索场景。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "完整DATETIME数据、VIEW/CTE UNION自连接对照，可检验结果一致性。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c556704"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "专用schema内t0(c0 DATETIME)，插入2345-03-17 14:34:49；依cmain建YEAR(c0) UNION视图。",
+            "steps": "执行视图两次引用自连接和相同CTE两次引用自连接（含vc_0>0），记录完整结果、元数据和warnings。",
+            "oracle": "两个等价形式应返回相同结果；YEAR值2345不应在没有YEAR列强制转换的查询中变为0000。比较实际输出确认wrong_result。",
+            "requirements": [
+              "一致SQL模式",
+              "同一数据快照",
+              "结果与列类型记录"
+            ],
+            "target_applicability": "目标版支持CTE、VIEW和UNION，此9.6报告仅作为可执行探索场景。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "完整DATETIME数据、VIEW/CTE UNION自连接对照，可检验结果一致性。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c556704"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "专用schema内t0(c0 DATETIME)，插入2345-03-17 14:34:49；依cmain建YEAR(c0) UNION视图。",
+            "steps": "执行视图两次引用自连接和相同CTE两次引用自连接（含vc_0>0），记录完整结果、元数据和warnings。",
+            "oracle": "两个等价形式应返回相同结果；YEAR值2345不应在没有YEAR列强制转换的查询中变为0000。比较实际输出确认wrong_result。",
+            "requirements": [
+              "一致SQL模式",
+              "同一数据快照",
+              "结果与列类型记录"
+            ],
+            "target_applicability": "目标版支持CTE、VIEW和UNION，此9.6报告仅作为可执行探索场景。"
+          }
+        }
+      }
+    },
+    "120441": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/完整关键复现SQL及评论导航，363查询末段、365完整用例另展开，366关键工作负载和末尾复现约束另读；367修复讨论首尾及版本差异已读。",
+      "source_report_sha256": "dc9341fd07df048f1a802fa18eb33a3b50fd1e5fded9c6e1719617b94c6c1d4f",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "虽有内部锁持有机制和高频TRUNCATE线索，复现步骤DDL仍为省略号，触发依赖索引键分布、淘汰压力及巨大历史哈希；缺可复用的负载定义。",
+          "missing_material": [
+            "具体分区DDL、数据和持续churn/读写脚本",
+            "哈希规模和触发条件的可观测参数"
+          ],
+          "anchors": [
+            "cmain",
+            "c557432"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "虽有内部锁持有机制和高频TRUNCATE线索，复现步骤DDL仍为省略号，触发依赖索引键分布、淘汰压力及巨大历史哈希；缺可复用的负载定义。",
+          "missing_material": [
+            "具体分区DDL、数据和持续churn/读写脚本",
+            "哈希规模和触发条件的可观测参数"
+          ],
+          "anchors": [
+            "cmain",
+            "c557432"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "虽有内部锁持有机制和高频TRUNCATE线索，复现步骤DDL仍为省略号，触发依赖索引键分布、淘汰压力及巨大历史哈希；缺可复用的负载定义。",
+          "missing_material": [
+            "具体分区DDL、数据和持续churn/读写脚本",
+            "哈希规模和触发条件的可观测参数"
+          ],
+          "anchors": [
+            "cmain",
+            "c557432"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "虽有内部锁持有机制和高频TRUNCATE线索，复现步骤DDL仍为省略号，触发依赖索引键分布、淘汰压力及巨大历史哈希；缺可复用的负载定义。",
+          "missing_material": [
+            "具体分区DDL、数据和持续churn/读写脚本",
+            "哈希规模和触发条件的可观测参数"
+          ],
+          "anchors": [
+            "cmain",
+            "c557432"
+          ]
+        }
+      }
+    },
+    "120504": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/完整关键复现SQL及评论导航，363查询末段、365完整用例另展开，366关键工作负载和末尾复现约束另读；367修复讨论首尾及版本差异已读。",
+      "source_report_sha256": "b71422f64510d9fe6f45f0b094fc164be29f108391e780d077c6bbe79a6ced2b",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "讨论明确8.0/8.4旧版本可建该表，主要可见拒绝是9.7新变化；旧版函数过估计虽存在但本DDL不能验证旧版的缺陷后果。",
+          "missing_material": [
+            "8.0.32至35可观察的错误/性能症状与有效判错依据",
+            "区分GIS内部估计问题和较新严格模式回归"
+          ],
+          "anchors": [
+            "c557320",
+            "c557321",
+            "c558673"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "讨论明确8.0/8.4旧版本可建该表，主要可见拒绝是9.7新变化；旧版函数过估计虽存在但本DDL不能验证旧版的缺陷后果。",
+          "missing_material": [
+            "8.0.32至35可观察的错误/性能症状与有效判错依据",
+            "区分GIS内部估计问题和较新严格模式回归"
+          ],
+          "anchors": [
+            "c557320",
+            "c557321",
+            "c558673"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "讨论明确8.0/8.4旧版本可建该表，主要可见拒绝是9.7新变化；旧版函数过估计虽存在但本DDL不能验证旧版的缺陷后果。",
+          "missing_material": [
+            "8.0.32至35可观察的错误/性能症状与有效判错依据",
+            "区分GIS内部估计问题和较新严格模式回归"
+          ],
+          "anchors": [
+            "c557320",
+            "c557321",
+            "c558673"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "讨论明确8.0/8.4旧版本可建该表，主要可见拒绝是9.7新变化；旧版函数过估计虽存在但本DDL不能验证旧版的缺陷后果。",
+          "missing_material": [
+            "8.0.32至35可观察的错误/性能症状与有效判错依据",
+            "区分GIS内部估计问题和较新严格模式回归"
+          ],
+          "anchors": [
+            "c557320",
+            "c557321",
+            "c558673"
+          ]
+        }
+      }
+    },
+    "120561": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、关键How to repeat及评论导航；369完整建表/对照，370完整SQL，372缩减评论全文已读；368补丁附件未取。",
+      "source_report_sha256": "64d5a147c93a4b8c7b06baf3ce73dde22e5d33ec1a8f7beefcea7e2b9a4fa582",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "现有确定性用例依赖向9.7源码新增DBUG hook；四目标未核对相同post-rename错误路径，非修改构建的并发触发也未给出。",
+          "missing_material": [
+            "四目标源码对应位置及故障注入兼容核对",
+            "或不修改源码的确定性回滚触发序列"
+          ],
+          "anchors": [
+            "cmain",
+            "c557311"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "现有确定性用例依赖向9.7源码新增DBUG hook；四目标未核对相同post-rename错误路径，非修改构建的并发触发也未给出。",
+          "missing_material": [
+            "四目标源码对应位置及故障注入兼容核对",
+            "或不修改源码的确定性回滚触发序列"
+          ],
+          "anchors": [
+            "cmain",
+            "c557311"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "现有确定性用例依赖向9.7源码新增DBUG hook；四目标未核对相同post-rename错误路径，非修改构建的并发触发也未给出。",
+          "missing_material": [
+            "四目标源码对应位置及故障注入兼容核对",
+            "或不修改源码的确定性回滚触发序列"
+          ],
+          "anchors": [
+            "cmain",
+            "c557311"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "现有确定性用例依赖向9.7源码新增DBUG hook；四目标未核对相同post-rename错误路径，非修改构建的并发触发也未给出。",
+          "missing_material": [
+            "四目标源码对应位置及故障注入兼容核对",
+            "或不修改源码的确定性回滚触发序列"
+          ],
+          "anchors": [
+            "cmain",
+            "c557311"
+          ]
+        }
+      }
+    },
+    "120639": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、关键How to repeat及评论导航；369完整建表/对照，370完整SQL，372缩减评论全文已读；368补丁附件未取。",
+      "source_report_sha256": "f474900c197737f53e1e5e3c76877bd329e429d64f63bf703778f63c5ed12305",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "有一行BIGINT数据、索引与无索引对照，能够直接检查IFNULL常量转换造成的错误计数；9.7.2修复不外推8.0。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560244"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "按cmain建s(id BIGINT NOT NULL,KEY(id))、s_plain无索引表，均插入1。",
+            "steps": "执行COUNT WHERE NOT(IFNULL(0.5,0) NOT IN(id))、逐行投影谓词、无索引对照及直接常量0.5对照；保存EXPLAIN。",
+            "oracle": "0.5不等于1，计数应0；同谓词索引路径与逐行/无索引路径必须一致。",
+            "requirements": [
+              "相同SQL模式",
+              "保存结果与执行计划"
+            ],
+            "target_applicability": "目标版本具备BIGINT索引、IFNULL及IN优化；具体受影响未知。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "有一行BIGINT数据、索引与无索引对照，能够直接检查IFNULL常量转换造成的错误计数；9.7.2修复不外推8.0。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560244"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "按cmain建s(id BIGINT NOT NULL,KEY(id))、s_plain无索引表，均插入1。",
+            "steps": "执行COUNT WHERE NOT(IFNULL(0.5,0) NOT IN(id))、逐行投影谓词、无索引对照及直接常量0.5对照；保存EXPLAIN。",
+            "oracle": "0.5不等于1，计数应0；同谓词索引路径与逐行/无索引路径必须一致。",
+            "requirements": [
+              "相同SQL模式",
+              "保存结果与执行计划"
+            ],
+            "target_applicability": "目标版本具备BIGINT索引、IFNULL及IN优化；具体受影响未知。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "有一行BIGINT数据、索引与无索引对照，能够直接检查IFNULL常量转换造成的错误计数；9.7.2修复不外推8.0。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560244"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "按cmain建s(id BIGINT NOT NULL,KEY(id))、s_plain无索引表，均插入1。",
+            "steps": "执行COUNT WHERE NOT(IFNULL(0.5,0) NOT IN(id))、逐行投影谓词、无索引对照及直接常量0.5对照；保存EXPLAIN。",
+            "oracle": "0.5不等于1，计数应0；同谓词索引路径与逐行/无索引路径必须一致。",
+            "requirements": [
+              "相同SQL模式",
+              "保存结果与执行计划"
+            ],
+            "target_applicability": "目标版本具备BIGINT索引、IFNULL及IN优化；具体受影响未知。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "有一行BIGINT数据、索引与无索引对照，能够直接检查IFNULL常量转换造成的错误计数；9.7.2修复不外推8.0。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560244"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "按cmain建s(id BIGINT NOT NULL,KEY(id))、s_plain无索引表，均插入1。",
+            "steps": "执行COUNT WHERE NOT(IFNULL(0.5,0) NOT IN(id))、逐行投影谓词、无索引对照及直接常量0.5对照；保存EXPLAIN。",
+            "oracle": "0.5不等于1，计数应0；同谓词索引路径与逐行/无索引路径必须一致。",
+            "requirements": [
+              "相同SQL模式",
+              "保存结果与执行计划"
+            ],
+            "target_applicability": "目标版本具备BIGINT索引、IFNULL及IN优化；具体受影响未知。"
+          }
+        }
+      }
+    },
+    "120687": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、关键How to repeat及评论导航；369完整建表/对照，370完整SQL，372缩减评论全文已读；368补丁附件未取。",
+      "source_report_sha256": "a920e6fa6d3ec02860add22b0c104c6401ac08d1ad95c85c28a4a6404de6bffd",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "JSON数据与DATE/DATETIME多值索引完整，索引和忽略索引查询可直接对照。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c557529"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "按cmain建t(j JSON)，idate与idt分别为DATE ARRAY及DATETIME ARRAY；插入两个给定日期时间JSON数组。",
+            "steps": "对2001-01-01 00:00:00 MEMBER OF(j->'$[*]')分别使用IGNORE INDEX(idate,idt)和默认计划执行COUNT，保留结果及EXPLAIN。",
+            "oracle": "索引使用不应改变成员判断计数；数据未含该字符串，预期0。确认类型转换语义后将不一致记录为wrong_result。",
+            "requirements": [
+              "多值索引DDL预检",
+              "原始JSON字符串字面量",
+              "相同SQL模式"
+            ],
+            "target_applicability": "目标版含JSON成员运算与多值索引功能；9.7.0验证不直接确认四目标。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "JSON数据与DATE/DATETIME多值索引完整，索引和忽略索引查询可直接对照。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c557529"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "按cmain建t(j JSON)，idate与idt分别为DATE ARRAY及DATETIME ARRAY；插入两个给定日期时间JSON数组。",
+            "steps": "对2001-01-01 00:00:00 MEMBER OF(j->'$[*]')分别使用IGNORE INDEX(idate,idt)和默认计划执行COUNT，保留结果及EXPLAIN。",
+            "oracle": "索引使用不应改变成员判断计数；数据未含该字符串，预期0。确认类型转换语义后将不一致记录为wrong_result。",
+            "requirements": [
+              "多值索引DDL预检",
+              "原始JSON字符串字面量",
+              "相同SQL模式"
+            ],
+            "target_applicability": "目标版含JSON成员运算与多值索引功能；9.7.0验证不直接确认四目标。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "JSON数据与DATE/DATETIME多值索引完整，索引和忽略索引查询可直接对照。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c557529"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "按cmain建t(j JSON)，idate与idt分别为DATE ARRAY及DATETIME ARRAY；插入两个给定日期时间JSON数组。",
+            "steps": "对2001-01-01 00:00:00 MEMBER OF(j->'$[*]')分别使用IGNORE INDEX(idate,idt)和默认计划执行COUNT，保留结果及EXPLAIN。",
+            "oracle": "索引使用不应改变成员判断计数；数据未含该字符串，预期0。确认类型转换语义后将不一致记录为wrong_result。",
+            "requirements": [
+              "多值索引DDL预检",
+              "原始JSON字符串字面量",
+              "相同SQL模式"
+            ],
+            "target_applicability": "目标版含JSON成员运算与多值索引功能；9.7.0验证不直接确认四目标。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "JSON数据与DATE/DATETIME多值索引完整，索引和忽略索引查询可直接对照。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c557529"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "按cmain建t(j JSON)，idate与idt分别为DATE ARRAY及DATETIME ARRAY；插入两个给定日期时间JSON数组。",
+            "steps": "对2001-01-01 00:00:00 MEMBER OF(j->'$[*]')分别使用IGNORE INDEX(idate,idt)和默认计划执行COUNT，保留结果及EXPLAIN。",
+            "oracle": "索引使用不应改变成员判断计数；数据未含该字符串，预期0。确认类型转换语义后将不一致记录为wrong_result。",
+            "requirements": [
+              "多值索引DDL预检",
+              "原始JSON字符串字面量",
+              "相同SQL模式"
+            ],
+            "target_applicability": "目标版含JSON成员运算与多值索引功能；9.7.0验证不直接确认四目标。"
+          }
+        }
+      }
+    },
+    "120758": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、关键How to repeat及评论导航；369完整建表/对照，370完整SQL，372缩减评论全文已读；368补丁附件未取。",
+      "source_report_sha256": "ec5146aa787bfc7d6f6a1d7c60d999d6dea44c27ed2957b345550af6bbd2092f",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "这是增加redo扫描统计日志的功能建议，仅源码走查，没有可观察的错误或性能异常复现场景。",
+          "missing_material": [
+            "真实异常用例及判错标准；功能缺失本身不计bug"
+          ],
+          "anchors": [
+            "cmain",
+            "c558097"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "这是增加redo扫描统计日志的功能建议，仅源码走查，没有可观察的错误或性能异常复现场景。",
+          "missing_material": [
+            "真实异常用例及判错标准；功能缺失本身不计bug"
+          ],
+          "anchors": [
+            "cmain",
+            "c558097"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "这是增加redo扫描统计日志的功能建议，仅源码走查，没有可观察的错误或性能异常复现场景。",
+          "missing_material": [
+            "真实异常用例及判错标准；功能缺失本身不计bug"
+          ],
+          "anchors": [
+            "cmain",
+            "c558097"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "这是增加redo扫描统计日志的功能建议，仅源码走查，没有可观察的错误或性能异常复现场景。",
+          "missing_material": [
+            "真实异常用例及判错标准；功能缺失本身不计bug"
+          ],
+          "anchors": [
+            "cmain",
+            "c558097"
+          ]
+        }
+      }
+    },
+    "120809": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述、关键How to repeat及评论导航；369完整建表/对照，370完整SQL，372缩减评论全文已读；368补丁附件未取。",
+      "source_report_sha256": "5a828217db6c75d3f197b323311e565f2600624835995b2aa566c0e75f0eea01",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "原例和缩减例都依赖未读取的SQL附件；正文给查询和数据行数，但缺列类型、完整索引与造数分布，不能保证复用优化器场景。",
+          "missing_material": [
+            "两个SQL附件至少一个的完整内容",
+            "建表索引及数据生成过程"
+          ],
+          "anchors": [
+            "cmain",
+            "f34662",
+            "c557840",
+            "f34665"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "原例和缩减例都依赖未读取的SQL附件；正文给查询和数据行数，但缺列类型、完整索引与造数分布，不能保证复用优化器场景。",
+          "missing_material": [
+            "两个SQL附件至少一个的完整内容",
+            "建表索引及数据生成过程"
+          ],
+          "anchors": [
+            "cmain",
+            "f34662",
+            "c557840",
+            "f34665"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "原例和缩减例都依赖未读取的SQL附件；正文给查询和数据行数，但缺列类型、完整索引与造数分布，不能保证复用优化器场景。",
+          "missing_material": [
+            "两个SQL附件至少一个的完整内容",
+            "建表索引及数据生成过程"
+          ],
+          "anchors": [
+            "cmain",
+            "f34662",
+            "c557840",
+            "f34665"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "原例和缩减例都依赖未读取的SQL附件；正文给查询和数据行数，但缺列类型、完整索引与造数分布，不能保证复用优化器场景。",
+          "missing_material": [
+            "两个SQL附件至少一个的完整内容",
+            "建表索引及数据生成过程"
+          ],
+          "anchors": [
+            "cmain",
+            "f34662",
+            "c557840",
+            "f34665"
+          ]
+        }
+      }
+    },
+    "120831": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/How to repeat与评论导航；377/380/381完整关键SQL展开；382完整手动双会话流程及对照已读，长MTR和补丁未逐行审查；外链/附件未下载。",
+      "source_report_sha256": "f7eb07dc8bfa551e3592e859f0e767d24cc81ac147c9f92202bca9f873cc0470",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "只有9.7 debug的单元测试名与期望长度差异，尚未确定四目标是否包含同一测试与日志格式。",
+          "missing_material": [
+            "匹配四目标的单元测试源文件和断言语义",
+            "目标构建复现入口"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "只有9.7 debug的单元测试名与期望长度差异，尚未确定四目标是否包含同一测试与日志格式。",
+          "missing_material": [
+            "匹配四目标的单元测试源文件和断言语义",
+            "目标构建复现入口"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "只有9.7 debug的单元测试名与期望长度差异，尚未确定四目标是否包含同一测试与日志格式。",
+          "missing_material": [
+            "匹配四目标的单元测试源文件和断言语义",
+            "目标构建复现入口"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "只有9.7 debug的单元测试名与期望长度差异，尚未确定四目标是否包含同一测试与日志格式。",
+          "missing_material": [
+            "匹配四目标的单元测试源文件和断言语义",
+            "目标构建复现入口"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        }
+      }
+    },
+    "120861": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/How to repeat与评论导航；377/380/381完整关键SQL展开；382完整手动双会话流程及对照已读，长MTR和补丁未逐行审查；外链/附件未下载。",
+      "source_report_sha256": "85b73f4cb64dbe06b42af7511274568dc520b379d4ecc1411b9a547ed36903a9",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "正文的查询和对照可读，但完整建表、索引和确定性数据仅称在SQL附件中，当前快照没有附件内容。",
+          "missing_material": [
+            "mysql_distinct_semijoin_missed_repro.sql全文"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "正文的查询和对照可读，但完整建表、索引和确定性数据仅称在SQL附件中，当前快照没有附件内容。",
+          "missing_material": [
+            "mysql_distinct_semijoin_missed_repro.sql全文"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "正文的查询和对照可读，但完整建表、索引和确定性数据仅称在SQL附件中，当前快照没有附件内容。",
+          "missing_material": [
+            "mysql_distinct_semijoin_missed_repro.sql全文"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "正文的查询和对照可读，但完整建表、索引和确定性数据仅称在SQL附件中，当前快照没有附件内容。",
+          "missing_material": [
+            "mysql_distinct_semijoin_missed_repro.sql全文"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        }
+      }
+    },
+    "120974": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/How to repeat与评论导航；377/380/381完整关键SQL展开；382完整手动双会话流程及对照已读，长MTR和补丁未逐行审查；外链/附件未下载。",
+      "source_report_sha256": "76047e8ae880a143d6606eb492d5ddff7384ffe0444fc459f50fdaf929d704a7",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "系统视图查询自身可运行，但能令其长时间挂起且KILL无效的元数据状态/并发DDL未提供，不能把普通查询作为该缺陷复现。",
+          "missing_material": [
+            "触发长时等待的数据字典规模及并发操作",
+            "被KILL线程的等待事件/栈",
+            "官方MySQL的可迁移环境"
+          ],
+          "anchors": [
+            "cmain",
+            "c558192"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "系统视图查询自身可运行，但能令其长时间挂起且KILL无效的元数据状态/并发DDL未提供，不能把普通查询作为该缺陷复现。",
+          "missing_material": [
+            "触发长时等待的数据字典规模及并发操作",
+            "被KILL线程的等待事件/栈",
+            "官方MySQL的可迁移环境"
+          ],
+          "anchors": [
+            "cmain",
+            "c558192"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "系统视图查询自身可运行，但能令其长时间挂起且KILL无效的元数据状态/并发DDL未提供，不能把普通查询作为该缺陷复现。",
+          "missing_material": [
+            "触发长时等待的数据字典规模及并发操作",
+            "被KILL线程的等待事件/栈",
+            "官方MySQL的可迁移环境"
+          ],
+          "anchors": [
+            "cmain",
+            "c558192"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "系统视图查询自身可运行，但能令其长时间挂起且KILL无效的元数据状态/并发DDL未提供，不能把普通查询作为该缺陷复现。",
+          "missing_material": [
+            "触发长时等待的数据字典规模及并发操作",
+            "被KILL线程的等待事件/栈",
+            "官方MySQL的可迁移环境"
+          ],
+          "anchors": [
+            "cmain",
+            "c558192"
+          ]
+        }
+      }
+    },
+    "121063": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/How to repeat与评论导航；377/380/381完整关键SQL展开；382完整手动双会话流程及对照已读，长MTR和补丁未逐行审查；外链/附件未下载。",
+      "source_report_sha256": "92bfb65e9faf39cbcbf733ca88104e11bfee72a6346ee50f317312a81731d228",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "详细环境说明仍依赖未保存的tar包，缺具体配置、Go负载和滚动重启脚本，不能直接执行已给命令。",
+          "missing_material": [
+            "gnorepro或gnorepro_2完整附件内容",
+            "目标8.0配置/复制协议兼容核对"
+          ],
+          "anchors": [
+            "cmain",
+            "f34704",
+            "f34740"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "详细环境说明仍依赖未保存的tar包，缺具体配置、Go负载和滚动重启脚本，不能直接执行已给命令。",
+          "missing_material": [
+            "gnorepro或gnorepro_2完整附件内容",
+            "目标8.0配置/复制协议兼容核对"
+          ],
+          "anchors": [
+            "cmain",
+            "f34704",
+            "f34740"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "详细环境说明仍依赖未保存的tar包，缺具体配置、Go负载和滚动重启脚本，不能直接执行已给命令。",
+          "missing_material": [
+            "gnorepro或gnorepro_2完整附件内容",
+            "目标8.0配置/复制协议兼容核对"
+          ],
+          "anchors": [
+            "cmain",
+            "f34704",
+            "f34740"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "详细环境说明仍依赖未保存的tar包，缺具体配置、Go负载和滚动重启脚本，不能直接执行已给命令。",
+          "missing_material": [
+            "gnorepro或gnorepro_2完整附件内容",
+            "目标8.0配置/复制协议兼容核对"
+          ],
+          "anchors": [
+            "cmain",
+            "f34704",
+            "f34740"
+          ]
+        }
+      }
+    },
+    "121113": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/How to repeat与评论导航；377/380/381完整关键SQL展开；382完整手动双会话流程及对照已读，长MTR和补丁未逐行审查；外链/附件未下载。",
+      "source_report_sha256": "db1604f4eb4106bd848919f302258d44b2e7e6c249d7abca0f3935c0123160a5",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "完整元数据溢出边界用例只需一行实际数据，直算、GROUP BY和CTAS可交叉检验输出截断。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c558544"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "隔离schema；source_data(a LONGTEXT CHARACTER SET ascii)仅一行A；按cmain分别建RIGHT长度715827882和715827883的JSON_QUOTE视图。",
+            "steps": "执行两个视图的HEX/LENGTH直算和GROUP BY，读取information_schema列长度；非严格模式CTAS后再检查存储字节；严格模式记录返回错误。",
+            "oracle": "直算16个控制字符转义后的JSON应98字节；等价物化/分组不得仅保存4或16字节前缀；对照与边界触发分开记录。",
+            "requirements": [
+              "原始大长度常量不得简化",
+              "分别记录SQL模式、warnings与列元数据"
+            ],
+            "target_applicability": "目标版具备所用JSON_QUOTE、视图与CTAS功能；新版受影响不证明目标已存在。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "完整元数据溢出边界用例只需一行实际数据，直算、GROUP BY和CTAS可交叉检验输出截断。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c558544"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "隔离schema；source_data(a LONGTEXT CHARACTER SET ascii)仅一行A；按cmain分别建RIGHT长度715827882和715827883的JSON_QUOTE视图。",
+            "steps": "执行两个视图的HEX/LENGTH直算和GROUP BY，读取information_schema列长度；非严格模式CTAS后再检查存储字节；严格模式记录返回错误。",
+            "oracle": "直算16个控制字符转义后的JSON应98字节；等价物化/分组不得仅保存4或16字节前缀；对照与边界触发分开记录。",
+            "requirements": [
+              "原始大长度常量不得简化",
+              "分别记录SQL模式、warnings与列元数据"
+            ],
+            "target_applicability": "目标版具备所用JSON_QUOTE、视图与CTAS功能；新版受影响不证明目标已存在。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "完整元数据溢出边界用例只需一行实际数据，直算、GROUP BY和CTAS可交叉检验输出截断。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c558544"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "隔离schema；source_data(a LONGTEXT CHARACTER SET ascii)仅一行A；按cmain分别建RIGHT长度715827882和715827883的JSON_QUOTE视图。",
+            "steps": "执行两个视图的HEX/LENGTH直算和GROUP BY，读取information_schema列长度；非严格模式CTAS后再检查存储字节；严格模式记录返回错误。",
+            "oracle": "直算16个控制字符转义后的JSON应98字节；等价物化/分组不得仅保存4或16字节前缀；对照与边界触发分开记录。",
+            "requirements": [
+              "原始大长度常量不得简化",
+              "分别记录SQL模式、warnings与列元数据"
+            ],
+            "target_applicability": "目标版具备所用JSON_QUOTE、视图与CTAS功能；新版受影响不证明目标已存在。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "完整元数据溢出边界用例只需一行实际数据，直算、GROUP BY和CTAS可交叉检验输出截断。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c558544"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "隔离schema；source_data(a LONGTEXT CHARACTER SET ascii)仅一行A；按cmain分别建RIGHT长度715827882和715827883的JSON_QUOTE视图。",
+            "steps": "执行两个视图的HEX/LENGTH直算和GROUP BY，读取information_schema列长度；非严格模式CTAS后再检查存储字节；严格模式记录返回错误。",
+            "oracle": "直算16个控制字符转义后的JSON应98字节；等价物化/分组不得仅保存4或16字节前缀；对照与边界触发分开记录。",
+            "requirements": [
+              "原始大长度常量不得简化",
+              "分别记录SQL模式、warnings与列元数据"
+            ],
+            "target_applicability": "目标版具备所用JSON_QUOTE、视图与CTAS功能；新版受影响不证明目标已存在。"
+          }
+        }
+      }
+    },
+    "121255": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/How to repeat与评论导航；377/380/381完整关键SQL展开；382完整手动双会话流程及对照已读，长MTR和补丁未逐行审查；外链/附件未下载。",
+      "source_report_sha256": "5488062cbf71aab50c929d517f4055e34430220c5ac133a10de31631e9d7776b",
+      "version_results": {
+        "8.0.32": {
+          "decision": "human_ambiguity",
+          "reason": "存在完整SQL，但维护者认为FLOAT隐式转字符串允许差异，其他人仍有异议；执行相同现象不能自行解决合法语义争议。",
+          "missing_material": [
+            "FLOAT/COALESCE类型推导与字符串格式允许范围的判定",
+            "主报告121248对本例的最终解释"
+          ],
+          "anchors": [
+            "c558766",
+            "c558799",
+            "c558811"
+          ]
+        },
+        "8.0.33": {
+          "decision": "human_ambiguity",
+          "reason": "存在完整SQL，但维护者认为FLOAT隐式转字符串允许差异，其他人仍有异议；执行相同现象不能自行解决合法语义争议。",
+          "missing_material": [
+            "FLOAT/COALESCE类型推导与字符串格式允许范围的判定",
+            "主报告121248对本例的最终解释"
+          ],
+          "anchors": [
+            "c558766",
+            "c558799",
+            "c558811"
+          ]
+        },
+        "8.0.34": {
+          "decision": "human_ambiguity",
+          "reason": "存在完整SQL，但维护者认为FLOAT隐式转字符串允许差异，其他人仍有异议；执行相同现象不能自行解决合法语义争议。",
+          "missing_material": [
+            "FLOAT/COALESCE类型推导与字符串格式允许范围的判定",
+            "主报告121248对本例的最终解释"
+          ],
+          "anchors": [
+            "c558766",
+            "c558799",
+            "c558811"
+          ]
+        },
+        "8.0.35": {
+          "decision": "human_ambiguity",
+          "reason": "存在完整SQL，但维护者认为FLOAT隐式转字符串允许差异，其他人仍有异议；执行相同现象不能自行解决合法语义争议。",
+          "missing_material": [
+            "FLOAT/COALESCE类型推导与字符串格式允许范围的判定",
+            "主报告121248对本例的最终解释"
+          ],
+          "anchors": [
+            "c558766",
+            "c558799",
+            "c558811"
+          ]
+        }
+      }
+    },
+    "121386": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/How to repeat与评论导航；377/380/381完整关键SQL展开；382完整手动双会话流程及对照已读，长MTR和补丁未逐行审查；外链/附件未下载。",
+      "source_report_sha256": "59a241c13b6efe87b576f452623ccfff44ef65c490b881a2fd309dd03ef0011c",
+      "version_results": {
+        "8.0.32": {
+          "decision": "material_hold",
+          "reason": "仅较新26.10开发版的googletest1.17构建失败，四个旧目标的依赖/补丁/工具链对应未建立。",
+          "missing_material": [
+            "目标版本实际googletest依赖与构建入口",
+            "相同编译器下适用的最小构建重现"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.33": {
+          "decision": "material_hold",
+          "reason": "仅较新26.10开发版的googletest1.17构建失败，四个旧目标的依赖/补丁/工具链对应未建立。",
+          "missing_material": [
+            "目标版本实际googletest依赖与构建入口",
+            "相同编译器下适用的最小构建重现"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.34": {
+          "decision": "material_hold",
+          "reason": "仅较新26.10开发版的googletest1.17构建失败，四个旧目标的依赖/补丁/工具链对应未建立。",
+          "missing_material": [
+            "目标版本实际googletest依赖与构建入口",
+            "相同编译器下适用的最小构建重现"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        },
+        "8.0.35": {
+          "decision": "material_hold",
+          "reason": "仅较新26.10开发版的googletest1.17构建失败，四个旧目标的依赖/补丁/工具链对应未建立。",
+          "missing_material": [
+            "目标版本实际googletest依赖与构建入口",
+            "相同编译器下适用的最小构建重现"
+          ],
+          "anchors": [
+            "cmain"
+          ]
+        }
+      }
+    },
+    "121511": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/How to repeat与评论导航；377/380/381完整关键SQL展开；382完整手动双会话流程及对照已读，长MTR和补丁未逐行审查；外链/附件未下载。",
+      "source_report_sha256": "9d50b8ec9955d64c600a48dfbf03ff4375e7faad77302a34e40a5b442804dcdf",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "无外部数据的FORMAT边界查询及BIGINT列用例完整，能够检测大精度参数截断。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560402"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立会话；必要时按cmain建t016(d BIGINT)并插入2、4294967298、2147483648。",
+            "steps": "运行cmain FORMAT的2^31、2^32+2、普通大于30和负值对照；覆盖列参数及de_DE三参数形式，保存长度、值和warnings。",
+            "oracle": "大正D不应因32位截断而变成2位或0位精度；以同版本D=40的封顶行为为对照，区分正常参数报错与静默错误。",
+            "requirements": [
+              "原样保留64位常量",
+              "保存返回类型/字符串和warnings"
+            ],
+            "target_applicability": "目标版本支持FORMAT及BIGINT参数，当前仅探索是否保留相同窄化行为。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "无外部数据的FORMAT边界查询及BIGINT列用例完整，能够检测大精度参数截断。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560402"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立会话；必要时按cmain建t016(d BIGINT)并插入2、4294967298、2147483648。",
+            "steps": "运行cmain FORMAT的2^31、2^32+2、普通大于30和负值对照；覆盖列参数及de_DE三参数形式，保存长度、值和warnings。",
+            "oracle": "大正D不应因32位截断而变成2位或0位精度；以同版本D=40的封顶行为为对照，区分正常参数报错与静默错误。",
+            "requirements": [
+              "原样保留64位常量",
+              "保存返回类型/字符串和warnings"
+            ],
+            "target_applicability": "目标版本支持FORMAT及BIGINT参数，当前仅探索是否保留相同窄化行为。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "无外部数据的FORMAT边界查询及BIGINT列用例完整，能够检测大精度参数截断。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560402"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立会话；必要时按cmain建t016(d BIGINT)并插入2、4294967298、2147483648。",
+            "steps": "运行cmain FORMAT的2^31、2^32+2、普通大于30和负值对照；覆盖列参数及de_DE三参数形式，保存长度、值和warnings。",
+            "oracle": "大正D不应因32位截断而变成2位或0位精度；以同版本D=40的封顶行为为对照，区分正常参数报错与静默错误。",
+            "requirements": [
+              "原样保留64位常量",
+              "保存返回类型/字符串和warnings"
+            ],
+            "target_applicability": "目标版本支持FORMAT及BIGINT参数，当前仅探索是否保留相同窄化行为。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "无外部数据的FORMAT边界查询及BIGINT列用例完整，能够检测大精度参数截断。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560402"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立会话；必要时按cmain建t016(d BIGINT)并插入2、4294967298、2147483648。",
+            "steps": "运行cmain FORMAT的2^31、2^32+2、普通大于30和负值对照；覆盖列参数及de_DE三参数形式，保存长度、值和warnings。",
+            "oracle": "大正D不应因32位截断而变成2位或0位精度；以同版本D=40的封顶行为为对照，区分正常参数报错与静默错误。",
+            "requirements": [
+              "原样保留64位常量",
+              "保存返回类型/字符串和warnings"
+            ],
+            "target_applicability": "目标版本支持FORMAT及BIGINT参数，当前仅探索是否保留相同窄化行为。"
+          }
+        }
+      }
+    },
+    "121522": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/How to repeat与评论导航；377/380/381完整关键SQL展开；382完整手动双会话流程及对照已读，长MTR和补丁未逐行审查；外链/附件未下载。",
+      "source_report_sha256": "494ea2c0bec62f684f50d5158327f4776255771b946ca8e9f9f676bff701170c",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "三条REGEXP边界查询完整，可直接观察大occurrence/pos被截成32位的异常。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560397"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立会话，使用cmain给定短ASCII字符串和正则，固定字符集/排序规则。",
+            "steps": "执行REGEXP_INSTR occurrence=4与4294967298、pos=4294967297及REGEXP_REPLACE occurrence=4294967297；保存输出和错误码。",
+            "oracle": "超出匹配次数应无匹配，越界pos应按接口语义报错，不能静默等同低32位位置并命中或替换已有匹配。",
+            "requirements": [
+              "保存正则字符集设置",
+              "不由客户端窄化大整数字面量"
+            ],
+            "target_applicability": "目标版本具备ICU正则函数，是否同样截断待执行。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "三条REGEXP边界查询完整，可直接观察大occurrence/pos被截成32位的异常。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560397"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立会话，使用cmain给定短ASCII字符串和正则，固定字符集/排序规则。",
+            "steps": "执行REGEXP_INSTR occurrence=4与4294967298、pos=4294967297及REGEXP_REPLACE occurrence=4294967297；保存输出和错误码。",
+            "oracle": "超出匹配次数应无匹配，越界pos应按接口语义报错，不能静默等同低32位位置并命中或替换已有匹配。",
+            "requirements": [
+              "保存正则字符集设置",
+              "不由客户端窄化大整数字面量"
+            ],
+            "target_applicability": "目标版本具备ICU正则函数，是否同样截断待执行。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "三条REGEXP边界查询完整，可直接观察大occurrence/pos被截成32位的异常。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560397"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立会话，使用cmain给定短ASCII字符串和正则，固定字符集/排序规则。",
+            "steps": "执行REGEXP_INSTR occurrence=4与4294967298、pos=4294967297及REGEXP_REPLACE occurrence=4294967297；保存输出和错误码。",
+            "oracle": "超出匹配次数应无匹配，越界pos应按接口语义报错，不能静默等同低32位位置并命中或替换已有匹配。",
+            "requirements": [
+              "保存正则字符集设置",
+              "不由客户端窄化大整数字面量"
+            ],
+            "target_applicability": "目标版本具备ICU正则函数，是否同样截断待执行。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "三条REGEXP边界查询完整，可直接观察大occurrence/pos被截成32位的异常。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560397"
+          ],
+          "test_spec": {
+            "kind": "sql",
+            "setup": "独立会话，使用cmain给定短ASCII字符串和正则，固定字符集/排序规则。",
+            "steps": "执行REGEXP_INSTR occurrence=4与4294967298、pos=4294967297及REGEXP_REPLACE occurrence=4294967297；保存输出和错误码。",
+            "oracle": "超出匹配次数应无匹配，越界pos应按接口语义报错，不能静默等同低32位位置并命中或替换已有匹配。",
+            "requirements": [
+              "保存正则字符集设置",
+              "不由客户端窄化大整数字面量"
+            ],
+            "target_applicability": "目标版本具备ICU正则函数，是否同样截断待执行。"
+          }
+        }
+      }
+    },
+    "121543": {
+      "review_status": "ai_reviewed",
+      "review_scope": "阅读描述/How to repeat与评论导航；377/380/381完整关键SQL展开；382完整手动双会话流程及对照已读，长MTR和补丁未逐行审查；外链/附件未下载。",
+      "source_report_sha256": "1fcebb72a688347c70c840f01428f5c48d48efe663229a098e98b209d3cad58d",
+      "version_results": {
+        "8.0.32": {
+          "decision": "exploratory_candidate",
+          "reason": "完整250行、双会话交错和锁观测/对照方案足够，可探索RC范围DELETE在上界外记录上的等待。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560358"
+          ],
+          "test_spec": {
+            "kind": "concurrency",
+            "setup": "按cmain建t1(id INT PRIMARY KEY,v INT)插入1至250、v=0；两独立连接RC，记录SQL模式，开启performance_schema锁表观测。",
+            "steps": "A事务删除[100,200)且不提交；B以3秒超时删除[1,100)；C记录data_lock_waits。随后回滚重置，执行A仅锁id100的点锁变体及RR、UPDATE、无阻塞对照。",
+            "oracle": "检查B是否因谓词外id100的X,REC_NOT_GAP锁超时，而不是实际重叠或常规gap锁；对照确认后记锁定行为异常线索，不能仅凭任何超时算bug。",
+            "requirements": [
+              "严格按会话时序执行",
+              "每个对照先释放旧事务并重置数据",
+              "锁事件及事务边界记录"
+            ],
+            "target_applicability": "目标版支持RC、InnoDB范围删除与锁观测；8.4/9.7结果不证明8.0受影响；提交者补丁不当成官方发布修复。"
+          }
+        },
+        "8.0.33": {
+          "decision": "exploratory_candidate",
+          "reason": "完整250行、双会话交错和锁观测/对照方案足够，可探索RC范围DELETE在上界外记录上的等待。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560358"
+          ],
+          "test_spec": {
+            "kind": "concurrency",
+            "setup": "按cmain建t1(id INT PRIMARY KEY,v INT)插入1至250、v=0；两独立连接RC，记录SQL模式，开启performance_schema锁表观测。",
+            "steps": "A事务删除[100,200)且不提交；B以3秒超时删除[1,100)；C记录data_lock_waits。随后回滚重置，执行A仅锁id100的点锁变体及RR、UPDATE、无阻塞对照。",
+            "oracle": "检查B是否因谓词外id100的X,REC_NOT_GAP锁超时，而不是实际重叠或常规gap锁；对照确认后记锁定行为异常线索，不能仅凭任何超时算bug。",
+            "requirements": [
+              "严格按会话时序执行",
+              "每个对照先释放旧事务并重置数据",
+              "锁事件及事务边界记录"
+            ],
+            "target_applicability": "目标版支持RC、InnoDB范围删除与锁观测；8.4/9.7结果不证明8.0受影响；提交者补丁不当成官方发布修复。"
+          }
+        },
+        "8.0.34": {
+          "decision": "exploratory_candidate",
+          "reason": "完整250行、双会话交错和锁观测/对照方案足够，可探索RC范围DELETE在上界外记录上的等待。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560358"
+          ],
+          "test_spec": {
+            "kind": "concurrency",
+            "setup": "按cmain建t1(id INT PRIMARY KEY,v INT)插入1至250、v=0；两独立连接RC，记录SQL模式，开启performance_schema锁表观测。",
+            "steps": "A事务删除[100,200)且不提交；B以3秒超时删除[1,100)；C记录data_lock_waits。随后回滚重置，执行A仅锁id100的点锁变体及RR、UPDATE、无阻塞对照。",
+            "oracle": "检查B是否因谓词外id100的X,REC_NOT_GAP锁超时，而不是实际重叠或常规gap锁；对照确认后记锁定行为异常线索，不能仅凭任何超时算bug。",
+            "requirements": [
+              "严格按会话时序执行",
+              "每个对照先释放旧事务并重置数据",
+              "锁事件及事务边界记录"
+            ],
+            "target_applicability": "目标版支持RC、InnoDB范围删除与锁观测；8.4/9.7结果不证明8.0受影响；提交者补丁不当成官方发布修复。"
+          }
+        },
+        "8.0.35": {
+          "decision": "exploratory_candidate",
+          "reason": "完整250行、双会话交错和锁观测/对照方案足够，可探索RC范围DELETE在上界外记录上的等待。",
+          "missing_material": [],
+          "anchors": [
+            "cmain",
+            "c560358"
+          ],
+          "test_spec": {
+            "kind": "concurrency",
+            "setup": "按cmain建t1(id INT PRIMARY KEY,v INT)插入1至250、v=0；两独立连接RC，记录SQL模式，开启performance_schema锁表观测。",
+            "steps": "A事务删除[100,200)且不提交；B以3秒超时删除[1,100)；C记录data_lock_waits。随后回滚重置，执行A仅锁id100的点锁变体及RR、UPDATE、无阻塞对照。",
+            "oracle": "检查B是否因谓词外id100的X,REC_NOT_GAP锁超时，而不是实际重叠或常规gap锁；对照确认后记锁定行为异常线索，不能仅凭任何超时算bug。",
+            "requirements": [
+              "严格按会话时序执行",
+              "每个对照先释放旧事务并重置数据",
+              "锁事件及事务边界记录"
+            ],
+            "target_applicability": "目标版支持RC、InnoDB范围删除与锁观测；8.4/9.7结果不证明8.0受影响；提交者补丁不当成官方发布修复。"
+          }
+        }
+      }
+    }
+  }
+}

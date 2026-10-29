@@ -1,0 +1,67 @@
+{
+  "report_id": "111899",
+  "title": "json generated column null problem",
+  "source_sha256": "eaa3028c6f01e47411d8ff1282a62862b8c381e42b240d3dd68f74d7bddc94bf",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "f943b85eaa62f5dc349ff7c39fac6dabb0e47805f0c53a1b26fd5b3687c762a3"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "1ed9be6914f51deeb88097090b26944727a8070aae10fdef9fe31f0e297e28fc"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "table1 JSON，user_g NOT NULL 虚拟生成列"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "id1 group/user JSON；id2 jval=NULL"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force；若 ADD COLUMN 已拒绝，不把后续列不存在误报原 bug。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "NULL JSON 的生成列表达式应按同一约束处理；ADD 列与建索引不得对同数据产生矛盾结果；异常：先静默按空串返回后 ADD INDEX 1048"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "NULL JSON 的生成列表达式应按同一约束处理；ADD 列与建索引不得对同数据产生矛盾结果",
+    "failure": "先静默按空串返回后 ADD INDEX 1048",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "记录sql_mode和警告"
+  ],
+  "transformations": [
+    "移出 ERROR 输出，不改 JSON 路径和 NOT NULL；保留同一会话 SQL mode"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标具备JSON虚拟列及索引，可直接比较同表达式求值。 本轮尚未执行。",
+    "8.0.35": "目标具备JSON虚拟列及索引，可直接比较同表达式求值。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

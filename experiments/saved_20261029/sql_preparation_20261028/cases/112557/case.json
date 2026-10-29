@@ -1,0 +1,84 @@
+{
+  "report_id": "112557",
+  "title": "Inconsistent results of SELECT statement with EXISTS clause",
+  "source_sha256": "1c35756129007f140630b7436b6c810e7fa8d26f43ce553a7289f68cb5e33e2e",
+  "source_anchors": [
+    "cmain",
+    "c536507",
+    "c537445",
+    "c537488",
+    "c537535",
+    "c538930",
+    "c546013"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "6b00b3f89b1415dae1d98770cee94686a9fa268200a8b202056a9e86c76fb0cf"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "cecd83fc05ea47ce16ad3f4921cdd1aca97e0d426748bd63d4f00e5f3c72a76a"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(vkey INT,pkey INT,c5 INT,c7 VARCHAR(200))。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原两行(20,30000,59,NULL)/(59,69000,NULL,NULL)。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "TRUE AND EXISTS与EXISTS必须产生相同结果多重集；原数据下两行均NULL，不能一行0一行NULL。FIRST_VALUE保留原partition/order，c538930简化版不混入此变体。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "TRUE AND EXISTS与EXISTS必须产生相同结果多重集；原数据下两行均NULL，不能一行0一行NULL。FIRST_VALUE保留原partition/order，c538930简化版不混入此变体。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "仅整理cmain完整成对查询；评论中的简化版和已知修复/提交说明作为证据留存，未转换成引入结论。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c536507, c537445, c537488, c537535, c538930, c546013 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

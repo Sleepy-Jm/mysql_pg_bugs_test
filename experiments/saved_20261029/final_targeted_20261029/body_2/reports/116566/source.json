@@ -1,0 +1,22 @@
+{
+  "report_id": "116566",
+  "title": "List partition prune get a wrong result",
+  "task_ids": [
+    "mysql-116566-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\01dcdbc480c9_bug_116566.html",
+  "source_sha256": "01dcdbc480c97532e734bd7fd53584ed6c96fde0262cbe96e85ee81a5ee2fe65",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nCREATE TABLE `tlist` (\n  `a` int DEFAULT NULL,\n  `b` int DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\n/*!50100 PARTITION BY LIST (`a`)\n(PARTITION p0 VALUES IN (0,1,2) ENGINE = InnoDB,\n PARTITION p1 VALUES IN (3,4,5) ENGINE = InnoDB,\n PARTITION p2 VALUES IN (6,7,8) ENGINE = InnoDB,\n PARTITION p3 VALUES IN (9,10,11) ENGINE = InnoDB,\n PARTITION p4 VALUES IN (NULL,-1) ENGINE = InnoDB);\n\nmysql> explain select * from tlist where a not in (0, 1, 2, 3, 4, 5, 6, 7, 8, NULL);\n+----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+\n| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra       |\n+----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+\n|  1 | SIMPLE      | tlist | p3,p4      | ALL  | NULL          | NULL | NULL    | NULL |    2 |    50.00 | Using where |\n+----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+\n1 row in set, 1 warning (0.00 sec)\n\nBecause not in expression contains `NULL` value, so I think the partitions should be NULL here.\n\nIf I insert some values into table and use sql above, the results are always NULL.\n\ninsert into tlist values (9, 1),(-1, 2);\n\nmysql> select * from tlist where a not in (0, 1, 2, 3, 4, 5, 6, 7, 8, NULL);\nEmpty set (0.00 sec)\n\nHow to repeat:\nFollow description"
+    },
+    {
+      "anchor": "c548318",
+      "text": "Hello hangjie Mo,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    }
+  ]
+}

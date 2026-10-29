@@ -1,0 +1,22 @@
+[
+  {
+    "anchor": "cmain",
+    "text": "Description:\nWhen mysql-server was normal shutdown and startu up with --innodb-validate-tablespace-paths=OFF, teh error of missing tablespaces will happen sometimes. \n\nHow to repeat:\n#=============== step-1 ===============\nCREATE DATABASE test;\nUSE test;\nCREATE TABLESPACE ts1 ADD DATAFILE 'ts1.ibd' ENGINE=InnoDB;\nSHUTDOWN;\n\n#=============== step-2 ===============\n#start mysqld with --innodb-validate-tablespace-paths=OFF\nCREATE TABLE test.t1(a int) TABLESPACE=ts1 ENGINE = InnoDB;\n\nerror happens like:\nERROR 1812 (HY000): InnoDB: A general tablespace named `ts1` cannot be found.\n\nSuggested fix:\nAnalysis:\nWhen the above happens, the function \"fil_ibd_open\" will not be calledm which results in struct fil_space_t not being constructed. In some places such as \"create_table_info_t::create_option_tablespace_is_valid\", \"innobase_get_tablespace_statistics\"(called by information_schema.files) and so on , fil_space_t is required. If the above happens fil_space_t has not been created(which is nullptr), missing tablespace error happens.\n\nSo what's the problem with this?\ncase 1: create table with tablespace will be failed.\ncase 2: query from information_schema.files will be wrong.\ncase 3: every case about visit a nullptr fil_space_t, which should not actually be nullptr.\n\nThere are many test cases will failed if --innodb-validate-tablespace-paths=OFF for this reason. In my opinion, this parameter is a startup-related parameter, and all tests or most cases should pass when it is OFF. Perhaps the test cases related to startup should be more complete.\n\nFix:\nCreate fil_space_t when visit nullptr, which should not actually be nullptr."
+  },
+  {
+    "anchor": "c534327",
+    "text": "Hello Huaxiong Song,\n\nThank you for the report and steps.\nVerified as described.\n\nregards,\nUmesh"
+  },
+  {
+    "anchor": "c534401",
+    "text": "Thanks for reporting this!\n\nMay I ask, what's your use case for disabling validation?"
+  },
+  {
+    "anchor": "c534415",
+    "text": "I'm doing some research on startup acceleration, which has similar characteristics to this parameter, so I found it. ^-^"
+  },
+  {
+    "anchor": "c534958",
+    "text": "After setting innodb_validate_tablespace_paths to OFF and running the test case, the failed cases can be found. Most of these problems are related to fil_space_t not being built in time. At the same time, there is also the problem that the old partition table(version < 8.0.18) move operation is not executed, which will also cause some problems. I think setting this parameter to OFF is very helpful to improve the startup speed (especially in the case of a large number of tables). A simple way to deal with it is: setting this parameter to OFF does not skip fil_ibd_open, but just skips validate_to_dd. Because inside fil_ibd_open, validate_to_dd is an IO operation, which takes most of the time compared to other memory operations."
+  }
+]

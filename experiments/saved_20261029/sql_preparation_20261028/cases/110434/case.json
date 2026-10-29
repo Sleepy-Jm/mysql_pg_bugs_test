@@ -1,0 +1,99 @@
+{
+  "report_id": "110434",
+  "title": "WHERE condition assertion error",
+  "source_sha256": "a673eef073ffb91cd69b37cd5682bd3b22d73d28903185b0f36af90fcd561530",
+  "source_anchors": [
+    "cmain",
+    "c533324"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "eef695f657dd677291238bfef048ba1ffe9c3234ab36d0e6bc50a1eb0adca801"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "f51e49e3ff802bc09343ff6efb3048961998ac4ad4451b96f552da44bff44a9a"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原文空 BIGINT 表。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "不依赖表数据；按源文空表/常量触发。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 顺序在同一全新隔离 schema 和 mysql 会话执行；保留逐句输出/错误；预期错误处用 --force 继续，正常 SQL 错误不计 crash。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "空表查询应安全返回零行，不允许 my_decimal_cmp 断言。8.1 的修复评论不证明 8.0 已修。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "按 cleanup.sql 清理本用例对象；结束会话，销毁专用 schema。实例级条件按 execution_conditions 恢复或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "空表查询应安全返回零行，不允许 my_decimal_cmp 断言。8.1 的修复评论不证明 8.0 已修。",
+    "failure": "在所列前提成立时，违反上述逐例结果/错误/存活约束才记录异常；保存原始输出，初始化失败单列。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在；静态检查不证明服务器语法接受或根因独立。"
+  },
+  "requirements": [
+    "全新隔离 schema 和专用会话；保存真实版本、sql_mode、字符集和日志",
+    "debug构建优先",
+    "WITH_DEBUG/ASan/UBSan 原构建；保留科学记数常量字面。"
+  ],
+  "transformations": [
+    "按已核对的原文 SQL 整理；结果表、提示符、栈记录留在 inputs 原文中，不当作 SQL。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "8.0支持该常量折叠路径且无需数据；8.1修复不可推为8.0已修。 本轮未在该版本执行。",
+    "8.0.34": "8.0支持该常量折叠路径且无需数据；8.1修复不可推为8.0已修。 本轮未在该版本执行。",
+    "8.0.35": "8.0支持该常量折叠路径且无需数据；8.1修复不可推为8.0已修。 本轮未在该版本执行。"
+  },
+  "source_reading": "逐份核对 cmain, c533324 的定义、输入、顺序和判据；其他评论中的历史结果不外推为目标版本实测。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "debug目标t0(c0 BIGINT)空表。",
+    "steps": "SELECT1 FROM t0 WHERE t0.c0=05687.3E-84。",
+    "oracle": "应安全返回空集，不应触发my_decimal_cmp断言。",
+    "requirements": [
+      "debug构建优先"
+    ],
+    "target_applicability": "8.0支持该常量折叠路径且无需数据；8.1修复不可推为8.0已修。"
+  },
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "WITH_DEBUG/ASan/UBSan 原构建；保留科学记数常量字面。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

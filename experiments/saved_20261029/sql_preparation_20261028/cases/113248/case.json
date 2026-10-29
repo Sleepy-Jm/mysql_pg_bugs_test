@@ -1,0 +1,72 @@
+{
+  "report_id": "113248",
+  "title": "Execute alter table heap-use-after-free",
+  "source_sha256": "9179b7b9120c753377547736159b2b76c64fa55ce8a56ceda788597ea5d2ee7f",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "817a8da0c464d96df35ccbae66b551b371d532c8770e2224562a0e28e5209709"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "1e0d54e5aa6cae34e0ce2648cc3f7bd5b7b2020261ef6162c4a3baec85d8a988"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0/t1 及相关视图 v2"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "空表"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两次相同 ALTER 安全完成且无 ASan 报告；异常：heap-use-after-free 或崩溃"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "两次相同 ALTER 安全完成且无 ASan 报告",
+    "failure": "heap-use-after-free 或崩溃",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "隔离实例",
+    "目标版本ASan/debug构建",
+    "保存原文完整建表、视图和PREPARE序列",
+    "ASan/debug；须保存 ASan 日志，普通 release 无崩溃不能否定"
+  ],
+  "transformations": [
+    "保留两次 EXECUTE，补 DEALLOCATE"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

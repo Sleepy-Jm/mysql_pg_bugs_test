@@ -1,0 +1,63 @@
+{
+  "report_id": "113358",
+  "target_versions": [
+    "8.0.35"
+  ],
+  "task_ids": [
+    "mysql-113358-8.0.35"
+  ],
+  "official_version_field": "8.0, 8.0.35",
+  "disposition": "ready",
+  "reason": "原文步骤、数据与 oracle 已核对；仅使用本例专用 schema 和单连接。",
+  "sql_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\113358\\reproducer.sql",
+  "sql_sha256": "92550133a96e028316c052d602e1ac2369c62955139573b9e1ec98f59f0e53bc",
+  "static_manifest_sql_sha256": "0748e0f522e77eb0955d214459742ea8a93d0c845ae934a11dfd4cdef0ae7e19",
+  "normalized_lf_sql_sha256": "0748e0f522e77eb0955d214459742ea8a93d0c845ae934a11dfd4cdef0ae7e19",
+  "hash_note": "运行核验使用文件原始字节 SHA256；旧清单的部分哈希采用 LF 标准化文本，另行核验并保留。",
+  "postcheck_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\partition3\\postchecks\\113358.sql",
+  "postcheck_sha256": "63d071ca3387392268307ffe358deeb51d86a3183cf3ae862ce770214ac224a7",
+  "cleanup_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\113358\\cleanup.sql",
+  "oracle": {
+    "normal": "无 GROUP BY 控制为 (1,2)、(1,1)；a 不由 b 函数确定，ONLY_FULL_GROUP_BY 下 OFF 和 ON 的 GROUP BY 查询都应拒绝，通常 1055。",
+    "reported": "OFF 正常拒绝，subquery_to_derived=on 却返回任意 (1,2)。",
+    "prerequisites": [
+      "旧脚本依 c538763 修复 cmain 漏逗号和 t2 错列数，数据以评论实际表结构为准；ONLY_FULL_GROUP_BY 开启。"
+    ],
+    "expected_errors": [
+      {
+        "stage": "subquery_to_derived=off 的 GROUP BY SELECT",
+        "code": 1055,
+        "sqlstate": "42000",
+        "meaning": "正常拒绝，必须继续 ON 控制。"
+      },
+      {
+        "stage": "subquery_to_derived=on 的 GROUP BY SELECT",
+        "code": 1055,
+        "sqlstate": "42000",
+        "meaning": "若正常拒绝则本条件未出现错误接受；成功返回才是目标。"
+      }
+    ]
+  },
+  "mysql_force": true,
+  "requirements": [
+    "旧脚本依 c538763 修复 cmain 漏逗号和 t2 错列数，数据以评论实际表结构为准；ONLY_FULL_GROUP_BY 开启。"
+  ],
+  "source_anchors": [
+    "cmain",
+    "c538763",
+    "c538769",
+    "c538772"
+  ],
+  "source_review_complete": true,
+  "source_input_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\inputs\\113358.json",
+  "source_input_sha256": "7b2d07932ec72ff65bc440b0ea4969381230344bd7bc68398b1b0793f965f3e1",
+  "case_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\113358\\case.json",
+  "case_sha256": "dc86e3601ba5356edcb591bacf02a529858e1dc4f3438e1cbafe79cc3b0bc811",
+  "review_scope": "原始 cmain 复现和相关验证/开发者说明；长调用栈保留在原文，不据普通 release 运行否定 debug 断言。",
+  "version_mapping_note": "测试版本严格采用本轮官方 Version 明确命中项；旧 case target_versions 是先前候选范围，不用于扩展。",
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

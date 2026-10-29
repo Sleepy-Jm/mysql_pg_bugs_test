@@ -1,0 +1,66 @@
+{
+  "report_id": "107115",
+  "title": "??at the end of the error mecessage after setting Chinese characters to variable",
+  "source_sha256": "4bf26afbfbb2d9df57db882a95ad0a78ae5666714a8d07849e1bf5aca8907c2c",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "cdebb2732d28efa935b40839a94f2bbbe1d525b5c19b2337ca4b8ca3e6fff22c"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "not_needed",
+      "detail": "仅标量表达式/系统元数据，无自建 schema 对象。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "不依赖自建数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "记录原值后执行故意非法 SET，--force 继续取 warnings。预期 SET 拒绝；若意外成功必须销毁实例。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "SET 应受控拒绝 1231；保存原始错误字节并以 UTF-8 解码不能产生半个字符；异常：错误消息尾部出现损坏的多字节字符；单纯截断长度不算缺陷"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "本用例要求一次性实例。SQL 清理只清本例对象；运行结束销毁该实例/数据目录恢复全局设置、日志或表空间状态。若未执行，不进行清理。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "SET 应受控拒绝 1231；保存原始错误字节并以 UTF-8 解码不能产生半个字符",
+    "failure": "错误消息尾部出现损坏的多字节字符；单纯截断长度不算缺陷",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "可设置global变量",
+    "能保留错误包文本字节",
+    "一次性实例；SYSTEM_VARIABLES_ADMIN；mysql --force --default-character-set=utf8mb4；保存 stdout/stderr 原始字节"
+  ],
+  "transformations": [
+    "补 UTF-8 会话与原始全局值记录；不修改有效 ft_boolean_syntax"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标有ft_boolean_syntax及多字节错误格式化路径。 本轮尚未执行。",
+    "8.0.34": "目标有ft_boolean_syntax及多字节错误格式化路径。 本轮尚未执行。",
+    "8.0.35": "目标有ft_boolean_syntax及多字节错误格式化路径。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

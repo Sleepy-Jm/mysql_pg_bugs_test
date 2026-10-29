@@ -1,0 +1,69 @@
+{
+  "report_id": "114196",
+  "title": "Incorrect query result caused by comparing decimal and float type value",
+  "source_sha256": "5d8ddbb548f6983b7eb552da41738a147d9fcc10361b0d2e71d75634035b267e",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d84afdd04b68c65f61b8eea0555b1e83a25602410506c2344e29c3ad0b334ed6"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "0086e563dd869cec8be2aeb0b368e00b6f647185b51d97fc0c14cc5b3faeb449"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0 DECIMAL"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "REPLACE 0.1 经原类型转换为0"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "DECIMAL默认scale0存值0；WHERE 0<=-0.8为空，投影IS TRUE为0；异常：WHERE错误返回0行值"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "DECIMAL默认scale0存值0；WHERE 0<=-0.8为空，投影IS TRUE为0",
+    "failure": "WHERE错误返回0行值",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "保存SQL模式与插入warnings"
+  ],
+  "transformations": [
+    "保留原类型/REPLACE/比较；补实际存值查询"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标版支持DECIMAL比较；本次仅补审32/33/34，35保留原候选。 本轮尚未执行。",
+    "8.0.33": "目标版支持DECIMAL比较；本次仅补审32/33/34，35保留原候选。 本轮尚未执行。",
+    "8.0.34": "目标版支持DECIMAL比较；本次仅补审32/33/34，35保留原候选。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

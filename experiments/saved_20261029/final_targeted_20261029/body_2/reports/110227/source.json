@@ -1,0 +1,22 @@
+{
+  "report_id": "110227",
+  "title": "Upgrade to 8.0 fails due to lost+found directory present in datadir",
+  "task_ids": [
+    "mysql-110227-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\baba549b2127_bug_110227.html",
+  "source_sha256": "baba549b2127246c9e225dfc1ba6ddf67ca167789659345d6afee8e91d6983e6",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nIn MySQL 5.7, it was possible to have a lost+found directory present in the MySQL datadir, and to use ignore_db_dirs to avoid issues with it.\n\nHowever, in 8.0, this variable has been removed, and the in-place upgrade will fail with messages like:\n\n==============================\n2023-02-27T22:26:36.930648Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.32) starting as process 6662\n2023-02-27T22:26:36.938288Z 1 [System] [MY-011012] [Server] Starting upgrade of data directory.\n2023-02-27T22:26:36.938341Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\n2023-02-27T22:26:37.336609Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\n2023-02-27T22:26:37.720977Z 2 [ERROR] [MY-010520] [Server] Invalid (old?) table or database name 'lost+found'\n2023-02-27T22:26:37.722570Z 0 [ERROR] [MY-010022] [Server] Failed to Populate DD tables.\n2023-02-27T22:26:37.722611Z 0 [ERROR] [MY-010119] [Server] Aborting\n2023-02-27T22:26:39.178801Z 0 [System] [MY-010910] [Server] /usr/sbin/mysqld: Shutdown complete (mysqld 8.0.32)  MySQL Community Server - GPL.\n==============================\n\nThe workaround is to remove that directory, but I wonder if it should be possible to deal with it in a cleaner way?\n\nNote that if we have a lost+found directory in a clean (non-upgraded) MySQL 8.0 install, it correctly detects lost+found as a directory it needs to ignore.\n\nHow to repeat:\nInstall MySQL 5.7, and make sure that there is a lost+found directory in its datadir, and use ignore_db_dirs to avoid issues with it.\n\nDo an in-place upgrade to MySQL 8.0 to get issues as seen above.\n\nSuggested fix:\nIgnore these issues if they stem from a directory named lost+found, and issue a Warning message instead."
+    },
+    {
+      "anchor": "c530297",
+      "text": "Hello Agustín G,\n\nThank you for the report and feedback.\nVerified as described.\n\nregards,\nUmesh"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+-- MySQL report #113649; source anchors: cmain
+-- Prepared offline; NOT EXECUTED. Run only in a disposable isolated environment.
+DELIMITER //
+CREATE PROCEDURE demo(out a varchar(1024))
+BEGIN
+  DECLARE done INT DEFAULT FALSE;
+  DECLARE cur1 CURSOR FOR SELECT format(-1.7976931348623157E+307,256);
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+  OPEN cur1;
+  read_loop: LOOP
+    FETCH cur1 INTO a;
+    IF done THEN
+      LEAVE read_loop;
+    END IF;
+  END LOOP;
+  CLOSE cur1;
+END//
+DELIMITER ;
+CALL demo(@hello);
+SHOW WARNINGS;
+SELECT @hello,LENGTH(@hello),FORMAT(-1.7976931348623157E+307,256),LENGTH(FORMAT(-1.7976931348623157E+307,256)),CAST(@hello AS BINARY)=CAST(FORMAT(-1.7976931348623157E+307,256) AS BINARY) AS same_bytes;

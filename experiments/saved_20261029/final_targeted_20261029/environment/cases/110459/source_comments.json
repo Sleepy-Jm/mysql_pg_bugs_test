@@ -1,0 +1,18 @@
+[
+  {
+    "anchor": "cmain",
+    "text": "Description:\nCreate these tables:\n\nCREATE TABLE t2 (c0 INT);\nCREATE TABLE t4 (c0 INT);\n\nThen run these queries:\n\nSET @@SESSION.OPTIMIZER_SWITCH = 'derived_merge=on';\nSELECT ty.c0 FROM t2 ty JOIN LATERAL (SELECT ty.c0 FROM t4) x(x) ON TRUE GROUP BY x.x; --no error\nSET @@SESSION.OPTIMIZER_SWITCH = 'derived_merge=off';\nSELECT ty.c0 FROM t2 ty JOIN LATERAL (SELECT ty.c0 FROM t4) x(x) ON TRUE GROUP BY x.x; --error\n\n`ty.c0` is ungrouped, so the query is semantically incorrect. However, turning the `derived_merge` optimizer on seems to ignore this error. I would expect the error to be still thrown. If this is expected, please close this bug.\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the queries above."
+  },
+  {
+    "anchor": "c530995",
+    "text": "Set the right category"
+  },
+  {
+    "anchor": "c531000",
+    "text": "Hello Pedro Ferreira,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+  },
+  {
+    "anchor": "c533259",
+    "text": "Had a similar issue today with:\n\nCREATE TABLE t0 (c1 INT);\nCREATE TABLE t1 (c1 INT, c2 INT);\nINSERT INTO t1(c1,c2) VALUES (NULL,76),(131,120);\nSET @@SESSION.OPTIMIZER_SWITCH = 'derived_merge=off';\nSELECT 1 FROM t1 WHERE ROW(t1.c2, t1.c1) NOT IN (SELECT 3, x.x FROM (SELECT t0.c1 FROM t0 RIGHT JOIN t1 ON FALSE) x(x));\n-- 2 rows\nSET @@SESSION.OPTIMIZER_SWITCH = 'derived_merge=on';\nSELECT 1 FROM t1 WHERE ROW(t1.c2, t1.c1) NOT IN (SELECT 3, x.x FROM (SELECT t0.c1 FROM t0 RIGHT JOIN t1 ON FALSE) x(x));\n--no rows"
+  }
+]

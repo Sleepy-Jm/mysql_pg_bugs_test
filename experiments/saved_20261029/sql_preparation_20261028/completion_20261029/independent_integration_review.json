@@ -1,0 +1,264 @@
+{
+  "date": "2026-10-29",
+  "reviewer": "static_completion_1 independent integration audit",
+  "scope": {
+    "source_grounded_case_reviews": [
+      "3437",
+      "46189",
+      "99578",
+      "111377",
+      "116398",
+      "107139",
+      "110997"
+    ],
+    "retained_semantic_cases_checked": [
+      "82330",
+      "106225",
+      "110209",
+      "110332",
+      "113256",
+      "113446",
+      "113952"
+    ],
+    "builder_functions_reviewed": [
+      "normalize",
+      "reconcile_hash",
+      "audit",
+      "build_delivery",
+      "report_html"
+    ],
+    "snapshot_registered_reports": 352,
+    "snapshot_registered_pairs": 1089,
+    "scope_limit": "整合文件仍在更新，本记录针对读到的快照。没有全量重新审核357份SQL语义；没有运行builder、数据库、客户端、服务操作。"
+  },
+  "input_hashes": {
+    "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\scripts\\build_sql_completion_delivery.py": "b4b7ed39ee5d1ecc93b8b7505a39ef2bf01fc5dc892577c482bb7eed5666771f",
+    "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\sql_preparation_20261028\\completion_20261029\\existing_case_review.json": "1a57625df47de5ee83cbd002ef21eea3bd31a17b85bf65c8555e580cf6fb6263",
+    "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\sql_preparation_20261028\\completion_20261029\\integrated_cases.json": "89fd1017c20506c24a1a08d7582d2a519269566ef3f626ba83451302c7b340f0",
+    "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\sql_preparation_20261028\\completion_20261029\\integration_audit.json": "43a6ce1cf875ac813184d670157debc5b4ae597d055a84c2818eac93b0c7038e"
+  },
+  "case_conclusions": [
+    {
+      "report_id": "3437",
+      "conclusion": "降为blocked_source_gap/partial忠实原文",
+      "evidence": [
+        "cmain只给两列InnoDB表的文字结构与过程，没有INSERT数据。",
+        "c7642指出未声明RAND，未提供a/b数据。",
+        "旧reproducer插入a/b，transformations已明示合成。"
+      ],
+      "boundary": "作为另行授权的探索变体可能有用，但不是原始数据完整还原。"
+    },
+    {
+      "report_id": "46189",
+      "conclusion": "降为blocked_source_gap/partial忠实原文",
+      "evidence": [
+        "cmain列四个大小写混合表名、DROP与元数据查询，没有CREATE定义/引擎。",
+        "c239187为Windows安装包说明，支持平台前提应保留。",
+        "旧合成id INT建表不能自动充当完整来源。"
+      ]
+    },
+    {
+      "report_id": "99578",
+      "conclusion": "文件访问/全局debug变量待审已列出",
+      "evidence": [
+        "SQL保留./test/../bad.ibd路径、CREATE/DROP DATABASE test和全局flush变量，与cmain相符。",
+        "requirements明确全新datadir/test不存在/bad文件不存在，结束销毁实例。"
+      ],
+      "cleanup_limit": "DROP TABLESPACE/DATABASE是尽力清理，故障后不保证成功；一次性实例完整销毁是记录中的最终边界。"
+    },
+    {
+      "report_id": "111377",
+      "conclusion": "UDF真实操作未掩盖，已列plugin及安全待审",
+      "evidence": [
+        "cmain触发器内CREATE FUNCTION f3 RETURNS REAL SONAME any_name保留。",
+        "requirements要求plugin_dir无该库，不提供或加载真实UDF，cleanup先删trigger/table并销毁一次性实例。"
+      ],
+      "cleanup_limit": "SQL清理不含DROP FUNCTION，依赖源场景函数创建预期失败及最终实例销毁；不得单靠cleanup.sql在共享实例运行。"
+    },
+    {
+      "report_id": "116398",
+      "conclusion": "重型条件明确，无运行结论",
+      "evidence": [
+        "c548049的自包含数据SQL保留，c548050确认该变体。",
+        "fp_pol约2000万行（删除2行后约19999998），低256KiB/高1GiB join_buffer_size保持。",
+        "requirements与integrated execution_conditions列heavy_resource且requires_review=true。"
+      ],
+      "boundary": "prepared_static不代表资源已批准；ready_for_execution=false。"
+    },
+    {
+      "report_id": "107139",
+      "conclusion": "账号连接顺序及cleanup符合c521910，但环境自动标签有一项误报",
+      "evidence": [
+        "root建两个用户及完整授权；superuser前测；root建测试触发器；新superuser连接后测；root清理。",
+        "cleanup先DROP触发器/表，再DROP definer与superuser账号。",
+        "c521911/12与c545749的语义争议已保留，oracle uncertain。"
+      ]
+    },
+    {
+      "report_id": "110997",
+      "conclusion": "三种SET ROLE分别在新测试用户连接，身份没有混用",
+      "evidence": [
+        "管理员setup建立testdb及testuser直接权限；session_all/none/default只含SHOW TABLES、SET ROLE、SHOW TABLES。",
+        "case明确testuser/testpass、本机localhost和管理员cleanup；源cmain逐次断开重连。",
+        "integrated已升级needs_safety_review，保留privilege_change/multi_connection。"
+      ]
+    }
+  ],
+  "retained_semantics": [
+    {
+      "report_id": "82330",
+      "original_status": "blocked_semantics",
+      "integrated_status": "blocked_semantics",
+      "oracle_sufficiency": "uncertain",
+      "case_bytes_unchanged": true,
+      "specific_uncertainty_preserved": true
+    },
+    {
+      "report_id": "106225",
+      "original_status": "blocked_semantics",
+      "integrated_status": "blocked_semantics",
+      "oracle_sufficiency": "uncertain",
+      "case_bytes_unchanged": true,
+      "specific_uncertainty_preserved": true
+    },
+    {
+      "report_id": "110209",
+      "original_status": "blocked_semantics",
+      "integrated_status": "blocked_semantics",
+      "oracle_sufficiency": "uncertain",
+      "case_bytes_unchanged": true,
+      "specific_uncertainty_preserved": true
+    },
+    {
+      "report_id": "110332",
+      "original_status": "blocked_semantics",
+      "integrated_status": "blocked_semantics",
+      "oracle_sufficiency": "uncertain",
+      "case_bytes_unchanged": true,
+      "specific_uncertainty_preserved": true
+    },
+    {
+      "report_id": "113256",
+      "original_status": "blocked_semantics",
+      "integrated_status": "blocked_semantics",
+      "oracle_sufficiency": "uncertain",
+      "case_bytes_unchanged": true,
+      "specific_uncertainty_preserved": true
+    },
+    {
+      "report_id": "113446",
+      "original_status": "blocked_semantics",
+      "integrated_status": "blocked_semantics",
+      "oracle_sufficiency": "uncertain",
+      "case_bytes_unchanged": true,
+      "specific_uncertainty_preserved": true
+    },
+    {
+      "report_id": "113952",
+      "original_status": "blocked_semantics",
+      "integrated_status": "blocked_semantics",
+      "oracle_sufficiency": "uncertain",
+      "case_bytes_unchanged": true,
+      "specific_uncertainty_preserved": true
+    }
+  ],
+  "builder_conclusions": {
+    "tool_restrictions_not_counted_sql_complete": true,
+    "observed_tool_restricted_reports": 51,
+    "execution_claims": "audit要求每case execution_status与runtime_verification均not_executed；normalize固定ready_for_execution=false和reproduction_result=null；交付不包含MySQL执行入口。",
+    "incomplete_coverage_guard": "build_delivery assert errors和missing_reports为空，未完成登记不会被构建成完整范围交付。",
+    "hash_conventions": "source_sha256验证规范化source对象；source_input_sha256/case_json_sha256为文件原字节；脚本原声明hash与LF文本hash保留，同时sha256明示raw_file_bytes，未混淆。",
+    "lexical_boundary": "词法警告采用人工裁定；报告显示未裁定数，不构成MySQL语法接受证明。"
+  },
+  "findings": [
+    {
+      "id": "ENV-001",
+      "severity": "P2",
+      "status": "found_and_fixed",
+      "file": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\scripts\\build_sql_completion_delivery.py",
+      "location": "SQL_EFFECTS.restart and normalize effect_evidence",
+      "report_id": "107139",
+      "problem": "r\\bSHUTDOWN\\b扫描匹配了GRANT中的SHUTDOWN权限名，当前整合记录把它误标为restart执行条件。没有SHUTDOWN服务命令。",
+      "impact": "环境依赖清单会虚增重启/关闭需求，未改变SQL完整性或执行状态。",
+      "suggested_fix": "按去除注释后的SQL语句首命令识别SHUTDOWN；requirements中的权限名称也不应被直接当服务动作。",
+      "fix_recheck": {
+        "normalizer_read_only_recheck_no_restart": true,
+        "source_case_unchanged": true,
+        "builder_sha256_after_fix": "b4b7ed39ee5d1ecc93b8b7505a39ef2bf01fc5dc892577c482bb7eed5666771f",
+        "integrated_record_no_restart": true,
+        "integrated_snapshot_reports": 352
+      }
+    }
+  ],
+  "verification_boundary": "仅现有文件只读审查及本审查JSON写入。未执行数据库，尚未验证Bug是否存在；最终交付和正在变化的未登记记录需整合方完成后复算。",
+  "fix_recheck_note": "独立只读调用修复后的normalize(107139)确认GRANT中的SHUTDOWN不再触发restart标签；未运行SQL或改case。",
+  "final_coverage_recheck": {
+    "scope": "仅全量结构/数字/状态对账；原人工逐源码抽查范围保持不变，不扩称357份独立语义审查。",
+    "reports": 357,
+    "report_version_items": 1109,
+    "scope_id_sets_exactly_match": true,
+    "sql_files": 598,
+    "new_sql_files": 258,
+    "preexisting_files_unchanged": 1369,
+    "status_counts": {
+      "reports": {
+        "blocked_source_gap": 4,
+        "prepared_static": 254,
+        "blocked_environment": 1,
+        "blocked_semantics": 20,
+        "needs_safety_review": 22,
+        "blocked_tool_restriction": 56
+      },
+      "report_version_pairs": {
+        "blocked_source_gap": 13,
+        "prepared_static": 782,
+        "blocked_environment": 4,
+        "blocked_semantics": 67,
+        "needs_safety_review": 66,
+        "blocked_tool_restriction": 177
+      }
+    },
+    "axes": {
+      "sql_completeness": {
+        "reports": {
+          "partial": 3,
+          "complete": 297,
+          "unavailable": 57
+        },
+        "report_version_items": {
+          "partial": 10,
+          "complete": 919,
+          "unavailable": 180
+        }
+      },
+      "oracle_sufficiency": {
+        "reports": {
+          "sufficient": 279,
+          "uncertain": 22,
+          "unavailable": 56
+        },
+        "report_version_items": {
+          "sufficient": 857,
+          "uncertain": 75,
+          "unavailable": 177
+        }
+      },
+      "runtime_verification": {
+        "reports": {
+          "not_executed": 357
+        },
+        "report_version_items": {
+          "not_executed": 1109
+        }
+      }
+    },
+    "errors": [],
+    "missing_reports": [],
+    "unresolved_lexical_findings": 0,
+    "not_executed_for_all": true,
+    "tool_restrictions_not_counted_complete": true,
+    "integrated_sha256": "d84925897d7d8488b7d44a91c282efcda39bb3d6693bf3e434e0ce46357bf169",
+    "integration_audit_sha256": "12facefb2700cffdf5df5ad8488e5043751b1e27180804ef4fa9a7b5ad10d4f2",
+    "new_findings": []
+  }
+}

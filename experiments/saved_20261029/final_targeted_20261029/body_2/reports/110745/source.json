@@ -1,0 +1,26 @@
+{
+  "report_id": "110745",
+  "title": "Build failure with -DWITH_ZLIB=system",
+  "task_ids": [
+    "mysql-110745-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\9d9aa6ab5644_bug_110745.html",
+  "source_sha256": "9d9aa6ab56449409d73dae1faac4ba477c03f9cc34a03e04208a452336bf3e6f",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen MySQL is compiled with -DWITH_ZLIB=system, the build fails at an early stage with \"Cannot find system zlib libraries.\" even though zlib was found. ZLIB_INCLUDE_DIR, ZLIB_LIBRARY_RELEASE and other ZLIB variables are set in CMakeCache.txt. The error does not occur with MySQL 8.0.23.\n\nThis is caused by changing \"FIND_SYSTEM_ZLIB\" from MACRO to FUNCTION. FIND_SYSTEM_ZLIB calls FIND_PACKAGE(ZLIB) and all variables like ZLIB_FOUND are therefore limited to the scope of the function (see https://cmake.org/cmake/help/latest/command/function.html#command:function). But ZLIB_FOUND is also used outside the function where it is no longer defined.\n\nHow to repeat:\nBuild Mysql 8.0.33 -DWITH_ZLIB=system\n\nSuggested fix:\nChange FIND_SYSTEM_ZLIB in cmake/zlib.cmake from FUNCTION back to MACRO."
+    },
+    {
+      "anchor": "c531794",
+      "text": "Hello Ronny Perinke,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c532182",
+      "text": "Posted by developer:\n \nFixed as of the upcoming MySQL Server 8.0.34 and 8.1.0 releases, and here's the proposed changelog entry from the documentation team:\n\nMySQL would not build with -DWITH_ZLIB=system; it'd complain about not\nfinding the system zlib library despite finding it.\n\nThank you for the bug report."
+    }
+  ]
+}

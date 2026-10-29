@@ -1,0 +1,73 @@
+{
+  "report_id": "80681",
+  "title": "Failing assertion: len <= fixed_len in in file rem0rec.cc line 886",
+  "source_sha256": "7a3b657589e40a5d0b611b57006d27f8bbc587149a40b838707f8a0afc70a159",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "4e470c64ae3ac42131840a6a2707154c6e3527b3888733213b61907bf6bc0674"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "7cca76974d7bba51685301789fa7acb400d6ece2bb059dfd423876f5316b8789"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(a VARCHAR(334) CHARACTER SET utf16 KEY)"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "20 个整数转字符串值"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "UPDATE 执行完成或受控拒绝，服务器仍存活；异常：len<=fixed_len 断言或服务器崩溃"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "UPDATE 执行完成或受控拒绝，服务器仍存活",
+    "failure": "len<=fixed_len 断言或服务器崩溃",
+    "limitations": "需要原 sort/tmp 上限启动配置；不满足配置不可作为原异常的阴性证据。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "debug构建",
+    "限制资源隔离会话",
+    "debug 构建；启动 --sql_mode=ONLY_FULL_GROUP_BY --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M；记录参数是否受目标支持"
+  ],
+  "transformations": [
+    "移除 MTR 启动 shell 与 DROP DATABASE test；保留大小设置/数据/UPDATE"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "8.0保留utf16索引与多表UPDATE，可检验而非认定受影响。 本轮尚未执行。",
+    "8.0.33": "8.0保留utf16索引与多表UPDATE，可检验而非认定受影响。 本轮尚未执行。",
+    "8.0.34": "8.0保留utf16索引与多表UPDATE，可检验而非认定受影响。 本轮尚未执行。",
+    "8.0.35": "8.0保留utf16索引与多表UPDATE，可检验而非认定受影响。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

@@ -1,0 +1,46 @@
+{
+  "report_id": "115726",
+  "title": "A left join with an impossible condition cause unexpected result",
+  "task_ids": [
+    "mysql-115726-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\5f613d9e3f84_bug_115726.html",
+  "source_sha256": "5f613d9e3f840cfddc30ed1671d763d0939a179f84f736e1dc7f8aa3a62b5b88",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nA left join with an impossible condition cause unexpected result\n\nHow to repeat:\nCREATE TABLE test_table1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    datetime DATETIME\n);\nCREATE TABLE test_table2 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    datetime_col DATETIME NOT NULL \n);\nINSERT INTO test_table1 (datetime) VALUES (NULL), ('2023-04-13 10:00:00');\nINSERT INTO test_table2 (datetime_col) VALUES (NULL), ('2023-04-13 10:00:00');\n\nMySQL [sbtest]> SELECT t1.*, t2.* FROM test_table1 t1 LEFT JOIN test_table2 t2 ON t1.id = t2.id;\n+----+---------------------+------+---------------------+\n| id | datetime            | id   | datetime_col        |\n+----+---------------------+------+---------------------+\n|  1 | NULL                |    1 | 0000-00-00 00:00:00 |\n|  2 | 2023-04-13 10:00:00 |    2 | 2023-04-13 10:00:00 |\n+----+---------------------+------+---------------------+\n2 rows in set (0.001 sec)\n\nMySQL [sbtest]> SELECT t1.*, t2.* FROM test_table1 t1 LEFT JOIN test_table2 t2 ON t1.id = t2.id WHERE t2.datetime_col is null;\n+----+----------+------+---------------------+\n| id | datetime | id   | datetime_col        |\n+----+----------+------+---------------------+\n|  1 | NULL     |    1 | 0000-00-00 00:00:00 |\n+----+----------+------+---------------------+\n1 row in set (0.001 sec)\n\n-- add a impossible condition 't1.id is null' return unexpected result \nMySQL [sbtest]>  SELECT t1.*, t2.* FROM test_table1 t1 LEFT JOIN test_table2 t2 ON t1.id = t2.id WHERE t2.datetime_col is null or t1.id is null;                                                                                                                                                       \nEmpty set (0.001 sec)\n\nMySQL [sbtest]> explain  SELECT t1.*, t2.* FROM test_table1 t1 LEFT JOIN test_table2 t2 ON t1.id = t2.id WHERE t2.datetime_col is null or t1.id is null;                                                                                                                                               \n+----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+--------------------------------------------------------+\n| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra                                                  |\n+----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+--------------------------------------------------------+\n|  1 | SIMPLE      | t1    | NULL       | ALL  | NULL          | NULL | NULL    | NULL |    2 |   100.00 | NULL                                                   |\n|  1 | SIMPLE      | t2    | NULL       | ALL  | PRIMARY       | NULL | NULL    | NULL |    2 |    50.00 | Using where; Not exists; Using join buffer (hash join) |\n+----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+--------------------------------------------------------+\n2 rows in set, 1 warning (0.001 sec)\n\nMySQL [sbtest]> show warnings;\n+-------+------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Level | Code | Message                                                                                                                                                                                                                                                                                                                             |\n+-------+------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Note  | 1003 | /* select#1 */ select `sbtest`.`t1`.`id` AS `id`,`sbtest`.`t1`.`datetime` AS `datetime`,`sbtest`.`t2`.`id` AS `id`,`sbtest`.`t2`.`datetime_col` AS `datetime_col` from `sbtest`.`test_table1` `t1` left join `sbtest`.`test_table2` `t2` on((`sbtest`.`t2`.`id` = `sbtest`.`t1`.`id`)) where (`sbtest`.`t2`.`datetime_col` is null) |\n+-------+------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.001 sec)\n\n--run the query rewritten by mysql with different result\n\nMySQL [sbtest]> select `sbtest`.`t1`.`id` AS `id`,`sbtest`.`t1`.`datetime` AS `datetime`,`sbtest`.`t2`.`id` AS `id`,`sbtest`.`t2`.`datetime_col` AS `datetime_col` from `sbtest`.`test_table1` `t1` left join `sbtest`.`test_table2` `t2` on((`sbtest`.`t2`.`id` = `sbtest`.`t1`.`id`)) where (`sbtest`.`t2`.`datetime_col` is null);\n+----+----------+------+---------------------+\n| id | datetime | id   | datetime_col        |\n+----+----------+------+---------------------+\n|  1 | NULL     |    1 | 0000-00-00 00:00:00 |\n+----+----------+------+---------------------+\n1 row in set (0.001 sec)"
+    },
+    {
+      "anchor": "c545791",
+      "text": "Hi Mr. Li,\n\nThank you for your bug report.\n\nWe do not see why is that unexpected result.\n\nWhen the Optimiser runs into an impossible condition, it returns the empty set.\n\nThat is expected behaviour, that is prescribed by SQL Standard 2016.\n\nNot a bug."
+    },
+    {
+      "anchor": "c545805",
+      "text": "Thanks for your quick response.\nBut i still have a question.i can get 1 record with MySQL5.7.x. so is there any change from 5.7 to 8.0? or caused by  SQL Standard 2016 don't applied in MySQL5.7 ?\n\n-- In MySQL5.7 add a impossible condition 't1.id is null' return 1 record \nMySQL [sbtest]>  SELECT t1.*, t2.* FROM test_table1 t1 LEFT JOIN test_table2 t2 ON t1.id = t2.id WHERE t2.datetime_col is null or t1.id is null;                                                                                                                                                       \n+----+----------+------+---------------------+\n| id | datetime | id   | datetime_col        |\n+----+----------+------+---------------------+\n|  1 | NULL     |    1 | 0000-00-00 00:00:00 |\n+----+----------+------+---------------------+\n1 row in set (0.001 sec)"
+    },
+    {
+      "anchor": "c545806",
+      "text": "Hi,\n\nThat is actually a bug in 5.7, but 5.7 is not maintained for more then a year now ......"
+    },
+    {
+      "anchor": "c545886",
+      "text": "But logically speaking, the result returned by 5.7 is what we want, and it also conforms to the logic of SQL true or false = true"
+    },
+    {
+      "anchor": "c545896",
+      "text": "Hi,\n\nMySQL conforms with SQL Standard, which prescribes that impossible condition should result in the empty set being returned.\n\nSQL Standard is available on-line and is not maintained by us."
+    },
+    {
+      "anchor": "c545924",
+      "text": "Adding an \"impossible\" condition with an OR to the WHERE clause causes a smaller result set. This is apparently wrong, however this is caused by a special MySQL extension, so the result is actually correct.\n\nWith the simple predicate \"t2.datetime_col IS NULL\", we have an IS NULL check against a DATETIME column that is NOT NULL. If this column has the special value \"0000-00-00\", the predicate actually returns TRUE. This is a rather awkward extension targeted at ODBC drivers that cannot handle the \"0000-00-00\" value directly.\n\nBut this extension is limited to simple WHERE clauses. When the WHERE clause is extended with another predicate, the extension is not enforced.\n\nThus, users should be advised not to use the special zero value for DATE values (and zero values for month and day components of a DATE)."
+    },
+    {
+      "anchor": "c545929",
+      "text": "Thank you, Roy."
+    }
+  ]
+}

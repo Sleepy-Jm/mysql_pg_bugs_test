@@ -1,0 +1,72 @@
+{
+  "report_id": "115207",
+  "title": "mysql 8.0.22 mysqld got signal 11",
+  "source_sha256": "766645096e0d84cafc59dfa6bb98492842389a4cdf0fa49a92b72acf0b3ca6c2",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "a054eee56c798ec13dbebc6ec37bb4c6319281f7a9d1ce697b7e9c30b3a6cd24"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "ea6eb5688005506900d7aef64b9e90120d210fc9d4f94ab12271a54e10f17948"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原两张业务表全字段和索引"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原最小例未提供数据，按空表规划路径"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "空表 EXPLAIN 安全输出计划；异常：CreateIteratorFromAccessPath 崩溃"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "空表 EXPLAIN 安全输出计划",
+    "failure": "CreateIteratorFromAccessPath 崩溃",
+    "limitations": "仅空表规划用例；未复原生产数据，不覆盖原文另一项binlog丢失主张。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "目标官方构建",
+    "完整schema"
+  ],
+  "transformations": [
+    "去掉 Create Table/sql 标签，保留完整schema和EXPLAIN"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "8.0.37正常未给具体修复点，.32–.35仍可探索此自包含规划输入。 本轮尚未执行。",
+    "8.0.33": "8.0.37正常未给具体修复点，.32–.35仍可探索此自包含规划输入。 本轮尚未执行。",
+    "8.0.34": "8.0.37正常未给具体修复点，.32–.35仍可探索此自包含规划输入。 本轮尚未执行。",
+    "8.0.35": "8.0.37正常未给具体修复点，.32–.35仍可探索此自包含规划输入。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

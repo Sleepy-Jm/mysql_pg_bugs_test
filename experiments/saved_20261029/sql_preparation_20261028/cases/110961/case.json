@@ -1,0 +1,85 @@
+{
+  "report_id": "110961",
+  "title": "Subquery to derived optimizer assertion error",
+  "source_sha256": "19b111c01523acbacb9e3ea9aab00aa1f8b8ecce85bf6678762e3212e592a21d",
+  "source_anchors": [
+    "cmain",
+    "c541304",
+    "c541315",
+    "c542409"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "37ede14fd34e1a90cbcba92f0b4b9d37e0ad05cd49f3899951be09969a4279c3"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "2971e6d4dc02dbedc607754d0c59ac4cdda47ef5824c80536a9ea778c3d4d971"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(c0 INT)两行1,2，目标debug/release分别。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。subquery_to_derived ON/OFF执行原INSERT IGNORE嵌套标量SELECT。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "多行标量子查询应产生可控错误或IGNORE警告；不应 HashJoinIterator 断言。是否插入NULL及警告需与相同版本关闭转换控制另行比较，不套用9.0规则。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "多行标量子查询应产生可控错误或IGNORE警告；不应 HashJoinIterator 断言。是否插入NULL及警告需与相同版本关闭转换控制另行比较，不套用9.0规则。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "目标debug构建。"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮仅静态准备。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮仅静态准备。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c541304, c541315, c542409 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "t1(c0 INT)两行1,2，目标debug/release分别。",
+    "steps": "subquery_to_derived ON/OFF执行原INSERT IGNORE嵌套标量SELECT。",
+    "oracle": "转换不应引发断言，release插入/警告差异单独记录；9.0改变错误语义不直接套用8.0。",
+    "requirements": [
+      "独立测试实例",
+      "保存完整SQL、配置、输出与错误日志"
+    ],
+    "target_applicability": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。"
+  }
+}

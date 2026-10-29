@@ -1,0 +1,69 @@
+{
+  "report_id": "114917",
+  "title": "Incorrect query result",
+  "source_sha256": "e7ece5c23008e2ff164fd753d3d827f1fe38960bf0432e219b2ffa4fdecc1fb6",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "24cc259ce7e8eab2c067c9473f45c2a61c498d625a3c9f17fd4b81c4abe2dcf4"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "a5a5ae458acd6c07347c760e3da6d2048d2868905ca7bf99840c2b517b132c68"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原 TIME6/MEDIUMINT 表及两个降序索引"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原全部重复及NULL行逐字保留"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "九个时刻01:59:59,02:59:59,03:59:59,04:59:59,05:59:59,06:59:59,07:59:59,08:59:59,09:09:59 各一行，mediumint均-8388608；异常：包括10:59:59及更晚值"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "九个时刻01:59:59,02:59:59,03:59:59,04:59:59,05:59:59,06:59:59,07:59:59,08:59:59,09:09:59 各一行，mediumint均-8388608",
+    "failure": "包括10:59:59及更晚值",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "保存索引计划"
+  ],
+  "transformations": [
+    "仅去掉说明标题，不简化 OR/NOT BETWEEN/NULL 原结构"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0具有同时间比较与范围优化，待执行。 本轮尚未执行。",
+    "8.0.33": "目标8.0具有同时间比较与范围优化，待执行。 本轮尚未执行。",
+    "8.0.34": "目标8.0具有同时间比较与范围优化，待执行。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

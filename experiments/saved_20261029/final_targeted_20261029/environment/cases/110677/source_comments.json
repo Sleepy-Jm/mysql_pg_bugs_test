@@ -1,0 +1,22 @@
+[
+  {
+    "anchor": "cmain",
+    "text": "Description:\nRun these queries:\n\nPREPARE p0 FROM 'SELECT format_bytes(?)';\nSET @a0 = NULL;\nEXECUTE p0 USING @a0;\n\nThe EXECUTE statement will trigger an assertion error at sql/item.cc:4121\nassert(data_type() != MYSQL_TYPE_INVALID);\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the queries above."
+  },
+  {
+    "anchor": "c531610",
+    "text": "Hello Pedro Ferreira,\n\nThank you for the report and feedback.\nObserved that 8.0.32 debug build is affected.\n\nregards,\nUmesh"
+  },
+  {
+    "anchor": "c534004",
+    "text": "Reproduced this assertion error again today with:\n\nPREPARE p0 FROM 'WITH x(x) AS ((SELECT ?) UNION (SELECT ''a'')) SELECT 1 FROM x WHERE x.x';\nSET @a0 = 'a';EXECUTE p0 USING @a0;"
+  },
+  {
+    "anchor": "c536014",
+    "text": "Posted by developer:\n \nFixed as of the upcoming MySQL 8.3.0 release, and here's the proposed changelog entry from the documentation team:\n\nSeveral functions did not have a default data-type assignment for their\narguments, which could affect prepared statements by raising an assertion\nerror in debug builds. These default types now are assigned: \n\nDOUBLE for format_bytes() and format_pico_time() \nBIGINT for ps_thread_id()\n\nThank you for the bug report."
+  },
+  {
+    "anchor": "c539771",
+    "text": "This is flagged as fixed in 8.3.0, but also as affecting 8.0.32.\n\nWill this be fixed in a future 8.0 release."
+  }
+]

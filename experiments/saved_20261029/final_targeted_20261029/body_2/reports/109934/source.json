@@ -1,0 +1,22 @@
+{
+  "report_id": "109934",
+  "title": "Configuring a MySQL innodb cluster with MySQL Shell failed in Docker container",
+  "task_ids": [
+    "mysql-109934-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\aa61c5f5f6e3_bug_109934.html",
+  "source_sha256": "aa61c5f5f6e32365a5c4cf908011fa118778e5ed254e2816d3f2f8e1d936f005",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nLaunched 3 docker containers from a same Docker image in which a MySQL 8.0.32 instance had been installed and populated with a few databases and tables. Then used the MySQL Shell to configure an innodb cluster. After dba.configureInstance() had been called with success, calling cluster.addInstance() to join a MySQL instance failed because of timeout waiting for the restart of the instance.\n\nTooked a look at the log file of the failed instance, found the following relevant error log:\n\n2023-02-04T07:21:44.699098Z 1 [ERROR] [MY-011976] [InnoDB] [FATAL] Error renaming file from: ./#innodb_red\no to: ./#innodb_redo.#clone_save\n2023-02-04T07:21:44.699122Z 1 [ERROR] [MY-013183] [InnoDB] Assertion failure: clone0api.cc:85:ib::fatal tr\niggered thread 139743152158464\n\nstraced the mysql server, found that the failed directory renaming was due to a failed call to the rename() system call:\n\n[pid   573] rename(\"./#innodb_redo\", \"./#innodb_redo.#clone_save\") = -1 EXDEV (Invalid cross-device link)\n\nAfter googling, found the cause. According to https://docs.docker.com/storage/storagedriver/overlayfs-driver/: \nRenaming directories: Calling rename(2) for a directory is allowed only when both the source and the destination path are on the top layer. Otherwise, it returns EXDEV error (“cross-device link not permitted”). Your application needs to be designed to handle EXDEV and fall back to a “copy and unlink” strategy.\n\nAccording to https://www.kernel.org/doc/Documentation/filesystems/overlayfs.txt , this problem can be workarounded by enable the \"redirect_dir\" feature for the overlayfs file system type:\necho Y | sudo tee /sys/module/overlay/parameters/redirect_dir\n\nHowever, It would be appreciated that the MySQL server itself can perform fallback to \"copy and unlink\" just as the mv command does, which is container friendly and user friendly.\n\nHow to repeat:\nUbuntu 22.04\nKernel 5.15.0-58-generic\nDocker version 20.10.12, build 20.10.12-0ubuntu4\nMySQL 8.0.32\nMySQL Shell 8.0.32\n\nSuggested fix:\nAlthough a workaround exists, it would be appreciated that the MySQL server itself can perform fallback to \"copy and unlink\" just as the mv command does, which is container friendly and user friendly."
+    },
+    {
+      "anchor": "c529631",
+      "text": "Hi,\n\nThank you for the report."
+    }
+  ]
+}

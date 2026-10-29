@@ -1,0 +1,70 @@
+{
+  "report_id": "111268",
+  "title": "Different character_set_connection returns inconsistent results",
+  "source_sha256": "9250ed075ba2565f3f8543fca0cbc8835fdb3245dc454805ed25eb4b0b3d47cc",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d52266731b46d957da2452f70984900092e2ed72abb9413ba2eb9195f874bbf9"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "1d3e9b6464fb30cd53c6e3bd06b6d360e0252ab966962d4459f20fe920a06570"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t 原列定义从 SHOW CREATE 转为 DDL"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "abc 与 abc空格 两行"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两次列比较查询都返回 id 1,2；列 utf8mb4_bin 是 PAD SPACE；异常：因连接字符集变化错误常量折叠为空"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "两次列比较查询都返回 id 1,2；列 utf8mb4_bin 是 PAD SPACE",
+    "failure": "因连接字符集变化错误常量折叠为空",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "重建原 SHOW CREATE 模式；仅列比较，不把不同字面量排序规则本身当 bug"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

@@ -1,0 +1,82 @@
+{
+  "report_id": "116703",
+  "title": "`JSON_VALID` has inconsistent behavior for `NULL`",
+  "source_sha256": "c37819c7d89a5537225ab1e45b69c0f35271f07b3bc434972be34ab047913b3c",
+  "source_anchors": [
+    "cmain",
+    "c548706"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "892da5a6c83b37bc3cefaff5e6e30bbaaf040d26a76d4579ea7915b000a99840"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "80e8eb80bc9bbd1a13efa8400cffbf40fc8975b69817caeac41ba3257924ecbc"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t(col INT)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "一行NULL。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "NULL列与NULL字面量均应返回SQL NULL；0（无效JSON）与NULL必须区分。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "NULL列与NULL字面量均应返回SQL NULL；0（无效JSON）与NULL必须区分。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "JSON函数"
+  ],
+  "transformations": [
+    "去除重复终端记录，只保留一套建表/插入/两查询。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持同函数，可检验但不据5.7文档直接宣称已影响。 本轮未实测。",
+    "8.0.34": "目标8.0支持同函数，可检验但不据5.7文档直接宣称已影响。 本轮未实测。",
+    "8.0.35": "目标8.0支持同函数，可检验但不据5.7文档直接宣称已影响。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c548706 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

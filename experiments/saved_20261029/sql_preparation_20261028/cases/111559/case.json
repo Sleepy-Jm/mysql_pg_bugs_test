@@ -1,0 +1,69 @@
+{
+  "report_id": "111559",
+  "title": "View with CTE syntax error",
+  "source_sha256": "ae3109994594a9fbef97f9368a84a295979c9457a5e1e9ae024f7795c7ea8672",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "5256f04bbcc7cb02ebcfba4af174fd312223958cae01ca318aa7e7adc091134b"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "0232c1f2e149499860fd7ee33f54ffbbefc12ef1107911c7db32837e39132c42"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "v0 包含两个 CTE，只使用 x"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "常量 1"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "视图成功创建后 SELECT 返回一行 1；异常：视图序列化未使用 CTE 留下多余逗号造成 1064"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "视图成功创建后 SELECT 返回一行 1",
+    "failure": "视图序列化未使用 CTE 留下多余逗号造成 1064",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "保留未使用的第二CTE"
+  ],
+  "transformations": [
+    "保留未使用 y CTE，补 SHOW CREATE"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "所有目标支持CTE视图，晚于目标的8.0.45证据未给早期修复边界。 本轮尚未执行。",
+    "8.0.34": "所有目标支持CTE视图，晚于目标的8.0.45证据未给早期修复边界。 本轮尚未执行。",
+    "8.0.35": "所有目标支持CTE视图，晚于目标的8.0.45证据未给早期修复边界。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

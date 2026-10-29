@@ -1,0 +1,113 @@
+{
+  "report_id": "112527",
+  "source_sha256": "2e8038e1402a91289838680539ad244036a36919feadabb788c6524f8a858df4",
+  "tasks": [
+    {
+      "task_id": "mysql-112527-8.0.35",
+      "report_id": "112527",
+      "title": "Inconsistent results caused by REPEAT function",
+      "target_version": "8.0.35",
+      "adjacent_comparison_version": "8.0.34",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=112527",
+      "source_snapshot_from_plan_root": "原文快照/bug_112527.html",
+      "source_anchors": [
+        "cmain",
+        "c536451"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain",
+          "c536451"
+        ],
+        "reason": "REPEAT中同值CASE简化导致计数变化，完整三行数据和两个查询可比较。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "t1(vkey,pkey)插入(3,13000),(5,15000),(28,38000)，记录max_allowed_packet和会话字符集。",
+        "steps": "执行cmain两个嵌套REPEAT查询，仅将CASE WHEN FALSE THEN同字符串ELSE同字符串简化为该字符串。",
+        "oracle": "同输入/资源上限下计数与警告应可解释且一致；检查返回2与3及字符串截断警告。",
+        "requirements": [
+          "相同max_allowed_packet/字符集"
+        ],
+        "target_applicability": "目标8.0.35具备同样函数；以差分和警告确认，不从历史版本外推已影响。"
+      },
+      "source_environment": {
+        "OS": "Any",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server: DML"
+      },
+      "explicit_requirements": [
+        "相同max_allowed_packet/字符集"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    }
+  ],
+  "source": {
+    "id": "112527",
+    "title": "Inconsistent results caused by REPEAT function",
+    "header": {
+      "Bug #112527": "Inconsistent results caused by REPEAT function",
+      "Submitted": "26 Sep 2023 14:46",
+      "Modified": "27 Sep 2023 7:23",
+      "Reporter": "Zuming Jiang",
+      "Email Updates": "",
+      "Status": "Verified",
+      "Impact on me": "None",
+      "Category": "MySQL Server: DML",
+      "Severity": "S2 (Serious)",
+      "Version": "8.0.11, 8.0.34, 8.1.0",
+      "OS": "Any",
+      "Assigned to": "",
+      "CPU Architecture": "Any"
+    },
+    "comments": [
+      {
+        "anchor": "cmain",
+        "date": "26 Sep 2023 14:46",
+        "author": "Zuming Jiang",
+        "text": "Description:\nDear MySQL developers,\n\nI used my new fuzzer to fuzz MySQL and found a logic bug that make MySQL server output inconsistent results.\n\nHow to repeat:\n*** Set up the database ***\n\ncreate table t1 (vkey int, pkey int);\ninsert into t1 values (3, 13000);\ninsert into t1 values (5, 15000);\ninsert into t1 values (28, 38000);\n\n*** Test Case 1 ***\n\nselect  \n  count(*) as c_1\nfrom \n  t1 as ref_0\nwhere (REPEAT(REPEAT(case when (null <= ref_0.vkey) then (null) else (case when false then ('o#W4O') else ('o#W4O') end) end, ref_0.vkey), ref_0.pkey)) >= 'i';\n\nI simplified \"(case when false then ('o#W4O') else ('o#W4O') end)\" to \"('o#W4O')\", and got Test Case 2:\n\n*** Test Case 2 ***\n\nselect  \n  count(*) as c_1\nfrom \n  t1 as ref_0\nwhere (REPEAT(REPEAT(case when (null <= ref_0.vkey) then (null) else ('o#W4O') end, ref_0.vkey), ref_0.pkey)) >= 'i';\n\n*** Expected results ***\n\nTest Case 1 and Test Case 2 return the same results.\n\n*** Actual results ***\n\nTest Case 1 and Test Case 2 return inconsistent results.\n\nTest Case 1 return:\n\n+-----+\n| c_1 |\n+-----+\n|   2 |\n+-----+\n1 row in set, 1 warning (0.01 sec)\n\nTest Case 2 return:\n\n+-----+\n| c_1 |\n+-----+\n|   3 |\n+-----+\n1 row in set (0.01 sec)\n\n*** Note ***\n\nThe bug can be reproduced in version 8.0.3 - 8.0.34. In version 5.6, 5.7 and 8.0.0 - 8.0.2, both Test Case 1 and 2 return the same results:\n\n+-----+\n| c_1 |\n+-----+\n|   2 |\n+-----+\n1 row in set, 1 warning (0.00 sec)\n\nIn version 5.5, Test Case 1 and Test Case 2 also return inconsistent results:\n\nTest Case 1 return:\n\n+-----+\n| c_1 |\n+-----+\n|   1 |\n+-----+\n1 row in set, 2 warnings (0.00 sec)\n\nTest Case 2 return:\n\n+-----+\n| c_1 |\n+-----+\n|   2 |\n+-----+\n1 row in set, 1 warning (0.01 sec)"
+      },
+      {
+        "anchor": "c536451",
+        "date": "27 Sep 2023 7:23",
+        "author": "MySQL Verification Team",
+        "text": "Hello Zuming Jiang,\n\nThank you for the report and test case.\n\nregards,\nUmesh"
+      }
+    ],
+    "targets": {
+      "8.0.34": {
+        "field": true,
+        "hits": [
+          {
+            "anchor": "cmain",
+            "author": "Zuming Jiang",
+            "snippets": [
+              "urn:  +-----+ | c_1 | +-----+ |   3 | +-----+ 1 row in set (0.01 sec)  *** Note ***  The bug can be reproduced in version 8.0.3 - 8.0.34. In version 5.6, 5.7 and 8.0.0 - 8.0.2, both Test Case 1 and 2 return the same results:  +-----+ | c_1 | +-----+ |   2 | +-----+ 1 row in set, 1 warning (0.00 sec)  In version 5.5, Test Case 1 and Te"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

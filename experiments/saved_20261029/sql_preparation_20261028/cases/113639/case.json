@@ -1,0 +1,98 @@
+{
+  "report_id": "113639",
+  "title": "Crash when executes test case main.default_as_expr in debug with ps-protocol",
+  "source_sha256": "21f544d4e6ff556cadcad343fd695b92467c4dea925f56126b35ab51ae1965d2",
+  "source_anchors": [
+    "cmain",
+    "c539689"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "blocked_source_gap",
+  "execution_status": "not_executed",
+  "scripts": [],
+  "checks": {
+    "schema": {
+      "status": "blocked",
+      "detail": "原报告没有提供测试文件内容，无法列出实际表/函数/权限对象。"
+    },
+    "data": {
+      "status": "blocked",
+      "detail": "仅有测试名称与MTR调用，无初始化/触发SQL。"
+    },
+    "sequence": {
+      "status": "blocked",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "原main.default_as_expr在二进制PS协议下不应Security_context::priv_host/Item_func_current_user路径崩溃或ASan异常；普通SQL PREPARE不等价于客户端--ps-protocol。"
+    },
+    "cleanup": {
+      "status": "blocked",
+      "detail": "缺测试文件，尚不能枚举创建对象与清理；未来仅在独立MTR datadir中执行并销毁实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "原main.default_as_expr在二进制PS协议下不应Security_context::priv_host/Item_func_current_user路径崩溃或ASan异常；普通SQL PREPARE不等价于客户端--ps-protocol。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "源码内main.default_as_expr测试",
+    "Debug/ASan构建",
+    "MTR及隔离datadir"
+  ],
+  "transformations": [
+    "保留测试名和原运行选项为依赖说明，未从堆栈猜造最小SQL。",
+    "在本项目experiments、原mysql项目和mysql-bug-audit现有目录按文件名搜索default_as_expr，未找到本地测试源。"
+  ],
+  "blockers": [
+    "缺少被调用的main.default_as_expr实际测试文件及include链。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0分支具备默认表达式与PS协议；随附测试文件可作为公开输入，不依赖未下载附件。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0分支具备默认表达式与PS协议；随附测试文件可作为公开输入，不依赖未下载附件。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0分支具备默认表达式与PS协议；随附测试文件可作为公开输入，不依赖未下载附件。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c539689 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/113639.json。",
+  "preparation_assessment": {
+    "sql_completeness": "unavailable",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "目标WITH_DEBUG/ASan，MTR --ps-protocol；另需非PS控制。",
+      "requires_review": true
+    },
+    {
+      "kind": "heavy_resource",
+      "detail": "原MTR选项parallel=32,max-connections=100000；必须另行缩定批准资源，不照搬执行。",
+      "requires_review": true
+    },
+    {
+      "kind": "other",
+      "detail": "需各目标源码mysql-test/t/default_as_expr.test及include依赖完整副本。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [
+    {
+      "point": "缺少被调用的main.default_as_expr实际测试文件及include链。",
+      "evidence": "cmain只有MTR命令和异常栈；已检查的本地资料没有该文件。",
+      "needed": "各目标版本带SHA的测试文件和依赖，确认准确触发步骤后才能转写SQL与清理。"
+    }
+  ],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

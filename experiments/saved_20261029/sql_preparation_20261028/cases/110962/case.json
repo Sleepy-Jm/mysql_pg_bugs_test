@@ -1,0 +1,69 @@
+{
+  "report_id": "110962",
+  "title": "JOIN a table with trigger report unexpected WARNINGS",
+  "source_sha256": "e42e57b286e3306724c63f070a6e4c5dc8e6d6f0c4a830b8ce7893e33a1127b3",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d53e871fa41c3569f123bd9d2bbb2640231e621333abb76401c95230fbf4a580"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "cd744593fab8bf34d694f838f365048c67ee5df9e86b9ea7661352be3fb3e30b"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "s1/t1 InnoDB + trg_s1"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "s1 两行(1,1)，t1 一行1"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force，同连接严格保持四次 UPDATE 顺序与各自 SHOW WARNINGS。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "首次 NULL 赋值可产生两条 1048 警告；两次后续 p_id=3 不应继续报 1048，行值均 3；异常：临时 NULL 状态污染后续合法 UPDATE"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "首次 NULL 赋值可产生两条 1048 警告；两次后续 p_id=3 不应继续报 1048，行值均 3",
+    "failure": "临时 NULL 状态污染后续合法 UPDATE",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "表/触发器权限"
+  ],
+  "transformations": [
+    "提取完整提示符序列，保留 ;; delimiter；移除固定库创建/USE"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标具备相同缓存表路径，8.4/9.7修复不自动排除8.0。 本轮尚未执行。",
+    "8.0.34": "目标具备相同缓存表路径，8.4/9.7修复不自动排除8.0。 本轮尚未执行。",
+    "8.0.35": "目标具备相同缓存表路径，8.4/9.7修复不自动排除8.0。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

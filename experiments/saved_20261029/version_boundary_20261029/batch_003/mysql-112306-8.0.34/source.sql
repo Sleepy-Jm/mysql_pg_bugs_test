@@ -1,0 +1,11 @@
+-- MySQL report #112306; source: cmain, c535975, c536008
+-- Static preparation only. NOT EXECUTED. Read case.json; use a fresh isolated case schema.
+CREATE TABLE t0(c0 INT);
+CREATE TABLE t1(c0 INT);
+CREATE TABLE t2(c0 INT, c1 INT, c2 INT);
+CREATE TABLE t3(c0 INT, c1 INT, c2 INT);
+INSERT IGNORE INTO t3 VALUES(1, 2, 0.1);
+INSERT INTO t1 VALUES(-3);
+
+SELECT COUNT(*) FROM t3, t2 INNER JOIN t0 ON t0.c0 RIGHT JOIN t1 ON FALSE WHERE (t0.c0 IS NOT NULL) = (BIT_COUNT(t3.c2)); -- {1}
+SELECT /*+ JOIN_SUFFIX(t2, t3)*/ COUNT(*) FROM t3, t2 INNER JOIN t0 ON t0.c0 RIGHT JOIN t1 ON FALSE WHERE (t0.c0 IS NOT NULL) = (BIT_COUNT(t3.c2));

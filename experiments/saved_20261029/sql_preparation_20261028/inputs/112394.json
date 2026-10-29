@@ -1,0 +1,113 @@
+{
+  "report_id": "112394",
+  "source_sha256": "b97c3b0f6ac3e23fb4695dfb272062808de3c9a55df97be36ad979cc14ec2f35",
+  "tasks": [
+    {
+      "task_id": "mysql-112394-8.0.35",
+      "report_id": "112394",
+      "title": "Inconsistent results caused by subqueries in FROM and EXISTS",
+      "target_version": "8.0.35",
+      "adjacent_comparison_version": "8.0.34",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=112394",
+      "source_snapshot_from_plan_root": "原文快照/bug_112394.html",
+      "source_anchors": [
+        "cmain"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain"
+        ],
+        "reason": "已有可操作场景、输入与可观察对照；纳入探索队列不等于确认目标版本受影响。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "t0(vkey INT)一行5。",
+        "steps": "执行原RIGHT OUTER JOIN/EXISTS，派生列分别CASE TRUE THEN0 ELSE0和常量0。",
+        "oracle": "等价常量不应改变NULL扩展下EXISTS结果。",
+        "requirements": [
+          "独立测试实例",
+          "保存完整SQL、配置、输出与错误日志"
+        ],
+        "target_applicability": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。"
+      },
+      "source_environment": {
+        "OS": "Any",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server: Optimizer"
+      },
+      "explicit_requirements": [
+        "独立测试实例",
+        "保存完整SQL、配置、输出与错误日志"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    }
+  ],
+  "source": {
+    "id": "112394",
+    "title": "Inconsistent results caused by subqueries in FROM and EXISTS",
+    "header": {
+      "Bug #112394": "Inconsistent results caused by subqueries in FROM and EXISTS",
+      "Submitted": "20 Sep 2023 13:13",
+      "Modified": "21 Sep 2023 8:58",
+      "Reporter": "Zuming Jiang",
+      "Email Updates": "",
+      "Status": "Verified",
+      "Impact on me": "None",
+      "Category": "MySQL Server: Optimizer",
+      "Severity": "S3 (Non-critical)",
+      "Version": "8.0",
+      "OS": "Any",
+      "Assigned to": "",
+      "CPU Architecture": "Any"
+    },
+    "comments": [
+      {
+        "anchor": "cmain",
+        "date": "20 Sep 2023 13:13",
+        "author": "Zuming Jiang",
+        "text": "Description:\nDear MySQL developers,\n\nI used my new fuzzer to fuzz MySQL and found a logic bug that make MySQL server output inconsistent results.\n\nHow to repeat:\n*** Set up the database ***\n\ncreate table t0 (vkey int);\ninsert into t0 (vkey) values (5);\n\n*** Test Case 1 ***\n\nselect 1 as c0\n  from\n    ((select\n            case when true then 0 else 0 end as c_0\n          from\n            t0 as ref_5\n          ) as subq_2\n      right outer join t0 as ref_6\n      on (subq_2.c_0 = ref_6.vkey ))\n  where exists (\n      select \n          1 \n        from \n          t0 as ref_9\n        where (subq_2.c_0 <> ref_9.vkey)); \n\nI changed \"case when true then 0 else 0\" to \"0\", and got Test Case 2:\n\n*** Test Case 2 ***\n\nselect 1 as c0\n  from\n    ((select\n            0 as c_0\n          from\n            t0 as ref_5\n          ) as subq_2\n      right outer join t0 as ref_6\n      on (subq_2.c_0 = ref_6.vkey ))\n  where exists (\n      select \n          1 \n        from \n          t0 as ref_9\n        where (subq_2.c_0 <> ref_9.vkey)); \n\n*** Expected results ***\n\nTest Case 1 and Test Case 2 return the same results.\n\n*** Actual results ***\n\nTest Case 1 and Test Case 2 return inconsistent results.\n\nTest Case 1 return:\n\n+----+\n| c0 |\n+----+\n|  1 |\n+----+\n1 row in set (0.00 sec)\n\nTest Case 2 return:\n\nEmpty set (0.00 sec)\n\n*** Note ***\n\nThe bug can be reproduced in version 8.0.16 - 8.0.34. In version 8.0.0 - 8.0.15, both Test Case 1 and 2 return the same results:\n\n+----+\n| c0 |\n+----+\n|  1 |\n+----+\n1 row in set (0.00 sec)"
+      },
+      {
+        "anchor": "c536187",
+        "date": "21 Sep 2023 8:58",
+        "author": "MySQL Verification Team",
+        "text": "HI Mr. Jiang,\n\nThank you for your bug report.\n\nWe have ran your test case and we agree with you that this is a bug.\n\nVerified as reported."
+      }
+    ],
+    "targets": {
+      "8.0.34": {
+        "field": false,
+        "hits": [
+          {
+            "anchor": "cmain",
+            "author": "Zuming Jiang",
+            "snippets": [
+              "+ 1 row in set (0.00 sec)  Test Case 2 return:  Empty set (0.00 sec)  *** Note ***  The bug can be reproduced in version 8.0.16 - 8.0.34. In version 8.0.0 - 8.0.15, both Test Case 1 and 2 return the same results:  +----+ | c0 | +----+ |  1 | +----+ 1 row in set (0.00 sec)"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

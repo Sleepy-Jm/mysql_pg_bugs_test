@@ -1,0 +1,18 @@
+[
+  {
+    "anchor": "cmain",
+    "text": "Description:\nThis may be related to Bug #110577. Create the table and the view as follows:\n\nCREATE SCHEMA test;\nUSE test;\nCREATE TABLE t0 (c0 YEAR);\nCREATE VIEW v1 (c0) AS (SELECT 1 FROM t0 WHERE (SELECT 1 WHERE CAST(2000 AS YEAR) BETWEEN t0.c0 AND CAST(2048 AS YEAR)));\n\nThen run:\nSELECT 1 FROM v1;\n--ERROR 1356 (HY000): View 'test.v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them\n\nStrangely if I run the SELECT query outside the view, it goes fine.\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the statements above."
+  },
+  {
+    "anchor": "c532429",
+    "text": "Hello Pedro Ferreira,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+  },
+  {
+    "anchor": "c533586",
+    "text": "Reproduced again today with:\n\nCREATE VIEW v1(c0) AS (SELECT '' LIKE CAST(X'' AS CHAR));\nSELECT c0 FROM v1; -- View 'test.v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them"
+  },
+  {
+    "anchor": "c534317",
+    "text": "Reproduced again with:\n\nCREATE TABLE t0(c0 BOOLEAN);\nCREATE VIEW v0(c0) AS (SELECT 1 FROM (SELECT 1 FROM t0) x(x) GROUP BY x.x HAVING x.x);\nSELECT 1 FROM v0; --ERROR 1356 (HY000): View 'sys.v0' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them"
+  }
+]

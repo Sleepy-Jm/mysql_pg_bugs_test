@@ -1,0 +1,54 @@
+-- MySQL report #81848; source anchors: cmain, c446646, c446647
+-- Prepared offline; NOT EXECUTED. Run only in a disposable isolated environment.
+SET SESSION sql_mode='';
+CREATE TABLE `rick_test` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `TIMESTAMP` datetime NOT NULL,
+  `ID2` bigint(20) DEFAULT NULL,
+  `ID3` int(11) DEFAULT NULL,
+  `JM_ROUTE` varchar(20) NOT NULL,
+  `TRACE_ID` varchar(150) NOT NULL,
+  `SPAN_ID` varchar(25) NOT NULL,
+  `PARENT_SPAN_ID` varchar(25) NOT NULL,
+  `ID_DRIVER` varchar(50) NOT NULL,
+  `ID_BUSINESS_PROFILE` varchar(50) NOT NULL,
+  `LANGUAGE` varchar(2) NOT NULL,
+  `ID_5` varchar(3) NOT NULL,
+  `REQUEST_XML` mediumtext NOT NULL,
+  `RESPONSE_XML` mediumtext NOT NULL,
+  PRIMARY KEY (`ID`,`TIMESTAMP`),
+  KEY `TIMESTAMP` (`TIMESTAMP`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+/*!50100 PARTITION BY RANGE (TO_DAYS(TIMESTAMP))
+(PARTITION p37 VALUES LESS THAN (736487) ENGINE = InnoDB,
+ PARTITION p38 VALUES LESS THAN (736488) ENGINE = InnoDB,
+ PARTITION p39 VALUES LESS THAN (736489) ENGINE = InnoDB,
+ PARTITION p40 VALUES LESS THAN (736490) ENGINE = InnoDB,
+ PARTITION p41 VALUES LESS THAN (736491) ENGINE = InnoDB,
+ PARTITION p42 VALUES LESS THAN (736492) ENGINE = InnoDB,
+ PARTITION p43 VALUES LESS THAN (736493) ENGINE = InnoDB,
+ PARTITION p44 VALUES LESS THAN (736494) ENGINE = InnoDB,
+ PARTITION p45 VALUES LESS THAN (736495) ENGINE = InnoDB,
+ PARTITION p46 VALUES LESS THAN (736496) ENGINE = InnoDB,
+ PARTITION p47 VALUES LESS THAN (736497) ENGINE = InnoDB,
+ PARTITION p48 VALUES LESS THAN (736498) ENGINE = InnoDB,
+ PARTITION p49 VALUES LESS THAN (736499) ENGINE = InnoDB,
+ PARTITION p50 VALUES LESS THAN (736500) ENGINE = InnoDB,
+ PARTITION p51 VALUES LESS THAN (736501) ENGINE = InnoDB,
+ PARTITION p52 VALUES LESS THAN (736502) ENGINE = InnoDB,
+ PARTITION p53 VALUES LESS THAN (736503) ENGINE = InnoDB,
+ PARTITION p54 VALUES LESS THAN (736504) ENGINE = InnoDB,
+ PARTITION p55 VALUES LESS THAN (736505) ENGINE = InnoDB,
+ PARTITION p56 VALUES LESS THAN (736506) ENGINE = InnoDB,
+ PARTITION p57 VALUES LESS THAN (736507) ENGINE = InnoDB) */;
+insert into rick_test (id, timestamp) values (NULL, '2016-01-01 00:00:00');
+insert into rick_test (id, timestamp) values (NULL, '2016-01-01 00:00:00');
+insert into rick_test (id, timestamp) values (NULL, '2016-01-01 00:00:00');
+insert into rick_test (id, timestamp) values (NULL, '2016-01-01 00:00:00');
+insert into rick_test (id, timestamp) values (NULL, '2016-01-01 00:00:00');
+select * from rick_test;
+alter table rick_test drop partition p37;
+show create table rick_test\G
+select * from rick_test;
+insert into rick_test (id, timestamp) values (NULL, '2016-01-01 00:00:00');
+select * from rick_test;

@@ -1,0 +1,22 @@
+{
+  "report_id": "113524",
+  "title": "Value in ibuf bitmap page of R-Tree could be incorrect after recovery",
+  "task_ids": [
+    "mysql-113524-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\9bc0a87f3930_bug_113524.html",
+  "source_sha256": "9bc0a87f39307bb2b7ae24451fa3e1ccfc02b28f83a732e5fc1a3053edbbb312",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nIn function rtr_page_split_and_insert() as below:\n\n1162   /* Insert fit on the page: update the free bits for the\n1163   left and right pages in the same mtr */\n1164\n1165   if (page_is_leaf(page)) {\n1166     ibuf_update_free_bits_for_two_pages_low(block, new_block, mtr);\n1167   }\n1168\n1169   /* If the new res insert fail, we need to do another split\n1170    again. */\n1171   if (!rec) {\n1172     /* We play safe and reset the free bits for new_page */\n1173     if (!cursor->index->is_clustered() &&\n1174         !cursor->index->table->is_temporary()) {\n1175       ibuf_reset_free_bits(new_block);\n1176       ibuf_reset_free_bits(block);\n1177     }\n\nibuf_update_free_bits_for_two_pages_low() at line 1166 uses mtr from caller and \nis not committed.\nThen ibuf_reset_free_bits() at line 1175 and 1176 execute and it has its own mtr \nand committed.\nLater mtr used by ibuf_update_free_bits_for_two_pages_low() is committed.\nThey change same offset in ibuf bitmap but order of redo log record is incorrect.\n\nHow to repeat:\nHard to repeat without adding extra code.\nIf crash happens can lead to get a incorrect ibuf bitmap page.\n\nSuggested fix:\nUse mtr from caller when reset free bits in ibuf bitmap page."
+    },
+    {
+      "anchor": "c539529",
+      "text": "Hi Mr. Zhang,\n\nThank you very much for your bug report.\n\nHowever, we found a problem when analysing your bug report.\n\nWe have debugged this part of the code and in each run we found out that every time when (page_is_leaf(page)) condition was TRUE, (!rec) was also true.\n\nHence, ibuf_reset_free_bits() function was always called for each of the blocks.\n\nHence, we require a test case that will show that there are cases when first condition is TRUE while the second condition is FALSE.\n\nWe can not repeat your report without such a test case.\n\nThanks in advance."
+    }
+  ]
+}

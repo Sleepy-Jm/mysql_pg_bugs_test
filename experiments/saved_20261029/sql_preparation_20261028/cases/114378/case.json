@@ -1,0 +1,94 @@
+{
+  "report_id": "114378",
+  "title": "Incorrect query result caused by CONVERT_TZ",
+  "source_sha256": "65258c354192bde11cdc7b1086cc8ab02d197d565009793119d8dbe12a3245f4",
+  "source_anchors": [
+    "cmain",
+    "c542585"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "fded003c751f8191fa75562c801ccc2fa636f92d954c34248d72574aab347d50"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "a898692443c106be7ab285e18d7b43e622495d6711cd9cd30839b21d32adc001"
+    },
+    {
+      "path": "original_named_zones.sql",
+      "role": "independent_variant",
+      "sha256": "248bae77587dbf7f87223226a41cbb2dac793ca822044e5c4783cbd32e2256dc"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 FLOAT)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "一行-1与保留.9秒的原时间值。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "开发者固定时区偏移两条查询，加入f1>1不应改变输出整数（历史相差40）；原GMT/MET变体两条WHERE/IS TRUE也应一致。按各变体内部比较，不跨不同时区比较数值。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "开发者固定时区偏移两条查询，加入f1>1不应改变输出整数（历史相差40）；原GMT/MET变体两条WHERE/IS TRUE也应一致。按各变体内部比较，不跨不同时区比较数值。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "主用c542585开发者固定偏移简化SQL，去掉独立历史结果行；另存cmain原GMT/MET变体，不混为同一SQL。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c542585 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "other",
+      "detail": "主变体固定偏移无需时区表；original_named_zones.sql另需GMT/MET时区表，在新的schema独立运行，时区缺失返回NULL不能判修复。",
+      "requires_review": false
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

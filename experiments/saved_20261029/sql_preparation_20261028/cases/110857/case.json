@@ -1,0 +1,84 @@
+{
+  "report_id": "110857",
+  "title": "invalid NO_INDEX_USED=1 metric when using UNION in queries.",
+  "source_sha256": "f50fffde5fc3f0b75901550ed532d1408800b607aef7fee0e4eb04a573bced27",
+  "source_anchors": [
+    "cmain",
+    "c532041"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "f62c45798755160fe7812816876691e7896f5d3b03db27d6178af477c7e61431"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "f759b1406801a7c233a49559abfffde316809530097bb12eff81db136fb91fce"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "正文sbtest1含id PK及k索引，插入三行；启用本会话statement history。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。分别运行PK查询、k索引查询和二者UNION；捕获线程event_id的NO_INDEX_USED及EXPLAIN，调整正文schema过滤与实际SQL一致。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "NO_INDEX_USED 是否应包含 UNION RESULT 临时扫描的指标契约未固定；只能采集指标和计划，不能据计划用了基表索引就宣布计数错。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "plan_diff",
+    "expected": "记录三个查询的 NO_INDEX_USED 与 UNION 每个输入表访问路径，需先裁定指标是否包含UNION临时表。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "P_S statement history开启",
+    "performance_schema=ON，events_statements_history consumer及statement instrumentation已启用，history至少10条；源数据只有3行，不保证优化器一定选k_1。"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。",
+    "修正原文history筛选未限定sysbench却以限定名LIKE匹配的问题；使用当前连接THREAD_ID。"
+  ],
+  "blockers": [
+    "NO_INDEX_USED 是否应包含 UNION RESULT 临时扫描的指标契约未固定；只能采集指标和计划，不能据计划用了基表索引就宣布计数错。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标有相同UNION/P_S指标。 本轮仅静态准备。",
+    "8.0.34": "目标有相同UNION/P_S指标。 本轮仅静态准备。",
+    "8.0.35": "目标有相同UNION/P_S指标。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c532041 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "正文sbtest1含id PK及k索引，插入三行；启用本会话statement history。",
+    "steps": "分别运行PK查询、k索引查询和二者UNION；捕获线程event_id的NO_INDEX_USED及EXPLAIN，调整正文schema过滤与实际SQL一致。",
+    "oracle": "若所有输入表均使用索引，指标不应错误因UNION临时结果扫描将其标作业务表未用索引；按指标定义复核。",
+    "requirements": [
+      "P_S statement history开启"
+    ],
+    "target_applicability": "目标有相同UNION/P_S指标。"
+  }
+}

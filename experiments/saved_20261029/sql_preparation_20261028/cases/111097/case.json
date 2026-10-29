@@ -1,0 +1,92 @@
+{
+  "report_id": "111097",
+  "title": "Query statement results with subqueries are unstable",
+  "source_sha256": "3ac7b7c3a2534bc4dacc3d00bc9fbca4e21c9b5bd8bae658d723fc6f20cbdde0",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "fb9099137d476a15f6a40a169434b5f48744decb10337ba0514f87368ca5a291"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "cc1c12123c9da29f3289f6fc45aa3ed1eb9c2bab0ae6a258988d153f157b5ec2"
+    },
+    {
+      "path": "setup.sql",
+      "role": "setup",
+      "sha256": "b608d53c4af8cd1e9dde19230e52d2663e236cad1a2d356f384ec6dd84beba05"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "两个原始表，保留VARCHAR32/DECIMAL14类型。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "cs_rec_cardactivelog两行、om_wl_log一行源数字全部保留。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "全新schema先运行setup.sql一次；同一连接与多次重新连接（选中相同schema）分别运行reproducer.sql，不重复建表插入；最后cleanup.sql。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "每次执行相关CASE/EXISTS查询都应恰为formnum=20021356099700的一行，与直接等值JOIN一致；0行或含20014403205816为候选异常。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS cs_rec_cardactivelog,om_wl_log;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "每次执行相关CASE/EXISTS查询都应恰为formnum=20021356099700的一行，与直接等值JOIN一致；0行或含20014403205816为候选异常。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "保留字符串和 decimal 比较类型"
+  ],
+  "transformations": [
+    "移除固定test_db建库切换和结果表，改由runner分配schema；保留原始相关子查询，追加文字要求的直接JOIN对照。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "相关 EXISTS 与 CASE 在目标 8.0 可执行，未知的是优化错误是否仍存在。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "相关 EXISTS 与 CASE 在目标 8.0 可执行，未知的是优化错误是否仍存在。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "相关 EXISTS 与 CASE 在目标 8.0 可执行，未知的是优化错误是否仍存在。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/111097.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "multi_connection",
+      "detail": "原文明确要求断开重连数次以观察不稳定结果，不是并发。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "report_id": "18140",
+  "title": "Server crash with function, procedure and partitions",
+  "source_sha256": "70eb69546b0a1e693e5a951949441f47714c43e17a517b8a64fec027614b26df",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "083b6e419a553f0923f614d3178ec398cea111dc1b17f2b97edd22b95aaa13fe"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "c68933b80b69eddc5728f8161275731b3416e64e15f87d3158364f7c545d0b33"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t9、partition_exists 函数、p9 过程"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原例空表；CALL 插入分区计数"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force；保留 // delimiter；按 CREATE TABLE、FUNCTION、PROCEDURE、CALL 顺序运行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "函数读取分区计数并插入，或返回受控 SQL 错误；连接与服务器存活；异常：CALL 阶段服务器崩溃/断连"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "函数读取分区计数并插入，或返回受控 SQL 错误；连接与服务器存活",
+    "failure": "CALL 阶段服务器崩溃/断连",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "存储程序权限",
+    "如启用binlog需允许创建原函数",
+    "binlog 开启时需隔离实例 log_bin_trust_function_creators=1，或关闭 binlog"
+  ],
+  "transformations": [
+    "保留原 partiton_exists 拼写；补 delimiter 恢复、warnings、结果及存活查询"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "存储程序、异常处理和I_S.PARTITIONS在四目标具有对应功能，可探索执行；不声称一定触发旧崩溃 本轮尚未执行。",
+    "8.0.33": "存储程序、异常处理和I_S.PARTITIONS在四目标具有对应功能，可探索执行；不声称一定触发旧崩溃 本轮尚未执行。",
+    "8.0.34": "存储程序、异常处理和I_S.PARTITIONS在四目标具有对应功能，可探索执行；不声称一定触发旧崩溃 本轮尚未执行。",
+    "8.0.35": "存储程序、异常处理和I_S.PARTITIONS在四目标具有对应功能，可探索执行；不声称一定触发旧崩溃 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

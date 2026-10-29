@@ -1,0 +1,26 @@
+{
+  "report_id": "110709",
+  "title": "Chinese query conditions unable to return results correctly",
+  "task_ids": [
+    "mysql-110709-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\4f2ab24dfe73_bug_110709.html",
+  "source_sha256": "4f2ab24dfe73ca81f9e66feb00deffeed98d27f856496c01c56d7627067026ec",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nselect data from view，unable to return results correctly, the query result is empty!\n\nHow to repeat:\n-- Character Set:\n-- character_set_client\tutf8mb4\n-- character_set_connection\tutf8mb4\n-- character_set_database\tutf8mb4\n-- character_set_filesystem\tbinary\n-- character_set_results\tutf8mb4\n-- character_set_server\tutf8mb4\n-- character_set_system\tutf8mb3\n\n-- CREATE TABLE AND INSERT DATA\nCREATE TABLE TEST_01 (编号 INT(2),动物 VARCHAR(20));\nINSERT INTO TEST_01(编号,动物) VALUES(1,'牛');\n\n-- CREATE TABLE AND INSERT DATA\nCREATE TABLE TEST_02 (编号 INT(2),动物 VARCHAR(20));\nINSERT INTO TEST_02(编号,动物) VALUES(2,'羊');\n\n-- CREATE VIEW\nCREATE VIEW TEST_V AS\nSELECT 编号,动物 FROM TEST_01\nUNION ALL\nSELECT 编号,动物 FROM TEST_02;\n\n-- SELECT DATA FROM VIEW\n-- BUG：Unable to return results correctly, The query result is empty!\nSELECT * FROM TEST_V WHERE `动物` = '牛'; \n\nSuggested fix:\nthe query result is correctly."
+    },
+    {
+      "anchor": "c531718",
+      "text": "Hello zy m,\n\nThank you for the report and feedback.\nConfirmed that this is duplicate of Bug #109699, which is fixed in  MySQL Server 8.0.33. Please see Bug #109699 for more details.\n\nAs a workaround, please set derived condition pushdown to off like this:\nset optimizer_switch=\"derived_condition_pushdown=off\";\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c531719",
+      "text": "-- 8.0.32\n\n bin/mysql -uroot -S /tmp/mysql.sock\nWelcome to the MySQL monitor.  Commands end with ; or \\g.\nYour MySQL connection id is 7\nServer version: 8.0.32 MySQL Community Server - GPL\n\nCopyright (c) 2000, 2023, Oracle and/or its affiliates.\n\nOracle is a registered trademark of Oracle Corporation and/or its\naffiliates. Other names may be trademarks of their respective\nowners.\n\nType 'help;' or '\\h' for help. Type '\\c' to clear the current input statement.\n\nmysql> create database test;\nQuery OK, 1 row affected (0.00 sec)\n\nmysql> use test\nDatabase changed\nmysql> -- CREATE TABLE AND INSERT DATA\nmysql> CREATE TABLE TEST_01 (编号 INT(2),动物 VARCHAR(20));\nQuery OK, 0 rows affected, 1 warning (0.02 sec)\n\nmysql> INSERT INTO TEST_01(编号,动物) VALUES(1,'牛');\nQuery OK, 1 row affected (0.01 sec)\n\nmysql>\nmysql> -- CREATE TABLE AND INSERT DATA\nmysql> CREATE TABLE TEST_02 (编号 INT(2),动物 VARCHAR(20));\nQuery OK, 0 rows affected, 1 warning (0.02 sec)\n\nmysql> INSERT INTO TEST_02(编号,动物) VALUES(2,'羊');\nQuery OK, 1 row affected (0.00 sec)\n\nmysql> -- CREATE VIEW\nmysql> CREATE VIEW TEST_V AS\n    -> SELECT 编号,动物 FROM TEST_01\n    -> UNION ALL\n    -> SELECT 编号,动物 FROM TEST_02;\nQuery OK, 0 rows affected (0.01 sec)\n\nmysql>\nmysql> -- SELECT DATA FROM VIEW\nmysql> -- BUG：Unable to return results correctly, The query result is empty!\nmysql>\nmysql> SELECT * FROM TEST_V WHERE `动物` = '牛';\nEmpty set, 2 warnings (0.00 sec)\n\nmysql> show warnings;\n+---------+------+-------------------------------------------------------------+\n| Level   | Code | Message                                                     |\n+---------+------+-------------------------------------------------------------+\n| Warning | 1300 | Cannot convert string '\\xE7\\x89\\x9B' from utf8mb4 to binary |\n| Warning | 1300 | Cannot convert string '\\xE7\\x89\\x9B' from utf8mb4 to binary |\n+---------+------+-------------------------------------------------------------+\n2 rows in set (0.00 sec)\n\nmysql> set optimizer_switch=\"derived_condition_pushdown=off\";\nQuery OK, 0 rows affected (0.00 sec)\n\nmysql> SELECT * FROM TEST_V WHERE `动物` = '牛';\n+--------+--------+\n| 编号   | 动物   |\n+--------+--------+\n|      1 | 牛     |\n+--------+--------+\n1 row in set (0.00 sec)\n\nmysql> explain SELECT * FROM TEST_V WHERE `动物` = '牛';\n+----+-------------+------------+------------+------+---------------+-------------+---------+-------+------+----------+-------+\n| id | select_type | table      | partitions | type | possible_keys | key         | key_len | ref   | rows | filtered | Extra |\n+----+-------------+------------+------------+------+---------------+-------------+---------+-------+------+----------+-------+\n|  1 | PRIMARY     | <derived2> | NULL       | ref  | <auto_key0>   | <auto_key0> | 83      | const |    1 |   100.00 | NULL  |\n|  2 | DERIVED     | TEST_01    | NULL       | ALL  | NULL          | NULL        | NULL    | NULL  |    1 |   100.00 | NULL  |\n|  3 | UNION       | TEST_02    | NULL       | ALL  | NULL          | NULL        | NULL    | NULL  |    1 |   100.00 | NULL  |\n+----+-------------+------------+------------+------+---------------+-------------+---------+-------+------+----------+-------+\n3 rows in set, 1 warning (0.00 sec)"
+    }
+  ]
+}

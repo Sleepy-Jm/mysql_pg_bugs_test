@@ -1,0 +1,94 @@
+{
+  "report_id": "119572",
+  "title": "Contribution by Tencent: Prepared statement reprepare with optimizer trace crashes in decimal2string",
+  "source_sha256": "9cfed1993654a828a8da8134a78e3a1466dc7a2f9214a6d52f74957313dac35f",
+  "source_anchors": [
+    "cmain",
+    "c555362",
+    "c555363",
+    "c557880"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "2988dd193e79747319bae8eef1914d3ca9ddf30183dbe4efbd585d678e63da7f"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "d37a289eb5c1a8be9a93fd262fac2273b5dc2a0edef38b21654f18c3468bf6ba"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(dc2 DECIMAL(16,10))，原COMMENT DDL。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "一行1.1111111111，参数1.12345678901234保持精度。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一连接PREPARE、EXECUTE、ALTER COMMENT、再次EXECUTE；客户端需ANSI_QUOTES关闭（原SET使用双引号）；不改变量参数类型。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两次EXECUTE均应安全完成并得到相同dc2+参数结果；第二次DDL触发reprepare时不得decimal2string/div_by_pow10 x>=0断言。未初始化内存可能非确定，单次不崩溃不是修复证明。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "两次EXECUTE均应安全完成并得到相同dc2+参数结果；第二次DDL触发reprepare时不得decimal2string/div_by_pow10 x>=0断言。未初始化内存可能非确定，单次不崩溃不是修复证明。",
+    "failure": "不应出现报告所述服务器断言/异常退出；受控 SQL 错误须单独记录，连接存活/服务日志而非仅客户端错误作为判据。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "目标版本debug构建",
+    "optimizer_trace",
+    "独立测试实例"
+  ],
+  "transformations": [
+    "保留复现SQL；保存恢复optimizer_trace，会话关闭释放s。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "DECIMAL、预处理参数和DDL触发重准备属于目标版本可测试功能，具体缓冲区实现及受影响性待执行确认。 本轮未实测。",
+    "8.0.33": "DECIMAL、预处理参数和DDL触发重准备属于目标版本可测试功能，具体缓冲区实现及受影响性待执行确认。 本轮未实测。",
+    "8.0.34": "DECIMAL、预处理参数和DDL触发重准备属于目标版本可测试功能，具体缓冲区实现及受影响性待执行确认。 本轮未实测。",
+    "8.0.35": "DECIMAL、预处理参数和DDL触发重准备属于目标版本可测试功能，具体缓冲区实现及受影响性待执行确认。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c555362, c555363, c557880 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "debug且optimizer_trace enabled；各次比较需新鲜环境并保存错误日志。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

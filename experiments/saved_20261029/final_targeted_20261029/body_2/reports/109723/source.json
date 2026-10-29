@@ -1,0 +1,30 @@
+{
+  "report_id": "109723",
+  "title": "Exists query assertion error",
+  "task_ids": [
+    "mysql-109723-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\64fd43977f14_bug_109723.html",
+  "source_sha256": "64fd43977f1408acff40f54cd598b280e0e68c2c3eff3092cc0ddf1d0b8a23fa",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nRun the following queries:\n\nCREATE TABLE t1 (c0 INT);\nSET SESSION OPTIMIZER_SWITCH = 'subquery_to_derived=on';\nSELECT 1 FROM t1 WHERE NOT EXISTS (VALUES ROW(1),ROW(2));\n\nThe select will trigger an assertion error in template_utils.h:100\n\nassert(nullptr != dynamic_cast<Target>(arg));\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the queries above."
+    },
+    {
+      "anchor": "c529166",
+      "text": "Hello Pedro Ferreira,\n\nThank you for the report and feedback.\nObserved that 8.0.32 debug build is affected.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c529458",
+      "text": "Posted by developer:\n \nThis is a variant of Bug#34746261 Bug#34746261 Forced secondary engine execution assertion error"
+    },
+    {
+      "anchor": "c529619",
+      "text": "Documented fix as follows in the MySQL 8.0.33 changelog:\n\n    A query of the form SELECT 1 FROM t1 WHERE NOT EXISTS (VALUES\n    ROW(1), ROW(2)) caused an assert in debug builds when the\n    subquery_to_derived optimizer switch was enabled.\n\nClosed."
+    }
+  ]
+}

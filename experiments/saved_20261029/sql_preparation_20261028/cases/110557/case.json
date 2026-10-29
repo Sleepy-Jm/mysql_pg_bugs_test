@@ -1,0 +1,72 @@
+{
+  "report_id": "110557",
+  "title": "When innodb_disable_sort_file_cache=ON, create a full-text index will fail",
+  "source_sha256": "73eee036ac7df63473fd65130ba08ccaccd186a55ad9b3eea6de9d8cef83da89",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "bfb5963a633feead35b8a3dd1178e8dab25535ea9909f2dfb8957d5abb5e6b9b"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "01b96e0f7996410d44d95352077dcd8221b13461377a84625b31f191656875ab"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "test 表已有 img 的 ngram 全文索引"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "name=hey 一行"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "ALTER ADD FULLTEXT IDX_NAME 成功，SHOW INDEX 可见；异常：有足够临时空间/权限时错误 1878"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "ALTER ADD FULLTEXT IDX_NAME 成功，SHOW INDEX 可见",
+    "failure": "有足够临时空间/权限时错误 1878",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "ngram插件",
+    "足够空间",
+    "可配置独立实例",
+    "分别在 innodb_disable_sort_file_cache=ON/OFF 一次性实例执行同一文件；ngram；足够空间和 tmpdir 权限"
+  ],
+  "transformations": [
+    "去除日志和 // 操作说明，保留五步 SQL"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标仍支持该配置/FTS；后续称已修但未给8.0修复号，不能反推本版本修复。 本轮尚未执行。",
+    "8.0.34": "目标仍支持该配置/FTS；后续称已修但未给8.0修复号，不能反推本版本修复。 本轮尚未执行。",
+    "8.0.35": "目标仍支持该配置/FTS；后续称已修但未给8.0修复号，不能反推本版本修复。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

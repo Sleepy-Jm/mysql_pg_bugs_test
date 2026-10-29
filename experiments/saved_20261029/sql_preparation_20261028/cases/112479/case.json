@@ -1,0 +1,71 @@
+{
+  "report_id": "112479",
+  "title": "Assertion Failure in /mysql-8.0.34/sql/sql_executor.cc:4222",
+  "source_sha256": "bbecb6b2f1c037d45efc1f0c92d9e6c6ce57dddb186fa62633edcef7e554a686",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "b4fa616f0e880b0b0a5472870daea6c4a698c912f6e83693fe169df57a67a5da"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "0c22f99ca641b1bdba3fe48df4cae4c699120f1e983f5f38bf808f0ecabe6cfd"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0 BOOL 及索引 i0"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "四行 DEFAULT(NULL)"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force 逐语句留存；原查询可能含 RAND/除零/类型转换，普通警告不计 crash。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "安全执行或返回正常 SQL 语义错误，连接与服务器存活；异常：replace_embedded_rollup_references assert false"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "安全执行或返回正常 SQL 语义错误，连接与服务器存活",
+    "failure": "replace_embedded_rollup_references assert false",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "目标debug构建",
+    "保留完整字符串转义",
+    "debug；保持原字符串转义，NO_BACKSLASH_ESCAPES 关闭"
+  ],
+  "transformations": [
+    "完整原 SQL 字节段抽取；随机表达式不作为确定结果 oracle"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标版本具备同一SQL功能；只验证崩溃现象，不比较随机查询结果。 本轮尚未执行。",
+    "8.0.33": "目标版本具备同一SQL功能；只验证崩溃现象，不比较随机查询结果。 本轮尚未执行。",
+    "8.0.35": "目标版本具备同一SQL功能；只验证崩溃现象，不比较随机查询结果。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

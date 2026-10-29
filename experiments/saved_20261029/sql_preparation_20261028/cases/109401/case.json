@@ -1,0 +1,103 @@
+{
+  "report_id": "109401",
+  "title": "Rows_query_log_event truncates query due to treating query as C string",
+  "source_sha256": "3223d1fc642449d28e906523eced056fc1442b6eac7d8c18059e697e1b97c037",
+  "source_anchors": [
+    "cmain",
+    "c546550"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "needs_safety_review",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "13df2820ebd684a41df3419edec56755e584108312e86944f029642e34fa038c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "658a9c08b4ec9ae0c9dcbbfa10cffbf0e56c55c108855a7c0110906261b472f6"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "固定 test.t(name VARCHAR(255))；test 库由隔离实例预建，且不得含同名既有对象。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原文 Ruby 字符串中的真实 NUL 转写为 SQL 文件内 0x00；不是两个字符反斜线0。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "原文使用 Ruby mysql2 发送含 NUL 的 SQL。此文件需支持输入内 NUL 的客户端（mysql 批模式须 --binary-mode，且非 NO_BACKSLASH_ESCAPES/ANSI_QUOTES 环境差异须记录）；执行前后定位 binlog，读取属于本次隔离实例的事件载荷。不得将文件交给会在 NUL 截断的文本发送器。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "行数据 HEX(name)=666F6F00626172、长度7；Rows_query_log_event 载荷必须保留包括 NUL 后 bar 和闭合引号在内的整条 INSERT。需比较原始 binlog 事件长度/载荷与 mysqlbinlog 展示，区分日志写入截断和工具展示截断。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS `test`.`t`;"
+    }
+  },
+  "oracle": {
+    "kind": "log_truncation",
+    "expected": "行数据 HEX(name)=666F6F00626172、长度7；Rows_query_log_event 载荷必须保留包括 NUL 后 bar 和闭合引号在内的整条 INSERT。需比较原始 binlog 事件长度/载荷与 mysqlbinlog 展示，区分日志写入截断和工具展示截断。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "支持真实NUL的客户端",
+    "读取binlog权限"
+  ],
+  "transformations": [
+    "将 Ruby mysql.query 的 SQL 原样拆出，并将 Ruby 的 \\0 解释成单个 NUL 字节；追加 HEX/长度观测，不改 INSERT 语义。"
+  ],
+  "blockers": [
+    "用例依赖二进制日志文件访问，须先审查日志路径和读取范围。"
+  ],
+  "version_notes": {
+    "8.0.32": "9.0修复公告并不提供8.0修复点，目标有同一Rows_query记录功能。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "9.0修复公告并不提供8.0修复点，目标有同一Rows_query记录功能。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "9.0修复公告并不提供8.0修复点，目标有同一Rows_query记录功能。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c546550 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/109401.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "global_configuration",
+      "detail": "启用二进制日志、ROW、binlog_rows_query_log_events；保存原配置。",
+      "requires_review": true
+    },
+    {
+      "kind": "file_access",
+      "detail": "读取本次隔离实例 binlog 原始字节及 mysqlbinlog 输出，不读取其他实例日志。",
+      "requires_review": true
+    },
+    {
+      "kind": "other",
+      "detail": "需可按长度发送包含真实 NUL 的 SQL 客户端。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "用例依赖二进制日志文件访问，须先审查日志路径和读取范围。"
+    ],
+    "restriction": null
+  }
+}

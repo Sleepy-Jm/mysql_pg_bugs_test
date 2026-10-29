@@ -1,0 +1,30 @@
+{
+  "report_id": "114799",
+  "title": "ERROR 1216 vs ERROR 1452 in MySQL 8.0",
+  "task_ids": [
+    "mysql-114799-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\987163c537b5_bug_114799.html",
+  "source_sha256": "987163c537b56520ad8936a1b76f2561ad525d31b18655c7d80de36e930733ef",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nLimited-privilege users see fewer verbose errors (1216/1217) per the design intent. This is described in an old bug:\n\nhttps://bugs.mysql.com/bug.php?id=3443\n\nI've granted reference privileges to show more verbose errors (1451/1452) for all users. But my user still sees the less verbose versions.\n\nThe description:\nLonger answer: 1217 (ER_ROW_IS_REFERENCED) and 1452 (ER_ROW_IS_REFERENCED_2) both describe the same situation. As far as I understand, Mysql will use 1451 if user has a REFERENCES privilege for the table of interest, and 1217 otherwise. And it's the same story about 1216 (ER_NO_REFERENCED_ROW) vs 1452 (ER_NO_REFERENCED_ROW_2).\n\nHow to repeat:\n/* CREATE THE USER */\ncreate user vgrippa@'%' identified by 'vgrippa';\nGRANT SELECT, INSERT, UPDATE, DELETE, PROCESS, INDEX, SUPER, CREATE TEMPORARY TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT ON *.* TO 'vgrippa'@'%';      \n\n/* And for MySQL 8 you can use the same or the following grants */\nmysql> show grants for current_user();\n+-------------------------------------------------------------------------------GRANT SELECT, INSERT, UPDATE, DELETE, PROCESS, REFERENCES, INDEX, SUPER, CREATE TEMPORARY TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT ON *.* TO `vgrippa`@`%` |\n\n/* TEST CASE */\n\nCREATE DATABASE IF NOT EXISTS test;\n\nUSE test;\n\nDROP TABLE IF EXISTS `joinit`;\n\nCREATE TABLE `joinit` (\n  `i` int(11) NOT NULL AUTO_INCREMENT,\n  `s` varchar(64) DEFAULT NULL,\n  `t` time NOT NULL,\n  `g` int(11) NOT NULL,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB  DEFAULT CHARSET=latin1;\n\nINSERT INTO joinit VALUES (NULL, uuid(), time(now()),  (FLOOR( 1 + RAND( ) *60 )));\nINSERT INTO joinit SELECT NULL, uuid(), time(now()),  (FLOOR( 1 + RAND( ) *60 )) FROM joinit;\nINSERT INTO joinit SELECT NULL, uuid(), time(now()),  (FLOOR( 1 + RAND( ) *60 )) FROM joinit;\n\nDROP TABLE joinit_fk;\nCREATE TABLE joinit_fk (i int NOT NULL PRIMARY KEY) engine innodb;\nINSERT INTO joinit_fk SELECT DISTINCT g FROM joinit;\nALTER TABLE joinit ADD FOREIGN KEY g_fk (g) REFERENCES joinit_fk (i) ON UPDATE cascade ON DELETE restrict;\n\n/* INSERT a ROW that violates the constraints */\nmysql> select @@version;\n+-----------+\n| @@version |\n+-----------+\n| 8.0.33-25 |\n+-----------+\n1 row in set (0.00 sec)\n\nmysql> INSERT INTO joinit VALUES (NULL, uuid(), time(now()), 999);\nERROR 1216 (23000): Cannot add or update a child row: a foreign key constraint fails\n\nmysql> select @@version;\n+-----------+\n| @@version |\n+-----------+\n| 5.7.36-39 |\n+-----------+\n1 row in set (0.00 sec)\n\nmysql> INSERT INTO joinit VALUES (NULL, uuid(), time(now()), 999);\nERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`test`.`joinit`, CONSTRAINT `joinit_ibfk_1` FOREIGN KEY (`g`) REFERENCES `joinit_fk` (`i`) ON UPDATE CASCADE)\n\nSuggested fix:\nAdd the correct privilege to the documentation. If the REFERENCE is the correct grant but it not working properly, fix the bug."
+    },
+    {
+      "anchor": "c542721",
+      "text": "Hello Vinicius,\n\nThank you for report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c542742",
+      "text": "Hi, \n\nThanks for the confirmation.\n\nI forgot to mention:\n\n#### Workaround\n\nOn MySQL 8, instead of SUPER, use ALL PRIVILEGES. Example:\n\nGRANT ALL PRIVILEGES On *.* TO vgrippa@'%';"
+    },
+    {
+      "anchor": "c550165",
+      "text": "`GRANT ALL PRIVILEGES ON *.*` is not an acceptable workaround for many use-cases because of the security vulnerabilities it would introduce. This bug is still present in 8.0.40"
+    }
+  ]
+}

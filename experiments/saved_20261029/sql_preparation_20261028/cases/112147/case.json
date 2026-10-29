@@ -1,0 +1,84 @@
+{
+  "report_id": "112147",
+  "title": "Use/Ignore Mutil-value index for MEMBER OF function has differnet result",
+  "source_sha256": "1caabb1fd5f834191b99d53d57d5e3478f586b3eb65e5727aff5a1bb5fa93d65",
+  "source_anchors": [
+    "cmain",
+    "c535553",
+    "c535600"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "5491c511c068a2763c8b2d7c54ae8fbb186e93a46fdbffcee23e6f28f71cac75"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "bb14ec17b92eaae89efa6e28195474e169ee68ec187d2cf2cdb3f36e20789b6e"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t(a INT,j JSON)，DATE ARRAY多值索引kj。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原文一行(1,两份DATE2010-10-10)。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "相同字符串MEMBER OF谓词的索引/扫描结果多重集须一致；DATE字面量控制来自c535600，只说明类型路径，不预设JSON内DATE与普通字符串必然相等。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "相同字符串MEMBER OF谓词的索引/扫描结果多重集须一致；DATE字面量控制来自c535600，只说明类型路径，不预设JSON内DATE与普通字符串必然相等。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "InnoDB多值索引",
+    "InnoDB多值索引可用，ANSI_QUOTES关闭；保留输入实际JSON类型及执行计划。"
+  ],
+  "transformations": [
+    "剥离客户端提示符与结果表；追加开发者给出的DATE控制。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持JSON及多值索引，该差分用例可探索。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0支持JSON及多值索引，该差分用例可探索。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0支持JSON及多值索引，该差分用例可探索。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c535553, c535600 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/112147.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

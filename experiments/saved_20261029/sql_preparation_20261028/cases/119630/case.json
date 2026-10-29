@@ -1,0 +1,85 @@
+{
+  "report_id": "119630",
+  "title": "Optimizer incorrectly merges derived table with type conversion and WHERE clause, causing wrong query results",
+  "source_sha256": "068009906e1a338eaa4fab6188d5499933bb22bf4a9093375117491daa1484c9",
+  "source_anchors": [
+    "cmain",
+    "c555462",
+    "c555698",
+    "c555719"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "9a82f1c53041b8f28f5939007e12d8505eb5ff844054557fda68787c3ddd294a"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "cde1c1cd2d98e2dfdf308cc92ac834e3e635e718153c5074f4cc1d7c10bf157d"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t_bug_mat1(id INT,val INT)、t_bug_mat2(id VARCHAR20,num_val INT)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "两表各三行，原1/2/3及字符串1/2/4。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "直接IN、NO_MERGE派生IN、无hint派生IN均应只返回(2,20)一行；返回全部或重复行违反IN半连接基数语义。118512关联保留，不自动归为独立根因。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "直接IN、NO_MERGE派生IN、无hint派生IN均应只返回(2,20)一行；返回全部或重复行违反IN半连接基数语义。118512关联保留，不自动归为独立根因。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "保存optimizer_switch和SQL模式",
+    "同连接相同数据"
+  ],
+  "transformations": [
+    "拼接mysql提示行及->续行；建表与数据未变，结果表排除。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标四版支持派生表/CAST/IN；原.33已在既有候选，本次仅审.32/.34/.35。9.5修复不外推8.0。 本轮未实测。",
+    "8.0.34": "目标四版支持派生表/CAST/IN；原.33已在既有候选，本次仅审.32/.34/.35。9.5修复不外推8.0。 本轮未实测。",
+    "8.0.35": "目标四版支持派生表/CAST/IN；原.33已在既有候选，本次仅审.32/.34/.35。9.5修复不外推8.0。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c555462, c555698, c555719 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

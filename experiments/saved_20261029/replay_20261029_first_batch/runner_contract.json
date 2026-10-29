@@ -1,0 +1,29 @@
+{
+  "runner": "runner_first_batch.py",
+  "dry_run_default": true,
+  "execute_requires": "--execute on the explicitly selected Linux Docker host",
+  "allowed_versions": ["8.0.32", "8.0.33", "8.0.34", "8.0.35"],
+  "required_manifest_fields": ["run_id", "batch_kind", "scope_report_ids", "scope_task_ids", "image_ids", "cases"],
+  "case_fields": ["case_id", "report_id", "sql_file", "script_sha256", "runs"],
+  "optional_case_fields": {"source_sql_sha256": "must equal script_sha256", "mysql_force": "boolean; true permitted only for report 111559"},
+  "run_fields": ["run_id", "task_id", "target_version", "requested_version", "role", "repeat"],
+  "scope": "5–10 frozen report IDs; initial manifest covers exactly its frozen report × version task IDs. role must be target and requested_version must equal target_version.",
+  "initial": "batch_kind initial; each frozen pair has exactly one repeat=1",
+  "confirmation": {
+    "batch_kind": "confirmation",
+    "permitted_repeats": [2, 3],
+    "scope": "subset of the same frozen first batch, same source SQL hashes",
+    "required_fields": ["initial_evidence", "confirmation_reason_by_task"],
+    "initial_evidence_fields": ["manifest_file", "manifest_sha256", "records_file", "records_sha256"],
+    "paths": "All evidence paths are relative to the confirmation manifest directory and may not escape it. The initial manifest and records must be preserved copies with verified hashes.",
+    "condition": "Exactly one sql_submitted initial record for each requested pair; at most repeat2 and repeat3 in the confirmation manifest.",
+    "execution_claim": "Creates records_file + .confirmation-claimed.json exclusively. A second invocation against that evidence location is rejected; do not copy evidence elsewhere to bypass this guard."
+  },
+  "limits": {"cpus": 2, "memory": "2g", "memory_swap": "2g", "pids": 256, "sql_timeout_seconds": 20, "startup_timeout_seconds": 180, "experiment_timeout_seconds": 600, "cleanup_allowance": "short independent inspect/log/stop timeouts to ensure owned containers can be stopped after the experiment deadline"},
+  "environment": ["frozen local image IDs, no pull", "new token-labelled offline containers and new empty data directories", "only standard system databases before tests", "exact server version and release build evidence", "SHOW ENGINES and server/client/session variables recorded", "div_precision_increment=4, auto_increment_increment=1, auto_increment_offset=1"],
+  "executed_sql": "USE unique owned schema; SET time_zone='+00:00'; SELECT __preflight_* variables in the actual session; source SQL in original order. Raw reviewed SQL hash and executed wrapper hash both saved.",
+  "sql_errors": "All stderr error codes retained even with --force. exit0 plus SQL ERROR is completed_with_sql_errors. SQL errors are not automatically bug/crash results.",
+  "stop_conditions": ["timeout", "OOM", "server signal/assertion evidence", "server stopped or failed liveness check", "isolation or initialization failure", "log evidence collection failure", "600-second experiment deadline"],
+  "cleanup": "Stop only containers whose purpose/token/run labels match. No container restart/recovery and no deletion of any schema, directory, container, image or original materials. Exclusive data directories and logs are retained.",
+  "tests": "17 mocked unit tests passed; no Docker, database, server connection or installation performed by the implementation agent."
+}

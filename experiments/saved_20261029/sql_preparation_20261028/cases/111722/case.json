@@ -1,0 +1,89 @@
+{
+  "report_id": "111722",
+  "title": "Create view assertion error",
+  "source_sha256": "ca720c37d1a04b1678ac2085981a209b7319b78ad71a06b5cacc637076f9bfe9",
+  "source_anchors": [
+    "cmain",
+    "c534354"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d19a1292d3c38fdf0f16fa7d85532b133b4a850ff73581c7bdfd1b193396913e"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "618f6789e2e1418002430c6a65b175224deb593a9eac05f8210415cb4d4af0c9"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "not_needed",
+      "detail": "无须基础表；CREATE VIEW x及内部CTE。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "无须表数据；TIME参数15:19:32。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "参数化CREATE VIEW须正常完成或受控语义拒绝，不得出现sql_view.cc param_list断言；c534354 release无断言，未把它当目标版本已证实。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "参数化CREATE VIEW须正常完成或受控语义拒绝，不得出现sql_view.cc param_list断言；c534354 release无断言，未把它当目标版本已证实。",
+    "failure": "不应出现报告所述服务器断言/异常退出；受控 SQL 错误须单独记录，连接存活/服务日志而非仅客户端错误作为判据。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "debug构建",
+    "创建视图权限"
+  ],
+  "transformations": [
+    "正文SQL保留；结束专用会话释放p0/@a0，清理可能成功建立的视图。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标具备预处理DDL/CTE解析路径。 本轮未实测。",
+    "8.0.34": "目标具备预处理DDL/CTE解析路径。 本轮未实测。",
+    "8.0.35": "目标具备预处理DDL/CTE解析路径。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c534354 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "原文要求 WITH_DEBUG；记录与 release 构建的差异。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

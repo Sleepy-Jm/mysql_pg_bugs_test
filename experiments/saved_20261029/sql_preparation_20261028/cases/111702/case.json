@@ -1,0 +1,70 @@
+{
+  "report_id": "111702",
+  "title": "Alter default value with auto_increment column not report error",
+  "source_sha256": "600349e85eef2497a5dc07ff4323b0357f39201e334d9b47bba965c86e1b0741",
+  "source_anchors": [
+    "cmain",
+    "c534294"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "0e5fd65c96870ff7c9c00a73a4cd059b8954e44880bac97eba6ae27fc5033e33"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "edae3ee45353edb63286a20e2496800e7c0881330660a263354b3a707900597b"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t 自增 PK a 与 b INT"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "按补充评论补建原三行 b=1,2,3"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force，每条 DDL 结果单独保存。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "不支持自增默认值时 ALTER 应一致拒绝；若仍为自增，随后 INSERT 应取 4 而非隐式 3；异常：元数据不显示默认值却插入重复键 3"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "不支持自增默认值时 ALTER 应一致拒绝；若仍为自增，随后 INSERT 应取 4 而非隐式 3",
+    "failure": "元数据不显示默认值却插入重复键 3",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "保留AUTO_INCREMENT属性"
+  ],
+  "transformations": [
+    "SHOW CREATE 重建 DDL；补充评论明确的插入序列转为 SQL；同时保留 MODIFY 对照"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持两种ALTER路径与自增，可观察同一结构语义不一致。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持两种ALTER路径与自增，可观察同一结构语义不一致。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持两种ALTER路径与自增，可观察同一结构语义不一致。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain, c534294 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

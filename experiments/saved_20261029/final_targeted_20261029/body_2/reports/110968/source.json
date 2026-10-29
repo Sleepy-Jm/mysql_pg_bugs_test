@@ -1,0 +1,30 @@
+{
+  "report_id": "110968",
+  "title": "Table rewrite happens when increasing a varchar length past 63",
+  "task_ids": [
+    "mysql-110968-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\dfe2198f4de6_bug_110968.html",
+  "source_sha256": "dfe2198f4de6b5c6aecb5928638ec1fc14441ee3b42bfb58fcf75896b0e38412",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen a varchar(N) (where N is any value 1-63) was altered to a value of 64 or more, it caused the table to be rewritten. This go against what is in the MySQL documentation which states that it is a simple metadata change and should not rewrite the table. You do not need a large table, but the larger the table the easier it is to see the issue.\n\nHow to repeat:\nmysql> create table varchar_test(blah varchar(10));\n\nmysql> insert into varchar_test(blah) value('a');\n\nmysql> insert into varchar_test select * from varchar_test;\nmysql> insert into varchar_test select * from varchar_test;\nmysql> insert into varchar_test select * from varchar_test;\nmysql> insert into varchar_test select * from varchar_test;\nmysql> insert into varchar_test select * from varchar_test;\n...... 15 more times\n\nalter table varchar_test modify blah varchar(63);\n--notice it is basically instantaneous \nalter table varchar_test modify blah varchar(64);\n-- it takes a couple of seconds, at the same time on a different connection, show full processlist\n-- you can see the copy to tmp table occurring \n\nSuggested fix:\nEither update the documentation, or setup varchar in a way that changing the length value from < 64 to something >= 64 doesn't do this."
+    },
+    {
+      "anchor": "c532402",
+      "text": "Hi Mr. ODonell,\n\nThank you very much for your bug report.\n\nHowever, this is documented.  We suppose you used InnoDB storage engine.\n\nThe problem is in the magical number of 255. With a default character set, VARCHAR(64) is larger then 255 bytes. Hence, for 256 until 65535 bytes of length, you require two bytes for the actual length of the string. Hence , that is why a rebuild is necessary. To add one more byte for the actual length of the variable-length strings.\n\nNot a bug."
+    },
+    {
+      "anchor": "c532440",
+      "text": "Hi,\n\nIt is actually explained in our Manual:\n\nhttps://dev.mysql.com/doc/refman/8.0/en/char.html\n\nin the first 4-5 paragraphs."
+    },
+    {
+      "anchor": "c557685",
+      "text": "I think https://dev.mysql.com/doc/refman/9.1/en/innodb-online-ddl-operations.html#online-ddl-colum... could be improved by adding an asterisk to the \"Yes\" under \"Permits Concurrent DML\" for \"Extending VARCHAR column size,\" as happens in \"Adding a column,\" for example. \n\nWhile it is true the existing documentation explains this behaviour, I still think that table is misleading and can be improved with this simple change."
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "report_id": "112389",
+  "title": "Inconsistent results caused by a subquery in FROM clause",
+  "source_sha256": "8d4c36517b39a47f4bea0c5aa59acb935f51fcc9640b8badc2da6f8e49e45a29",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "020b4feddbe1795a678f5442df6baac0c7847ce5342e9ed19bc53d779e08bb0a"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "64baffcb112e9e98eaa6134adcbed4305d308e35f46939af5b09545565928c01"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 INT)、t4(c17 INT)"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "t0=16 一行，t4 空"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两个等价投影查询都返回一行 1，FIELD(NULL,NULL)=0<=16；异常：CASE 简化路径错误丢行"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "两个等价投影查询都返回一行 1，FIELD(NULL,NULL)=0<=16",
+    "failure": "CASE 简化路径错误丢行",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "保留重复关系待主报告去重"
+  ],
+  "transformations": [
+    "移除原测试段标题和自然语言，不改两个查询"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.35": "目标8.0.35具备相同外联接/派生优化，可探索未知修复范围。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

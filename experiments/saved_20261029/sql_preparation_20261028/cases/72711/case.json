@@ -1,0 +1,73 @@
+{
+  "report_id": "72711",
+  "title": "HOUR() of a DATETIME with date zero occasionally (unpredictably) returns NULL",
+  "source_sha256": "2c232d967a15ab12e28a6b3d49c87860df9c8b04998d114fc440d46d9121571c",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "64dbe902b1c97d5d7d9ab3660fa56bafcdb6d7131013b84ab9ebd364ff92a477"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "c968fb003effc844055be8dc3586e959d9bf00c51b5e27040acc3dcfba88cd47"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t(dt DATETIME)"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "0000-00-00 12:34:56"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "三个同值 DATETIME 路径的 HOUR 均为 12；异常：存储列或派生表路径错误返回 NULL"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "三个同值 DATETIME 路径的 HOUR 均为 12",
+    "failure": "存储列或派生表路径错误返回 NULL",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "隔离会话",
+    "记录sql_mode及警告",
+    "允许原 SET sql_mode=ansi 的零日期插入；客户端同连接"
+  ],
+  "transformations": [
+    "移除 shell heredoc 与数据库删除创建，使用 runner 的隔离 schema"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "8.0支持HOUR；需原零日期模式，未假定仍受影响。 本轮尚未执行。",
+    "8.0.33": "8.0支持HOUR；需原零日期模式，未假定仍受影响。 本轮尚未执行。",
+    "8.0.34": "8.0支持HOUR；需原零日期模式，未假定仍受影响。 本轮尚未执行。",
+    "8.0.35": "8.0支持HOUR；需原零日期模式，未假定仍受影响。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

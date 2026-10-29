@@ -1,0 +1,38 @@
+{
+  "report_id": "113047",
+  "title": "MTR test main.derived_limit fails with small cost differences",
+  "task_ids": [
+    "mysql-113047-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\6608d02f3a7b_bug_113047.html",
+  "source_sha256": "6608d02f3a7b55b744e4ce5f53afe7f1d50a664cfc9eeea970a2ff1e86678fe7",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\n$ mtr main.derived_limit --retry-failure=0\n...\n[ 50%] main.derived_limit                        [ fail ]\n        Test ended at 2023-11-10 17:14:52\n\nCURRENT_TEST: main.derived_limit\n--- /Users/laurynas/vilniusdb/mysql-8.0.35/mysql-test/r/derived_limit.result\t2023-10-26 09:13:43\n+++ /Users/laurynas/vilniusdb/mysql-8.0.35/_build-debug/mysql-test/var/log/derived_limit.reject\t2023-11-10 18:14:52\n@@ -400,7 +400,7 @@\n SELECT * FROM cte;\n EXPLAIN\n -> Table scan on cte  (cost=3.87..5.56 rows=3)\n-    -> Materialize recursive CTE cte  (cost=3.03..3.03 rows=3)\n+    -> Materialize recursive CTE cte  (cost=3.02..3.02 rows=3)\n         -> Limit table size: 5 row(s)\n             -> Rows fetched before execution  (cost=0..0 rows=1)\n         -> Limit table size: 5 row(s), repeat until convergence\n...\n(more differences similar to the first one)\n\nHow to repeat:\nSee above"
+    },
+    {
+      "anchor": "c537968",
+      "text": "Hello Laurynas,\n\nThank you for the report and feedback!\nI quickly tried using https://cdn.mysql.com//Downloads/MySQL-8.0/mysql-8.0.35-macos13-arm64.tar but not seeing any issues on MacOS(Ventura 13.5.1) and even on OL7(generic binary tarball build) but not observed any issues which is seen in your report. Is there anything I'm missing here? Thank you.\n\n--\n./mtr main.derived_limit --retry-failure=0\nLogging: ./mtr  main.derived_limit --retry-failure=0\nMySQL Version 8.0.35\nChecking supported features\nUsing 'all' suites\nCollecting tests\nChecking leftover processes\nRemoving old var directory\nCreating var directory '/Users/umshastr/Downloads/mysql-8.0.35/mysql-test/var'\nInstalling system database\nUsing parallel: 1\n\n==============================================================================\n                  TEST NAME                       RESULT  TIME (ms) COMMENT\n------------------------------------------------------------------------------\n[ 50%] main.derived_limit                        [ pass ]     11\n[100%] shutdown_report                           [ pass ]       \n------------------------------------------------------------------------------\nThe servers were restarted 0 times\nThe servers were reinitialized 0 times\nSpent 0.011 of 4 seconds executing testcases\n\nCompleted: All 2 tests were successful.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c538077",
+      "text": "A workaround is adding -ffp-contract=off to compilation flags"
+    },
+    {
+      "anchor": "c538096",
+      "text": "Thank you, Laurynas.\nVerified as described.\n\nSincerely,\nUmesh"
+    },
+    {
+      "anchor": "c539245",
+      "text": "Fixed in MySQL 8.0.36 and 8.4.0.\n\nChanges in test code only, no changelog entry needed.\n\nClosed."
+    },
+    {
+      "anchor": "c539754",
+      "text": "commit dfeb55e55a8b4136f3142a11b23c98074409fe29\nAuthor: Tor Didriksen <tor.didriksen@oracle.com>\nDate:   Fri Nov 17 12:44:27 2023 +0100\n\n    Bug#36017210 MTR test main.derived_limit fails with small cost differences\n    \n    Elide cost numbers, which were 3.02 rather than 3.03 for Xcode 15.0.1\n    \n    Change-Id: I72aac3823bec4c07a05561b0aa2c7d6d7f13b9ea\n    (cherry picked from commit 40ad3de93b2443f10d77f169270ea376ac6da234)"
+    }
+  ]
+}

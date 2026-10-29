@@ -1,0 +1,22 @@
+{
+  "report_id": "113352",
+  "title": "User cancel operation times out when stored procedure has multiple SLEEP() calls",
+  "task_ids": [
+    "mysql-113352-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\c6467f494bf4_bug_113352.html",
+  "source_sha256": "c6467f494bf43c12931dbe85f3f7dce62f6403f5410d9b8fa2dfd5bc88e1d0d6",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhenever a stored procedure has more than one sleep call inside it, user cancel request is timing out when there are more than 5 seconds left during SLEEP call before last SLEEP call.\n\nHow to repeat:\nDELIMITER $$\nCREATE PROCEDURE sp_sleep()\nBEGIN\n   DO SLEEP(10);\n   DO SLEEP(10);\nEND\n$$\nDELIMITER ;\n\nCALL sp_sleep; -- (cancel run before 5 seconds have passed)\n\nYou will get:\n\"Cancel operation timed out\""
+    },
+    {
+      "anchor": "c538775",
+      "text": "Hi Mr. all,\n\nThank you very much for your bug report.\n\nHowever, it is not a bug.\n\nThis is due to the fact that SLEEP() does not check for anything, hence any external operation is timed out, due to SLEEP() has to finish it's run.\n\nSLEEP() is actually calling an OS specific call, in order to save resources.\n\nNot a bug."
+    }
+  ]
+}

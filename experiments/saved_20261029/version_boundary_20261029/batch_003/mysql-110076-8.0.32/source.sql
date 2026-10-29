@@ -1,0 +1,4 @@
+CREATE TABLE mytable(ID INTEGER NOT NULL,a VARCHAR(4) NOT NULL,b VARCHAR(4) NOT NULL,c VARCHAR(3) NOT NULL);
+INSERT INTO mytable(ID,a,b,c) VALUES (1,'a1','b1','c1');
+INSERT INTO mytable(ID,a,b,c) VALUES (2,'a2','b2','c2');
+SELECT ID,(SELECT MAX(col1) FROM (VALUES ROW(a),ROW(b),ROW(c)) AS x(col1)) AS max FROM mytable;

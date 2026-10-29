@@ -1,0 +1,71 @@
+{
+  "report_id": "113768",
+  "title": "return error with cast",
+  "source_sha256": "b5d4fec65325fe65c41586e7091637a838ea6abc37a966c0bbd6f6e425f886f5",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "54b5c9112cb8d8331011c104b20ab51c06d47635e57d1f3980dd0d6abc181527"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "973b46474aaacc0366b649cb5cb7682a9a00fffa7c72e7e4ba7306a9a1fd68fb"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "tb(a BIGINT)"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "最大/最小有符号64位值"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两行 NOT IN 的第一分量均不等于92，第一候选第二分量110也不匹配，查询应正常处理而非浮点回转BIGINT溢出；异常：1690 cast bigint max as double"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "两行 NOT IN 的第一分量均不等于92，第一候选第二分量110也不匹配，查询应正常处理而非浮点回转BIGINT溢出",
+    "failure": "1690 cast bigint max as double",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "相同SQL模式",
+    "保留行比较原SQL",
+    "记录 REAL_AS_FLOAT；两次使用同一 SQL_MODE"
+  ],
+  "transformations": [
+    "保留原 NOT IN 行比较；补标量 CAST 对照"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持该类型比较，8.0.22正常是基线线索而非引入点结论。 本轮尚未执行。",
+    "8.0.33": "目标8.0支持该类型比较，8.0.22正常是基线线索而非引入点结论。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持该类型比较，8.0.22正常是基线线索而非引入点结论。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

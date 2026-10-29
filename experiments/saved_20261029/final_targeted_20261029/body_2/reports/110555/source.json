@@ -1,0 +1,30 @@
+{
+  "report_id": "110555",
+  "title": "Some performance schema tables return invalid rows",
+  "task_ids": [
+    "mysql-110555-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\544d2f3db60f_bug_110555.html",
+  "source_sha256": "544d2f3db60ff949207c6516b698c258bf4e4bd391ba2fdf6f81d94a50a55845",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nIn table_esms_by_digest::index_next we iterate through statements_digest_stat_array without checking digest_stat->m_lock.is_populated() like we do in table_esms_by_digest::rnd_next\n\nThe only check we do in index_next, is checking if m_first_seen is 0 but that is not sufficient because in find_or_create_digest, we will set m_first_seen for entries that end up being unused/deallocated.\n\nThis leads to situations where we return back invalid rows.\n\nAlso, I'm giving an example in the events_statements_summary_by_digest table, but by code inspection, I think this problem probably affects other tables as well.\n\nHow to repeat:\nApply following changes (compile with -DWITH_UNIT_TESTS=0 since adding DEBUG_SYNC doesn't build for some unit tests, but we only care about building mysqld)\n\ndiff --git a/storage/perfschema/pfs_digest.cc b/storage/perfschema/pfs_digest.cc\nindex 828172925dc..58a5fe3b53b 100644\n--- a/storage/perfschema/pfs_digest.cc\n+++ b/storage/perfschema/pfs_digest.cc\n@@ -34,6 +34,7 @@\n #include <assert.h>\n #include <string.h>\n\n+#include \"sql/debug_sync.h\"\n #include \"my_compiler.h\"\n\n #include \"my_murmur3.h\"\n@@ -281,6 +282,7 @@ search:\n   /* Lookup LF_HASH using this new key. */\n   entry = reinterpret_cast<PFS_statements_digest_stat **>(\n       lf_hash_search(&digest_hash, pins, &hash_key, sizeof(PFS_digest_key)));\n+  DEBUG_SYNC(current_thd, \"after_lf_hash_search\");\n\n   if (entry && (entry != MY_LF_ERRPTR)) {\n     /* If digest already exists, update stats and return. */\n\nRun this mtr test:\n\nuse performance_schema;\n\ntruncate table events_statements_summary_by_digest;\n\nconnect (con1, localhost, root,,);\nCONNECTION con1;\nuse test;\nSET DEBUG_SYNC='after_lf_hash_search SIGNAL not_found WAIT_FOR continue';\n\nconnect (con2, localhost, root,,);\nCONNECTION con2;\nuse test;\nSET DEBUG_SYNC='now WAIT_FOR not_found';\nSET DEBUG_SYNC='now SIGNAL continue';\n\nconnection default;\nselect schema_name, digest, digest_text, count_star from events_statements_summary_by_digest USE INDEX() where schema_name = 'test';\nselect schema_name, digest, digest_text, count_star from events_statements_summary_by_digest where schema_name = 'test';\n\nObserve the following results:\n\nuse performance_schema;\ntruncate table events_statements_summary_by_digest;\nuse test;\nSET DEBUG_SYNC='after_lf_hash_search SIGNAL not_found WAIT_FOR continue';\nuse test;\nSET DEBUG_SYNC='now WAIT_FOR not_found';\nSET DEBUG_SYNC='now SIGNAL continue';\nselect schema_name, digest, digest_text, count_star from events_statements_summary_by_digest USE INDEX() where schema_name = 'test';\nschema_name     digest  digest_text     count_star\ntest    bdf269459ee1e562d4b251cd893cc077fa83a57af67cc7648615bb8b1dc2a298        USE `test`      2\ntest    38bf19041c8c8063d5d4dcd0b6cc0bad490baa443d56905804bf3af070fdd1e6        SET `DEBUG_SYNC` = ?    3\nselect schema_name, digest, digest_text, count_star from events_statements_summary_by_digest where schema_name = 'test';\nschema_name     digest  digest_text     count_star\ntest    bdf269459ee1e562d4b251cd893cc077fa83a57af67cc7648615bb8b1dc2a298        USE `test`      2\ntest    38bf19041c8c8063d5d4dcd0b6cc0bad490baa443d56905804bf3af070fdd1e6        SET `DEBUG_SYNC` = ?    3\ntest    38bf19041c8c8063d5d4dcd0b6cc0bad490baa443d56905804bf3af070fdd1e6        SET `DEBUG_SYNC` = ?    0\n\nNote that the last query is incorrect since we have 2 rows sharing the same (digest,schema_name) values, violating the unique key constraint on that table. Also it doesn't make sense that the two queries should return different number of results based on whether an index is used or not.\n\nSuggested fix:\nCheck m_lock.is_populated() before returning back the row in index_next.\n\nAlso, I don't think we should be relying on the m_first_seen check in general if we already have the is_populated() check."
+    },
+    {
+      "anchor": "c531302",
+      "text": "Hello Manuel Ung,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c538201",
+      "text": "Posted by developer:\n \nAdded the following note to the MySQL Server 8.3.0 release notes:\n\nUnder certain circumstances, under load, the Performance Schema could return the same row twice, despite having a unique key defined.\nThis issue could occur for query digests, user names, host names, and account names (user@host)."
+    },
+    {
+      "anchor": "c539764",
+      "text": "This is flagged as fixed in 8.3.0, but as affecting 8.0.32.\n\nWill this be fixed in a future 8.0 release."
+    }
+  ]
+}

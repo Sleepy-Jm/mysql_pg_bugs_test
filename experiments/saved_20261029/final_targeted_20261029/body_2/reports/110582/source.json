@@ -1,0 +1,34 @@
+{
+  "report_id": "110582",
+  "title": "After executing 'set role', cannot access the database with \"_\" in the db name",
+  "task_ids": [
+    "mysql-110582-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\0db6d39c8371_bug_110582.html",
+  "source_sha256": "0db6d39c83719988aab8f2456132ae3b8a481b1c032fd8480348e97ddf012f04",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nhe user is granted the privileges to access the database and the database name includes the special character `_`. Per https://dev.mysql.com/doc/refman/8.0/en/grant.html,\n\nThe _ and % wildcards are permitted when specifying database names in GRANT statements that grant privileges at the database level (GRANT ... ON db_name.*). This means, for example, that to use a _ character as part of a database name, specify it using the \\ escape character as \\_ in the GRANT statement, to prevent the user from being able to access additional databases matching the wildcard pattern (for example, GRANT ... ON `foo\\_bar`.* TO ...). \n\nThe issue is that a user cannot access the database with wildcard name after executing 'set role' statement.\n\nHow to repeat:\nLog on as the admin user:\nmysql> create database test;\nQuery OK, 1 row affected (0.00 sec)\nmysql> create role test_role;\nQuery OK, 0 rows affected (0.00 sec)\nmysql> grant all on test.* to test_role;\nQuery OK, 0 rows affected (0.01 sec)\nmysql> create database my_test;\nQuery OK, 1 row affected (0.00 sec)\nmysql> create user user1 identified by 'password';\nQuery OK, 0 rows affected (0.01 sec)\nmysql> grant test_role to user1;\nQuery OK, 0 rows affected (0.00 sec)\nmysql> grant SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER ON `my\\_test`.* to user1;\nQuery OK, 0 rows affected (0.00 sec)\nmysql> select * from mysql.db where User='user1'\\G\n*************************** 1. row ***************************\n                 Host: %\n                   Db: my\\_test\n                 User: user1\n          Select_priv: Y\n          Insert_priv: Y\n          Update_priv: Y\n          Delete_priv: Y\n          Create_priv: Y\n            Drop_priv: N\n           Grant_priv: N\n      References_priv: N\n           Index_priv: N\n           Alter_priv: Y\nCreate_tmp_table_priv: N\n     Lock_tables_priv: N\n     Create_view_priv: N\n       Show_view_priv: N\n  Create_routine_priv: N\n   Alter_routine_priv: N\n         Execute_priv: N\n           Event_priv: N\n         Trigger_priv: N\n1 row in set (0.00 sec)\n\nLog on as 'user1':\nmysql> use my_test;\nDatabase changed\nmysql> set role test_role;\nQuery OK, 0 rows affected (0.00 sec)\nmysql> use my_test;\nERROR 1044 (42000): Access denied for user 'user1'@'%' to database 'my_test'\nmysql> set role none;\nQuery OK, 0 rows affected (0.00 sec)\nmysql> use my_test;\nDatabase changed\n\nSuggested fix:\nI was able to fix the bug by changing the default value for \"use_pattern_scan\" to \"false\"\n\nhttps://code.amazon.com/packages/OscarMysql80/blobs/0d43a0b52f36ff6b15cc22e96279b801948832...\n\nThe fix is verified by updating the existing mysql-test/t/roles_bugs_wildcard.test\n\n--source include/not_partial_revokes.inc\n# Save the initial number of concurrent sessions\n--source include/count_sessions.inc\n\n--echo #\n--echo # Bug#31013538 ALL PRIVILEGES ON A DATABASE FOR\n--echo #              ROLE DOESN'T ALLOW USER TO CREATE\n--echo #\n\nCREATE USER u1;\nCREATE DATABASE admin_db_name;\nCREATE TABLE admin_db_name.test(a int);\nINSERT INTO admin_db_name.test VALUES (1), (2), (3), (4), (5);\n\nGRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP ON `admin\\_db\\_name`.* to u1;\n\nCREATE ROLE r1;\nGRANT CREATE, DROP ON db_name.* TO r1;\nGRANT r1 TO u1;\n\n--connect(conn_u1, localhost, u1,,,,)\n--echo # Grants without role activation\nSHOW GRANTS;\nUSE admin_db_name;\nSELECT COUNT(*) FROM test;\nSELECT COUNT(*) FROM admin_db_name.test;\n\n# Activate r1\nSET ROLE r1;\n--echo # Grants after role activation: Must show privileges from r1\nSHOW GRANTS;\nINSERT INTO test VALUES (11), (12);\nSELECT COUNT(*) FROM test;\nSELECT COUNT(*) FROM admin_db_name.test;\n\nDROP TABLE test;\nDROP DATABASE admin_db_name;\n\nCREATE DATABASE db_name;\nUSE db_name;\nCREATE TABLE test(a int);\nDROP TABLE test;\nDROP DATABASE db_name;\n\nCREATE DATABASE db1name;\nDROP DATABASE db1name;\n\n--connection default\n--disconnect conn_u1\nDROP ROLE r1;\nDROP USER u1;\n\n--echo\n--echo # End of 8.0 tests\n--echo\n\n# Wait till we reached the initial number of concurrent sessions\n--source include/wait_until_count_sessions.inc"
+    },
+    {
+      "anchor": "c531361",
+      "text": "I was able to fix the bug by changing the default value for \"use_pattern_scan\" to \"false\" in https://github.com/mysql/mysql-server/blob/8.0/sql/auth/sql_security_ctx.h#L93"
+    },
+    {
+      "anchor": "c531363",
+      "text": "After executing 'set role', cannot access the database with \"_\" in the db name"
+    },
+    {
+      "anchor": "c532457",
+      "text": "Hello LING-SEN PENG,\n\nThank you for the bug report.\nI tried to reproduce your issue on windows 10 with workbench 8.0.32 using above procedure but I am not seeing any issues at my end.\nPlease try below statement\ngrant SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER ON `my_test`.* to 'user1';\n\nRegards,\nAshwini Patil"
+    },
+    {
+      "anchor": "c532795",
+      "text": "Per https://dev.mysql.com/doc/refman/8.0/en/grant.html,\n\n\"The _ and % wildcards are permitted when specifying database names in GRANT statements that grant privileges at the database level (GRANT ... ON db_name.*). This means, for example, that to use a _ character as part of a database name, specify it using the \\ escape character as \\_ in the GRANT statement, to prevent the user from being able to access additional databases matching the wildcard pattern (for example, GRANT ... ON `foo\\_bar`.* TO ...). \"\n\nThe SQL statement \"grant SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER ON `my_test`.* to 'user1';\" will grant the permissions to myXtest and myYtest databases as well and this is not what the user wants."
+    }
+  ]
+}

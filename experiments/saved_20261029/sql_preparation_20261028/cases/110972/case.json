@@ -1,0 +1,112 @@
+{
+  "report_id": "110972",
+  "title": "Innodb Fulltext search returns incorrect results when kill and restart mysqld",
+  "source_sha256": "052bc486694ac136434a5f41050cdb6416e5992b903aba14b19c53ad168c6ee5",
+  "source_anchors": [
+    "cmain",
+    "c532403",
+    "c532454",
+    "c532456",
+    "c532485"
+  ],
+  "target_versions": [
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "needs_safety_review",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "c46e4f701433feb076800b7c07023bea1d454107b2fcdaab4437a3f31442ff23"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "caf39aeb75d0fd4cfd25161427eb83ad627b12898f27b3f5cc32323a63420bc4"
+    },
+    {
+      "path": "before_restart.sql",
+      "role": "setup",
+      "sha256": "d250f6a85c51166cbd56c1b1e830c4f1979ece3982aa7876c89dba6ec9b143d3"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(name TEXT(10),FULLTEXT idx(name)) ENGINE=InnoDB。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "准备阶段aaaaa、bbbbb后删除全部；重启后才插ccccc、ddddd。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "仅未来一次性实例：before_restart.sql 完成并确认提交；由另行批准的控制器强制停止本实例并保留datadir重启；新连接运行reproducer.sql；最后cleanup.sql并销毁一次性实例。本轮没有准备或执行 kill shell 命令。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "强制停止恢复后已提交新行应同时可由LIKE与MATCH检索，ccccc和ddddd各1行。若装载/恢复丢数据则分别记录持久性问题；报告中的缺省耐久配置争议须先冻结。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t1;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "强制停止恢复后已提交新行应同时可由LIKE与MATCH检索，ccccc和ddddd各1行。若装载/恢复丢数据则分别记录持久性问题；报告中的缺省耐久配置争议须先冻结。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "一次性目录",
+    "可控进程重启",
+    "记录sync_binlog/flush_log配置"
+  ],
+  "transformations": [
+    "按真正重启边界拆分SQL，保留FTS重建对照；原文全局 innodb_ft_aux_table 诊断不作为必需触发步骤，可另行审批后采集。"
+  ],
+  "blockers": [
+    "强制终止及恢复有数据完整性影响，需另行确定一次性实例与数据目录后再审。",
+    "报告者和验证者对默认/全ACID配置能否触发有分歧。"
+  ],
+  "version_notes": {
+    "8.0.34": "目标8.0有同InnoDB全文缓存恢复路径，操作和输入完整。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0有同InnoDB全文缓存恢复路径，操作和输入完整。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c532403, c532454, c532456, c532485 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/110972.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "restart",
+      "detail": "需要强制进程终止并保留datadir恢复；不得对共享/已有实例使用。",
+      "requires_review": true
+    },
+    {
+      "kind": "global_configuration",
+      "detail": "未来冻结并记录 innodb_flush_log_at_trx_commit、sync_binlog、autocommit、FTS配置。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [
+    {
+      "point": "报告者和验证者对默认/全ACID配置能否触发有分歧。",
+      "evidence": "c532403/56称不能复现；c532454/85提供MTR序列并观察丢行。",
+      "needed": "未来各配置精确清单与独立恢复日志；本轮不猜测触发配置。"
+    }
+  ],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "强制终止及恢复有数据完整性影响，需另行确定一次性实例与数据目录后再审。"
+    ],
+    "restriction": null
+  }
+}

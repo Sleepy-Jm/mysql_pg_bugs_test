@@ -1,0 +1,22 @@
+{
+  "report_id": "113466",
+  "title": "MySQL provides Truncated incorrect DOUBLE value: '0A000' error in trigger",
+  "task_ids": [
+    "mysql-113466-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\087182e8a155_bug_113466.html",
+  "source_sha256": "087182e8a155784ccadad9d21162e870a082c65a4018206f1cfab87cd7fffc56",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhenever I call a procedure from my insert trigger with this structure:\n\nPROCEDURE internal_create_log_entry (IN in_account_main_id int, IN in_base_type_sc smallint, IN in_record_id int, IN in_base_subtype_sc smallint, IN in_log_type_c smallint, IN in_log_action_c smallint, IN in_JSON_detail json, OUT out_result bool)\n\nIt ALWAYS returns Error 1292 (State 22007) \"Truncated incorrect DOUBLE value: '0A000'.\"\n\nRegardless of values. I can use:\n\nCALL internal_create_log_entry (1,1,1,1,1,1, JSON_OBJECT(), result_out);\n\nDoesn't matter of values are hardcoded or reference. I've tried every permutation, including global variables. Nothing works. Also verified the SP is never called - it's failing with the attempted call.\n\nSomething is very broken.\n\nHow to repeat:\nHere's the insert trigger. Note all code works fine with no errors until I try to call the above SP. No version of calling the SP with any values works at all.\n\nCREATE \n\tDEFINER = 'root'@'localhost'\nTRIGGER empowercrm_sandbox.trigger_workflow_item_i\n\tAFTER INSERT\n\tON empowercrm_sandbox.workflow_item\n\tFOR EACH ROW\nBEGIN\n\n    DECLARE result_bool BOOL;\n\n    DECLARE ACCOUNT_MAIN INT DEFAULT 1;\n    \n    DECLARE debug_location text CHARSET utf8mb4 DEFAULT 'initialization';\n    DECLARE debug_definition json DEFAULT JSON_OBJECT('stored_procedure', 'trigger_workflow_item_i');\n    DECLARE debug_details json DEFAULT JSON_OBJECT('source', debug_definition);\n\n    -- == [ERROR HANDLING] ========================================\n    \n    DECLARE EXIT HANDLER FOR SQLEXCEPTION\n    BEGIN\n        GET DIAGNOSTICS @sp_error_count = NUMBER;\n        GET DIAGNOSTICS CONDITION @sp_error_count @sp_error_state = RETURNED_SQLSTATE,\n        @sp_error_number = MYSQL_ERRNO, @sp_error_message = MESSAGE_TEXT;\n        CALL internal_error_handler(JSON_OBJECT('source', 'SQL', 'type', 'exit', 'location', debug_location),\n            NULL, debug_details, @out_result_details);\n    END;\n\n    -- == [TRIGGER CODE] ========================================\n\n    SET debug_location = 'trigger code';\n\n    CALL trigger_workflow_item_iu\n    (\n        null, \n        JSON_OBJECT\n        (\n            'id',NEW.id,\n            'item_state_c',NEW.item_state_c,\n            'item_status_c',NEW.item_status_c,\n            'item_node_id',NEW.item_node_id\n        )\n    );\n    \n\n    -- == [INDEX TRACKING] ========================================\n\n    SET debug_location = 'index tracking';\n\n    IF (@workflow_item_array_insert IS NULL) THEN set @workflow_item_array_insert = JSON_ARRAY(); END IF;    \n    SET @workflow_item_array_insert = JSON_ARRAY_APPEND(@workflow_item_array_insert,'$',NEW.id);\n\n    -- == [LOGGING] ========================================\n\n    SET debug_location = 'logging';\n\n    CALL internal_create_log_entry\n    (\n        1, \n        1, \n        1,\n        1,\n        1,\n        1,\n        JSON_OBJECT(),\n        result_bool\n    );\n    \nEND\n\nSuggested fix:\nI have no idea what's going on here. It's obvious the wrong error is being returned. Can't debug if the proper error isn't shared.\n\nSP works fine outside of trigger."
+    },
+    {
+      "anchor": "c539186",
+      "text": "Hi Mr. Allen,\n\nThank you for your bug report.\n\nHowever, we are not able to repeat it.\n\nWe do not have all your tables involved, with their full definitions and contents.\n\nWe also do not have all SQL statements that are applied to the tables and their contents.\n\nWe can not process this report, without a full test case.\n\nYou have not provided a full test case.\n\nCan't repeat."
+    }
+  ]
+}

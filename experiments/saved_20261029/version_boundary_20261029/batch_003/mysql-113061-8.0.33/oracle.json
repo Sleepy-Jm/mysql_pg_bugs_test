@@ -1,0 +1,19 @@
+{
+  "normal": "AVG(DISTINCT数值集合0,3,5,6)=3.5，SUM=14；两种访问路径一致",
+  "reported": "primary avg3.5/sum14，默认avg3.7/sum37；核对EXPLAIN实际索引及十行数据",
+  "prerequisites": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "普通 SELECT 中转换警告单列；不能把警告当异常"
+  ],
+  "expected_errors": [],
+  "kind": "wrong_result",
+  "source_oracle": {
+    "kind": "wrong_result",
+    "expected": "PRIMARY 与二级索引路径同一 DISTINCT 数值聚合应一致；原候选正确集合数值0,3,5,6，SUM=14 AVG=3.5",
+    "failure": "二级索引把不同字符串重复数值重复累计为 SUM37/AVG3.7",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "boundary_review_note": "Distinct numeric set is {0,3,5,6}: AVG3.5 and SUM14 for both paths. Target secondary path AVG3.7 SUM37. Ten rows and idx_b_l/group-by plan required; conversion warnings legitimate."
+}

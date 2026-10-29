@@ -1,0 +1,5 @@
+SET @@sql_mode = 'ANSI,TRADITIONAL';
+SELECT @@sql_mode;
+SELECT DATE('2022-04-31');
+SELECT STR_TO_DATE('2022-04-31', '%Y-%m-%d');
+SELECT DATE(STR_TO_DATE('2022-04-31', '%Y-%m-%d'));

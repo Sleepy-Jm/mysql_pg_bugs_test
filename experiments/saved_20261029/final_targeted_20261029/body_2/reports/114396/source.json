@@ -1,0 +1,22 @@
+{
+  "report_id": "114396",
+  "title": "NULL is not treated as 0 for tables partitioned by key",
+  "task_ids": [
+    "mysql-114396-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\5c8d2a404e1e_bug_114396.html",
+  "source_sha256": "5c8d2a404e1e01decd6e36bb66e7f5a1df578f3029b7e66c90d2eb0690bf6ef8",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nAs described in the document(see https://dev.mysql.com/doc/refman/8.0/en/partitioning-handling-nulls.html), NULL is handled as 0 in the tables partitioned by key and hash. However, according to the actual execution result, NULL is not processed as 0 in the KEY partition table.\n\n1.We create a table partitioned by key and insert values including 0 and NULL.\n\nmysql> CREATE TABLE tk (\n    ->          c1 INT,\n    ->          c2 VARCHAR(20)\n    ->      )\n    ->      PARTITION BY KEY(c1)\n    ->      PARTITIONS 2;\nQuery OK, 0 rows affected (0.03 sec)\n\nmysql> SELECT TABLE_NAME,PARTITION_NAME,TABLE_ROWS,AVG_ROW_LENGTH FROM INFORMATION_SCHEMA.PARTITIONS WHERE TABLE_SCHEMA = 'test' AND TABLE_NAME ='tk';\n+------------+----------------+------------+----------------+\n| TABLE_NAME | PARTITION_NAME | TABLE_ROWS | AVG_ROW_LENGTH |\n+------------+----------------+------------+----------------+\n| tk         | p0             |          0 |              0 |\n| tk         | p1             |          0 |              0 |\n+------------+----------------+------------+----------------+\n2 rows in set (0.00 sec)\n\nmysql> INSERT INTO tk VALUES (NULL, 'mothra'), (0, 'gigan');\nQuery OK, 2 rows affected (0.00 sec)\nRecords: 2  Duplicates: 0  Warnings: 0\n\n2.Then,we check the Information Schema and specified partition to verify if NULL and 0 are in the same partition,finding that NULL is not treated as 0.\n\nmysql> analyze table tk;\n+---------+---------+----------+----------+\n| Table   | Op      | Msg_type | Msg_text |\n+---------+---------+----------+----------+\n| test.tk | analyze | status   | OK       |\n+---------+---------+----------+----------+\n1 row in set (0.01 sec)\n\nmysql> SELECT TABLE_NAME,PARTITION_NAME,TABLE_ROWS,AVG_ROW_LENGTH FROM INFORMATION_SCHEMA.PARTITIONS WHERE TABLE_SCHEMA = 'test' AND TABLE_NAME ='tk';\n+------------+----------------+------------+----------------+\n| TABLE_NAME | PARTITION_NAME | TABLE_ROWS | AVG_ROW_LENGTH |\n+------------+----------------+------------+----------------+\n| tk         | p0             |          1 |          16384 |\n| tk         | p1             |          1 |          16384 |\n+------------+----------------+------------+----------------+\n2 rows in set (0.00 sec)\n\nmysql> select * from tk partition (p0);\n+------+--------+\n| c1   | c2     |\n+------+--------+\n| NULL | mothra |\n+------+--------+\n1 row in set (0.00 sec)\n\nmysql> select * from tk partition (p1);\n+------+-------+\n| c1   | c2    |\n+------+-------+\n|    0 | gigan |\n+------+-------+\n1 row in set (0.00 sec)\n\nHow to repeat:\nUSE test;\n\nCREATE TABLE tk ( c1 INT, c2 VARCHAR(20) ) PARTITION BY KEY (c1) PARTITIONS 2;\n\nSELECT TABLE_NAME,PARTITION_NAME,TABLE_ROWS,AVG_ROW_LENGTH FROM INFORMATION_SCHEMA.PARTITIONS WHERE TABLE_SCHEMA = 'test' AND TABLE_NAME ='tk';\n\nINSERT INTO tk VALUES (NULL, 'mothra'), (0, 'gigan');\n\nanalyze table tk;\n\nSELECT TABLE_NAME,PARTITION_NAME,TABLE_ROWS,AVG_ROW_LENGTH FROM INFORMATION_SCHEMA.PARTITIONS WHERE TABLE_SCHEMA = 'test' AND TABLE_NAME ='tk';\n\nSuggested fix:\nNULL is suggested in the same partition as 0 when the table is partitioned by key."
+    },
+    {
+      "anchor": "c541615",
+      "text": "Hello Yuki Liu,\n\nThank you for the report and feedback.\nVerified as described.\n\nregards,\nUmesh"
+    }
+  ]
+}

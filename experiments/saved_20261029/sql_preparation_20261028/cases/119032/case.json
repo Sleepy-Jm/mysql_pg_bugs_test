@@ -1,0 +1,87 @@
+{
+  "report_id": "119032",
+  "title": "Inconsistency with MySQL 8.0.36 in MySQL 9.2.0: Equivalent INTERSECT query does not match INNER JOIN result and returns",
+  "source_sha256": "c444603e26aaedd16f7257c1edd1c8c3d2f8da22d02a59d5d72dc6d4787eeb4c",
+  "source_anchors": [
+    "cmain",
+    "c554422"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "c964a6723459a8737c6cd641f35e59dc9d6193fe542dc41c85d98ba1629c281c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "fe8a3cfbbbc6d025e9eafed76d01292134c4e83f86a1ced3c31c214e82db35e1"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原FLOAT UNSIGNED ZEROFILL NOT NULL主键t0及MERGE声明DISTINCT视图v0。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "全部原DML按顺序保留，含IGNORE、REPLACE、潜在NOT NULL/unsigned转换错误及USER表达式；需逐句核对实际状态。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "新schema、mysql --force运行全部原DML，保存每条错误/警告及最终t0/v0数据，再比较最后两条查询；初始化状态不明时结果记inconclusive；独立cleanup。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "在确认原DML最终t0及v0状态后，INNER JOIN的DISTINCT t0.c0集合应等于LEFT/RIGHT集合INTERSECT。t0.c0是NOT NULL主键，因此RIGHT补NULL不应加入交集；不能把日志中的历史cardinality0/1当固定目标结果。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP VIEW IF EXISTS v0;\nDROP TABLE IF EXISTS t0;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "在确认原DML最终t0及v0状态后，INNER JOIN的DISTINCT t0.c0集合应等于LEFT/RIGHT集合INTERSECT。t0.c0是NOT NULL主键，因此RIGHT补NULL不应加入交集；不能把日志中的历史cardinality0/1当固定目标结果。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "独立schema并保存SQL模式",
+    "逐句核查DML完成状态和数据，不能静默跳错",
+    "只比较集合并保留全部转换warnings",
+    "8.0.31起的INTERSECT语法，固定SQL mode、账户及字符集；确认v0实际算法。"
+  ],
+  "transformations": [
+    "删除database19全库DROP/CREATE/USE，改runner新schema；其余原DML和末两查询原样保留，未删除故意错误语句。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0.32至35具备INTERSECT及所用视图/连接功能；仅探索与9.2场景的适用性，未经目标验证。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0.32至35具备INTERSECT及所用视图/连接功能；仅探索与9.2场景的适用性，未经目标验证。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0.32至35具备INTERSECT及所用视图/连接功能；仅探索与9.2场景的适用性，未经目标验证。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0.32至35具备INTERSECT及所用视图/连接功能；仅探索与9.2场景的适用性，未经目标验证。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c554422 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/119032.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

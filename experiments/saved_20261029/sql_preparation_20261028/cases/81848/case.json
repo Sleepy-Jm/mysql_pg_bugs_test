@@ -1,0 +1,74 @@
+{
+  "report_id": "81848",
+  "title": "alter table... drop partition resets auto_increment if table empty after alter",
+  "source_sha256": "23a79a1079226d3774e572c059c33bd482795289cb9fe01c37060d2a6571c5c4",
+  "source_anchors": [
+    "cmain",
+    "c446646",
+    "c446647"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "f7fed83c7bc18c4c7eff2946c3188746598076b26c7387ef1d5c58cbd1072b83"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "2d9d7f4ed1ebd94d879a84bf115bcfbcddd254d8e33607646dda23523d721eb0"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原 rick_test 全字段及 p37..p57 分区"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原五次插入 2016-01-01"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "先分配 ID 1..5，删除 p37 后再插入的 ID 应大于 5；异常：删除单个分区使已分配 ID 从 1 重用"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "先分配 ID 1..5，删除 p37 后再插入的 ID 应大于 5",
+    "failure": "删除单个分区使已分配 ID 从 1 重用",
+    "limitations": "采用原空表后重插子例，不把 TRUNCATE TABLE 的重置当缺陷；跨版本契约还需目标回放确认。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "InnoDB分区",
+    "保存sql_mode和DDL"
+  ],
+  "transformations": [
+    "仅提取 mysql 命令及 -> 续行；补 sql_mode 空以匹配原省略 NOT NULL 列仍插入的警告模式"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0有持久化自增计数，是否旧现象仍存需执行。 本轮尚未执行。",
+    "8.0.33": "目标8.0有持久化自增计数，是否旧现象仍存需执行。 本轮尚未执行。",
+    "8.0.34": "目标8.0有持久化自增计数，是否旧现象仍存需执行。 本轮尚未执行。",
+    "8.0.35": "目标8.0有持久化自增计数，是否旧现象仍存需执行。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain, c446646, c446647 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

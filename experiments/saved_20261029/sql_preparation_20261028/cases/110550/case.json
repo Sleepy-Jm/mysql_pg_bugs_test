@@ -1,0 +1,65 @@
+{
+  "report_id": "110550",
+  "title": "ordering VALUES statement seems not to work as expected",
+  "source_sha256": "349300ea0e3e123f5507d8ca33cf730cdf3c2df321eafbd3bcb0352001930e9d",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "5c04416579fad7db3829e60d8449c7ed3b53125d23738bfb0c7601ff04972928"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "not_needed",
+      "detail": "仅标量表达式/系统元数据，无自建 schema 对象。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "VALUES 原行"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "首例按 column_1 为 1,4,5；UNION 控制为 0,1,4,5；异常：首例仍 1,5,4"
+    },
+    "cleanup": {
+      "status": "not_needed",
+      "detail": "无持久对象；断开专用会话。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "首例按 column_1 为 1,4,5；UNION 控制为 0,1,4,5",
+    "failure": "首例仍 1,5,4",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "从自定义 root@host 提示符转成两条原 SQL"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

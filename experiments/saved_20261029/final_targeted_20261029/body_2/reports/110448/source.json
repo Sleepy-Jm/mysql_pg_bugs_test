@@ -1,0 +1,26 @@
+{
+  "report_id": "110448",
+  "title": "Contribution by Tencent: incorrect result of fulltext search",
+  "task_ids": [
+    "mysql-110448-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\d5ba051335e6_bug_110448.html",
+  "source_sha256": "d5ba051335e6587136b4d59a9929d4d9f7d89082307ec3d28cf7cc899aa77a57",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nA text is split into several words, each word may be contained in many documents.\nIn fts cache, each word use fts_tokenizer_word_t::nodes to store doc ids. However, doc ids in fts_tokenizer_word_t::nodes are not guaranteed to be ordered, but in function 'fts_phrase_or_proximity_search', fts_query_t::matched_array[i] is expected to be sorted by doc id in ascending order. An unordered fts_tokenizer_word_t::nodes may cause incorrect result of fulltext search.\n\nHow to repeat:\nsource include/have_debug_sync.inc;\nCREATE TABLE opening_lines (\n       FTS_DOC_ID BIGINT UNSIGNED AUTO_INCREMENT NOT NULL PRIMARY KEY,\n       opening_line varchar(100),\n       author VARCHAR(200),\n       title VARCHAR(200),\n       FULLTEXT (opening_line) WITH PARSER ngram\n       ) ENGINE=InnoDB;\n\nconnect (con1,localhost,root,,);\nconnect (con2,localhost,root,,);\n\nconnection con1;\nset session debug_sync='bgc_before_flush_stage signal session1_before_flush wait_for session2_finish_add_fts_cache';\nsend INSERT INTO opening_lines(opening_line,author,title) VALUES ('TestOK','author1','title1');\n\nconnection con2;\nset session debug_sync='now wait_for session1_before_flush';\nset session debug_sync='fts_instrument_sync_request signal session2_finish_add_fts_cache';\nINSERT INTO opening_lines(opening_line,author,title) VALUES ('OKTest','author2','title2');\n\nconnection con1;\nreap;\n\necho has one row in result;\nselect * from opening_lines where opening_line like 'TestOK';\necho has no row in result;\nselect * from opening_lines where MATCH(opening_line) AGAINST('TestOK' in boolean mode);\n\ndisconnect con1;\ndisconnect con2;\ndrop table opening_lines;\n\nRun this test script and you can see the two queries return different results.\n\nSuggested fix:\nThe simplest way is sorting fts_query_t::matched_array[i] by doc id in ascending order when pushing data into it.\n\ndiff --git a/storage/innobase/fts/fts0que.cc b/storage/innobase/fts/fts0que.cc\nindex ff360ea7857..607768f554a 100644\n--- a/storage/innobase/fts/fts0que.cc\n+++ b/storage/innobase/fts/fts0que.cc\n@@ -3000,6 +3000,20 @@ static dberr_t fts_query_filter_doc_ids(\n       match =\n           static_cast<fts_match_t *>(ib_vector_push(query->matched, nullptr));\n \n+      /* find the correct slot of new match */\n+      ut_ad(ib_vector_size(query->matched) >= 1);\n+      ulint slot = ib_vector_size(query->matched) - 1;\n+      while (slot >= 1) {\n+        fts_match_t *temp_match =\n+            static_cast<fts_match_t *>(ib_vector_get(query->matched, slot - 1));\n+        if (doc_id >= temp_match->doc_id) {\n+          break;\n+        }\n+        ib_vector_set(query->matched, slot, temp_match);\n+        slot--;\n+      }\n+      match = static_cast<fts_match_t *>(ib_vector_get(query->matched, slot));\n+"
+    },
+    {
+      "anchor": "c530949",
+      "text": "Hello yin peng,\n\nThank you for the report and contribution.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c530992",
+      "text": "Change the title from 'Concurrent insert may cause incorrect result of fulltext search' to 'Contribution by Tencent: incorrect result of fulltext search'."
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "report_id": "112673",
+  "title": "dump from slave with --dump-slave or --dump-replica option will change binlog",
+  "task_ids": [
+    "mysql-112673-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\4d740fa71faa_bug_112673.html",
+  "source_sha256": "4d740fa71faa2af7000caf334f5e60e37a4c8978dd2b7f3e8680521d7955e226",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen performing a mysqldump with the --dump-slave or --dump-replica parameters on a slave server, it writes flush tables related records to the slave's binlog. However, when I tested this on MySQL 5.7.27, it did not write any information to the binlog.\n\nHow to repeat:\n(root@localhost) [as_crm]> select @@server_uuid;\n+--------------------------------------+\n| @@server_uuid                        |\n+--------------------------------------+\n| f6f64c24-667f-11ee-9bb7-028c98eda612 |\n+--------------------------------------+\n1 row in set (0.00 sec)\n\n(root@localhost) [as_crm]> select @@version;\n+-----------+\n| @@version |\n+-----------+\n| 8.0.32    |\n+-----------+\n1 row in set (0.00 sec)\n\nbefore：\n(root@localhost) [(none)]> show master status\\G\n*************************** 1. row ***************************\n             File: mysql-bin.000447\n         Position: 75365549\n     Binlog_Do_DB: \n Binlog_Ignore_DB: \nExecuted_Gtid_Set: 3905460f-5c0f-11e9-8580-028c98eda612:1-4304093,\n6efbca19-06ae-11ea-a0b6-0210931c4d7c:1-229872,\n1 row in set (0.01 sec)\n\ncommand：\nmysqldump -uxxxxxx -pxxxxxx -S /tmp/mysql.sock -R --triggers --hex-blob --single-transaction --dump-slave=2 --max_allowed_packet=512M --default-character_set=utf8 --tables test01\n\nafter：\n(root@localhost) [(none)]> show master status\\G\n*************************** 1. row ***************************\n             File: mysql-bin.000447\n         Position: 75365549\n     Binlog_Do_DB: \n Binlog_Ignore_DB: \nExecuted_Gtid_Set: 3905460f-5c0f-11e9-8580-028c98eda612:1-4304093,\n6efbca19-06ae-11ea-a0b6-0210931c4d7c:1-229872,\nf6f64c24-667f-11ee-9bb7-028c98eda612:1-1\n1 row in set (0.01 sec)\n\nmysqlbinlog -vv --base64-ouput=decode-rows mysql-bin.000447\n......\nSET @@SESSION.GTID_NEXT= 'f6f64c24-667f-11ee-9bb7-028c98eda612:1'/*!*/;\n# at 1482592\n#231009  2:58:37 server id 18116  end_log_pos 1482670 CRC32 0xd9808ad4 \tQuery\tthread_id=68\texec_time=0\terror_code=0\nSET TIMESTAMP=1696845517/*!*/;\nSET @@session.sql_mode=0/*!*/;\n/*!\\C utf8mb3 *//*!*/;\nSET @@session.character_set_client=33,@@session.collation_connection=33,@@session.collation_server=255/*!*/;\nFLUSH TABLES\n/*!*/;\n# at 1482670\n#231009  2:58:37 server id 18116  end_log_pos 1482747 CRC32 0x86f69503 \tGTID\tlast_committed=1678\tsequence_number=1679\trbr_only=no\toriginal_committed_timestamp=1696845517913227\timmediate_commit_timestamp=1696845517913227\ttransaction_length=155\n......"
+    },
+    {
+      "anchor": "c536871",
+      "text": "Hi,\n\nI'm not sure I follow the problem. Have you tried this with 8.0.34 and 5.7.43. \n\nThanks"
+    },
+    {
+      "anchor": "c537956",
+      "text": "No feedback was provided for this bug for over a month, so it is\nbeing suspended automatically. If you are able to provide the\ninformation that was originally requested, please do so and change\nthe status of the bug back to \"Open\"."
+    }
+  ]
+}

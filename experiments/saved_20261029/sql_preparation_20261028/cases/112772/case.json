@@ -1,0 +1,70 @@
+{
+  "report_id": "112772",
+  "title": "Assertion `is_nullable()' failed in MySQL 8.1.0",
+  "source_sha256": "db375b4e5d179b20344734288da0f202f03765993f91c6ebab151a19fa095f91",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "6bacaf77f61e78582e5e7d68eec3d5bcab56270a0bc1d81c37518bd13637b3c9"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "bac8846d021bceec918b3ef913fe5f92ca97ffb9f0ca1551b0b791d8a613d2da"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 INT PK,c1 VARCHAR1 NOT NULL)"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "空表；112770 为故意非法 INSERT"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "非法多行标量或 YEAR 转换可正常拒绝，服务器存活；异常：is_nullable 断言"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "非法多行标量或 YEAR 转换可正常拒绝，服务器存活",
+    "failure": "is_nullable 断言",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "目标debug构建",
+    "debug"
+  ],
+  "transformations": [
+    "从 How to repeat 代码块提取原 DDL 和触发 SQL，不修复故意非法输入"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

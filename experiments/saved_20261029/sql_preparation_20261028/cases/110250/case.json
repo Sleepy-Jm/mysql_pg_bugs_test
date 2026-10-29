@@ -1,0 +1,93 @@
+{
+  "report_id": "110250",
+  "title": "Right join query with wrong result",
+  "source_sha256": "e5d1748fb455b8c291964dd48a3297b2a80844002e002ec241fc64dc10602ee1",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "4a64c14dbc95f6dd3606373e475b06cd639fcf288bd4e5e47a606414c9a48cb7"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "71b9e71ea6b64e9b4118e32c72e6ea1d8fcd81d3c35c54dfa543bbd0467a850b"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原文空 t1，BOOLEAN t0。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "t0 完整数据 1,NULL；t1 故意空。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 顺序在同一全新隔离 schema 和 mysql 会话执行；保留逐句输出/错误；预期错误处用 --force 继续，正常 SQL 错误不计 crash。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "同一 RIGHT JOIN 的真值计数与 SUM 应一致；记录 CHAR(NULL) 实际值/转换 warning，原文预期两行与 SUM=2。NULL 聚合不能直接按零处理。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "按 cleanup.sql 清理本用例对象；结束会话，销毁专用 schema。实例级条件按 execution_conditions 恢复或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "同一 RIGHT JOIN 的真值计数与 SUM 应一致；记录 CHAR(NULL) 实际值/转换 warning，原文预期两行与 SUM=2。NULL 聚合不能直接按零处理。",
+    "failure": "在所列前提成立时，违反上述逐例结果/错误/存活约束才记录异常；保存原始输出，初始化失败单列。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在；静态检查不证明服务器语法接受或根因独立。"
+  },
+  "requirements": [
+    "全新隔离 schema 和专用会话；保存真实版本、sql_mode、字符集和日志",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "按已核对的原文 SQL 整理；结果表、提示符、栈记录留在 inputs 原文中，不当作 SQL。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。"
+  },
+  "source_reading": "逐份核对 cmain 的定义、输入、顺序和判据；其他评论中的历史结果不外推为目标版本实测。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "空t1(c0 BIGINT)，t0(c0 BOOLEAN)插入1,NULL。",
+    "steps": "执行RIGHT JOIN USING(c0)上-1<CHAR(t1.c0)的WHERE与SUM投影两种原SQL。",
+    "oracle": "谓词匹配行数与投影真值SUM应一致，保留NULL聚合情况。",
+    "requirements": [
+      "独立测试实例",
+      "保存完整SQL、配置、输出与错误日志"
+    ],
+    "target_applicability": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。"
+  },
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

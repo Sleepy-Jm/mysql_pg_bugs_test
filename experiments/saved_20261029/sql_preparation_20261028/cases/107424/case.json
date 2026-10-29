@@ -1,0 +1,84 @@
+{
+  "report_id": "107424",
+  "title": "st_intersects() returns different results with or without spatial index",
+  "source_sha256": "6d3ffa6170f8c0cd1d510ef7e1e9c324b05b11dc35211bc98a26bb01e65eab11",
+  "source_anchors": [
+    "cmain",
+    "c522894",
+    "c531290"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "789abe1b274143da79a3be3768c4a47190822bb019bf2e6543ccdcf56e8f74e9"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "cab6c258cb3e315320d6363ca22929b5489921c16018efa9a14b72208847b596"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "cmain 的 t1(g1 GEOMETRY NOT NULL SRID4326)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "保留两个 POINT 的全部小数位，873 与 874 不可舍入合并。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两次查询均应只返回以 873 结尾的第一个点；c531290 明确说索引结果正确，Boost epsilon 的非索引两行结果错误。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "两次查询均应只返回以 873 结尾的第一个点；c531290 明确说索引结果正确，Boost epsilon 的非索引两行结果错误。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "空间索引可用",
+    "保留坐标全部小数位"
+  ],
+  "transformations": [
+    "去除 mysql 提示符与输出表；SQL 数值和顺序不变。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0支持地理SRS及该函数，边界浮点输入完整可执行。 本轮未实测。",
+    "8.0.34": "目标8.0支持地理SRS及该函数，边界浮点输入完整可执行。 本轮未实测。",
+    "8.0.35": "目标8.0支持地理SRS及该函数，边界浮点输入完整可执行。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c522894, c531290 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

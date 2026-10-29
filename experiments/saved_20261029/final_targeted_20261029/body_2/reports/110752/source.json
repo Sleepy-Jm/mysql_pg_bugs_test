@@ -1,0 +1,130 @@
+{
+  "report_id": "110752",
+  "title": "el7 aarch64 might return invalid for value cache line causing crash during boot",
+  "task_ids": [
+    "mysql-110752-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\25998bb7759f_bug_110752.html",
+  "source_sha256": "25998bb7759f8e390cb8ef0fc309d06a3a528f0ee09c78be4f2ceb68f907ac3c",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThe mysqld process cannot be started on new installations of mysql-community-server 8.0.33-1.el7.\n\nWe see errors in mysqld.log like:\n\n2023-04-20T18:45:48.249435Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.33) starting as process 291\n2023-04-20T18:45:48Z UTC - mysqld got signal 11 ;\nMost likely, you have hit a bug, but this error can also be caused by malfunctioning hardware.\nBuildID[sha1]=9ae612eb139943fd0ad78ded1a800776626be701\nThread pointer: 0x0\nAttempting backtrace. You can use the following information to find out\nwhere mysqld died. If you see no messages after this, something went\nterribly wrong...\nstack_bottom = 0 thread_stack 0x100000\n/usr/sbin/mysqld(my_print_stacktrace(unsigned char const*, unsigned long)+0x44) [0x1e07324]\n/usr/sbin/mysqld(print_fatal_signal(int)+0x33c) [0xf121fc]\n/usr/sbin/mysqld(handle_fatal_signal+0x98) [0xf122d8]\n[0xffff7f94a790]\n/usr/sbin/mysqld(memory::Aligned_atomic<long>::Aligned_atomic()+0x70) [0x1ac75b0]\n/usr/sbin/mysqld(Delegate::Delegate(unsigned int)+0x5c) [0x1ac785c]\n/usr/sbin/mysqld(delegates_init()+0x40) [0x1ac79c0]\n/usr/sbin/mysqld() [0xce3b60]\n/usr/sbin/mysqld(mysqld_main(int, char**)+0x1d8c) [0xcea76c]\n/lib64/libc.so.6(__libc_start_main+0xf0) [0xffff7f1a8724]\n/usr/sbin/mysqld() [0xccfc40]\nThe manual page at http://dev.mysql.com/doc/mysql/en/crashing.html contains\ninformation that should help you find out what is causing the crash.\n\nHow to repeat:\nSimplest possible reproduction:\n\n1. docker run -it --rm centos:7\n2. rpm -i https://dev.mysql.com/get/mysql80-community-release-el7-7.noarch.rpm\n3. yum install mysql-community-server sudo\n4. sudo -u mysql /usr/sbin/mysqld --daemonize --pid-file=/var/run/mysqld/mysqld.pid\n\nI've tested the above on:\n\n- macOS Ventura, Apple M1 w/ latest Docker Desktop for Mac\n- CentOS 7.x, AWS EC2 instance using a Graviton 2 w/ latest Docker\n\nSuggested fix:\nFor us, pinning to 8.0.32-1.el7 works, except that version is already gone from some mirrors."
+    },
+    {
+      "anchor": "c531838",
+      "text": "Hi Mr. Saxon,\n\nThank you for your bug report.\n\nWe have already received several bug reports with similar stacktraces. We discovered that a problem is not in our server.\n\nIt was always found that on of the two factors are causing this problem.\n\nFirst one is the setting of your docker environment. Especially the memory configuration.\n\nThe second cause  problem is with a cacheline. Run the following command:\n\ngetconf -a | grep CACHE\n\nIf you get any result like this, then it is the problem.\n\nLEVEL1_ICACHE_SIZE                 0\nLEVEL1_ICACHE_ASSOC                0\nLEVEL1_ICACHE_LINESIZE             0\nLEVEL1_DCACHE_SIZE                 0\nLEVEL1_DCACHE_ASSOC                0\nLEVEL1_DCACHE_LINESIZE             0\nLEVEL2_CACHE_SIZE                  0\nLEVEL2_CACHE_ASSOC                 0\nLEVEL2_CACHE_LINESIZE              0\nLEVEL3_CACHE_SIZE                  0\nLEVEL3_CACHE_ASSOC                 0\nLEVEL3_CACHE_LINESIZE              0\nLEVEL4_CACHE_SIZE                  0\nLEVEL4_CACHE_ASSOC                 0\nLEVEL4_CACHE_LINESIZE              0\n\nIn any of the two cases, this is not our bug."
+    },
+    {
+      "anchor": "c532296",
+      "text": "Thank you for following up.\n\nWe see the all-zeroes cache line, so perhaps that's the problem. I'm wondering if you can offer some guidance about how this is a problem in 8.0.33 but not 8.0.32? Our environment has not changed, and in particular the cache line appears to be all zeros on any CentOS 7 ARM host, both inside a container and when run directly on an EC2 instance. It seems like this would be a widespread issue affecting the majority of ARM users in the field.\n\nAs for the Docker configuration, again, can you offer any guidance on what we should look for? Is there a KB article posted somewhere you can point me to? We see this with standard out-of-the-box Docker configuration, and again we're only seeing this on ARM whereas an otherwise-identical configuration on Intel works correctly.\n\nThanks,\n\n-Will"
+    },
+    {
+      "anchor": "c532319",
+      "text": "Hi Mr. Saxon,\n\nWe have many customers and users running MySQL on ARM systems with Linux or with macOS.\n\nYour report is the only one about the problem with starting MySQL.\n\nHence, this is some problem in your configuration.\n\nNot a bug."
+    },
+    {
+      "anchor": "c532329",
+      "text": "I'm not arguing that it's a bug. I'm pointing out that with standard out of the box configuration, new installations work immediately with 8.0.32 and fail immediately on 8.0.33.\n\nYou pointed out that in all cases where this has been reported, it was docker configuration or an empty cache line. I have replied that we are using standard/out of the box configuration for Docker, and that all the ARM systems I've looked at have a zero cache line.\n\nSo, while I realize this is a bug database and not a support site, I was hoping that, given you've apparently seen this several times, you could point me to a KB article or documentation saying \"you need to do XYZ to run MySQL 8.0.33 on ARM.\" Because, from my perspective, I changed nothing other than the version I am installing, and the new version doesn't work.\n\nIf you are not prepared to do that, please go ahead and close this report (or I will, if that's my responsibility)."
+    },
+    {
+      "anchor": "c532330",
+      "text": "Hi,\n\nSince we do not have any other reports on this problem with 8.0.33, we do not have any KB articles nor any documentation that we could provide for you ....."
+    },
+    {
+      "anchor": "c532335",
+      "text": "> We have already received several bug reports with similar stacktraces. We discovered that a problem is not in our server.\n\nThen,\n\n> Your report is the only one about the problem with starting MySQL.\n\nThen,\n\n> Since we do not have any other reports on this problem with 8.0.33, we do not have any KB articles nor any documentation that we could provide for you .....\n\nThank you for your efforts here. Please close the bug."
+    },
+    {
+      "anchor": "c533185",
+      "text": "Hello,\n\nI have some more information on this that you might like to see.\n\nThe Ubuntu project has a bug filed in their system where they see the same behavior on armhf with every release that packages 8.x:\n\nhttps://bugs.launchpad.net/ubuntu/+source/mysql-8.0/+bug/2019203\n\nIt references this commit:\n\nhttps://github.com/mysql/mysql-server/commit/be8348a7c3e8510b998a063065b626a459631b32\n\nIt appears that reverting this commit, which was introduced by the MySQL project for the 8.0.33 release, fixes the problem.\n\nMaybe you'd like to reconsider whether this is a bug, or at least acknowledge that this is not an end-user issue? I went ahead and modified the severity, etc. assuming so."
+    },
+    {
+      "anchor": "c533223",
+      "text": "Hi Mr. Saxon,\n\nIf that patch is committed, then it is a solution for your problem.\n\nAlso, if you take a look at our \"Download\" pages, you will see that Ubuntu on ARM is not supported among the supported OS.\n\nRegarding macOS with M1 or M2, it runs on our test systems without any problem."
+    },
+    {
+      "anchor": "c533237",
+      "text": "Please actually read the bug report. This is not about running on macOS.\n\nThe issue is running MySQL 8.0.33 on Linux on ARM64. I mentioned Apple M1 because I was trying to run in a CentOS 7 Docker container on a Mac. I mentioned the Ubuntu issue because it illustrates the same problem and that group tracked down which commit by the MySQL project introduced the behavior.\n\nWe/I are personally trying to run MySQL 8.0.33 on *CentOS 7 on ARM64*, which is on your supported OS list at https://www.mysql.com/support/supportedplatforms/database.html. We have seen the behavior noted by this bug report on the Apple M1 (via Docker) and AWS Graviton implementations of the ARM64 architecture.\n\nPlease take 5 minutes and actually *try installing your own package on this platform* instead of repeatedly dismissing this report. Your group has been defensive and rude about this for no obvious reason. Do you want people to report problems they encounter with your software or not?"
+    },
+    {
+      "anchor": "c533274",
+      "text": "Hi Mr. Saxon,\n\nYes, we are interested in the bugs in our latest releases.\n\nHowever, we can not repeat your problems.\n\nBefore we release any package , we test it by installing it on the OS for which it is built. We test our builds only. We test them on each operating system, for CPU's supported and on Linux Docker environment. That is why we have tools for the Docker that you can find on our download site.\n\nWe have not encountered any problems with the installations on any OS, nor with Docker.\n\nRegarding your problems with installations on AWS, you will have to report it to the cloud provider. We do test our packages on OCI.\n\nCan't repeat."
+    },
+    {
+      "anchor": "c533276",
+      "text": "HI Mr. Saxon,\n\nWe have one additional question for you.\n\nHave you tried installing our package on the CentOS 7 on ARM, as standalone, without Docker.\n\nIt could be a problem with Docker installation. If you succeed installing it without Docker, please read our chapter 2.5.6 in the Manual."
+    },
+    {
+      "anchor": "c533277",
+      "text": "Hi,\n\nAnother area which could cause the problem is Docker configuration."
+    },
+    {
+      "anchor": "c533279",
+      "text": "Hi,\n\nThis looks more and more like Docker misconfiguration. \n\nThe stacktrace looks like you have not configured memory utilisation in Docker."
+    },
+    {
+      "anchor": "c533308",
+      "text": "> Have you tried installing our package on the CentOS 7 on ARM, as standalone, without Docker.\n\nYes, we have. I am sorry I wasn't more explicit about this in my comment from [6 Jun 15:33]. We realized this issue wasn't Docker-specific, which is why I removed Docker from this report's metadata the other day.\n\nIf it helps, I just set up a new EC2 instance with the latest CentOS 7 AMI provided by the CentOS project, set up your release repository, installed mysql-community-server, and experienced the failure immediately when trying to then start mysqld. I attached a screen log capturing the output of this effort; I would recommend reading it using the `more` utility to handle the escape codes.\n\nAgain, this works immediately using the default installed configuration with 8.0.32. We began seeing this issue with 8.0.33. We found that it was subsequently noticed and reported by other users to the Ubuntu project."
+    },
+    {
+      "anchor": "c533312",
+      "text": "I was digging around on the EC2 instance I've been testing with (CentOS 7.9.2009 ARM64, stock glibc 2.17, and no Docker) and discovered that the cache line size is set in sysfs:\n\n# grep . /sys/devices/system/cpu/cpu0/cache/index*/coherency_line_size\n/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size:64\n/sys/devices/system/cpu/cpu0/cache/index1/coherency_line_size:64\n/sys/devices/system/cpu/cpu0/cache/index2/coherency_line_size:64\n/sys/devices/system/cpu/cpu0/cache/index3/coherency_line_size:64\n\nBut getconf is unable to get it:\n\n# getconf -a | grep -i 'cache.*linesize'\nLEVEL1_ICACHE_LINESIZE             0\nLEVEL1_DCACHE_LINESIZE             0\nLEVEL2_CACHE_LINESIZE              0\nLEVEL3_CACHE_LINESIZE              0\nLEVEL4_CACHE_LINESIZE              0\n\nIs there a reason why this block ( https://github.com/mysql/mysql-server/blob/ea7087d885006918ad54458e7aad215b1650312c/sql/me... ) is limited to S/390?  It seems like it could solve this problem on any problem where the libc is unable to pull the cache line size for whatever reason.  And if the libc's sysconf() is able to get the cache line size, it would be skipped over and the block would have no impact.\n\nSeparately, if I pull down the official mysql-community-server image down (Oracle Linux 8.7 with stock glibc 2.28) and create a Docker container, it both has the sysfs entry populated:\n\n# grep . /sys/devices/system/cpu/cpu0/cache/index*/coherency_line_size\n/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size:64\n/sys/devices/system/cpu/cpu0/cache/index1/coherency_line_size:64\n/sys/devices/system/cpu/cpu0/cache/index2/coherency_line_size:64\n/sys/devices/system/cpu/cpu0/cache/index3/coherency_line_size:64\n\nAnd getconf is able to get at it:\n\n# getconf -a | grep -i 'cache.*linesize'\nLEVEL1_ICACHE_LINESIZE             64\nLEVEL1_DCACHE_LINESIZE             64\nLEVEL2_CACHE_LINESIZE              0\nLEVEL3_CACHE_LINESIZE              0\nLEVEL4_CACHE_LINESIZE              0\n\nTo be clear, we are unwilling to modify our CentOS 7 OSes with glibc 2.28.  That is not a reasonable path to take."
+    },
+    {
+      "anchor": "c533352",
+      "text": "Hi All,\n\nThank you for all of your comments. Especially for the last comment from Mr. Hodges.\n\nThis does not seem to be a bug In MySQL code, but some problem in Operating System or the usage of containers.\n\nWe must also inform you that we are not allowed to test reported bugs in any container, due to the many  valid reasons, which we are not allowed to reveal publicly.\n\nSo far, this truly does not seem to be MySQL bug."
+    },
+    {
+      "anchor": "c533357",
+      "text": "As I said, the problem occurs when we are NOT using a container.  Please read my last message more carefully.\n\n> I was digging around on the EC2 instance I've been testing with (CentOS 7.9.2009 ARM64, stock glibc 2.17, AND NO DOCKER) and discovered that the cache line size is set in sysfs:\n> \n> # grep . /sys/devices/system/cpu/cpu0/cache/index*/coherency_line_size\n> /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size:64\n> /sys/devices/system/cpu/cpu0/cache/index1/coherency_line_size:64\n> /sys/devices/system/cpu/cpu0/cache/index2/coherency_line_size:64\n> /sys/devices/system/cpu/cpu0/cache/index3/coherency_line_size:64\n> \n> But getconf is unable to get it:\n> \n> # getconf -a | grep -i 'cache.*linesize'\n> LEVEL1_ICACHE_LINESIZE             0\n> LEVEL1_DCACHE_LINESIZE             0\n> LEVEL2_CACHE_LINESIZE              0\n> LEVEL3_CACHE_LINESIZE              0\n> LEVEL4_CACHE_LINESIZE              0\n\nThis quoted case is when MySQL crashes at startup.\n\nThat's proof enough that containers have absolutely nothing to do with this.  Is that clear?"
+    },
+    {
+      "anchor": "c533360",
+      "text": "Hi,\n\nYes, you are correct.\n\nThis is NOT a problem with containers.\n\nThis is a problem with the Operating System, most precisely with the glibc installed. With Oracle Linux and proper glibc, you get the proper results with `getconf`.\n\nWe hope we were quite clear this time ......"
+    },
+    {
+      "anchor": "c533366",
+      "text": "Perhaps you should consider removing CentOS 7 and ARM64 from your list of supported platforms here: https://www.mysql.com/support/supportedplatforms/database.html\n\nSince you clearly do not support MySQL on this platform."
+    },
+    {
+      "anchor": "c533367",
+      "text": "Thanks.\n\nWe agree with your conclusion."
+    },
+    {
+      "anchor": "c533370",
+      "text": "Packages were built and verified on Ampere A1 hardware:\n\n https://www.oracle.com/cloud/compute/arm/\n\nYou should be able to use \"Oracle Cloud Free Tier\" to get access to such platform."
+    },
+    {
+      "anchor": "c533372",
+      "text": "Output from such platform:\n\n$ getconf -a | grep -i 'cache.*linesize'\nLEVEL1_ICACHE_LINESIZE             64\nLEVEL1_DCACHE_LINESIZE             64\nLEVEL2_CACHE_LINESIZE              0\nLEVEL3_CACHE_LINESIZE              0\nLEVEL4_CACHE_LINESIZE              0"
+    },
+    {
+      "anchor": "c533375",
+      "text": "While the /sys directory structure is different:\n\n$ tree /sys/devices/system/cpu/cpu0/cache/index0\n/sys/devices/system/cpu/cpu0/cache/index0\n├── level\n├── shared_cpu_list\n├── shared_cpu_map\n├── type\n└── uevent"
+    },
+    {
+      "anchor": "c533377",
+      "text": "The s390 fix is\n\n https://bugs.mysql.com/bug.php?id=107081\n\nso this bug can be seen as an extention of that fix to aarch64 platform."
+    },
+    {
+      "anchor": "c533396",
+      "text": "Thank you, Terje ....."
+    },
+    {
+      "anchor": "c533887",
+      "text": "Posted by developer:\n \nFixed as of the upcoming MySQL Server 8.0.35 / 8.2.0 releases, and here's the proposed changelog entry from the documentation team:\n\nOn EL7 aarch64-based platforms, fixed an issue related to how fetching\nthe CPU cache line size returned 0 that caused the MySQL server to\nunexpectedly halt.\n\nThank you for the bug report and staying persistent.\n\nNote: this fix may make it into an earlier release, depending on various circumstances."
+    },
+    {
+      "anchor": "c533890",
+      "text": "Thank you!"
+    },
+    {
+      "anchor": "c533936",
+      "text": "Thanks, Philip !!!!"
+    }
+  ]
+}

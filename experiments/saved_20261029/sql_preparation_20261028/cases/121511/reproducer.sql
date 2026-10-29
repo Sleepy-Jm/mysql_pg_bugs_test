@@ -1,0 +1,16 @@
+-- MySQL report #121511; source anchors: cmain
+-- Prepared offline; NOT EXECUTED. Run only in a disposable isolated environment.
+SELECT FORMAT(1.5, 2) AS d2, FORMAT(1.5, 4294967298) AS d2p32_2,
+       FORMAT(1.5, 2147483648) AS d2p31, FORMAT(1.5, -1) AS dm1;
+
+SELECT LENGTH(FORMAT(1.5, 40)) AS len_d40,
+       LENGTH(FORMAT(1.5, 2147483647)) AS len_d2p31m1;
+
+SELECT FORMAT(1234567.891, 4294967297, 'de_DE') AS de_d2p32_1,
+       FORMAT(1234567.891, 1, 'de_DE') AS de_d1;
+
+SELECT ROUND(1.5, 4294967298) AS round_d2p32_2, TRUNCATE(1.5, 4294967298) AS trunc_d2p32_2;
+
+CREATE TABLE t016 (d BIGINT);
+INSERT INTO t016 VALUES (2), (4294967298), (2147483648);
+SELECT d, FORMAT(1.5, d) AS f FROM t016 ORDER BY d;

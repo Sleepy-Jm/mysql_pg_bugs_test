@@ -1,0 +1,74 @@
+{
+  "report_id": "48046",
+  "title": "Server incorrectly processing JOINs on NULL values",
+  "source_sha256": "55f2753e62f8b6ddac6b8def68eb11434360a8e5e91a38d57603fadf2314dfbe",
+  "source_anchors": [
+    "cmain",
+    "c264823"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "506f4bb53695fdd570268381affe2e2167dcdd5dda8107bbcd19cec2c10ca1a6"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "df6def464d142387bec4b4f784ccdddd42a2e4ee4a3e5303a4c7fb505c4516e7"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "两个原 BB MyISAM 模式顺序创建删除"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原两例各一行，varchar 两列都 NULL"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "Query 0 返回 (18:27:58,NULL)；Query 1 返回 (18:27:58,NULL,NULL,NULL,NULL)；异常：右侧匹配出 pk=10 或其列值"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "Query 0 返回 (18:27:58,NULL)；Query 1 返回 (18:27:58,NULL,NULL,NULL,NULL)",
+    "failure": "右侧匹配出 pk=10 或其列值",
+    "limitations": "原 6.0 优化器开关在目标不可原样执行；本脚本检验相同 NULL 外连接语义，不声称完全相同计划。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "MyISAM",
+    "记录支持的optimizer_switch，不执行废弃6.0开关",
+    "记录目标 optimizer_switch；此为 8.0 默认优化器适配变体"
+  ],
+  "transformations": [
+    "移除 MTR warning 指令及 6.0 已移除 optimizer_use_mrr/join_cache_level/debug 等会话开关；保留两条核心 SQL 与数据"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "8.0支持该LEFT JOIN/NULL语义；旧开关移除要记录，不预判存在。 本轮尚未执行。",
+    "8.0.33": "8.0支持该LEFT JOIN/NULL语义；旧开关移除要记录，不预判存在。 本轮尚未执行。",
+    "8.0.34": "8.0支持该LEFT JOIN/NULL语义；旧开关移除要记录，不预判存在。 本轮尚未执行。",
+    "8.0.35": "8.0支持该LEFT JOIN/NULL语义；旧开关移除要记录，不预判存在。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain, c264823 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

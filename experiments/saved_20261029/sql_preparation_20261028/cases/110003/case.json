@@ -1,0 +1,82 @@
+{
+  "report_id": "110003",
+  "title": "DELETE query does ot work for BIT columns",
+  "source_sha256": "aad235d05f1521d775768f095845c3ede322089b634edc28db272e114da6ac33",
+  "source_anchors": [
+    "cmain",
+    "c529853",
+    "c529854"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "2fe7aa335a60fa6c580138979a6be9ba1472034d600b626f7ac3536f459c90b6"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "11e04070aa59fe1a0374fc5e851d44ef6fe1adb1173ee1ee8c073b16e014e275"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "正文t1(id自增起122,val BIT(1),复合主键)，插入0/1并倍增到8行，记录SQL mode。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。比较id='123' AND val='1'的SELECT与DELETE及EXPLAIN/警告；分别用数字1和BIT(2)对照，操作前恢复数据。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "同一字符串谓词的 SELECT 匹配行数应等于 DELETE 删除行数；不能预设 DELETE 必须删1，因 BIT→字符比较可能是 SELECT 错误。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "同一字符串谓词的 SELECT 匹配行数应等于 DELETE 删除行数；不能预设 DELETE 必须删1，因 BIT→字符比较可能是 SELECT 错误。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "可重建隔离数据"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。",
+    "去掉 test 库限定，由 runner 隔离；用 HEX 观测 BIT 值，保留字符串谓词。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标支持BIT索引及转换优化路径。 本轮仅静态准备。",
+    "8.0.34": "目标支持BIT索引及转换优化路径。 本轮仅静态准备。",
+    "8.0.35": "目标支持BIT索引及转换优化路径。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c529853, c529854 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "正文t1(id自增起122,val BIT(1),复合主键)，插入0/1并倍增到8行，记录SQL mode。",
+    "steps": "比较id='123' AND val='1'的SELECT与DELETE及EXPLAIN/警告；分别用数字1和BIT(2)对照，操作前恢复数据。",
+    "oracle": "同一类型/谓词下SELECT匹配行与DELETE删除行应一致；不预设必须由DELETE删除，可能SELECT本身错误。",
+    "requirements": [
+      "可重建隔离数据"
+    ],
+    "target_applicability": "目标支持BIT索引及转换优化路径。"
+  }
+}

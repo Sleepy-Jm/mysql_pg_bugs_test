@@ -1,0 +1,71 @@
+{
+  "report_id": "109840",
+  "title": "Analyze then Rollup assertion error",
+  "source_sha256": "ed202f155e41e02b3cd5c848b727161084387e52853dab685d989bd4777a7d28",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "0f9e02863272a0c3fd52931a6ee388f1d82d73a6d0b90aafe993cc386b1ba07e"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "09d01f29c636400ca3a5909fc3e3a4bda0c6538b4b23f8c1470280ad77c851d6"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t2(c2 INT)，先空表建直方图"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原十个不同整数"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "10 个不同值的组加 ROLLUP 共 11 行，每行常数 1；异常：histogram distinct>=1 断言或崩溃"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "10 个不同值的组加 ROLLUP 共 11 行，每行常数 1",
+    "failure": "histogram distinct>=1 断言或崩溃",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "直方图管理权限",
+    "debug构建优先",
+    "debug 构建；建议同原 WITH_ASAN/UBSAN；记录直方图状态"
+  ],
+  "transformations": [
+    "从 Description 抽取完整 SQL；保留 ANALYZE 在 INSERT 前的顺序"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "8.0统计直方图与ROLLUP路径明确可用，目标影响未知。 本轮尚未执行。",
+    "8.0.34": "8.0统计直方图与ROLLUP路径明确可用，目标影响未知。 本轮尚未执行。",
+    "8.0.35": "8.0统计直方图与ROLLUP路径明确可用，目标影响未知。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

@@ -1,0 +1,81 @@
+{
+  "report_id": "111290",
+  "title": "No matching rows when joining multiple tables on binary/varbinary key",
+  "source_sha256": "a790a89f2768e33acf2b365ee275cfaf68a779a84666c02ad0ab1cb73c048bbb",
+  "source_anchors": [
+    "cmain",
+    "c533278",
+    "c535147"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "76a14d80b756055c12a5d2b79b8d36dd1545166a4fc094360687e13ef3439619"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "c5fa654cac1b17e23799e2b404466e4d1f2f7ed07fdb28b79477fc4a527f6262"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "按正文parents、foos、bars结构与两枚16字节十六进制值建立三行数据。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。执行三表JOIN加bars.parent_id十六进制条件；对照增加parents.id同值条件及同类型列。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "查询必须返回一行correct output：两个16字节标识和所有连接键相等；空结果为候选异常。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "查询必须返回一行correct output：两个16字节标识和所有连接键相等；空结果为候选异常。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "保留完整16字节常量"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标支持同款二进制连接；8.2修复未说明8.0回移。 本轮仅静态准备。",
+    "8.0.34": "目标支持同款二进制连接；8.2修复未说明8.0回移。 本轮仅静态准备。",
+    "8.0.35": "目标支持同款二进制连接；8.2修复未说明8.0回移。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c533278, c535147 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "按正文parents、foos、bars结构与两枚16字节十六进制值建立三行数据。",
+    "steps": "执行三表JOIN加bars.parent_id十六进制条件；对照增加parents.id同值条件及同类型列。",
+    "oracle": "应返回一行correct output，等长相等二进制值不能因优化克隆变值导致空。",
+    "requirements": [
+      "保留完整16字节常量"
+    ],
+    "target_applicability": "目标支持同款二进制连接；8.2修复未说明8.0回移。"
+  }
+}

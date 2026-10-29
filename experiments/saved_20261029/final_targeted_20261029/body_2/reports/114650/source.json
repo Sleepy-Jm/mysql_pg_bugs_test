@@ -1,0 +1,22 @@
+{
+  "report_id": "114650",
+  "title": "The prepare statement execution result is wrong, but there is data output",
+  "task_ids": [
+    "mysql-114650-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\471a962a5c7b_bug_114650.html",
+  "source_sha256": "471a962a5c7bcb2e7c8d0590796f40c87d338e0c5ad9389d700643d182e93d1a",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nStatement that executes time conversion to integer\n1.Execute time to integer sql statement, prompt error，It's right\n\nmysql> SELECT * from stmt_test where int_col < 24:59:59.000000;\nERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ':59:59.000000' at line 1\n\n2.When executing the prepare time to integer statement for the first time, a statement error message appears, which is also correct.\n\nmysql> prepare stmt2 from \"SELECT * from stmt_test where int_col < ?\";SET @a = 24:59:59.000000;EXECUTE stmt2 USING @a;deallocate prepare stmt2;\nQuery OK, 0 rows affected (0.00 sec)\nStatement prepared\n\nERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ':59:59.000000' at line 1\nEmpty set (0.00 sec)\n\nQuery OK, 0 rows affected (0.00 sec)\n\n3.However, in the same session,after executing other correct prepare statements, executing the second statement prompts an error, but there is output\n\nprepare stmt from \"SELECT * from stmt_test where int_col <?\";SET @a ='10.2';EXECUTE stmt USING @a;deallocate prepare stmt;\nQuery OK, 0 rows affected (0.00 sec)\nStatement prepared\n\nQuery OK, 0 rows affected (0.00 sec)\n\n+--------+---------+\n| id_col | int_col |\n+--------+---------+\n|      1 |       2 |\n|      2 |       4 |\n|      3 |       5 |\n|      4 |       7 |\n+--------+---------+\n4 rows in set (0.00 sec)\n\nQuery OK, 0 rows affected (0.00 sec)\n\nmysql> prepare stmt2 from \"SELECT * from stmt_test where int_col < ?\";SET @a = 24:59:59.000000;EXECUTE stmt2 USING @a;deallocate prepare stmt2;\nQuery OK, 0 rows affected (0.00 sec)\nStatement prepared\n\nERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ':59:59.000000' at line 1\n+--------+---------+\n| id_col | int_col |\n+--------+---------+\n|      1 |       2 |\n|      2 |       4 |\n|      3 |       5 |\n|      4 |       7 |\n+--------+---------+\n4 rows in set (0.01 sec)\n\nQuery OK, 0 rows affected (0.00 sec)\n\nHow to repeat:\ncreate database test;\nuse test;\nCREATE TABLE `stmt_test` (\n  `id_col` int unsigned NOT NULL,\n  `int_col` int DEFAULT NULL\n  ) ENGINE=InnoDB ;\nINSERT INTO stmt_test (id_col, int_col)VALUES(1, 2),(2, 4),(3, 5),(4, 7),(5, 11);\n\nSELECT * from stmt_test where int_col < 24:59:59.000000;\nprepare stmt2 from \"SELECT * from stmt_test where int_col < ?\";SET @a = 24:59:59.000000;EXECUTE stmt2 USING @a;deallocate prepare stmt2;\nprepare stmt from \"SELECT * from stmt_test where int_col <?\";SET @a ='10.2';EXECUTE stmt USING @a;deallocate prepare stmt;\nprepare stmt2 from \"SELECT * from stmt_test where int_col < ?\";SET @a = 24:59:59.000000;EXECUTE stmt2 USING @a;deallocate prepare stmt2;\n\nSuggested fix:\nWhen executing this statement, an error should be reported and there should be no output.\nprepare stmt2 from \"SELECT * from stmt_test where int_col < ?\";SET @a = 24:59:59.000000;EXECUTE stmt2 USING @a;deallocate prepare stmt2;"
+    },
+    {
+      "anchor": "c542359",
+      "text": "Hi Mr. Chen,\n\nThank you for your bug report.\n\nHowever, we had not problem of repeating this bug with our 8.0.36 binary. We also did not have any problems with repeating with our  8.0.37 binary, which will soon be out.\n\nHere is the output:\n\n-----------------------------------------\n\nid_col\tint_col\n1\t2\n2\t4\n3\t5\n4\t7\n5\t11\nid_col\tint_col\n1\t2\n2\t4\n3\t5\n4\t7\n5\t11\nid_col\tint_col\n1\t2\n2\t4\n3\t5\n4\t7\nid_col\tint_col\n1\t2\n2\t4\n3\t5\n4\t7\n5\t11\n\n-----------------------------------------\n\nYou have introduced many syntax mistakes in your test case. Please, read our Reference Manual about how date/time/datetime types have to be quoted.\n\nNot a bug."
+    }
+  ]
+}

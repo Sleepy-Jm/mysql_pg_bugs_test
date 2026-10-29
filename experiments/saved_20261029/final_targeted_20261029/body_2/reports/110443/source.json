@@ -1,0 +1,26 @@
+{
+  "report_id": "110443",
+  "title": "Compiling MySQL 8.0.32 fails with DWITH_INNODB_EXTRA_DEBUG.",
+  "task_ids": [
+    "mysql-110443-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\2b3539425728_bug_110443.html",
+  "source_sha256": "2b35394257280878d1cbc3768714b155d0eb0aa46d391c7fb303257d5f9a07d8",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nHi,\n\nI tried to compile MySQL with DWITH_INNODB_EXTRA_DEBUG to troubleshoot a crash on rollback I am getting with 5.7.41, 8.0.31 and 8.0.32.  This crash is described on MySQL Community Slack [1], and it looks very similar to Bug#93768, but I am not yet understanding this fully (I will open another bug report when I know more).\n\n[1]: https://mysqlcommunity.slack.com/archives/C8Y94HRMX/p1678719924358409\n\nThis bug report is about the compilation of 8.0.32 failing with DWITH_INNODB_EXTRA_DEBUG.  It succeeds without this option, and it also succeeds with this option for 5.7.41.  See how to repeat for details.\n\nUnrelated, but if you are curious: 5.7.41 compiled with DWITH_INNODB_EXTRA_DEBUG did not get more information about the crash described in [1] above.\n\nMany thanks for looking into this,\n\nJean-François Gagné\n\nHow to repeat:\nBelow works after tar -xf of the source package of 8.0.32 (mysql-8.0.32.tar.gz).\n\nmkdir jfg_build\ncd jfg_build\ncmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_DEBUG=ON -DDOWNLOAD_BOOST=1 -DWITH_BOOST=./boost .\ncmake --build .\n\nBelow works for 5.7.41 (mysql-5.7.41.tar.gz):\n\nmkdir jfg_build\ncd jfg_build\ncmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_DEBUG=ON -DWITH_INNODB_EXTRA_DEBUG=ON -DDOWNLOAD_BOOST=1 -DWITH_BOOST=./boost .\ncmake --build .\n\nBut below does not for mysql-8.0.32 (working for 5.7.41 above):\n\nmkdir jfg_build\ncd jfg_build\ncmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_DEBUG=ON -DWITH_INNODB_EXTRA_DEBUG=ON -DDOWNLOAD_BOOST=1 -DWITH_BOOST=./boost .\ncmake --build .\n\nThe error I get is this one:\n\n[ 48%] Building CXX object storage/innobase/CMakeFiles/innobase.dir/buf/buf0lru.cc.o\nIn file included from /home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/include/os0thread.h:43,\n                 from /home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/include/ut0counter.h:41,\n                 from /home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/include/sync0sync.h:45,\n                 from /home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/include/sync0types.h:39,\n                 from /home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/include/univ.i:546,\n                 from /home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/include/os0event.h:37,\n                 from /home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/include/buf0types.h:36,\n                 from /home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/include/buf0lru.h:38,\n                 from /home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/buf/buf0lru.cc:33:\n/home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/buf/buf0lru.cc: In function ‘bool buf_LRU_block_remove_hashed(buf_page_t*, bool, bool)’:\n/home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/buf/buf0lru.cc:2154:60: error: ‘struct buf_block_t’ has no member named ‘index’\n 2154 |                                    ((buf_block_t *)bpage)->index));\n      |                                                            ^~~~~\n/home/jgagne/sandboxes/compile/mysql-8.0.32/storage/innobase/include/ut0dbg.h:58:34: note: in definition of macro ‘ut_a’\n   58 |     if (unlikely(false == (bool)(EXPR))) {                \\\n      |                                  ^~~~\ngmake[2]: *** [storage/innobase/CMakeFiles/innobase.dir/build.make:314: storage/innobase/CMakeFiles/innobase.dir/buf/buf0lru.cc.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:7833: storage/innobase/CMakeFiles/innobase.dir/all] Error 2\ngmake: *** [Makefile:166: all] Error 2"
+    },
+    {
+      "anchor": "c530946",
+      "text": "Hello Jean-François,\n\nThank you for the report and feedback.\nIMHO this is duplicate of Bug #109991. Originally reported against 8.0.31(with diff compilation errors) but when I attempted with 8.0.32 got the exact issue as you reported here. If you have ano objections then I would like to close this as a duplicate of Bug #109991. Thank you.\n\nSincerely,\nUmesh"
+    },
+    {
+      "anchor": "c530956",
+      "text": "Thanks Umesh for checking my bug report.\n\nOk for duplicate of Bug#109991."
+    }
+  ]
+}

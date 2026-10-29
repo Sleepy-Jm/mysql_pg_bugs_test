@@ -1,0 +1,70 @@
+{
+  "report_id": "111445",
+  "title": "virtual longlong Item_typecast_signed::val_int(): Assertion `is_nullable()' fail",
+  "source_sha256": "54a98b9716479a069b394c66cfc1d131cbc7d38b9f38dd7a928eec06009ca8ba",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "62d1f8d52ffb4ca461756ae751d28e1d17d4b977f6bf240e2bdea662e4f37c5c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "b1bff35940aa1e5e1b279164cd3628534f4f459e1aada5bbd6c03ec1f8c6c21c"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "v0 INT+ENUM(0x0) PK"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原 INSERT DEFAULT 一行"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force；逐语句记录诊断，故意非法语句不修正；崩溃时销毁隔离实例。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "原语句受控执行或安全报错，连接与服务器存活；异常：Item_typecast_signed is_nullable 断言"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "原语句受控执行或安全报错，连接与服务器存活",
+    "failure": "Item_typecast_signed is_nullable 断言",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "debug构建",
+    "一次性 debug 实例；--mysqlx=OFF --performance_schema=OFF；记录架构"
+  ],
+  "transformations": [
+    "取首个完整 SQL 代码块；移除 test123 库删除/创建/USE，使用 runner 隔离库；补原 SQL_MODE"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标有相同ENUM/MEMBER OF/CAST表达式路径。 本轮尚未执行。",
+    "8.0.34": "目标有相同ENUM/MEMBER OF/CAST表达式路径。 本轮尚未执行。",
+    "8.0.35": "目标有相同ENUM/MEMBER OF/CAST表达式路径。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

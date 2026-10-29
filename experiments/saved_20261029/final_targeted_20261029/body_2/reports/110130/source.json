@@ -1,0 +1,22 @@
+{
+  "report_id": "110130",
+  "title": "Wrong table-path in Error:1114 and Error:13132",
+  "task_ids": [
+    "mysql-110130-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\1536250eacff_bug_110130.html",
+  "source_sha256": "1536250eacff101a521c1f94a49dc9a8eaa723e47d5903f7f30c8ed1f6896176",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen facing \"Disk full\" state when using internal temporary table and the query returns the error \"ERROR 1114 (HY000): The table '/mytmp/#sql54e5_a_1' is full\".\n\nBut the tablename is always prefixed by tmpdir, even if the temporary table doesn't use tmpdir at all (ex. InnoDB temporary table uses innodb_temp_tablespaces_dir, not tmpdir).\n\nHow to repeat:\n### temptable_max_ram = 2MB && temptable_use_mmap = OFF, for easy to fallback Internal temporary table to use InnoDB.\n\nmysql80 10> SHOW VARIABLES LIKE '%tmp%';\n+---------------------------------+-----------+\n| Variable_name                   | Value     |\n+---------------------------------+-----------+\n| default_tmp_storage_engine      | InnoDB    |\n| innodb_tmpdir                   | /mytmp    |\n| internal_tmp_mem_storage_engine | TempTable |\n| replica_load_tmpdir             | /mytmp    |\n| slave_load_tmpdir               | /mytmp    |\n| tmp_table_size                  | 16777216  |\n| tmpdir                          | /mytmp    |\n+---------------------------------+-----------+\n7 rows in set (0.01 sec)\n\nmysql80 10> SHOW VARIABLES LIKE '%temp%';\n+-----------------------------+-----------------------+\n| Variable_name               | Value                 |\n+-----------------------------+-----------------------+\n| avoid_temporal_upgrade      | OFF                   |\n| innodb_temp_data_file_path  | ibtmp1:12M:autoextend |\n| innodb_temp_tablespaces_dir | /mytmp/innodb_temp    |\n| show_old_temporals          | OFF                   |\n| temptable_max_mmap          | 1073741824            |\n| temptable_max_ram           | 2097152               |\n| temptable_use_mmap          | OFF                   |\n+-----------------------------+-----------------------+\n7 rows in set (0.00 sec)\n\n### Fill /mytmp to easy to face \"Disk full\"\n### $ df -h /mytmp\n### Filesystem      Size  Used Avail Use% Mounted on\n### /dev/loop0       97M   86M   11M  89% /mytmp\n\n### Using internal temporary table \n\nmysql80 10> SET SESSION cte_max_recursion_depth = 10000000;\nQuery OK, 0 rows affected (0.00 sec)\n\nmysql80 10> WITH RECURSIVE v AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM v WHERE n <= 1999999), v2 AS (SELECT n, MD5(n) AS m FROM v) SELECT n, m, md5(m) AS o FROM v2 ORDER BY RAND() LIMIT 1;\n\nERROR 1114 (HY000): The table '/mytmp/#sql54e5_a_1' is full\n                               ^^^^^^\n\n/mytmp is tmpdir, the query uses /mytmp/innodb_tmp (setting by innodb_temp_tablespaces_dir), that's wrong.\n\n### Error-log describes \"which file is facing to disk full\" correctly.\n### But last 1 line (ER_SERVER_RECORD_FILE_FULL) is including unnecessary tmpdir name.\n\n2023-02-20T17:04:27.378420+09:00 10 [ERROR] [MY-012639] [InnoDB] Write to file /mytmp/innodb_temp/temp_10.ibt failed at offset 10485760, 1048576 bytes should have been written, only 0 were written. Operating system error number 28. Check that your OS and file system support files of this size. Check also that the disk is not full or a disk quota exceeded.\n2023-02-20T17:04:27.378440+09:00 10 [ERROR] [MY-012640] [InnoDB] Error number 28 means 'No space left on device'\n2023-02-20T17:04:27.378453+09:00 10 [Note] [MY-012641] [InnoDB] Refer to your operating system documentation for operating system error code information.\n2023-02-20T17:04:27.378468+09:00 10 [Warning] [MY-012145] [InnoDB] Error while writing 1048576 zeroes to /mytmp/innodb_temp/temp_10.ibt starting at offset 10485760\n2023-02-20T17:04:27.378490+09:00 10 [ERROR] [MY-013132] [Server] The table '/mytmp/#sql54e5_a_1' is full!\n\nSuggested fix:\nRemove tmpdir prefix in Error:1114 and Error:13132"
+    },
+    {
+      "anchor": "c530064",
+      "text": "Hello tanaka-San,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    }
+  ]
+}

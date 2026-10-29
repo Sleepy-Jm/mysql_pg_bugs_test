@@ -1,0 +1,85 @@
+{
+  "report_id": "113097",
+  "title": "query bug racecondition",
+  "source_sha256": "022ec2b1238c334a3cc20239a63f20582d43387989a27464bd48c453469fe3f6",
+  "source_anchors": [
+    "cmain",
+    "c538086",
+    "c553120",
+    "c553157"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "c9bbba8d95f5b94d1ef2fc55e054f562fac7521f8ee3d9c95ab52ae1a65089a4"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "b0162e15abf7df942db8ff9fce04306ef51bad3934f552ea15df83fc6538e62d"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "temp(createdAt DATETIME,timezone VARCHAR64)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原一行datetime和NULL。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "同一行应保留：tz=+00:00，ca=2022-02-15 16:47:12，random=1；默认与关闭derived_condition_pushdown结果应一致。固定时区偏移转换无需安装时区表。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS temp;\nSET SESSION optimizer_switch=@case_optimizer;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "同一行应保留：tz=+00:00，ca=2022-02-15 16:47:12，random=1；默认与关闭derived_condition_pushdown结果应一致。固定时区偏移转换无需安装时区表。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "记录optimizer_switch"
+  ],
+  "transformations": [
+    "保留原别名标量子查询；增加关闭下推控制并恢复会话设置。",
+    "不按标题猜测并发/race条件；后评定位为表达式克隆，8.0.36修复公告仅历史证据。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "8.0.36修复晚于这三个目标，具备探索条件。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "8.0.36修复晚于这三个目标，具备探索条件。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "8.0.36修复晚于这三个目标，具备探索条件。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c538086, c553120, c553157 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/113097.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

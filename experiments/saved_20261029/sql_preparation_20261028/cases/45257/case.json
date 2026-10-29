@@ -1,0 +1,72 @@
+{
+  "report_id": "45257",
+  "title": "innodb_file_per_table make MySQL server crash.",
+  "source_sha256": "793b0d7cdd2070a3b3327171d7bca3951a2da00657974990b8f6508dd55a12ef",
+  "source_anchors": [
+    "c231617",
+    "c233486"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "82408cc13b2289d455e7e5e98c7e03dfd8b261cdeeec816be77aeda6526871ef"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "b4832fa26df0b50153dfc2910eed1676862a2b2f160e647029977cec0e50440c"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1 两个 VARCHAR(128) 索引，InnoDB。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "1 行经过六次自复制变为64行。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql 命令行按文件顺序执行；保存完整 stdout/stderr 与 SELECT 输出。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "64 行均满足 a/b 前缀条件，SELECT 应返回 64 行且服务连接存活；sort_buffer_size=1 被钳制到实际最小值不算 bug。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t1;"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "64 行均满足 a/b 前缀条件，SELECT 应返回 64 行且服务连接存活；sort_buffer_size=1 被钳制到实际最小值不算 bug。",
+    "failure": "执行 index merge + ORDER BY 时服务器崩溃/异常断连；普通变量调整警告不计异常。",
+    "limitations": "只完成静态准备；源报告中的历史输出不是本次目标版本的执行证据。"
+  },
+  "requirements": [
+    "fresh_isolated_schema",
+    "mysql_client_utf8mb4"
+  ],
+  "transformations": [
+    "追加实际 sort_buffer_size 与警告读取；会话关闭恢复变量。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "InnoDB、双索引 OR 和排序仍是目标功能；旧重复/修复信息不证明当前受影响。",
+    "8.0.33": "InnoDB、双索引 OR 和排序仍是目标功能；旧重复/修复信息不证明当前受影响。",
+    "8.0.34": "InnoDB、双索引 OR 和排序仍是目标功能；旧重复/修复信息不证明当前受影响。",
+    "8.0.35": "InnoDB、双索引 OR 和排序仍是目标功能；旧重复/修复信息不证明当前受影响。"
+  },
+  "source_reading": "核对锚点 c231617, c233486 的定义、输入、触发顺序和历史输出；相关历史修复信息不当作目标版本已验证。"
+}

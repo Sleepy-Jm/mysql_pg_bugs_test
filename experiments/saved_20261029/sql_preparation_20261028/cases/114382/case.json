@@ -1,0 +1,85 @@
+{
+  "report_id": "114382",
+  "title": "Incorrect query result may caused by LOW_PRIORITY",
+  "source_sha256": "75ddc2a12e5df39ce42bd776a1fba7d7b2e16c4b7b7e6d8aa81a53946f62b150",
+  "source_anchors": [
+    "cmain",
+    "c541572",
+    "c541690"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "301338976a6c954218bcc088aa893323c8c00cc7a4ceed76921d11c2c354b3d3"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "5db08f8e65434e74f8b601819022426c0477429f2d5541bc3c2f17ae35ebad35"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(c0 TINYINT(199))，显示宽度不得误作存储范围。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "保留原超界1950654919与LOW_PRIORITY IGNORE，不能改写成直接插127。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "装载后先确认TINYINT实际值127；同一原LEAST/位运算谓词在WHERE与IS TRUE过滤下结果多重集应一致。CURDATE受回放日期影响，需冻结/记录会话timestamp；不凭标题把LOW_PRIORITY判成根因。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t1;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "装载后先确认TINYINT实际值127；同一原LEAST/位运算谓词在WHERE与IS TRUE过滤下结果多重集应一致。CURDATE受回放日期影响，需冻结/记录会话timestamp；不凭标题把LOW_PRIORITY判成根因。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "保存实际值与INSERT warnings；同一日期/会话sql_mode执行两查询，后续协议明确timestamp。"
+  ],
+  "transformations": [
+    "采用原How to repeat序列；评论简化版另作证据，不覆盖原输入。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c541572, c541690 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/114382.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

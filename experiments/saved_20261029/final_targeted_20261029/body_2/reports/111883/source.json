@@ -1,0 +1,38 @@
+{
+  "report_id": "111883",
+  "title": "SELECT ROUND(X,D) result below expection",
+  "task_ids": [
+    "mysql-111883-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\df2787c780de_bug_111883.html",
+  "source_sha256": "df2787c780de858feba3789a235c4587d6cfbb61a7b49e66ac70891143d4f0a3",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThe High version does not meet expectations when using function round(X,D) to output values ​​with more than four decimal places, Suspected bug introduced by the new version.\n\nExample:\n------ 8.0.18 output----------\nmysql [localhost:8018] {root} ((none)) > select round(1/3,9);\n+--------------+\n| round(1/3,9) |\n+--------------+\n|  0.333333333 |\n+--------------+\n1 row in set (0.00 sec)\n\n------- 8.0.32 output---------\nmysql [localhost:8032] {root} ((none)) > select round(1/3,9);\n+--------------+\n| round(1/3,9) |\n+--------------+\n|       0.3333 |\n+--------------+\n1 row in set (0.00 sec)\n\nIt is speculated that the version that introduced the problem is as follows：\nchanged version：https://dev.mysql.com/doc/relnotes/mysql/8.0/en/news-8-0-22.html\nCommit：https://github.com/mysql/mysql-server/commit/0caa1d0dab0ade24abeb2e87bffb7c04e4420789\n\nHow to repeat:\nJust execute the above test SQL.\n\nmysql> select round(1/3,9);\n\nThe output of this SQL is different in 8.0.18 and 8.0.32 versions, and the higher version seems to have truncated the first arguments of the function round(X,D)\n\nThe same problem is also reproduced in 8.0.22.\nmysql [localhost:8022] {root} ((none)) > select round(1/3,9);\n+--------------+\n| round(1/3,9) |\n+--------------+\n|       0.3333 |\n+--------------+\n1 row in set (0.00 sec)"
+    },
+    {
+      "anchor": "c534751",
+      "text": "Hi,\n\nThis bug is a duplicate of:\n\nhttps://bugs.mysql.com/bug.php?id=111878\n\nYou were provided with all the answers needed there.\n\nNot a bug."
+    },
+    {
+      "anchor": "c534752",
+      "text": "We are repeating our response here:\n\nHi Mr. kaiyang,\n\nThank you for your bug report.\n\nHowever, we can not repeat your report.\n\nIt works just fine with 8.0.34 and 8.1.0:\n\n+-----------------------------+\n| round(1.000000 / 3.0000, 9) |\n+-----------------------------+\n|                 0.333333333 |\n+-----------------------------+\n\nDo note that you made mistake by using integer 3 instead of the floating point 3.00000.\n\nNot a bug."
+    },
+    {
+      "anchor": "c534753",
+      "text": "All right, but the following is also not as expected, the first arguments of round(X,D) must have 5 or more decimal places.\n\nmysql [localhost:8022] {root} ((none)) > select round(1.0/3.0000,9);\n+---------------------+\n| round(1.0/3.0000,9) |\n+---------------------+\n|             0.33333 |\n+---------------------+\n1 row in set (0.00 sec)"
+    },
+    {
+      "anchor": "c534754",
+      "text": "At the same time, I tested the 8.0.21 version, the behavior of the same SQL is inconsistent, it must be caused by the changes made by 8.0.22. Please MySQL Verification Team reconsider this case.\n\nmysql [localhost:8021] {root} ((none)) > select round(1.0/3.0000,9);\n+---------------------+\n| round(1.0/3.0000,9) |\n+---------------------+\n|         0.333333333 |\n+---------------------+\n1 row in set (0.00 sec)"
+    },
+    {
+      "anchor": "c534808",
+      "text": "Notice that behaviour up until 8.0.21 was not according to basic rules for evaluation of arithmetic expressions and function arguments.\n\nIn the statement\n\n  SELECT ROUND(1/3, 9);\n\nthe arguments to the division operator are both integers and hence the operation is evaluated as a decimal type, and the result is extended in precision by the value of the variable div_precision_increment (which by default is 4).\n\nThe division is carried out before ROUND is called, thus the result type of ROUND is also DECIMAL.\n\nNote that you can get the behaviour that you want by using floating point literals, like this:\n\n  SELECT ROUND(1.0E0/3, 9);"
+    }
+  ]
+}

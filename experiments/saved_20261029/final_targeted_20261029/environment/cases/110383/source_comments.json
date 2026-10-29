@@ -1,0 +1,14 @@
+[
+  {
+    "anchor": "cmain",
+    "text": "Description:\nWhen running with innodb_file_per_table=0, and a table is altered after creation, subsequent SHOW CREATE TABLE commands will output an explicit TABLESPACE `innodb_system` option, when it should not be set as it was never provided explicitly with the initial CREATE TABLE or any subsequent ALTER TABLE.\n\nBased on code examination and debugging with GDB, this seems to be because the explicit_tablespace option in the data dictionary is being set incorrectly during the ALTER TABLE command. \n\nHow to repeat:\nmysql [localhost:8032] {msandbox} (test) > create table t (i int not null, primary key (i));\nQuery OK, 0 rows affected (0.14 sec)\n\n# TABLESPACE option is not present, as expected:\n\nmysql [localhost:8032] {msandbox} (test) > show create table t \\G\n*************************** 1. row ***************************\n       Table: t\nCreate Table: CREATE TABLE `t` (\n  `i` int NOT NULL,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci\n1 row in set (0.00 sec)\n\nmysql [localhost:8032] {msandbox} (test) > alter table t add j int not null;\nQuery OK, 0 rows affected (0.16 sec)\nRecords: 0  Duplicates: 0  Warnings: 0\n\n# TABLESPACE option is present, but should not be:\n\nmysql [localhost:8032] {msandbox} (test) > show create table t \\G\n*************************** 1. row ***************************\n       Table: t\nCreate Table: CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `j` int NOT NULL,\n  PRIMARY KEY (`i`)\n) /*!50100 TABLESPACE `innodb_system` */ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci\n1 row in set (0.00 sec)\n\nSuggested fix:\nDo not set the TABLESPACE option unless actually explicitly set by the user."
+  },
+  {
+    "anchor": "c530833",
+    "text": "Hi Jeremy,\n\nThank you for your contribution ......."
+  },
+  {
+    "anchor": "c554013",
+    "text": "When moving from innodb_file_per_table=0 to a MySQL instance with innodb_file_per_table enabled, some tables may still be created in ibdata1 instead of separate .ibd files."
+  }
+]

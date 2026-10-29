@@ -1,0 +1,1 @@
+-- No persistent objects are created. Close this dedicated test session.

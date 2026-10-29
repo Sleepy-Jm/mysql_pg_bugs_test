@@ -1,0 +1,78 @@
+{
+  "report_id": "112154",
+  "title": "Slow Queries Exceeding 1 Second in Concurrent Insert Scenario on MySQL 8.0.34",
+  "task_ids": [
+    "mysql-112154-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\b513c3c6df49_bug_112154.html",
+  "source_sha256": "b513c3c6df4901226997e3a7200faf1c5ed37f53decc9dab5cf457fbe3832e5c",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nI.Background:\n\nConnecting to the primary server in a dual-master replication relationship, and executing batch INSERT operations with 50 concurrent connections.\n\nII.Problem:\n\nEncountering slow queries exceeding 1 second in duration on MySQL version 8.0.34. \n\nHow to repeat:\nI. Connect to the primary server in a dual-master replication relationship on MySQL version 8.0.34. Create a physical database and 10 tables.\n\nII. Perform benchmark testing using the JMeter tool. Use the following command to perform benchmark testing in a batch INSERT scenario:\n-----\njmeter -n -t  SeaSQL_insert10table_batch.jmx  -l ./resu/test-`date +%Y%m%d%H%M%S`.jtl -e -o ./repo/test-`date +%Y%m%d%H%M%S`.html\n-----\n\nIII. Check jmeter log. It reads 50 errors after 10 minutes and 30 seconds of JMeter benchmark testing. Here the error means a slow query exceeding 1 second.\n\nIV. Check MySQL8.0.34 slow-query.log file. It reads lots of batch INSERT operations exceeding 1 second.\n\nV. It seems this problem only appears on version 8.0.34. When downgrading MySQL to version 8.0.32 with the same configuration and environment, conducting 3 sets of benchmark tests involving 50 concurrent connections for 30 minutes each in the batch INSERT scenario resulted in no errors."
+    },
+    {
+      "anchor": "c535570",
+      "text": "Hi Mr. zheng,\n\nThank you for your bug report.\n\nHowever, we are not able to repeat your problem.\n\nFirst, for performance problems, we use only mysqlslap and sysbench.\n\nWhat we require are table structure, its contents and the INSERT command that takes too long time to execute. \n\nThe problem may arise from the bad design of your schema. You should have normalised your schema to the third or fourth level. Then, all writing DML's would be very , very fast .......\n\nIn those cases, long_query_time of 1 seconds, under intense load , is very, very low .....\n\nIf you need urgent help with MySQL server, we recommend you to consider our offers that you will find on this page:\n\nhttps://www.mysql.com/support/\n\nNormalising schemas is not a bug in the database software.\n\nCan't repeat."
+    },
+    {
+      "anchor": "c535587",
+      "text": "Thanks for your reply.\n\nHowever, the problem only occurs on version 8.0.34. When we use the same configuration and environment and the same table structure for version 8.0.32, the slow query does not occur. \n\nI wonder if there is any difference between the two versions which results in the slow query?\n\nBTW, here is the table structure:\n---\nCREATE TABLE `employee_jmeter1` (\n  `id` bigint(20) NOT NULL,\n  `EMPLOYEE_NO` decimal(10,0) DEFAULT NULL,\n  `EMPLOYEE_NAME` varchar(30) DEFAULT NULL,\n  `JoB` varchar(30) DEFAULT NULL,\n  `HIRE_DATE` varchar(30) DEFAULT NULL,\n  `SAL` decimal(10,0) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;\n---"
+    },
+    {
+      "anchor": "c535588",
+      "text": "supplement：\n\nDear sir，\n\nI uploaded a zip file. It includes:\n1. insertmysqlbatch.jmx --> the script to execute INSERT command using jmeter tool\n2. my.cnf --> the parameter we configured\n3. table_structure.sql --> the table structure we used\n\nThe following is the download link for jmeter tool for benchmark tests. I wonder if you can download and unzip it. You can execute 'jmeter --help' under /bin route to find how to use it. It likes 'jmeter -n -t file.jmx -l file.jtl'\n\nhttps://dlcdn.apache.org//jmeter/binaries/apache-jmeter-5.6.zip\n\nI hope all these documents can help to repeat! \nBest Regards!"
+    },
+    {
+      "anchor": "c535589",
+      "text": "supplement:\n\nDear sir,\n\nIn the attached file 'mysql-bug-slow-query.zip', I added two important system configuration files: sysctl.conf and limits.conf. And I also added a jdbc driver doc: mysql-connector-java-8.0.16.jar\n\nsystem version：CentOS Linux release 7.6.1810 (Core) \ncore version：Linux hotdb208 3.10.0-1160.88.1.el7.x86_64 #1 SMP Tue Mar 7 15:41:52 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux\n\nOther information\nHere is the command for setting up a Master-Master Replication:\n---\nchange master to master_host='10.10.0.209',master_user='repl',master_password='DRDS_repl@2013',Master_Port=3206,master_auto_position=1;\n---"
+    },
+    {
+      "anchor": "c535590",
+      "text": "Here is the sample for the batch INSERT statement:\n\n---\ninsert into EMPLOYEE_JMETER1 values\n('176491','8724','秦吴李','SALESMAN','2007-09-13','3619'),\n('10176491','8724','秦吴李','SALESMAN','2007-09-13','3619'),\n('20176491','8724','秦吴李','SALESMAN','2007-09-13','3619'),\n('30176491','8724','秦吴李','SALESMAN','2007-09-13','3619'),\n('40176491','8724','秦吴李','SALESMAN','2007-09-13','3619'),\n('50176491','8724','秦吴李','SALESMAN','2007-09-13','3619'),\n('60176491','8724','秦吴李','SALESMAN','2007-09-13','3619'),\n('70176491','8724','秦吴李','SALESMAN','2007-09-13','3619'),\n('80176491','8724','秦吴李','SALESMAN','2007-09-13','3619'),\n('90176491','8724','秦吴李','SALESMAN','2007-09-13','3619');"
+    },
+    {
+      "anchor": "c535592",
+      "text": "Hi Mr. zheng,\n\nI'm MySQL Community Manager and while I leave the verification team reply to you, I would like to point that you have some practices that are not optimal:\n\n- using bi-directional replication should be avoided absolutely\n- your first table doesn't have any primary key or any not null unique key and GIPK mode is not enabled (see https://dev.mysql.com/doc/refman/8.0/en/create-table-gipks.html) and with 50 threads, this will lead to some InnoDB contention.\n\nAlso, if you don't plan to use MyISAM (which I don't recommend anyway), no need to increase the default size of the MyISAM buffers.\n\nDuring your test having the output of SHOW FULL PROCESSLIST and SHOW ENGINE INNODB STATUS , on both system, could also help.\n\nThank you, \n\nBest regards,"
+    },
+    {
+      "anchor": "c535596",
+      "text": "Dear Descamps,\n\nThanks for your suggestions. I will pass them on to my team.\n\nI sincerely apologize that I have given the wrong table structure. Please let the verification team refer to the following. We used the primary key here.\n\n---\nCREATE TABLE `employee_jmeter1` (\n  `id` bigint NOT NULL,\n  `EMPLOYEE_NO` decimal(10,0) DEFAULT NULL,\n  `EMPLOYEE_NAME` varchar(30) DEFAULT NULL,\n  `JoB` varchar(30) DEFAULT NULL,\n  `HIRE_DATE` varchar(30) DEFAULT NULL,\n  `SAL` decimal(10,0) DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n---\n\nBtw, why is there such a difference in query for 8.0.34 vs. 8.0.32?\n\nThank you\n\nBest Regards"
+    },
+    {
+      "anchor": "c535614",
+      "text": "Hi,\n\nOnly one additional request from us.\n\nSince this is not a problem in our Connector/J, please send table rows in the SQL format, not JDBC format.\n\nYou can simply run mysqldump command on that table .....\n\nWe can not proceed without that."
+    },
+    {
+      "anchor": "c535705",
+      "text": "Hi,\n\nDo you mean you need a copy of the mysqldump export?"
+    },
+    {
+      "anchor": "c535712",
+      "text": "Hi,\n\nI have uploaded the table row in SQL format exported by mysqldump in the attachment.\n\nPlease note that this issue only occurs after concurrent benchmark testing. The mysqldump data is just sample data."
+    },
+    {
+      "anchor": "c536086",
+      "text": "Hi,\n\nThis is just to inform you that we shall try to repeat the problem with concurrent benchmark.\n\nCan you share us with exact details of what kind of benchmark did you use and which concurrency.\n\nIf it is a high concurrency, then 1 (one) second or more is expected behaviour."
+    },
+    {
+      "anchor": "c536110",
+      "text": "Thanks for your reply!\n\nThe following is the download link for jmeter tool for benchmark tests. I wonder if you can download and unzip it. You can execute 'jmeter --help' under /bin route to find how to use it. It likes 'jmeter -n -t file.jmx -l file.jtl'\n\nhttps://dlcdn.apache.org//jmeter/binaries/apache-jmeter-5.6.zip\n\nIn the 'Files' catalog, I uploaded a zip file. You can download it to get other materials for repeating.\n\nBest Regards!"
+    },
+    {
+      "anchor": "c536119",
+      "text": "Hi Mr. zheng,\n\nWe have to repeat the questions that we asked for before and we have to repeat some facts about our standards.\n\nWe do not support benchmarking by any other tools except mysqlslap and sysbench.\n\nNext, we can not repeat what you are reporting without having the following:\n\n* Full dump of the tables and not just DDL\n\n* The above presumes that all INSERTs should be in the dump\n\n* SQL benchmark queries that run\n\n* Concurrency that you have used\n\nWe also have to repeat that one second is not a slow query, if it is at all complex or if the table is large. That could also be a problem with your MySQL and OS configuration. Hence, if you provide us with all data that we need for sysbench or mysqlslap and if we get similar or better timing, then this can  not be considered  a bug.\n\nCan't repeat.\n\n*"
+    },
+    {
+      "anchor": "c536261",
+      "text": "Dear Sir,\n\nThanks for your kind cooperation.\n\nWe learned about your standards and know that you cannot repeat the problem with the materials we provided. But we have to kindly repeat our query once again.\n\nWhy is it that performing the same operation on a lower version does not have this problem? This issue only occurs on version 8.0.34. Can you provide some possible influences?\n\nThanks！"
+    },
+    {
+      "anchor": "c536290",
+      "text": "Hi Mr. zheng,\n\nSorry, but that is not possible.\n\nSimply, source code of MySQL is larger then 100 Mb and there could be millions of causes."
+    }
+  ]
+}

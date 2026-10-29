@@ -1,0 +1,38 @@
+{
+  "report_id": "112737",
+  "title": "Conditions refering to const table were not added to RANGE SCAN",
+  "task_ids": [
+    "mysql-112737-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\87ded411d3df_bug_112737.html",
+  "source_sha256": "87ded411d3df21f5e1f15c257dca49461e2d427282285c93416f2f4588b7f625",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nIndex conditions referring to const table should be added to RANGE SCAN\nas the condition value can be read before execution.\n\nBug#32976857 omitted to pass the const table map when judging the \ncondition-related table, resulting in the index condition referencing \nthe const table not being added to the range scan, and the range scan \nneeded to scan more data.\n\nHow to repeat:\nCREATE TABLE t1 (a INTEGER, b INTEGER, PRIMARY KEY (a));\nCREATE TABLE t2 (a INTEGER, b INTEGER, PRIMARY KEY (a, b));\nINSERT INTO t1 VALUES (1, 1), (2, 2);\nINSERT INTO t2 VALUES (2, 1), (2, 2), (2, 3), (2, 4);\nANALYZE TABLE t1, t2;\nEXPLAIN FORMAT=TREE\nSELECT t1.b FROM t1 JOIN t2\n  WHERE t1.a = t2.a AND t2.a = 2 AND t2.b >= t1.b AND t2.b <= t1.b+2;\n\n-- b<=4 was not added to RANGE SCAN\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| EXPLAIN                                                                                                                                                                                          |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| -> Filter: ((t2.a = 2) and (t2.b >= '2') and (t2.b <= <cache>(('2' + 2))))  (cost=0.86 rows=3)\n    -> Covering index range scan on t2 using PRIMARY over (a = 2 AND 2 <= b)  (cost=0.86 rows=3)\n |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n\nSuggested fix:\nFix it by taking the const table map into account when adding\nconditions to RANGE SCAN."
+    },
+    {
+      "anchor": "c537004",
+      "text": "The const table map was obtained through qep_tab in test_quick_select(). \nBut bug #32976857 removed the qep_tab in test_quick_select(), and did \nnot pass the const table map to test_quick_select().\n\nHere is the commit message of Bug #32976857\n\nBug #32976857: REMOVE QEP_TAB_STANDALONE [range optimizer, noclose]\n```\nRemove the QEP_TAB dependency from test_quick_select() (ie., the range\noptimizer).\n\nChange-Id: Ie0fcce71dfc813920711c43c3d62635dae0d7d20\n```"
+    },
+    {
+      "anchor": "c537005",
+      "text": "Hello Xingyu Yang,\n\nThank you for the report and contribution.\nPlease ensure to upload patch via \"Contribution\" tab. Thank you.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c552072",
+      "text": "Hi Umesh,\nAny chance the contribution to fix this regression could get merged in the next minor? It is still affecting the latest minor on 8.0. There is also a detailed write up on it here:  https://github.com/enhancedformysql/blogs/blob/main/performance_degradation.md\nThanks,\nMarc"
+    },
+    {
+      "anchor": "c556322",
+      "text": "Hi Xingyu Yang,\n\nThank you for your contribution to MySQL – we’ve merged your change and it will be part of the upcoming release. We really appreciate the time and effort you put into this.\n\nThanks again for your help and for being part of the community.\n\nBest Regards,\nMySQL team"
+    },
+    {
+      "anchor": "c556761",
+      "text": "Posted by developer:\n \nAdded the following note to the MySQL Server 8.0.46, 8.4.9, and 9.7.0 release notes:\n\t\t\n\nConditions on const tables and on previously joined tables were not\nconsistently taken into account when building ranges in\nget_quick_record_count(). This could lead to suboptimal or incorrect range\nestimates, especially when range predicates depended on values from const\nor earlier-joined tables.\n\nOur thanks to Xingyu Yang for the contribution."
+    }
+  ]
+}

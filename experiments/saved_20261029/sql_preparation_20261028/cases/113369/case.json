@@ -1,0 +1,88 @@
+{
+  "report_id": "113369",
+  "title": "In the hash partition table, the query result is error.",
+  "source_sha256": "2b2527fbdc50da1e59cc304ecac2b6f2edb076202de843e22e896dac9b4bf173",
+  "source_anchors": [
+    "cmain",
+    "c539471"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "3618cc21d8108fd7118ff07b575d51efeb14d112b0df6238d422696e1f7c975c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "0878138058b7115d81b3413284e7a49521f4364905b9f6009bf3672ac2a0d336"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原HASH分区tt(id_col INT,bigint_col BIGINT,year_col YEAR,year降序索引)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "一行(61,-9223372036854775808,1913)，保留BIGINT极值。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "保留原分区查询、删除AND id=61的同数据控制、显式CAST YEAR AS SIGNED控制。单表唯一id=61，额外等式不应改变行集；但原生YEAR/INT隐式转换受常量化影响，需先确认规范性类型契约，不能只依据61<1913作完整判据。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS tt;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "保留原分区查询、删除AND id=61的同数据控制、显式CAST YEAR AS SIGNED控制。单表唯一id=61，额外等式不应改变行集；但原生YEAR/INT隐式转换受常量化影响，需先确认规范性类型契约，不能只依据61<1913作完整判据。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "同一字符集/sql_mode"
+  ],
+  "transformations": [
+    "采用How to repeat完整DDL，避开Description损坏提示符；保留可执行版本注释中的分区定义，加入开发者两条控制查询。"
+  ],
+  "blockers": [
+    "YEAR/INT隐式比较与常量折叠后类型转换的规范性边界。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0.32/.33具有相同类型比较/优化，尚未确认。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0.32/.33具有相同类型比较/优化，尚未确认。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c539471 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/113369.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "uncertain",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [
+    {
+      "point": "YEAR/INT隐式比较与常量折叠后类型转换的规范性边界。",
+      "evidence": "c539471解释CAST(61 AS YEAR)=2061，同时记录删除id=61反而有行，尚未给最终契约。",
+      "needed": "目标8.0比较转换规则和计划/表达式类型证据；后续用原式与控制分别保存输出。"
+    }
+  ],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

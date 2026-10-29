@@ -1,0 +1,38 @@
+{
+  "report_id": "110281",
+  "title": "Incorrect query result",
+  "task_ids": [
+    "mysql-110281-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\02a522d842d8_bug_110281.html",
+  "source_sha256": "02a522d842d8abf339b0860e6f6d616c3f8ee575a76e558162e0b0b6c43dc151",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThe SELECT statement returns incorrect results in the case 1. However, when I try to rewrite IFNULL('0a', 1) to its expected value '0a', the SELECT statement returns correct results as in the case 2.\n\nHow to repeat:\nCase 1:\nCREATE TABLE t0(c0 decimal(10,0));\nINSERT INTO t0 VALUES (0);\nCREATE INDEX i0 ON t0(c0);\nSELECT t0.c0 FROM t0 WHERE IFNULL('0a', 1) IN (t0.c0); -- actual:{}, expected:{0}\n\nCase 2:\nCREATE TABLE t0(c0 decimal(10,0));\nINSERT INTO t0 VALUES (0);\nCREATE INDEX i0 ON t0(c0);\nSELECT t0.c0 FROM t0 WHERE '0a' IN (t0.c0); -- actual:{0}, expected:{0}"
+    },
+    {
+      "anchor": "c530496",
+      "text": "Hi Mr. Jove,\n\nThank you for your bug report.\n\nHowever, this is not a bug.\n\nSimply comparing strings with decimals is against all SQL standards.\n\nNot a bug."
+    },
+    {
+      "anchor": "c530519",
+      "text": "I think the case 1 is a bug. I try to evaluate the same predicate used in the SELECT statement in case 1 in the following case. The result is expected. That means the SELECT statement in case 1 should return result 0 instead of nothing.\n\nCREATE TABLE t0(c0 decimal(10,0));\nINSERT INTO t0 VALUES (0);\nCREATE INDEX i0 ON t0(c0);\nSELECT IFNULL('0a', 1) IN (t0.c0) FROM t0; -- actual:{1}, expected:{1}"
+    },
+    {
+      "anchor": "c530529",
+      "text": "Hi,\n\nNo, this is not a bug.\n\nSince '0a' is not NULL, then '0a' is returned."
+    },
+    {
+      "anchor": "c530538",
+      "text": "Is this an intended behavior in the following case? The same expression IFNULL('0a', 1) IN (t0.c0) is evaluated to different results.\n\nCREATE TABLE t0(c0 decimal(10,0));\nINSERT INTO t0 VALUES (0);\nCREATE INDEX i0 ON t0(c0);\nSELECT t0.c0 FROM t0 WHERE IFNULL('0a', 1) IN (t0.c0); -- {}\nSELECT IFNULL('0a', 1) IN (t0.c0) FROM t0; -- {1}"
+    },
+    {
+      "anchor": "c530567",
+      "text": "Hi Mr. Jove,\n\nThis is totally different thing.\n\nFirst test case was about a filtering condition, while your last query is a using nested queries, in the SELECT list, where SQL standards stipulate that Boolean must be always returned. Since your row contains 1, you get one row as a return. If you fill the same table with several rows, like 2,3,4, etc, you will get a result set of many rows where only first one will be 1, while the rest will be 0.\n\nPlease, this is not a forum for SQL standards, but for reporting bugs and this is not a bug."
+    }
+  ]
+}

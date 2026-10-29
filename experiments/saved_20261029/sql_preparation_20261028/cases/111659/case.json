@@ -1,0 +1,70 @@
+{
+  "report_id": "111659",
+  "title": "Empty result of SELECT only when bigger LIMIT",
+  "source_sha256": "a19e69dae9b87165f11e1298e253ab67ed9735da44e8924abd4bb9ce545fee09",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "f45c8dffc43efed26b38e0b5c8ff85b7a56d93eaaad33aba46e2e50fb320854f"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "d2ce51eb977b4e103e0544d12caa68ec79bd69f4eedb85cba8563c56cac5fb70"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "tbl_test_bug 降序 PK 与两个单列索引"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原循环随机生成 800 行并完整导出；各查询复用同一表"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "同一数据快照：若 LIMIT 1 有行，无 LIMIT 不应空；去索引行集应与原无 LIMIT 相同；异常：索引合并路径漏行"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "同一数据快照：若 LIMIT 1 有行，无 LIMIT 不应空；去索引行集应与原无 LIMIT 相同",
+    "failure": "索引合并路径漏行",
+    "limitations": "原 RAND 未指定种子；不是固定行值回放。保存本轮生成数据供复跑；若没有匹配行则无法判此 oracle。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "恢复 ;; delimiter 为 ; 后补原描述中的 LIMIT 查询及去索引控制；导出完整生成数据"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

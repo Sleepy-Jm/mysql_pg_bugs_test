@@ -1,0 +1,74 @@
+{
+  "report_id": "113952",
+  "title": "Updating multiple mediumtext columns causes \"Undo log record is too big.\" error",
+  "source_sha256": "ef591e0fa0e834bc131f1f4d1141a36ec4be643cb1819704b001c585cfd8e56b",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "655f0cfc0fdf030123b5f19820c19b3d379ee507b8f5e78b09305687c1b05e5b"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "8d542063803a55e7600aa7967ac3b0b166e8b7c8d49d8c2c35ee825c10d1fee5"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原 DYNAMIC 双 MEDIUMTEXT 前缀191索引"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "两列各7500字节的a/b"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "需依据目标版本 undo record 容量契约区分正常容量限制与实现缺陷，拆分成功本身不足以定错"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "检查同一页大小/行格式下联合 UPDATE 与拆分 UPDATE 的错误边界",
+    "failure": "联合 UPDATE Undo log record is too big，而拆分成功",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "InnoDB",
+    "记录页大小/row_format"
+  ],
+  "transformations": [
+    "补全新数据上的分开更新对照；记录页大小和行格式，未改变原长度"
+  ],
+  "blockers": [
+    "需依据目标版本 undo record 容量契约区分正常容量限制与实现缺陷，拆分成功本身不足以定错"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0支持这些表布局，当前为探索性错误处理/容量边界测试。 本轮尚未执行。",
+    "8.0.33": "目标8.0支持这些表布局，当前为探索性错误处理/容量边界测试。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持这些表布局，当前为探索性错误处理/容量边界测试。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持这些表布局，当前为探索性错误处理/容量边界测试。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

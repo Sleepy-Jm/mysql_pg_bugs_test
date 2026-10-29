@@ -1,0 +1,28 @@
+{
+  "report_id": "112589",
+  "title": "ER_ROW_IS_REFERENCED vs ER_ROW_IS_REFERENCED_2 breaks backwards compatibility",
+  "task_ids": [
+    "mysql-112589-8.0.33",
+    "mysql-112589-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\0f49e5300a41_bug_112589.html",
+  "source_sha256": "0f49e5300a415cc30451bbef2db0fa744882afc38b3b1456f4b35635900e4fd1",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nIn 5.7 and older applications would always get full detail about failed operation due to constraint violations, but in 8.0 an ACL check was introduced, and now the error can have two different error codes: 1217 and 1451:\n\nERROR 1217 (23000) at line 1: Cannot delete or update a parent row: a foreign key constraint fails\nERROR 1451 (23000) at line 1: Cannot delete or update a parent row: a foreign key constraint fails (`test`.`joinit`, CONSTRAINT `joinit_ibfk_1` FOREIGN KEY (`g`) REFERENCES `joinit_fk` (`i`) ON DELETE RESTRICT ON UPDATE CASCADE)\n\nNow this brings two problems: \n1) Applications that handled error 1451 have to be modified to handle additional error codes (so it breaks backwards compatibility)\n2) For applications that require to see the 1451 version of the error, the following privileges are required:\nSELECT\nDELETE\nUPDATE\nTRIGGER\nREFERENCES\nINDEX\nINSERT\nCREATE VIEW\nDROP\nSHOW VIEW\nCREATE\nALTER\n\nI can, of course, agree with many of those being required in the interest of security...but DROP, CREATE and ALTER to show me an error for a DELETE? That seems pretty excessive.  I understand all those could lead to a FK error, but it looks like the error should be handled more granularly, as having to grant all this stuff to an application user makes many people justifiably nervous :-D\n\nHope it makes sense!\n\nHow to repeat:\nLook at code\n\n/**\n   An Internal_error_handler that converts errors related to foreign key\n   constraint checks 'ER_NO_REFERENCED_ROW_2' and 'ER_ROW_IS_REFERENCED_2'\n   to ER_NO_REFERENCED_ROW and ER_ROW_IS_REFERENCED based on privilege checks.\n   This prevents from revealing parent and child tables information respectively\n   when the foreign key constraint check fails and user does not have privileges\n   to access those tables.\n*/\nAnd looking at the code in sql/error_handler.cc we see:\n\nbool Foreign_key_error_handler::handle_condition(\n...\n  } else if (sql_errno == ER_ROW_IS_REFERENCED_2) {\n    for (TABLE_SHARE_FOREIGN_KEY_PARENT_INFO *fk_p = share->foreign_key_parent;\n         fk_p < share->foreign_key_parent + share->foreign_key_parents;\n         ++fk_p) {\n      Table_ref table(fk_p->referencing_table_db.str,\n                      fk_p->referencing_table_db.length,\n                      fk_p->referencing_table_name.str,\n                      fk_p->referencing_table_name.length, TL_READ);\n      if (check_table_access(m_thd, TABLE_OP_ACLS, &table, true, 1, true)) {\n        my_error(ER_ROW_IS_REFERENCED, MYF(0));\n        return true;\n      }\n    }\n  }\n  return false;\n}\n\nYou can see the highlighted check_table_access call is checking for TABLE_OP_ACLS. This is a catch-all group, so that any action on the table that would break foreign key will throw the error; And we can see that TABLE_OP_ACLS is indeed composed of all these:\n\n#define TABLE_OP_ACLS                                                          \\\n  (SELECT_ACL | INSERT_ACL | UPDATE_ACL | DELETE_ACL | CREATE_ACL | DROP_ACL | \\\n   REFERENCES_ACL | INDEX_ACL | ALTER_ACL | CREATE_VIEW_ACL | SHOW_VIEW_ACL |  \\\n   TRIGGER_ACL)\n\nSuggested fix:\nBreak down the check into more discrete ACLs groups\nThanks!!! :-)"
+    },
+    {
+      "anchor": "c536620",
+      "text": "Hello Marcos,\n\nThank you for the report and feedback.\n\nThanks,\nUmesh"
+    },
+    {
+      "anchor": "c540894",
+      "text": "Documented fix as follows in the MySQL 8.4.0 changelog:\n\n    The server now uses ER_NO_REFERENCED_ROW_2 or\n    ER_REFERENCED_ROW_2 for foreign key errors regardless of whether\n    or not error details are displayed. In addition, we now display\n    parent and child table details in error messages when the user\n    has the proper grants.\n\nClosed."
+    }
+  ]
+}

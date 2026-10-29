@@ -1,0 +1,265 @@
+{
+  "purpose": "受中断分片2剩余资料的只读登记，不生成或改写SQL。",
+  "date": "2026-10-29",
+  "reports": 5,
+  "report_version_items": 20,
+  "new_sql_files": 0,
+  "database_execution": false,
+  "source_hashes_validated": true,
+  "records": [
+    {
+      "report_id": "120302",
+      "title": "Inconsistent results between VIEW and CTE involving YEAR(DATETIME), UNION, and JOIN.",
+      "source_sha256": "c168320affda3faeabad9cf4bc1cbd5a92ab2561ac58fb98048e6d380d569b20",
+      "source_anchors_read": [
+        "cmain",
+        "c556704"
+      ],
+      "reading_scope": "本地保存的完整描述、How to repeat、建议与评论；未访问外部链接或附件，不生成SQL。",
+      "target_versions": [
+        "8.0.32",
+        "8.0.33",
+        "8.0.34",
+        "8.0.35"
+      ],
+      "task_ids": [
+        "mysql-120302-8.0.32",
+        "mysql-120302-8.0.33",
+        "mysql-120302-8.0.34",
+        "mysql-120302-8.0.35"
+      ],
+      "source_material_presence": {
+        "schema": "cmain 提供 t0 DATETIME 表和 UNION 视图 v0 的完整定义，CTE 无需额外持久对象。",
+        "data": "一行 2345-03-17 14:34:49 在正文，输入不依赖附件。",
+        "execution_sequence": "先建表并加载，再建视图并作两次引用自连接；随后以等价 CTE 作两次引用自连接，均含 vc_0>0。",
+        "expected_behavior_and_oracle": "视图与等价 CTE 应保持行集一致；YEAR(c0) 的数字2345不能仅因物化变成 YEAR 列范围外的0000。应同时记录返回值、条件真值、列类型和警告。",
+        "cleanup": "本次只读登记未生成/核验清理脚本；后续需按所选核心/扩展变体分别列出对象与会话设置恢复。"
+      },
+      "dependencies": [
+        "一致SQL模式",
+        "同一数据快照",
+        "结果与列类型记录",
+        "同一数据快照、SQL模式；VIEW/CTE/UNION支持",
+        "保留视图/CTE两次引用，不化简为单次读取"
+      ],
+      "specific_gaps_and_cautions": [
+        "原文资料自包含，但脚本与清理尚未整理；不能把报告内9.6观察当8.0.32–35结果。",
+        "需要在后续判定中核对实际结果类型，区分类型元数据差异和实际错行。"
+      ],
+      "actual_safety_impact": "普通测试库的表/视图操作与查询；原文包含固定test库删除/创建，后续必须限定全新隔离对象，本轮不执行。",
+      "script_preparation_status": "incomplete_due_to_tool_interruption",
+      "new_sql_files": [],
+      "runtime_verification": "not_executed",
+      "restriction_attribution": {
+        "scope": "static_completion_2 SQL preparation turn",
+        "report_specific_trigger_identified": false,
+        "reported_message": "This content was flagged for possible cybersecurity risk.",
+        "failure_step": "该分片已写56/61份后中断；最后progress记录reading batch6中的6份均已完成，因此日志不能定位触发报告。当前编号属于未完成清单，不表示其本身触发限制。",
+        "action": "只读资料登记，不生成/改写SQL，不重试受阻步骤。"
+      }
+    },
+    {
+      "report_id": "120524",
+      "title": "Materialized Correlated EXISTS Returns Positive COUNT(*) But No Rows for Implicit VARCHAR-to-YEAR Comparison",
+      "source_sha256": "5ffb69246030e20d3acd78e724fe7d736613444e5ab3105654ae216465f6fd6c",
+      "source_anchors_read": [
+        "cmain",
+        "c557108"
+      ],
+      "reading_scope": "本地保存的完整描述、How to repeat、建议与评论；未访问外部链接或附件，不生成SQL。",
+      "target_versions": [
+        "8.0.32",
+        "8.0.33",
+        "8.0.34",
+        "8.0.35"
+      ],
+      "task_ids": [
+        "mysql-120524-8.0.32",
+        "mysql-120524-8.0.33",
+        "mysql-120524-8.0.34",
+        "mysql-120524-8.0.35"
+      ],
+      "source_material_presence": {
+        "schema": "t_main 主键及四个索引、t_ref 的 YEAR NOT NULL/TIME 列定义完整。",
+        "data": "正文完整给出34行外表与6行内表；内表通过 INSERT IGNORE 和 NULL 生成 YEAR 0 见证行。",
+        "execution_sequence": "设置物化半连接开关、创建表、装载、ANALYZE；先标量类型比较与计划，再隐式谓词计数/行查询，最后显式CAST对照。",
+        "expected_behavior_and_oracle": "固定状态下同一谓词COUNT应等于行查询条数，不能把EXPLAIN估计当计数；显式/隐式比较还应结合标量控制与主键集合。",
+        "cleanup": "本次只读登记未生成/核验清理脚本；后续需按所选核心/扩展变体分别列出对象与会话设置恢复。"
+      },
+      "dependencies": [
+        "固定SQL模式并保存warnings",
+        "实际执行计划确认物化路径",
+        "与120296登记潜在关联待根因核实",
+        "保留INSERT IGNORE及YEAR 0，保存初始化warnings",
+        "确认物化半连接与FORCE INDEX实际路径；固定SQL模式、同一快照"
+      ],
+      "specific_gaps_and_cautions": [
+        "现有完整数据不必另找附件；尚未准备完整脚本和清理。",
+        "与120296的关联只是待根因审查线索；不可直接合并或分别宣称独立bug。"
+      ],
+      "actual_safety_impact": "普通测试表、会话优化器设置和统计刷新；原固定库名与DROP DATABASE仅作为待审执行范围记录，当前不执行。",
+      "script_preparation_status": "incomplete_due_to_tool_interruption",
+      "new_sql_files": [],
+      "runtime_verification": "not_executed",
+      "restriction_attribution": {
+        "scope": "static_completion_2 SQL preparation turn",
+        "report_specific_trigger_identified": false,
+        "reported_message": "This content was flagged for possible cybersecurity risk.",
+        "failure_step": "该分片已写56/61份后中断；最后progress记录reading batch6中的6份均已完成，因此日志不能定位触发报告。当前编号属于未完成清单，不表示其本身触发限制。",
+        "action": "只读资料登记，不生成/改写SQL，不重试受阻步骤。"
+      }
+    },
+    {
+      "report_id": "120585",
+      "title": "InnoDB FULLTEXT index scan silently drops rows when ORDER BY combines with type-coerced equality",
+      "source_sha256": "741c8308f4cc6c9f941f430a7a4f5a57175b4608a347b37e0387b3c11853e556",
+      "source_anchors_read": [
+        "cmain",
+        "c557347",
+        "c557348"
+      ],
+      "reading_scope": "本地保存的完整描述、How to repeat、建议与评论；未访问外部链接或附件，不生成SQL。",
+      "target_versions": [
+        "8.0.32",
+        "8.0.33",
+        "8.0.34",
+        "8.0.35"
+      ],
+      "task_ids": [
+        "mysql-120585-8.0.32",
+        "mysql-120585-8.0.33",
+        "mysql-120585-8.0.34",
+        "mysql-120585-8.0.35"
+      ],
+      "source_material_presence": {
+        "schema": "t 的 VARCHAR(255) NOT NULL、FULLTEXT与UNIQUE索引完整。",
+        "data": "一行数值字符串明确。",
+        "execution_sequence": "建表加载、建两索引、ANALYZE后比较强制FULLTEXT与默认路径的同谓词排序查询；原文另含COUNT控制。",
+        "expected_behavior_and_oracle": "合法等价查询应保持一行结果；必须确认实际FULLTEXT扫描，不采用该路径时只能记未触发。COUNT加非聚合ORDER BY若被ONLY_FULL_GROUP_BY拒绝，属于正常诊断。",
+        "cleanup": "本次只读登记未生成/核验清理脚本；后续需按所选核心/扩展变体分别列出对象与会话设置恢复。"
+      },
+      "dependencies": [
+        "保持sql_mode一致",
+        "确认FULLTEXT访问路径",
+        "重复关联120527待根因审查",
+        "NOT NULL定义、FULLTEXT功能、相同SQL模式与实际计划",
+        "保存索引提示警告与初始化结果"
+      ],
+      "specific_gaps_and_cautions": [
+        "c557347/c557348明确为120527的替代重复报告，后续须保留重复关系。",
+        "原文已给更正后NOT NULL定义；脚本未整理，不把被拒绝提示或聚合语法错误当缺陷。"
+      ],
+      "actual_safety_impact": "普通全文索引和查询；无安装插件要求，本轮不进行索引或库操作。",
+      "script_preparation_status": "incomplete_due_to_tool_interruption",
+      "new_sql_files": [],
+      "runtime_verification": "not_executed",
+      "restriction_attribution": {
+        "scope": "static_completion_2 SQL preparation turn",
+        "report_specific_trigger_identified": false,
+        "reported_message": "This content was flagged for possible cybersecurity risk.",
+        "failure_step": "该分片已写56/61份后中断；最后progress记录reading batch6中的6份均已完成，因此日志不能定位触发报告。当前编号属于未完成清单，不表示其本身触发限制。",
+        "action": "只读资料登记，不生成/改写SQL，不重试受阻步骤。"
+      }
+    },
+    {
+      "report_id": "121513",
+      "title": "TIME string parser takes the hour, minute and second fields modulo 2^64: CAST('18446744073709551635:40:27' AS TIME) = 19",
+      "source_sha256": "a2ba1f793ea2a7650dfa5de5a6167f50f6a23c24b4280c91b27072e665f5e2c8",
+      "source_anchors_read": [
+        "cmain",
+        "c560400"
+      ],
+      "reading_scope": "本地保存的完整描述、How to repeat、建议与评论；未访问外部链接或附件，不生成SQL。",
+      "target_versions": [
+        "8.0.32",
+        "8.0.33",
+        "8.0.34",
+        "8.0.35"
+      ],
+      "task_ids": [
+        "mysql-121513-8.0.32",
+        "mysql-121513-8.0.33",
+        "mysql-121513-8.0.34",
+        "mysql-121513-8.0.35"
+      ],
+      "source_material_presence": {
+        "schema": "核心How to repeat为四条标量TIME转换，不需要表；描述中的可选严格模式持久化变体提供t22(t TIME)定义。",
+        "data": "全部大整数形式均为短字符串字面量；不是巨量数据或大包。",
+        "execution_sequence": "小时、分钟、秒的2^64+k输入与较小边界控制分别求值；每条后应单独保存warnings。持久化扩展与纯标量核心应分开。",
+        "expected_behavior_and_oracle": "超范围字段不应静默按64位模数变为合法时间；原报告预期NULL和1292，需记录目标范围诊断与模式，而非仅看返回字符串。",
+        "cleanup": "本次只读登记未生成/核验清理脚本；后续需按所选核心/扩展变体分别列出对象与会话设置恢复。"
+      },
+      "dependencies": [
+        "独立测试实例",
+        "保存完整SQL、配置、输出与错误日志",
+        "固定SQL模式，逐语句保存warnings",
+        "可选严格插入变体需要隔离表；本登记不生成该变体"
+      ],
+      "specific_gaps_and_cautions": [
+        "正文核心自包含；没有附件依赖。",
+        "脚本/清理尚未整理；源码推断和外部产品比较仅源报告主张，未独立验证。"
+      ],
+      "actual_safety_impact": "输入校验及可能存储错误时间值的结果完整性影响；无权限变化、文件访问或大型资源要求。",
+      "script_preparation_status": "incomplete_due_to_tool_interruption",
+      "new_sql_files": [],
+      "runtime_verification": "not_executed",
+      "restriction_attribution": {
+        "scope": "static_completion_2 SQL preparation turn",
+        "report_specific_trigger_identified": false,
+        "reported_message": "This content was flagged for possible cybersecurity risk.",
+        "failure_step": "该分片已写56/61份后中断；最后progress记录reading batch6中的6份均已完成，因此日志不能定位触发报告。当前编号属于未完成清单，不表示其本身触发限制。",
+        "action": "只读资料登记，不生成/改写SQL，不重试受阻步骤。"
+      }
+    },
+    {
+      "report_id": "121524",
+      "title": "ST_Transform() truncates the target SRID to 32 bits: ST_Transform(g, 4294971526) transforms to SRID 4230 instead of rais",
+      "source_sha256": "af34cc84fdedb4944a2027e140975aa8452c1ca5a39f45f718e625cf9ddfe1a6",
+      "source_anchors_read": [
+        "cmain",
+        "c560395"
+      ],
+      "reading_scope": "本地保存的完整描述、How to repeat、建议与评论；未访问外部链接或附件，不生成SQL。",
+      "target_versions": [
+        "8.0.32",
+        "8.0.33",
+        "8.0.34",
+        "8.0.35"
+      ],
+      "task_ids": [
+        "mysql-121524-8.0.32",
+        "mysql-121524-8.0.33",
+        "mysql-121524-8.0.34",
+        "mysql-121524-8.0.35"
+      ],
+      "source_material_presence": {
+        "schema": "纯空间标量函数，无需自建表。",
+        "data": "小POINT几何、SRID4326/4230及越界整数常量完整。",
+        "execution_sequence": "目标SRID越界的两种转换，与相同范围参数在ST_GeomFromText中的受控拒绝对照；记录warnings与实际结果SRID。",
+        "expected_behavior_and_oracle": "目标SRID超32位范围应按范围规则拒绝，不能静默截成4230/1；正常SRS缺失诊断与范围错误需要分开。",
+        "cleanup": "本次只读登记未生成/核验清理脚本；后续需按所选核心/扩展变体分别列出对象与会话设置恢复。"
+      },
+      "dependencies": [
+        "独立测试实例",
+        "保存完整SQL、配置、输出与错误日志",
+        "内置SRS4326/4230可用及对应ST_Transform实现支持",
+        "保留原始整数常量与函数诊断，不能提前在客户端窄化"
+      ],
+      "specific_gaps_and_cautions": [
+        "正文自包含；未要求安装新SRS或插件。",
+        "尚未整理脚本；若目标版不支持相关转换或SRS不可用，应记环境/能力前置失败，不判复现。"
+      ],
+      "actual_safety_impact": "空间转换参数范围检查与结果完整性问题；无持久对象、文件访问或账户操作，本轮不执行。",
+      "script_preparation_status": "incomplete_due_to_tool_interruption",
+      "new_sql_files": [],
+      "runtime_verification": "not_executed",
+      "restriction_attribution": {
+        "scope": "static_completion_2 SQL preparation turn",
+        "report_specific_trigger_identified": false,
+        "reported_message": "This content was flagged for possible cybersecurity risk.",
+        "failure_step": "该分片已写56/61份后中断；最后progress记录reading batch6中的6份均已完成，因此日志不能定位触发报告。当前编号属于未完成清单，不表示其本身触发限制。",
+        "action": "只读资料登记，不生成/改写SQL，不重试受阻步骤。"
+      }
+    }
+  ]
+}

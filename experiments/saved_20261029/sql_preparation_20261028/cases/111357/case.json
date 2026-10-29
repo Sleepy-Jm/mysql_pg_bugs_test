@@ -1,0 +1,70 @@
+{
+  "report_id": "111357",
+  "title": "JSON explain assertion error",
+  "source_sha256": "23c1701a637eba72f453bb6efdbfc298dac1ef867578a49698b06b4c8eea85b8",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "b8b22736045c855aa77a61c54baa20158b3a360806262c580034e5844cdb5b32"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "9e4020329e77b2f53bb25ca09d8d035d96a3459e2e88ca587e9cc3039ac42a55"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 INT)"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "空表"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "EXPLAIN 返回 JSON 或受控错误，服务器存活；异常：opt_explain_json assert(0)"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "EXPLAIN 返回 JSON 或受控错误，服务器存活",
+    "failure": "opt_explain_json assert(0)",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "目标debug构建",
+    "debug"
+  ],
+  "transformations": [
+    "提取原 DDL 与 EXPLAIN"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

@@ -1,0 +1,25 @@
+USE `replay_7f182bc80ba3768199ddacfb`;
+SET time_zone="+00:00";
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset;
+-- MySQL report #111429; source anchors: cmain
+-- Prepared offline; NOT EXECUTED. Run only in a disposable isolated environment.
+SET time_zone='+00:00';
+CREATE TABLE bugtest (
+  `id_col` int NOT NULL AUTO_INCREMENT,
+  `timestamp_col` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+   `binary_col` binary(11) DEFAULT NULL,
+   UNIQUE KEY (`id_col`),
+   KEY `ndx_timestamp_col` (`timestamp_col`),
+   KEY `ndx_binary_col` (`binary_col`)
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO bugtest VALUES (1,'1995-03-04 12:20:00.000000',_binary 'aaa'), (2,'1996-03-04 12:20:00.000000',_binary 'bbb'), (3,'1997-03-04 12:20:00.000000',NULL), (4,'1998-03-04 12:20:00.000000',NULL), (5,'1999-03-04 12:20:00.000000',NULL);
+
+SELECT binary_col,timestamp_col FROM bugtest WHERE (binary_col,timestamp_col) <=> (NULL,'1997-03-04 12:20:00.000000') ORDER BY 1 limit 10;
+
+SELECT binary_col,timestamp_col FROM bugtest WHERE (binary_col,timestamp_col) <=> (SELECT binary_col,timestamp_col FROM bugtest ORDER BY 1,2 LIMIT 1) ORDER BY 1 limit 10;
+
+SELECT binary_col,timestamp_col FROM bugtest ORDER BY 1,2 LIMIT 1;
+
+-- Run after the unmodified source script, in the same owned schema; read-only evidence only.
+SELECT id_col,timestamp_col,HEX(binary_col) AS binary_hex FROM bugtest ORDER BY id_col;

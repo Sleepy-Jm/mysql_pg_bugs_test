@@ -1,0 +1,22 @@
+{
+  "report_id": "119807",
+  "title": "Generated default values bypass BLOB/TEXT/JSON default value restriction",
+  "task_ids": [
+    "mysql-119807-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\7965f8000d63_bug_119807.html",
+  "source_sha256": "7965f8000d6324034f7c051defc3059338ddc66291449d5f4a03592375ff224a",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThe check for default values on BLOB/TEXT/JSON columns only applies to constant defaults, not expression defaults, allowing bypass of the restriction.\n\nHow to repeat:\n1. Connect to MySQL 8.0.34\n2. Run:\n   CREATE TABLE t1 (a TEXT DEFAULT '');  -- Fails (good)\n   CREATE TABLE t2 (a TEXT DEFAULT (concat('', '')));  -- Succeeds (bug!)\n\nExpected Result:\nAll statements should fail with ERROR 1101.\n\nActual Result:\nOnly constant defaults are caught; expression defaults bypass the check.\n\nSuggested fix:\nAnalysis:\nIn Create_field::init(), the check only tests fld_default_value but not fld_default_val_expr. This creates an inconsistency.\n\nSuggested Fix:\nExtend the check to cover both default value types."
+    },
+    {
+      "anchor": "c555848",
+      "text": "Please see this section of the manual:\n\nhttps://dev.mysql.com/doc/refman/8.4/en/data-type-defaults.html\n The BLOB, TEXT, GEOMETRY, and JSON data types can be assigned a default value only if the value is written as an expression, even if the expression value is a literal:\n\n    This is permitted (literal default specified as expression):\n\n    CREATE TABLE t2 (b BLOB DEFAULT ('abc'));\n\n    This produces an error (literal default not specified as expression):\n\n    CREATE TABLE t2 (b BLOB DEFAULT 'abc');\n\nExpression default values must adhere to the following rules. An error occurs if an expression contains disallowed constructs."
+    }
+  ]
+}

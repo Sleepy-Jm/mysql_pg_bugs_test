@@ -1,0 +1,70 @@
+{
+  "report_id": "112826",
+  "title": "Decimal query with wrong result",
+  "source_sha256": "f1b54ee29ae430107a316684513dd457708bb6a5f938470ea299619e5441e800",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "e7a2568cf06919d6c3c2e4c338ada8beacecda20bc98c04ce2b068a33c953583"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "77231d7c5d0b32fb69d6bfe76b2a406807b9e2e761a13fc7dbfea9e065cedd12"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 INT,i0)"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "CTAS 一行1"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "1 不等于 0.5；WHERE 空集，投影 0，扫描同空集；异常：索引 WHERE 错误返回行"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "1 不等于 0.5；WHERE 空集，投影 0，扫描同空集",
+    "failure": "索引 WHERE 错误返回行",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "相同sql_mode",
+    "保存计划"
+  ],
+  "transformations": [
+    "将完整原 DDL/两查询整理并补 IGNORE INDEX 对照"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0具备相同常量折叠及索引比较功能，仍需实测。 本轮尚未执行。",
+    "8.0.33": "目标8.0具备相同常量折叠及索引比较功能，仍需实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0具备相同常量折叠及索引比较功能，仍需实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

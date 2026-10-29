@@ -1,0 +1,169 @@
+{
+  "report_id": "111899",
+  "source_sha256": "eaa3028c6f01e47411d8ff1282a62862b8c381e42b240d3dd68f74d7bddc94bf",
+  "tasks": [
+    {
+      "task_id": "mysql-111899-8.0.33",
+      "report_id": "111899",
+      "title": "json generated column null problem",
+      "target_version": "8.0.33",
+      "adjacent_comparison_version": "8.0.32",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=111899",
+      "source_snapshot_from_plan_root": "原文快照/bug_111899.html",
+      "source_anchors": [
+        "cmain",
+        "c534802"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain",
+          "c534802"
+        ],
+        "reason": "JSON缺失值生成NOT NULL列与随后索引重建的两行用例完整，可核对DDL约束一致性。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "按正文建table1，插入一行JSON含group和一行jval=NULL。",
+        "steps": "ADD user_g VARCHAR(250) GENERATED ALWAYS AS(jval->>group路径) NOT NULL；查询IS NULL和空串，再ADD INDEX。",
+        "oracle": "生成列约束应在创建时或索引时一致处理，不能先静默变空串再因同数据NULL拒绝索引。",
+        "requirements": [
+          "记录sql_mode和警告"
+        ],
+        "target_applicability": "目标具备JSON虚拟列及索引，可直接比较同表达式求值。"
+      },
+      "source_environment": {
+        "OS": "Any",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server: DDL"
+      },
+      "explicit_requirements": [
+        "记录sql_mode和警告"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    },
+    {
+      "task_id": "mysql-111899-8.0.35",
+      "report_id": "111899",
+      "title": "json generated column null problem",
+      "target_version": "8.0.35",
+      "adjacent_comparison_version": "8.0.34",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=111899",
+      "source_snapshot_from_plan_root": "原文快照/bug_111899.html",
+      "source_anchors": [
+        "cmain",
+        "c534802"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain",
+          "c534802"
+        ],
+        "reason": "JSON缺失值生成NOT NULL列与随后索引重建的两行用例完整，可核对DDL约束一致性。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "按正文建table1，插入一行JSON含group和一行jval=NULL。",
+        "steps": "ADD user_g VARCHAR(250) GENERATED ALWAYS AS(jval->>group路径) NOT NULL；查询IS NULL和空串，再ADD INDEX。",
+        "oracle": "生成列约束应在创建时或索引时一致处理，不能先静默变空串再因同数据NULL拒绝索引。",
+        "requirements": [
+          "记录sql_mode和警告"
+        ],
+        "target_applicability": "目标具备JSON虚拟列及索引，可直接比较同表达式求值。"
+      },
+      "source_environment": {
+        "OS": "Any",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server: DDL"
+      },
+      "explicit_requirements": [
+        "记录sql_mode和警告"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    }
+  ],
+  "source": {
+    "id": "111899",
+    "title": "json generated column null problem",
+    "header": {
+      "Bug #111899": "json generated column null problem",
+      "Submitted": "27 Jul 2023 2:35",
+      "Modified": "27 Jul 2023 7:59",
+      "Reporter": "Baolin Huang (OCA)",
+      "Email Updates": "",
+      "Status": "Verified",
+      "Impact on me": "None",
+      "Category": "MySQL Server: DDL",
+      "Severity": "S3 (Non-critical)",
+      "Version": "8.0.32, 8.0.34, 5.7.43",
+      "OS": "Any",
+      "Assigned to": "",
+      "CPU Architecture": "Any"
+    },
+    "comments": [
+      {
+        "anchor": "cmain",
+        "date": "27 Jul 2023 2:35",
+        "author": "Baolin Huang",
+        "text": "Description:\nWhen creating a not null generated column for json.\nIf the corresponding generated column has no value, the generated column appears to be treated as '' instead of null.\n\nHowever, when creating an index on this generated column, an error will be reported \"Column cannot be null\"\n\nHow to repeat:\n```\nCREATE TABLE `table1` (\n  `id` int(11) NOT NULL,\n  `tableType` varchar(45) DEFAULT NULL,\n  `jkey` varchar(45) DEFAULT NULL,\n  `jval` json DEFAULT NULL,\n  PRIMARY KEY (`id`)\n);\n\ninsert into table1(id, jval) values(1, '{\"group\": \"group1@abc.com\", \"user\": \"user1\"}'),(2, null);\n\nalter table table1 add user_g varchar(250) generated ALWAYS as  (`jval` ->> '$.group') not null;\n\nselect * from table1 where user_g is null; \nselect * from table1 where user_g ='';\n\nalter table table1 add index ind(user_g);\nERROR 1048 (23000): Column 'user_g' cannot be null\n\n```"
+      },
+      {
+        "anchor": "c534802",
+        "date": "27 Jul 2023 7:59",
+        "author": "MySQL Verification Team",
+        "text": "Hello Huang,\n\nThank you for the report and test case.\nVerified as described.\n\nregards,\nUmesh"
+      }
+    ],
+    "targets": {
+      "8.0.32": {
+        "field": true,
+        "hits": []
+      },
+      "8.0.34": {
+        "field": true,
+        "hits": []
+      }
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "report_id": "109917",
+  "title": "server crash when execute create table with check constraint in ps mode",
+  "source_sha256": "e7c29c650f60bd29774714b34ac63de71616ef02f5533657e94c21b43866ad2c",
+  "source_anchors": [
+    "cmain",
+    "c529530",
+    "c529548",
+    "c529572"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "6cbd57230fd0c5ee126ae360f213859001471a2ecd523f0b9e662c4c2b2437c4"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "faff788fa2eafb1526f2dd24ae02f11f1594944f90b5e18f1e5601563a449e21"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1 由 prepared DDL 尝试创建；不需要固定 zds 库。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "不依赖表数据；按源文空表/常量触发。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force；PREPARE/EXECUTE 的正常错误保存后继续存活探针；cleanup 的 DEALLOCATE 若句柄不存在允许受控错误。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "带参数 CHECK 应受控拒绝；历史 release 返回 3815，不允许 debug 参数类型断言/服务退出。正常 3815 不计 bug。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "按 cleanup.sql 清理本用例对象；结束会话，销毁专用 schema。实例级条件按 execution_conditions 恢复或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "带参数 CHECK 应受控拒绝；历史 release 返回 3815，不允许 debug 参数类型断言/服务退出。正常 3815 不计 bug。",
+    "failure": "在所列前提成立时，违反上述逐例结果/错误/存活约束才记录异常；保存原始输出，初始化失败单列。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在；静态检查不证明服务器语法接受或根因独立。"
+  },
+  "requirements": [
+    "全新隔离 schema 和专用会话；保存真实版本、sql_mode、字符集和日志",
+    "目标debug构建",
+    "prepared statement支持",
+    "源报告只在 debug 断言；GA 可作受控错误对照。"
+  ],
+  "transformations": [
+    "按已核对的原文 SQL 整理；结果表、提示符、栈记录留在 inputs 原文中，不当作 SQL。",
+    "移除 CREATE/USE zds，交由未来 runner 分配全新隔离库；不改 DDL 参数和执行顺序。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。"
+  },
+  "source_reading": "逐份核对 cmain, c529530, c529548, c529572 的定义、输入、顺序和判据；其他评论中的历史结果不外推为目标版本实测。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "目标debug，独立zds库。",
+    "steps": "@v=10；PREPARE CREATE TABLE t1(id INT CHECK(id != ?))并EXECUTE USING @v。",
+    "oracle": "应像release返回3815等合法错误，不能debug崩溃。",
+    "requirements": [
+      "目标debug构建",
+      "prepared statement支持"
+    ],
+    "target_applicability": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。"
+  },
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "源报告只在 debug 断言；GA 可作受控错误对照。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

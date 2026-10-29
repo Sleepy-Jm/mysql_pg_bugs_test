@@ -1,0 +1,86 @@
+{
+  "report_id": "110997",
+  "title": "Any \"SET ROLE\" operation results in loss of permission",
+  "source_sha256": "b1ec1680dc2bd02979331f10f6537a81960356ef22e2cd00d8f6124f10b30aab",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "68025d72eff705cd7974adfb9c6aa414261e59c1041ce7bef7513baac3b2fe72"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "ec44727f2ae3b9a4d054aa3534c3966ddb174a93e9a5f3d9dc94da88d172692f"
+    },
+    {
+      "path": "session_all.sql",
+      "role": "test_user_session_all",
+      "sha256": "0748157a54bfb9da707349368b5fb79da0d036f73a3d0fbbff77b0db374946c2"
+    },
+    {
+      "path": "session_none.sql",
+      "role": "test_user_session_none",
+      "sha256": "567ff459f82d7ddcaff85629dcf701116635ef1dba01fc250ccd7c2e855e8482"
+    },
+    {
+      "path": "session_default.sql",
+      "role": "test_user_session_default",
+      "sha256": "608a09627718343c31defc14aac767ae4f5b12e8475d77d5c6dae8bc36e26fe2"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "testdb 及无角色的 testuser@localhost"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "空库"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "管理员执行 reproducer.sql。随后以 testuser/testpass 连接 testdb，分别在全新连接执行 session_all.sql、session_none.sql、session_default.sql。最后管理员 cleanup。不得用管理员执行 session 文件。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "三种 SET ROLE 前后 SHOW TABLES 都应成功返回空集；异常：丢失直接权限并报 1044"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "三种 SET ROLE 前后 SHOW TABLES 都应成功返回空集",
+    "failure": "丢失直接权限并报 1044",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "管理测试用户权限",
+    "独立新建用户",
+    "一次性实例，本机 socket/localhost 匹配账户；测试密码仅本用例；管理员建用户权限"
+  ],
+  "transformations": [
+    "管理员 setup 与三个独立用户连接分文件，未串在同一管理员会话"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标支持角色系统；8.2修复不推导8.0已修复。 本轮尚未执行。",
+    "8.0.34": "目标支持角色系统；8.2修复不推导8.0已修复。 本轮尚未执行。",
+    "8.0.35": "目标支持角色系统；8.2修复不推导8.0已修复。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

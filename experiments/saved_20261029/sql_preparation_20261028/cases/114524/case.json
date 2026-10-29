@@ -1,0 +1,87 @@
+{
+  "report_id": "114524",
+  "title": "INSERT with JSON column error",
+  "source_sha256": "ede67d2500de5c5a77f22b705bfdf7fecf32804ea02e3b9f1876a9545237c529",
+  "source_anchors": [
+    "cmain",
+    "c541999",
+    "c547320",
+    "c548407",
+    "c551563",
+    "c553072"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "8d322f33dd75f446fbdbe95207d3c665668eed7130155972ea4ede40ea792981"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "2ee50be5121d86e73a893be80805289e047817bf52705a4b51d81f0a1e36685b"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(id自增主键,c1 VARCHAR255,c2 JSON NULL)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "第一次@b=2/@a=0，第二次仅@b变{}；USING @b,@a顺序原样。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两个EXECUTE依次插入合法JSON数值2与对象{}，第二次不得3144；只覆盖c551563 SQL参数复用变体，不声称重现JDBC/Node二进制协议场景或证明原8.0.36回归。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "两个EXECUTE依次插入合法JSON数值2与对象{}，第二次不得3144；只覆盖c551563 SQL参数复用变体，不声称重现JDBC/Node二进制协议场景或证明原8.0.36回归。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "保留参数赋值顺序与类型",
+    "只按后评变体判读，不合并其他binary字面量错误"
+  ],
+  "transformations": [
+    "采用后评c551563完整普通SQL，不把binary JSON字符串非法输入混作同一oracle；连接结束释放it。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标版支持服务端预处理与JSON；本次32至34影响未知，原始36回归证据不外推。 本轮未实测。",
+    "8.0.33": "目标版支持服务端预处理与JSON；本次32至34影响未知，原始36回归证据不外推。 本轮未实测。",
+    "8.0.34": "目标版支持服务端预处理与JSON；本次32至34影响未知，原始36回归证据不外推。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c541999, c547320, c548407, c551563, c553072 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

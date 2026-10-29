@@ -1,0 +1,7 @@
+-- MySQL report #111377; source anchors: cmain
+-- Prepared offline; NOT EXECUTED. Run only in a disposable isolated environment.
+SET SESSION sql_mode='NO_ENGINE_SUBSTITUTION';
+create table v0(c1 INT);
+INSERT DELAYED IGNORE v0 SET c1 = DEFAULT AS v2 ON DUPLICATE KEY UPDATE c1 = DEFAULT ;
+CREATE TRIGGER t2 AFTER UPDATE ON v0 FOR EACH ROW CREATE FUNCTION f3 RETURNS REAL SONAME 'any_name' ;
+UPDATE IGNORE v0 SET c1 = DEFAULT ;

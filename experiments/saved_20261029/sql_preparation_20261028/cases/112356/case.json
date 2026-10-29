@@ -1,0 +1,103 @@
+{
+  "report_id": "112356",
+  "title": "SQL returns unexpected results",
+  "source_sha256": "1b6e7f7ff1f5e52f162807ec56e19f9b8ad915c7fac3477031e5583882ad396e",
+  "source_anchors": [
+    "cmain",
+    "c536117",
+    "c537121"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d700635cd5140294deb0135ea7f3c3df1e73340432c0c4713efa338548bb6f36"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "fd3affea2b33c21166ddf5a2ceb42040f03db9525cf516882b5e594856dd697d"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "test1(a INT主键,b INT) InnoDB utf8mb4_bin。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原三行(1,1),(2,2),(3,3)。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "结果多重集为1、2、3各一次，不能是3、3、3；顺序未规定。c536117的8.0.34正常观察只作历史边界，不代替本地验证。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS test1;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "结果多重集为1、2、3各一次，不能是3、3、3；顺序未规定。c536117的8.0.34正常观察只作历史边界，不代替本地验证。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "相同会话优化器设置"
+  ],
+  "transformations": [
+    "原SQL中的不换行空格规范化为普通空格；my.cnf保留在source输入而不当SQL执行。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "早期8.0目标具有同功能；8.0.34已有此例正常的后评，不能外推后续版本仍有问题。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "早期8.0目标具有同功能；8.0.34已有此例正常的后评，不能外推后续版本仍有问题。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c536117, c537121 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/112356.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "heavy_resource",
+      "detail": "原my.cnf包含4GB buffer pool和2×4GB redo；本轮只记录，后续不能无审查原样应用。",
+      "requires_review": true
+    },
+    {
+      "kind": "plugin",
+      "detail": "原环境配置semisync_master/slave插件但是否触发必要未知；不得自动安装。",
+      "requires_review": true
+    },
+    {
+      "kind": "file_access",
+      "detail": "原配置local_infile=ON且大量绝对路径；本例SQL不访问文件，后续若复用原配置仍须先审查。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [
+    {
+      "point": "庞大原配置中哪些条件与异常有关尚无隔离证据。",
+      "evidence": "cmain my.cnf，c536117默认8.0.34已正常。",
+      "needed": "后续配置差异表及实际optimizer_switch；本轮不自动应用整套配置。"
+    }
+  ],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

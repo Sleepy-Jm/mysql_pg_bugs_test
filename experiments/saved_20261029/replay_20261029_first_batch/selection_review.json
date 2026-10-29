@@ -1,0 +1,568 @@
+{
+  "scope": "First-batch candidate selection and oracle review only; no database/network/SQL execution",
+  "input_root": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029",
+  "input_manifest_sha256": "eec8b4e7a58c1b4ff95d0e8b6824f62f5b30d4316eb17fb5bcd84e8cc5c11ae6",
+  "reports": 8,
+  "report_version_items": 26,
+  "selected": [
+    {
+      "report_id": "72100",
+      "title": "0.00000000042 MOD 10 = 0.42000000000",
+      "target_versions": [
+        "8.0.32",
+        "8.0.33",
+        "8.0.34",
+        "8.0.35"
+      ],
+      "task_ids": [
+        "mysql-72100-8.0.32",
+        "mysql-72100-8.0.33",
+        "mysql-72100-8.0.34",
+        "mysql-72100-8.0.35"
+      ],
+      "source_sha256": "affeb089efbd04e8d7d293b326fe562db1df950bd0f29db81221fe7c312869d7",
+      "source_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\inputs\\72100.json",
+      "source_anchors_reviewed": [
+        "cmain",
+        "c418803"
+      ],
+      "scripts": [
+        {
+          "role": "reproducer",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\72100\\reproducer.sql",
+          "relative_path": "cases/72100/reproducer.sql",
+          "sha256": "6a342f005b523bb53ece2930452d179ee7159fa8bef78146f96b171dd83e0c2c",
+          "bytes": 472
+        },
+        {
+          "role": "cleanup",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\72100\\cleanup.sql",
+          "relative_path": "cases/72100/cleanup.sql",
+          "sha256": "53eec9127c2093e1339ee4e3dd5b6e96707a558a30f98321ab455fd15e0e4d3f",
+          "bytes": 95
+        }
+      ],
+      "oracle_kind": "wrong_result",
+      "expected_result_sets": [
+        {
+          "query": "select d, d mod 1 from t",
+          "rows": 27,
+          "row_order_significant": false,
+          "rule": "d values are exactly the multiset 10^-1 through 10^-27 (DECIMAL(65,30)); every MOD(d,1) must equal d numerically"
+        },
+        {
+          "query": "SELECT COUNT(*) AS mismatches FROM t WHERE NOT (d <=> MOD(d,1))",
+          "rows": [
+            [
+              "0"
+            ]
+          ]
+        }
+      ],
+      "reported_phenomenon": "With correct loaded DECIMAL values, at least one leading-zero value yields the erroneous scale-amplified remainder described in cmain (historical examples m=d*10^9), and mismatches > 0. Record individual d,m pairs; a different unexpected pattern is other_anomaly pending attribution.",
+      "requirements": [
+        "Fresh dedicated schema; InnoDB available",
+        "auto_increment_increment=1 and auto_increment_offset=1 so fresh SERIAL ids are 1..27",
+        "Verify 27 expected nonzero DECIMAL values before using MOD result as oracle",
+        "Record SQL mode and UPDATE conversion warnings"
+      ],
+      "resources": "One table, 27 rows, no loops outside bounded source SQL; no privileged/global/file operations",
+      "cleanup": "DROP TABLE IF EXISTS t; only in this case-owned fresh schema",
+      "failure_handling": "CREATE/INSERT/UPDATE failure, incorrect data cardinality or exponent conversion prevents the MOD oracle; do not count it as the target phenomenon. Historical 5.7.5 fix note is context, not proof about 8.0 targets.",
+      "environment_readiness": "not_checked_by_selection_agent",
+      "execution_status": "not_executed"
+    },
+    {
+      "report_id": "110550",
+      "title": "ordering VALUES statement seems not to work as expected",
+      "target_versions": [
+        "8.0.33",
+        "8.0.34",
+        "8.0.35"
+      ],
+      "task_ids": [
+        "mysql-110550-8.0.33",
+        "mysql-110550-8.0.34",
+        "mysql-110550-8.0.35"
+      ],
+      "source_sha256": "349300ea0e3e123f5507d8ca33cf730cdf3c2df321eafbd3bcb0352001930e9d",
+      "source_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\inputs\\110550.json",
+      "source_anchors_reviewed": [
+        "cmain",
+        "c531286"
+      ],
+      "scripts": [
+        {
+          "role": "reproducer",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\110550\\reproducer.sql",
+          "relative_path": "cases/110550/reproducer.sql",
+          "sha256": "5c04416579fad7db3829e60d8449c7ed3b53125d23738bfb0c7601ff04972928",
+          "bytes": 275
+        }
+      ],
+      "oracle_kind": "wrong_result",
+      "expected_result_sets": [
+        {
+          "query": "first VALUES ORDER BY",
+          "rows": [
+            [
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "4",
+              "4",
+              "4"
+            ],
+            [
+              "5",
+              "5",
+              "5"
+            ]
+          ],
+          "row_order_significant": true
+        },
+        {
+          "query": "UNION VALUES ORDER BY control",
+          "rows": [
+            [
+              "0",
+              "0",
+              "0"
+            ],
+            [
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "4",
+              "4",
+              "4"
+            ],
+            [
+              "5",
+              "5",
+              "5"
+            ]
+          ],
+          "row_order_significant": true
+        }
+      ],
+      "reported_phenomenon": "First result remains (1,1,1),(5,5,5),(4,4,4) despite ORDER BY, while the UNION control is correctly ordered 0,1,4,5. Other wrong rowsets are other_anomaly pending review.",
+      "requirements": [
+        "Single client session; no schema objects",
+        "VALUES ROW and its synthetic column_1 sorting supported by target version",
+        "Capture result order without client-side sorting"
+      ],
+      "resources": "Two constant result sets of 3 and 4 rows",
+      "cleanup": "No persistent object; close dedicated session",
+      "failure_handling": "A SQL syntax/feature/connection error is not this ordering phenomenon. c531286 links a private duplicate; do not count independent root causes.",
+      "environment_readiness": "not_checked_by_selection_agent",
+      "execution_status": "not_executed"
+    },
+    {
+      "report_id": "111559",
+      "title": "View with CTE syntax error",
+      "target_versions": [
+        "8.0.32",
+        "8.0.34",
+        "8.0.35"
+      ],
+      "task_ids": [
+        "mysql-111559-8.0.32",
+        "mysql-111559-8.0.34",
+        "mysql-111559-8.0.35"
+      ],
+      "source_sha256": "ae3109994594a9fbef97f9368a84a295979c9457a5e1e9ae024f7795c7ea8672",
+      "source_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\inputs\\111559.json",
+      "source_anchors_reviewed": [
+        "cmain",
+        "c534142",
+        "c556265"
+      ],
+      "scripts": [
+        {
+          "role": "reproducer",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\111559\\reproducer.sql",
+          "relative_path": "cases/111559/reproducer.sql",
+          "sha256": "5256f04bbcc7cb02ebcfba4af174fd312223958cae01ca318aa7e7adc091134b",
+          "bytes": 254
+        },
+        {
+          "role": "cleanup",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\111559\\cleanup.sql",
+          "relative_path": "cases/111559/cleanup.sql",
+          "sha256": "0232c1f2e149499860fd7ee33f54ffbbefc12ef1107911c7db32837e39132c42",
+          "bytes": 153
+        }
+      ],
+      "oracle_kind": "error_difference",
+      "expected_result_sets": [
+        {
+          "query": "CREATE VIEW v0",
+          "expect": "success"
+        },
+        {
+          "query": "SELECT 1 FROM v0",
+          "rows": [
+            [
+              "1"
+            ]
+          ]
+        },
+        {
+          "query": "SHOW CREATE VIEW v0",
+          "expect": "successful valid view definition, diagnostic only"
+        }
+      ],
+      "reported_phenomenon": "CREATE VIEW succeeds, then SELECT 1 FROM v0 fails with MySQL error 1064 consistent with re-parsing a malformed stored WITH clause (unused second CTE omitted but comma retained). SHOW CREATE VIEW may produce the same 1064 and is supporting diagnostic.",
+      "requirements": [
+        "Fresh dedicated schema",
+        "CREATE VIEW, SELECT, SHOW VIEW, DROP privileges within the disposable case schema",
+        "Client must retain stage-specific SQL errors; --force is appropriate to collect SHOW CREATE after SELECT error"
+      ],
+      "resources": "One view over scalar CTEs; no stored data",
+      "cleanup": "DROP VIEW IF EXISTS v0; only in case-owned schema",
+      "failure_handling": "Creation/privilege failure does not reproduce the report. Successful SELECT=1 with usable view means not reproduced under these conditions. Other error codes require separate attribution.",
+      "environment_readiness": "not_checked_by_selection_agent",
+      "execution_status": "not_executed"
+    },
+    {
+      "report_id": "112910",
+      "title": "Incorrect results when add an uncorrelated row",
+      "target_versions": [
+        "8.0.32",
+        "8.0.33",
+        "8.0.34"
+      ],
+      "task_ids": [
+        "mysql-112910-8.0.32",
+        "mysql-112910-8.0.33",
+        "mysql-112910-8.0.34"
+      ],
+      "source_sha256": "eb44417ec0e647deb514b878f9e064c4e6eabc3c63349ab2668aee4f66c5e84d",
+      "source_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\inputs\\112910.json",
+      "source_anchors_reviewed": [
+        "cmain",
+        "c537523"
+      ],
+      "scripts": [
+        {
+          "role": "reproducer",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\112910\\reproducer.sql",
+          "relative_path": "cases/112910/reproducer.sql",
+          "sha256": "8082e0692bbf3ee3e9d0487312baa31eb486920257a113866f37ee07f590f222",
+          "bytes": 427
+        }
+      ],
+      "oracle_kind": "wrong_result",
+      "expected_result_sets": [
+        {
+          "query": "one-row VALUES filter",
+          "rows": []
+        },
+        {
+          "query": "two-row VALUES filter",
+          "rows": []
+        }
+      ],
+      "reported_phenomenon": "With CAST(1/16 AS DOUBLE PRECISION)=0.0625, first result is empty but second returns exactly (a,0).",
+      "requirements": [
+        "Single session; no persistent objects",
+        "Record/fix session div_precision_increment=4 and verify CAST(1/16 AS DOUBLE PRECISION)=0.0625",
+        "Record SQL mode and character set/collation"
+      ],
+      "resources": "Two constant derived tables, maximum 2 rows",
+      "cleanup": "No persistent object; close dedicated session",
+      "failure_handling": "If division precision makes the constant 0 or differs from 0.0625, the expected predicate is not established; classify environment/precondition insufficient rather than target bug. A different unexpected rowset is other anomaly.",
+      "environment_readiness": "not_checked_by_selection_agent",
+      "execution_status": "not_executed"
+    },
+    {
+      "report_id": "113302",
+      "title": "Unexpected Result for an Index",
+      "target_versions": [
+        "8.0.32",
+        "8.0.33",
+        "8.0.34"
+      ],
+      "task_ids": [
+        "mysql-113302-8.0.32",
+        "mysql-113302-8.0.33",
+        "mysql-113302-8.0.34"
+      ],
+      "source_sha256": "45fbacf04cc2370e45c05d841aab68812cc73402be84fc75e9cd80c6842a2c1a",
+      "source_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\inputs\\113302.json",
+      "source_anchors_reviewed": [
+        "cmain",
+        "c538579",
+        "f33713"
+      ],
+      "scripts": [
+        {
+          "role": "reproducer",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\113302\\reproducer.sql",
+          "relative_path": "cases/113302/reproducer.sql",
+          "sha256": "3b5c6a28f673d10046b795464c2091472aaf0da9c4c277052f5216efeecb1c35",
+          "bytes": 360
+        },
+        {
+          "role": "cleanup",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\113302\\cleanup.sql",
+          "relative_path": "cases/113302/cleanup.sql",
+          "sha256": "4456d5b18ad70f989eafce6adfabd5efc86d16fcc79766affdbb353dec9c8122",
+          "bytes": 154
+        }
+      ],
+      "oracle_kind": "wrong_result",
+      "expected_result_sets": [
+        {
+          "query": "SELECT before index",
+          "rows": []
+        },
+        {
+          "query": "SELECT after index",
+          "rows": []
+        }
+      ],
+      "reported_phenomenon": "Before index result is empty; after creating i0 on c1, the same query incorrectly returns (c0=1,c1=0). GREATEST(0.1,0.2)=0.2, so zero must not match either plan.",
+      "requirements": [
+        "Fresh dedicated schema; InnoDB",
+        "Successful one-row INSERT c0=1,c1=0 and successful CREATE INDEX",
+        "Record SQL mode and optimizer settings"
+      ],
+      "resources": "One two-column table with 1 row and 1 index",
+      "cleanup": "DROP TABLE IF EXISTS t0; drops its owned index as well",
+      "failure_handling": "Do not interpret a failed CREATE INDEX or failed setup as a predicate bug. f33713 mentions relation to #110125/#113317; no independent-root-cause inference.",
+      "environment_readiness": "not_checked_by_selection_agent",
+      "execution_status": "not_executed"
+    },
+    {
+      "report_id": "114196",
+      "title": "Incorrect query result caused by comparing decimal and float type value",
+      "target_versions": [
+        "8.0.32",
+        "8.0.33",
+        "8.0.34"
+      ],
+      "task_ids": [
+        "mysql-114196-8.0.32",
+        "mysql-114196-8.0.33",
+        "mysql-114196-8.0.34"
+      ],
+      "source_sha256": "5d8ddbb548f6983b7eb552da41738a147d9fcc10361b0d2e71d75634035b267e",
+      "source_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\inputs\\114196.json",
+      "source_anchors_reviewed": [
+        "cmain",
+        "c544162",
+        "c550781"
+      ],
+      "scripts": [
+        {
+          "role": "reproducer",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\114196\\reproducer.sql",
+          "relative_path": "cases/114196/reproducer.sql",
+          "sha256": "d84afdd04b68c65f61b8eea0555b1e83a25602410506c2344e29c3ad0b334ed6",
+          "bytes": 317
+        },
+        {
+          "role": "cleanup",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\114196\\cleanup.sql",
+          "relative_path": "cases/114196/cleanup.sql",
+          "sha256": "0086e563dd869cec8be2aeb0b368e00b6f647185b51d97fc0c14cc5b3faeb449",
+          "bytes": 154
+        }
+      ],
+      "oracle_kind": "wrong_result",
+      "expected_result_sets": [
+        {
+          "query": "WHERE c0 <= -0.8",
+          "rows": []
+        },
+        {
+          "query": "predicate IS TRUE projection",
+          "rows": [
+            [
+              "0"
+            ]
+          ]
+        },
+        {
+          "query": "actual stored data",
+          "rows": [
+            [
+              "0"
+            ]
+          ]
+        }
+      ],
+      "reported_phenomenon": "After confirming stored DECIMAL value is 0, WHERE c0 <= -0.8 incorrectly returns one row 0, while projected predicate IS TRUE is 0.",
+      "requirements": [
+        "Fresh dedicated schema; InnoDB",
+        "Confirm default DECIMAL scale is 0 and REPLACE(0.1) stores 0",
+        "Record SQL mode and REPLACE warnings; truncation warning alone is not a bug"
+      ],
+      "resources": "One DECIMAL column, 1 row",
+      "cleanup": "DROP TABLE IF EXISTS t0; only in case-owned schema",
+      "failure_handling": "If REPLACE fails or stored value differs, predicate prerequisites are not established. Historical later-version changelog and comments do not prove target result.",
+      "environment_readiness": "not_checked_by_selection_agent",
+      "execution_status": "not_executed"
+    },
+    {
+      "report_id": "116703",
+      "title": "`JSON_VALID` has inconsistent behavior for `NULL`",
+      "target_versions": [
+        "8.0.32",
+        "8.0.34",
+        "8.0.35"
+      ],
+      "task_ids": [
+        "mysql-116703-8.0.32",
+        "mysql-116703-8.0.34",
+        "mysql-116703-8.0.35"
+      ],
+      "source_sha256": "c37819c7d89a5537225ab1e45b69c0f35271f07b3bc434972be34ab047913b3c",
+      "source_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\inputs\\116703.json",
+      "source_anchors_reviewed": [
+        "cmain",
+        "c548706"
+      ],
+      "scripts": [
+        {
+          "role": "reproducer",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\116703\\reproducer.sql",
+          "relative_path": "cases/116703/reproducer.sql",
+          "sha256": "3a92e1b91d3987beb7697ec48fc061509d6c10201e99376c4211408838e5654e",
+          "bytes": 257
+        },
+        {
+          "role": "cleanup",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\116703\\cleanup.sql",
+          "relative_path": "cases/116703/cleanup.sql",
+          "sha256": "87ea99e491b2289a76a73121cd8a72db964e0d0c539cc8f2412e6a6c7b321479",
+          "bytes": 167
+        }
+      ],
+      "oracle_kind": "wrong_result",
+      "expected_result_sets": [
+        {
+          "query": "JSON_VALID(t.col) for SQL NULL column",
+          "rows": [
+            [
+              null
+            ]
+          ]
+        },
+        {
+          "query": "JSON_VALID(NULL)",
+          "rows": [
+            [
+              null
+            ]
+          ]
+        }
+      ],
+      "reported_phenomenon": "Column path returns numeric 0 while literal SQL NULL path returns SQL NULL. Keep actual SQL NULL distinct from string NULL and numeric 0.",
+      "requirements": [
+        "Fresh dedicated schema; InnoDB",
+        "Successful one-row insert of SQL NULL",
+        "MySQL JSON_VALID available; no plugin or JSON document data required",
+        "Client/result capture preserves SQL NULL distinctly"
+      ],
+      "resources": "One INT column, 1 NULL row",
+      "cleanup": "DROP TABLE IF EXISTS t; only in case-owned schema",
+      "failure_handling": "Table/data failure or NULL capture ambiguity prevents judgment. Other combinations of non-NULL results are other anomalies pending attribution.",
+      "environment_readiness": "not_checked_by_selection_agent",
+      "execution_status": "not_executed"
+    },
+    {
+      "report_id": "117847",
+      "title": "NULLIF Filtering Fails in WHERE Clause",
+      "target_versions": [
+        "8.0.32",
+        "8.0.33",
+        "8.0.34",
+        "8.0.35"
+      ],
+      "task_ids": [
+        "mysql-117847-8.0.32",
+        "mysql-117847-8.0.33",
+        "mysql-117847-8.0.34",
+        "mysql-117847-8.0.35"
+      ],
+      "source_sha256": "73ee517a80fae065d9d9e03c067cd83f0cfde254b5e4835aa4c0ec295245172f",
+      "source_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\inputs\\117847.json",
+      "source_anchors_reviewed": [
+        "cmain",
+        "c551633"
+      ],
+      "scripts": [
+        {
+          "role": "reproducer",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\117847\\reproducer.sql",
+          "relative_path": "cases/117847/reproducer.sql",
+          "sha256": "aa0fa07bb7580da6853d42864d8df92c73e66269b105ed230cc51243485b6463",
+          "bytes": 364
+        },
+        {
+          "role": "cleanup",
+          "path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\117847\\cleanup.sql",
+          "relative_path": "cases/117847/cleanup.sql",
+          "sha256": "d2d79b91af40b016c2b2f059d30678df01a6bfa9f37d6b495d52c7d5fafdf38f",
+          "bytes": 168
+        }
+      ],
+      "oracle_kind": "wrong_result",
+      "expected_result_sets": [
+        {
+          "query": "NULLIF(-33.26,c1) IS NULL projection",
+          "rows": [
+            [
+              "0"
+            ]
+          ]
+        },
+        {
+          "query": "same projection filtered by same predicate",
+          "rows": []
+        }
+      ],
+      "reported_phenomenon": "Unfiltered projection is 0, but the filtered query still returns a row displaying 0. Since c1=0 differs from -33.26, NULLIF returns non-NULL and IS NULL is false.",
+      "requirements": [
+        "Fresh dedicated schema; InnoDB",
+        "Successful one-row DOUBLE=0 setup",
+        "Record SQL mode and optimizer settings; no source-required debug build"
+      ],
+      "resources": "One DOUBLE column, 1 row",
+      "cleanup": "DROP TABLE IF EXISTS t1; only in case-owned schema",
+      "failure_handling": "Failed setup or first projection not 0 cannot be treated as this exact filter inconsistency without review. Source is 9.1.0; four 8.0 targets are exploratory assignments, not claimed affected versions.",
+      "environment_readiness": "not_checked_by_selection_agent",
+      "execution_status": "not_executed"
+    }
+  ],
+  "excluded_after_source_review": [
+    {
+      "report_id": "109824",
+      "reason": "cmain explicitly records original WITH_DEBUG/ASan/UBSan build although integrated condition list omitted it; conservative first-batch exclusion, not a claim release cannot reproduce."
+    },
+    {
+      "report_id": "112826",
+      "reason": "Same source-build caveat; replaced by cases without this ambiguity."
+    },
+    {
+      "report_id": "110125",
+      "reason": "DELAYED compatibility/setup warning and relation to113302 add avoidable first-batch complexity; retain in later eligible queue."
+    }
+  ],
+  "common_prerequisites": [
+    "Only exact listed target versions, no adjacent-version runs",
+    "New dedicated disposable local instance and fresh case-owned schema/session; no existing data reuse",
+    "Record actual version/build, engine, sql_mode, character sets/collations, optimizer_switch, div_precision_increment, auto_increment_increment/offset",
+    "Retain original SQL bytes and execution order; stage errors and resultset boundaries must be observable",
+    "Timeout/OOM/connection/setup errors are not target phenomena",
+    "Necessary clean repeats only after a matching anomaly, within parent-defined resource/time limits"
+  ],
+  "independent_review": "110550/111559/112910/109824 independently source-checked by child small_oracle_check; other five selected cases source-checked directly here."
+}

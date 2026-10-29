@@ -1,0 +1,34 @@
+{
+  "report_id": "114694",
+  "title": "binlog_transaction_compression not effect on slave",
+  "task_ids": [
+    "mysql-114694-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\1fb2d5395653_bug_114694.html",
+  "source_sha256": "1fb2d53956538d541b38ba176ed4623956e48a122081000dba7ac59574c55076",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\n\nHELLO,\n\nNeither 5.7 Nor 8.0 ,include the 8.0.34,binlog_transaction_compression not effect on slave ,even if the master has opened the variable 'binlog_transaction_compression '。\n\nHow to repeat:\nJust set global binlog_transaction_compression  =on\n\nand next watch the table performance_schema.binary_log_transaction_compression_stats\n\nyou will see  the binlog on the slave never be compressed ."
+    },
+    {
+      "anchor": "c542618",
+      "text": "Hi,\n\nI'm not sure I understand.\n\nDo you have binlog_transaction_compression configured on master or on slave or on both?"
+    },
+    {
+      "anchor": "c542636",
+      "text": "yes ,i configured on both of master and slave ,\nand The result is only effective on the master .\nI draw the conclusion through the table performance_schema.binary_log_transaction_compression_stats"
+    },
+    {
+      "anchor": "c542638",
+      "text": "you can see that the relay log has been compressed ,but the binlog on the slave havent\n\nmysql> select *from binary_log_transaction_compression_stats \\G\n*************************** 1. row ***************************\n                            LOG_TYPE: BINARY\n                    COMPRESSION_TYPE: NONE\n                 TRANSACTION_COUNTER: 572237986\n            COMPRESSED_BYTES_COUNTER: 1369785185610\n          UNCOMPRESSED_BYTES_COUNTER: 1369785185610\n              COMPRESSION_PERCENTAGE: 0\n                FIRST_TRANSACTION_ID: e7a33628-63f3-11ed-823e-005056a996a5:6412742781\n  FIRST_TRANSACTION_COMPRESSED_BYTES: 1438\nFIRST_TRANSACTION_UNCOMPRESSED_BYTES: 1438\n         FIRST_TRANSACTION_TIMESTAMP: 2024-03-27 17:46:43.945436\n                 LAST_TRANSACTION_ID: e7a33628-63f3-11ed-823e-005056a996a5:6984980766\n   LAST_TRANSACTION_COMPRESSED_BYTES: 4016\n LAST_TRANSACTION_UNCOMPRESSED_BYTES: 4016\n          LAST_TRANSACTION_TIMESTAMP: 2024-04-24 23:07:55.232027\n*************************** 2. row ***************************\n                            LOG_TYPE: RELAY\n                    COMPRESSION_TYPE: ZSTD\n                 TRANSACTION_COUNTER: 572238159\n            COMPRESSED_BYTES_COUNTER: 482102960301\n          UNCOMPRESSED_BYTES_COUNTER: 1376504826536\n              COMPRESSION_PERCENTAGE: 65\n                FIRST_TRANSACTION_ID: e7a33628-63f3-11ed-823e-005056a996a5:6412742781\n  FIRST_TRANSACTION_COMPRESSED_BYTES: 839\nFIRST_TRANSACTION_UNCOMPRESSED_BYTES: 1452\n         FIRST_TRANSACTION_TIMESTAMP: 2104-01-22 14:22:31.160152\n                 LAST_TRANSACTION_ID: e7a33628-63f3-11ed-823e-005056a996a5:6984980946\n   LAST_TRANSACTION_COMPRESSED_BYTES: 728\n LAST_TRANSACTION_UNCOMPRESSED_BYTES: 1847\n          LAST_TRANSACTION_TIMESTAMP: 2104-10-30 19:54:24.365174\n*************************** 3. row ***************************\n                            LOG_TYPE: RELAY\n                    COMPRESSION_TYPE: NONE\n                 TRANSACTION_COUNTER: 7\n            COMPRESSED_BYTES_COUNTER: 3677\n          UNCOMPRESSED_BYTES_COUNTER: 3677\n              COMPRESSION_PERCENTAGE: 0\n                FIRST_TRANSACTION_ID: e7a33628-63f3-11ed-823e-005056a996a5:6666700724\n  FIRST_TRANSACTION_COMPRESSED_BYTES: 905\nFIRST_TRANSACTION_UNCOMPRESSED_BYTES: 905\n         FIRST_TRANSACTION_TIMESTAMP: 2104-05-28 12:18:02.912914\n                 LAST_TRANSACTION_ID: e7a33628-63f3-11ed-823e-005056a996a5:6785935524\n   LAST_TRANSACTION_COMPRESSED_BYTES: 162\n LAST_TRANSACTION_UNCOMPRESSED_BYTES: 162\n          LAST_TRANSACTION_TIMESTAMP: 2104-07-26 03:36:14.288387"
+    },
+    {
+      "anchor": "c543017",
+      "text": "Hi,\n\nThanks for the report, looks like there is something unclear here, let's see what the replication team has to say about it."
+    }
+  ]
+}

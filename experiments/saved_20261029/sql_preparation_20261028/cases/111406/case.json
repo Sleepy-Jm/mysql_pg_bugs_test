@@ -1,0 +1,70 @@
+{
+  "report_id": "111406",
+  "title": "MySQL Server encounters Assertion Failure when executing query",
+  "source_sha256": "ff6ca668cd91e15d17bcaab39fb9204e6e85b630075763aacb4eed6bcc472c4d",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "350271857533f1831f1d2164dcf656560d776ba630570fd4226a6a8f25454cc4"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "03471a24c8dd37ca85df91cfaf0b4761ee2e1385ea171a3679f871976e4e83fb"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "v0 和 TABLE CTAS v2"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "空 v0"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force；逐语句记录诊断，故意非法语句不修正；崩溃时销毁隔离实例。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "原语句受控执行或安全报错，连接与服务器存活；异常：UPDATE 解析/执行 debug 断言"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "原语句受控执行或安全报错，连接与服务器存活",
+    "failure": "UPDATE 解析/执行 debug 断言",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "目标debug构建",
+    "一次性 debug 实例；--mysqlx=OFF --performance_schema=OFF；记录架构"
+  ],
+  "transformations": [
+    "取首个完整 SQL 代码块；移除 test123 库删除/创建/USE，使用 runner 隔离库；补原 SQL_MODE"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

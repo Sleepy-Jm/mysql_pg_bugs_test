@@ -1,0 +1,81 @@
+{
+  "report_id": "110984",
+  "title": "Subqueries with 'limit 1' cause concat strings to report errors",
+  "source_sha256": "528992b1e4d6186be27acb97f024ba77cbc2807983f5e05b9a6b2235a277b842",
+  "source_anchors": [
+    "cmain",
+    "c544757"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "30bfa44a3849a56644d6b0c0a92570a617b541e04cb50ce3d9e118d82f926833"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "b0e33155ac4c3415771ad08a784aba186921c6118ecc43330f89a0a8b0b5b16f"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "utf8mb4_0900_ai_ci连接；t1(flowid VARCHAR32)字符集gbk/gbk_bin，插xxx。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。比较正文派生查询CONCAT(abc,flowid)，子查询SELECT yyy- AS abc,flowid FROM t1有/无LIMIT1。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两查询应均返回yyy-xxx；单行加LIMIT1不应引入1267。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "两查询应均返回yyy-xxx；单行加LIMIT1不应引入1267。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "显式固定连接字符集"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。",
+    "固定源记录连接字符集，省略test_db库操作。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0同时支持GBK与utf8mb4及派生物化，跨分支修复不外推。 本轮仅静态准备。",
+    "8.0.34": "目标8.0同时支持GBK与utf8mb4及派生物化，跨分支修复不外推。 本轮仅静态准备。",
+    "8.0.35": "目标8.0同时支持GBK与utf8mb4及派生物化，跨分支修复不外推。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c544757 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "utf8mb4_0900_ai_ci连接；t1(flowid VARCHAR32)字符集gbk/gbk_bin，插xxx。",
+    "steps": "比较正文派生查询CONCAT(abc,flowid)，子查询SELECT yyy- AS abc,flowid FROM t1有/无LIMIT1。",
+    "oracle": "同一单行应得yyy-xxx，不应仅加LIMIT产生1267字符集错误。",
+    "requirements": [
+      "显式固定连接字符集"
+    ],
+    "target_applicability": "目标8.0同时支持GBK与utf8mb4及派生物化，跨分支修复不外推。"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "report_id": "115951",
+  "title": "ALTER TABLE ... IMPORT TABLESPACE may cause unsafe reads",
+  "task_ids": [
+    "mysql-115951-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\442b6e7d3b52_bug_115951.html",
+  "source_sha256": "442b6e7d3b5262ee8e695f64e378e1335e334ef9e56c20fa4e1f6d586d21e5e0",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nDuring the ALTER TABLE ... IMPORT TABLESPACE operation, the trx_id in dd::index remains unchanged. In contrast, the trx_id of the records in the clustered index of the table is set to the \"import\" transaction ID, while the rollback pointer (rollptr) is assigned a value of 0.\n\nWhen a transaction with REPEATABLE READ isolation level is initiated before the import and later attempts to read the imported table, the unchanged trx_id in dd::index misleads the system into believing that the index was created prior to the transaction. Consequently, when the system attempts to read data, it encounters records created by a newer transaction, which are not visible to the current read view established prior to the import. This situation leads the system to attempt to access a previous version of the record using an invalid rollptr valued at 0. This poses a significant risk and can result in server crashes.\n\nHow to repeat:\nBelow is a case provided in MTR format.\n\n--source include/have_debug.inc\n\nconnect (con1,localhost,root,,);\n\nconnection default;\n\ncreate table t1 (c1 int, c2 int, primary key(c1));\ninsert into t1 values (1, 100);\ninsert into t1 values (2, 200);\n\ncreate table t2 like t1;\ncreate table t3 like t1;\ninsert into t2 select * from t1;\ninsert into t3 select * from t1;\n\nSET SESSION debug='+d,skip_dd_table_access_check';\nSELECT tbl.name as table_name, idx.* FROM mysql.tables tbl JOIN mysql.indexes idx ON tbl.id = idx.table_id WHERE tbl.name = 't2';\n\nconnection con1;\nSET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;\nstart transaction;\nselect * from t1;\n\nconnection default;\nALTER TABLE t2 DISCARD TABLESPACE;\n\nFLUSH TABLES t3 FOR EXPORT;\nLET $MYSQLD_DATADIR = `SELECT @@datadir`;\n--copy_file $MYSQLD_DATADIR/test/t3.ibd $MYSQLTEST_VARDIR/tmp/t2.ibd\n--copy_file $MYSQLD_DATADIR/test/t3.cfg $MYSQLTEST_VARDIR/tmp/t2.cfg\nUNLOCK TABLES;\n--copy_file $MYSQLTEST_VARDIR/tmp/t2.ibd $MYSQLD_DATADIR/test/t2.ibd\n--copy_file $MYSQLTEST_VARDIR/tmp/t2.cfg $MYSQLD_DATADIR/test/t2.cfg\n\nALTER TABLE t2 IMPORT TABLESPACE;\n\n--remove_file $MYSQLTEST_VARDIR/tmp/t2.ibd\n--remove_file $MYSQLTEST_VARDIR/tmp/t2.cfg\n\nSELECT tbl.name as table_name, idx.* FROM mysql.tables tbl JOIN mysql.indexes idx ON tbl.id = idx.table_id WHERE tbl.name = 't2';\n\nconnection con1;\nselect * from t2;\n\nconnection default;\n\ndisconnect con1;\ndrop table t1;\ndrop table t2;\ndrop table t3;\n\nI encountered an assertion failure when executing the query SELECT * FROM t2;. \nThe error message was as follows:\n[ERROR] [MY-013183] [InnoDB] Assertion failure: trx0rec.ic:95:len < ((ulint)srv_page_size)\n\nI examined the trx_id of the clustered index for table t2 both before and after the import operation, and I found that they remained unchanged.\nSELECT tbl.name as table_name, idx.* FROM mysql.tables tbl JOIN mysql.indexes idx ON tbl.id = idx.table_id WHERE tbl.name = 't2';\ntable_name\tid\ttable_id\tname\ttype\talgorithm\tis_algorithm_explicit\tis_visible\tis_generated\thidden\tordinal_position\tcomment\toptions\tse_private_data\ttablespace_id\tengine\tengine_attribute\tsecondary_engine_attribute\nt2\t290\t369\tPRIMARY\tPRIMARY\tBTREE\t0\t1\t0\t0\t1\t\tflags=0;\tid=161;root=4;space_id=7;table_id=1070;trx_id=1563;\t12\tInnoDB\tNULL\tNULL"
+    },
+    {
+      "anchor": "c546581",
+      "text": "Hello!\n\nThank you for the report and test case.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c546972",
+      "text": "After applying the above patch:\n\nmysql> select * from t2;\nERROR 1412 (HY000): Table definition has changed, please retry transaction"
+    },
+    {
+      "anchor": "c558697",
+      "text": "Hello Huahua Xu! \nThank you for offering a patch.\nCan you please sign the OCA (see Contributions tab, https://bugs.mysql.com/bug.php?id=115951&contribs=1 ) so we can use it?"
+    },
+    {
+      "anchor": "c558700",
+      "text": "Posted by developer: Bug status updated to 'Patch pending'"
+    },
+    {
+      "anchor": "c558745",
+      "text": "Posted by developer: Bug status updated to 'Patch approved'"
+    },
+    {
+      "anchor": "c558768",
+      "text": "Hello - turned out the patch had to be substantially larger (to include permanent changes to DD, partitioned tables, and MTR tests) and different than the contribution.\n\nAlso AFAICT the OCA was not yet signed.\n\nFor these two reasons this commit will not be explicitly marked as a contribution.\n\nStill, I'd like to thank you for bringing this issue to our attention, and proposing a sketch!"
+    },
+    {
+      "anchor": "c559789",
+      "text": "Posted by developer: Bug status updated to 'Documenting'"
+    },
+    {
+      "anchor": "c560340",
+      "text": "Posted by developer:\n \nAdded the following note to the MySQL Server 8.4.13, 9.7.4, and 26.10.0 release notes:\n\n        Fixed an issue relating to InnoDB reads using older transaction\n        views after tablespace import."
+    }
+  ]
+}

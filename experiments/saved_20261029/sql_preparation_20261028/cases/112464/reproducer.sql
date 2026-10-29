@@ -1,0 +1,6 @@
+-- MySQL report #112464; source anchors: cmain
+-- Prepared offline; NOT EXECUTED. Run only in a disposable isolated environment.
+CREATE TABLE t0 ( CONSTRAINT cc0 UNIQUE i0 ( c22 ) , c22 INT ) ;
+INSERT INTO t0 VALUES ( 55 ) , ( 86 ) ;
+CREATE VIEW v0 AS SELECT c22 AS c35 , c22 AS c49 , -10 AS c13 FROM t0 ;
+WITH t1 AS ( SELECT NTH_VALUE ( c22 , 7726526410074227196 ) FROM FIRST RESPECT NULLS OVER w0 AS c17 FROM t0 WINDOW w0 AS ( PARTITION BY c22 ) EXCEPT SELECT ( QUOTE ( -26 ) << CONVERT ( t0 . c22 , UNSIGNED ) | RAND ( ) + EXP ( c22 ) ^ RAND ( ) ) + -116 AS c34 FROM t0 WHERE c22 < 31 ORDER BY CHAR_LENGTH ( -4 ) | EXP ( RAND ( ) IN ( 37 , 101 , -25 ) = SOME ( SELECT c22 AS c28 FROM t0 ) ) ) SELECT t0 . c22 AS c14 FROM t1 JOIN t0 ON t0 . c22 = t0 . c22 WHERE t1 . c17 = 60 ;

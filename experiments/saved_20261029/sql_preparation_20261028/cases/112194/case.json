@@ -1,0 +1,90 @@
+{
+  "report_id": "112194",
+  "title": "Incorrect result when using INNER JOIN with SELECT FROM VIEW together with OR co",
+  "source_sha256": "ff044d119079598056aa78f1af79f8ecc11b651bc04f8749987c3b400f01cc28",
+  "source_anchors": [
+    "cmain",
+    "c535766",
+    "c535821",
+    "c535822",
+    "c535885"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "401bcc1326c87bab0bc896d441de254979c95f579ecfea7da7c80688c2e6a6ed"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "827470769ebb44012491d394873fde7a811ef5c6903b4bd7d81729daa8f23b30"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "emp、dept及简单投影视图vw_emp完全来自c535766。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原emp五行、dept六行均保留。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "每种derived_merge设置下三查询都应返回且仅返回(3,emp_C,3000,dept_C)。同谓词加入OR FALSE不得增加dept_A/B。记录开关和计划；评论c535821与c535885对开/关触发方向相反，因此同时保留两配置。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP VIEW IF EXISTS vw_emp;\nDROP TABLE IF EXISTS emp,dept;\nSET SESSION optimizer_switch=@case_optimizer;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "每种derived_merge设置下三查询都应返回且仅返回(3,emp_C,3000,dept_C)。同谓词加入OR FALSE不得增加dept_A/B。记录开关和计划；评论c535821与c535885对开/关触发方向相反，因此同时保留两配置。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "用正文评论中的完整定义和INSERT还原缺失附件内容，不编造数据；去提示符，保留两种开关配置对照。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c535766, c535821, c535822, c535885 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/112194.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [
+    {
+      "point": "哪种derived_merge设置触发的历史叙述互相矛盾。",
+      "evidence": "c535821与c535885给出相反的开/关表格。",
+      "needed": "后续每种开关分别记录实际计划和输出；不据旧描述跳过任一配置。"
+    }
+  ],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

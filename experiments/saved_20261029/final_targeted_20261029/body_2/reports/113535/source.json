@@ -1,0 +1,22 @@
+{
+  "report_id": "113535",
+  "title": "Drop table in background list will remain file exists in directory",
+  "task_ids": [
+    "mysql-113535-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\e1f2846a9124_bug_113535.html",
+  "source_sha256": "e1f2846a91243bd12d011aff79612ba4236eb8e6dc4460f3ea013158e4c9837e",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nAfter code review, I have found it the drop table may left the ibd file remaining in data directory and it will block next create same table name. \n\nHere are the process:\n1. user thread executes \"drop table t1\", the function row_drop_table_for_mysql checks table->n_foreign_key_checks_running > 0 or table->get_ref_count() > 0, the table will insert into background list. \n2. The master thread will loop background list and do row_drop_table_for_mysql again, let's suppose the function succeed this time, which will write DDL Log (log_ddl->write_delete_space_log).\n3. The master thread does't execute post_ddl, which will actually clear the ibd file. So the ibd still exists in the data directory. It will cause the next create same table error. \n\nMy Question is:\n1. row_add_table_to_background_drop_list doesn't add table name to row_drop_list for debug mode, which makes no mtr case for this situation.\n2. The master thread doesn't do post_ddl, the remaining ibd file will be a problem.\n\nHow to repeat:\nrow_add_table_to_background_drop_list doesn't add table name to row_drop_list for debug mode, which makes no mtr case for this situation."
+    },
+    {
+      "anchor": "c539532",
+      "text": "Hi Mr. Zhang,\n\nThank you for your bug report.\n\nHowever, we were not able to repeat it.\n\nWe ran concurrently, in the same time, \"drop table t1\" and in each run one of the threads returned success, while other  threads returned the error that table `t1` does not exist.\n\nWe used `mysqlslap` which runs every command simultaneously in the number of threads. We used 10 (ten) threads. We also tried with 3, 5 and 20 threads and always got a correct behaviour.\n\nCan you provide us with a test case that will prove otherwise ?????\n\nMany thanks in advance."
+    }
+  ]
+}

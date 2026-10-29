@@ -1,0 +1,93 @@
+{
+  "report_id": "115085",
+  "title": "INDEX using CAST (json_column) AS ARRAY drops rows containing empty array",
+  "source_sha256": "665eef5c0fd157c2d4f22c30c0c699aae71c1d823f4eadc10ee70a8181e0fe9b",
+  "source_anchors": [
+    "cmain",
+    "c543556",
+    "c543569",
+    "c544660",
+    "c544661"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33"
+  ],
+  "status": "blocked_source_gap",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "38a13297f0f7eb313f3f7d305fdc68ae47af35b58cfdb786716915319b1dd803"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "11ef08df906b4498592cb07722a532380a13936124b87271b216a9ca5c1a39d6"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "blocked",
+      "detail": "原t1定义；将多值索引命名functional_index使正文USE INDEX指向明确定义。"
+    },
+    "data": {
+      "status": "blocked",
+      "detail": "只使用cmain明确的123456行和c543556补充的99999行；不编造10000行背景或NULL对照。"
+    },
+    "sequence": {
+      "status": "blocked",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "仅已知两行的最小草稿中，若实际使用相应访问路径，两个查询应返回id123456与99999各一次；空数组行不得丢失、多值行不得重复。原10000行版本的LIMIT10预期还依赖缺失背景数据，不能拿最小草稿等同完整原例。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t1;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "仅已知两行的最小草稿中，若实际使用相应访问路径，两个查询应返回id123456与99999各一次；空数组行不得丢失、多值行不得重复。原10000行版本的LIMIT10预期还依赖缺失背景数据，不能拿最小草稿等同完整原例。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "保存显式索引名与实际EXPLAIN",
+    "最小数据来自已读原文，背景大数据未下载",
+    "未来必须检查EXPLAIN，未走目标索引只能记未触发。"
+  ],
+  "transformations": [
+    "从现有原文转写最小已知输入，显式命名索引；这是不完整原始数据下的草稿，不是原10000行完整回放。"
+  ],
+  "blockers": [
+    "原报告要求10000行gist数据，本地冻结正文只含两行。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标版支持JSON多值索引；仅32/33补审，未证明实际受影响。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标版支持JSON多值索引；仅32/33补审，未证明实际受影响。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c543556, c543569, c544660, c544661 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/115085.json。",
+  "preparation_assessment": {
+    "sql_completeness": "partial",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [
+    {
+      "point": "原报告要求10000行gist数据，本地冻结正文只含两行。",
+      "evidence": "cmain的gist链接及Load up the table with 10000 rows；c543556补充空数组行。",
+      "needed": "本地已存完整数据附件或后续取得的带SHA版本；当前小数据实际计划不保证触发。"
+    }
+  ],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

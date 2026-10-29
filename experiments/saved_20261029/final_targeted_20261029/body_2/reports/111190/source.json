@@ -1,0 +1,40 @@
+{
+  "report_id": "111190",
+  "title": "Build fails with LANG=ja_JP.UTF-8",
+  "task_ids": [
+    "mysql-111190-8.0.32",
+    "mysql-111190-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\798d304323b7_bug_111190.html",
+  "source_sha256": "798d304323b7205eef2da00759cc3425408461a7cb915b173858aa5aa4c8616e",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen building MySQL, if the value of the environment variable LANG is not C, the build fails because the readelf result cannot be grepped.\n\nThe problem with this is related to missing the string \"Build Id:\" when getting the build-id from readelf, causing the next build-id check to fail.\n\nFirst build failed commit: 321f106987a3fd62035057c8b544e7a874bc76d3\n\nIf MySQL is built with LANG=ja_JP.UTF-8, the readelf results are:\n$ cd mysql-server/build/runtime_output_directory && /usr/bin/readelf -n ./build_id_test\nDisplaying notes found in: .note.gnu.property\n  所有者            データサイズ\tDescription\n  GNU                  0x00000020\tNT_GNU_PROPERTY_TYPE_0\n      Properties: x86 feature: IBT, SHSTK\n\tx86 ISA needed: x86-64-baseline\n\nDisplaying notes found in: .note.gnu.build-id\n  所有者            データサイズ\tDescription\n  GNU                  0x00000014\tNT_GNU_BUILD_ID (一意なビルドID ビット列)\n    ビルドID: 55fc665151e52fbbddb526fe78e4f23d5d7c6e3c\n\nDisplaying notes found in: .note.ABI-tag\n  所有者            データサイズ\tDescription\n  GNU                  0x00000010\tNT_GNU_ABI_TAG (ABI バージョンタグ)\n    OS: Linux, ABI: 3.2.0\n\nHow to repeat:\nBuild MySQL with locale other than English.\nIn my environment, the build failed when the locale was set to \"ja_JP.UTF-8\".\n\nSuggested fix:\nA successful build should result in the following output:\n$ cd mysql-server/build/runtime_output_directory && /usr/bin/readelf -n ./build_id_test \nDisplaying notes found in: .note.gnu.property\n  Owner                Data size \tDescription\n  GNU                  0x00000020\tNT_GNU_PROPERTY_TYPE_0\n      Properties: x86 feature: IBT, SHSTK\n\tx86 ISA needed: x86-64-baseline\n\nDisplaying notes found in: .note.gnu.build-id\n  Owner                Data size \tDescription\n  GNU                  0x00000014\tNT_GNU_BUILD_ID (unique build ID bitstring)\n    Build ID: 55fc665151e52fbbddb526fe78e4f23d5d7c6e3c\n\nDisplaying notes found in: .note.ABI-tag\n  Owner                Data size \tDescription\n  GNU                  0x00000010\tNT_GNU_ABI_TAG (ABI version tag)\n    OS: Linux, ABI: 3.2.0\n\nThe environment variable LANG must be fixed at build time."
+    },
+    {
+      "anchor": "c532971",
+      "text": "Fix Synopsis"
+    },
+    {
+      "anchor": "c532982",
+      "text": "Hello Kento Takeuchi,\n\nThank you very much for your report and patch contribution, we appreciate it!\nIn order for us to continue the process of reviewing your contribution to MySQL, please send us a signed copy of the Oracle Contributor Agreement (OCA) as outlined in https://oca.opensource.oracle.com\n\nSigning an OCA needs to be done only once and it's valid for all other Oracle governed Open Source projects as well.\n\nGetting a signed/approved OCA on file will help us facilitate your contribution - this one, and others in the future.  \n\nPlease let me know, if you have any questions.\n\nThank you for your interest in MySQL.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c532984",
+      "text": "Hi MySQL Verification Team.\n\nI signed OCA in https://oca.opensource.oracle.com, and it was approved.\nPlease confirm my signed OCA.\n\nThanks."
+    },
+    {
+      "anchor": "c533059",
+      "text": "Thank you, Kento Takeuchi San.\nI suggest your to re-upload your patch using the \"Contributions\" tab of this bug page otherwise we may not be able to use. \n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c533889",
+      "text": "Posted by developer:\n \nFixed as of the upcoming MySQL Server 8.0.34 and 8.1.0 releases, and here's the proposed changelog entry from the documentation team:\n\nMySQL now sets LANG=C in the environment when executing readelf to avoid\nproblems with non-ascii output.\n\nOur thanks to Kento Takeuchi for the contribution.\n\nThank you for the bug report."
+    }
+  ]
+}

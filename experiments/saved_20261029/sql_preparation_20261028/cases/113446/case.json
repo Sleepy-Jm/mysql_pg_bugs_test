@@ -1,0 +1,73 @@
+{
+  "report_id": "113446",
+  "title": "Query with DISTINCT and ORDER BY on BIT data type returns wrong result",
+  "source_sha256": "a8c0da6e9c7d10020866f092a40d8090a0ef7fdbdbb3c3929a964286a583408e",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "ce263346e687fafd2dbaa6abf6817188caae879eed22863054cb13ec371f3c4e"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "44614eb3640d359e47c191667c36b42d8a4b892ce7ee2248e194e9526d6b7857"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1 BIT1/INT/INT"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原两行"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "原材料仅显示十六进制/十进制差异，须取得协议字段类型/原始值并确认 DISTINCT 的类型契约才能定 bug"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "数值应始终 (0,23),(1,293)；协议类型是否必须保持 BIT 需核对",
+    "failure": "只有 0x00/0 显示差异不足以判错",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "采集器保留协议 field type、flags 与原始字节"
+  ],
+  "transformations": [
+    "增加 HEX/数值投影与 (a,b) 索引对照"
+  ],
+  "blockers": [
+    "原材料仅显示十六进制/十进制差异，须取得协议字段类型/原始值并确认 DISTINCT 的类型契约才能定 bug"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

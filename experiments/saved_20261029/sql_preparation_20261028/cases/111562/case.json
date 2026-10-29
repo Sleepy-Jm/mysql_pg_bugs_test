@@ -1,0 +1,70 @@
+{
+  "report_id": "111562",
+  "title": "nth_value window function assertion error",
+  "source_sha256": "7d26c9a2d00b72bdd557b51c586ccc20ff3b25d15f031379436be0f2d57ae7e3",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "9e66b42ecd86867a1c1458d07abdaab4f18877683889b6283c4ac43ed170bbb2"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "23bbad48662846d723e5a587b601b6c2b5f14b75c949d56cd841d181ed3952ba"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0 TINYINT UNSIGNED+BIT"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原 12 行（含 NULL 与 _binary \u0000）"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "原逆序 FOLLOWING 帧应返回 NULL 或受控窗口语义错误；异常：window frame buffer 断言"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "原逆序 FOLLOWING 帧应返回 NULL 或受控窗口语义错误",
+    "failure": "window frame buffer 断言",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "debug构建",
+    "debug；NO_BACKSLASH_ESCAPES 关闭以保持 \u0000"
+  ],
+  "transformations": [
+    "原完整 INSERT 和 NTH_VALUE 帧原样保存"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标有窗口函数与该帧语法；8.3修复仅作线索。 本轮尚未执行。",
+    "8.0.34": "目标有窗口函数与该帧语法；8.3修复仅作线索。 本轮尚未执行。",
+    "8.0.35": "目标有窗口函数与该帧语法；8.3修复仅作线索。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

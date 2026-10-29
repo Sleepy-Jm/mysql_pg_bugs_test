@@ -1,0 +1,70 @@
+{
+  "report_id": "113649",
+  "title": "the result of format function truncated when using cursor",
+  "source_sha256": "4da57b16c9c9cfd25f38f925656438b380b87d5b1a8f79307f098142d3766b71",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "c902e36dce6c26741a63f23d9eee1acdc2ae6ba57db137db8baa7e8bcc7e040b"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "76a19abefbab7a6165184bda2ffa93870c1c7cf55ef5a3c75fb7dccb6b4b132d"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "demo OUT VARCHAR1024 +原cursor/handler"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "单个FORMAT常量"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "@hello 与直接 FORMAT 的字节和长度相等；直接值长度须实测，VARCHAR(1024) 足够容纳原结果；异常：游标结果截成约60字节或same_bytes=0"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "@hello 与直接 FORMAT 的字节和长度相等；直接值长度须实测，VARCHAR(1024) 足够容纳原结果",
+    "failure": "游标结果截成约60字节或same_bytes=0",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "存储过程/游标",
+    "同一字符集"
+  ],
+  "transformations": [
+    "补标准 DELIMITER 包装；加长度/二进制等值检查；不手写浮点展开字符串"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持相同表达式和游标物化，待验证。 本轮尚未执行。",
+    "8.0.33": "目标8.0支持相同表达式和游标物化，待验证。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持相同表达式和游标物化，待验证。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

@@ -1,0 +1,88 @@
+{
+  "report_id": "111383",
+  "title": "Scale assertion error",
+  "source_sha256": "922f108767384c41ebb2724b6792abf0b74dacbb49a18b3c1323fb4bd55c3682",
+  "source_anchors": [
+    "cmain",
+    "c533477"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "4da33da93a23298a346905fd56cf50208967a40ae9da0482a41d0b96e6524ca2"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "2ec817d2fabd0c97f13cfa9d5f003471c4a4cea512a49ceba4a6e31d20c56109"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 YEAR)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "空表；无初始化数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "空YEAR表的AVG(NULLIF(c0,c0))应返回一行NULL，不得decimal precision/scale断言退出。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t0;"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "空YEAR表的AVG(NULLIF(c0,c0))应返回一行NULL，不得decimal precision/scale断言退出。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "WITH_DEBUG；必要时 ASan/UBSan"
+  ],
+  "transformations": [
+    "保留源文完整两条SQL，补清理。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "YEAR、NULLIF 和 AVG 在所有目标版本可用，实际断言范围待执行确认。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "YEAR、NULLIF 和 AVG 在所有目标版本可用，实际断言范围待执行确认。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "YEAR、NULLIF 和 AVG 在所有目标版本可用，实际断言范围待执行确认。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c533477 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/111383.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "原WITH_DEBUG=1/ASan/UBSan。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

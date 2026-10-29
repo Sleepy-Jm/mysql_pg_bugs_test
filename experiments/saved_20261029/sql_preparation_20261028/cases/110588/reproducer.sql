@@ -1,0 +1,5 @@
+-- Report #110588; source anchors: cmain, c531378
+-- Static preparation only; not executed. See case.json before any future isolated run.
+CREATE TABLE t1 (c0 INT);
+CREATE TABLE t2 (c1 INT);
+SELECT DISTINCT x.c0 FROM (SELECT t2.c1, TIMESTAMP '1973-4-11 10:8:29' FROM t2) x(c0,c1) RIGHT JOIN t1 ON x.c1 = x.c0 GROUP BY x.c1;

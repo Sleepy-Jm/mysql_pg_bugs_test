@@ -1,0 +1,84 @@
+{
+  "report_id": "119945",
+  "title": "Inconsistent result set on repeated execution of NATURAL JOIN with expression index and KEY partitioning",
+  "source_sha256": "1fd44c1421403a99ecd8ae12b204468ef78ab4fbc636fec85dfcabef9f104791",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d6ae2a0bf8e14f7d41829b6687217c33cc7c6fe43aa02d49a679d38f2138970a"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "d604f531b1ae6600c495dfa663db300017c4af8283c45755faccd21b380b39b0"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原t3虚拟/存储生成列、函数索引i1/i4和KEY(c3,c1)16分区。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原五行二进制、日期、极大DOUBLE全部保留；sql_mode为空时须核对实际装载warnings。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "同一确定性NATURAL自连接重复执行以及删除i4后结果多重集应一致。原五行中只有两行所有连接字段非NULL，应匹配c1=-8和6两行；含任意NULL字段的行不能按NULL-safe相等计算。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t3;\nSET SESSION sql_mode=@case_mode;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "同一确定性NATURAL自连接重复执行以及删除i4后结果多重集应一致。原五行中只有两行所有连接字段非NULL，应匹配c1=-8和6两行；含任意NULL字段的行不能按NULL-safe相等计算。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "固定会话时区、精确字符集、确认5行均装载且无外部写入。"
+  ],
+  "transformations": [
+    "取原完整DDL/INSERT与首查询，移去结果表；按描述显式补第二次查询及DROP INDEX i4后两次控制。",
+    "先保存会话sql_mode，清理恢复；不改变NATURAL JOIN列集。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/119945.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

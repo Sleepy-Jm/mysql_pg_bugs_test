@@ -1,0 +1,70 @@
+{
+  "report_id": "113049",
+  "title": "MTR test json.array_index fails with a result difference",
+  "task_ids": [
+    "mysql-113049-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\80385cd6519c_bug_113049.html",
+  "source_sha256": "80385cd6519c85cfdd4196d89fff6ad83dbc9aac25155062dcd0c91a1eca375c",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\n$ mtr json.array_index --retry-failure=0\n...\n[ 50%] json.array_index                          [ fail ]\n        Test ended at 2023-11-10 17:26:12\n\nCURRENT_TEST: json.array_index\nWARNING: MYSQL_OPT_RECONNECT is deprecated and will be removed in a future version.\nWARNING: MYSQL_OPT_RECONNECT is deprecated and will be removed in a future version.\n--- /Users/laurynas/vilniusdb/mysql-8.0.35/mysql-test/suite/json/r/array_index.result\t2023-10-26 09:13:46\n+++ /Users/laurynas/vilniusdb/mysql-8.0.35/_build-release/mysql-test/var/log/array_index.reject\t2023-11-10 18:26:12\n@@ -1622,11 +1622,11 @@\n where json_overlaps(f1->\"$[*]\", \"[4,3,7]\") order by id;\n f1\tid\n [0, 5, 7]\t0\n-[1, 3]\t1\n [3, 3, 4, 4, 7]\t3\n [5, 6, 7]\t5\n-[8, 4, 3, 5]\t8\n+[9, 2, 7]\t9\n [9, 2, 7]\t9\n+[9, 2, 7]\t9\n explain select * from t1 force index(i1)\n where json_overlaps(f1->\"$[*]\", \"[4,3,7]\") order by id;\n id\tselect_type\ttable\tpartitions\ttype\tpossible_keys\tkey\tkey_len\tref\trows\tfiltered\tExtra\n\nmysqltest: Result content mismatch\n\nHow to repeat:\nSee above"
+    },
+    {
+      "anchor": "c537970",
+      "text": "Hello Laurynas,\n\nThank you for the report and feedback!\nI quickly tried using https://cdn.mysql.com//Downloads/MySQL-8.0/mysql-8.0.35-macos13-arm64.tar but not seeing any issues on MacOS(Ventura 13.5.1) and even on OL7(generic binary tarball build) but not observed any issues which is seen in your report. Is there anything I'm missing here? Thank you.\n\n--\n./mtr json.array_index --retry-failure=0\nLogging: ./mtr  json.array_index --retry-failure=0\nMySQL Version 8.0.35\nChecking supported features\nUsing 'all' suites\nCollecting tests\nChecking leftover processes\nRemoving old var directory\nCreating var directory '/Users/umshastr/Downloads/mysql-8.0.35/mysql-test/var'\nInstalling system database\nUsing parallel: 1\n\n==============================================================================\n                  TEST NAME                       RESULT  TIME (ms) COMMENT\n------------------------------------------------------------------------------\n[ 50%] json.array_index                          [ pass ]   2074\n[100%] shutdown_report                           [ pass ]       \n------------------------------------------------------------------------------\nThe servers were restarted 0 times\nThe servers were reinitialized 1 times\nSpent 2.074 of 7 seconds executing testcases\n\nCompleted: All 2 tests were successful.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c537985",
+      "text": "When you test the prebuilt binaries, are they Intel or Apple Silicon or Intel on Apple Silicon through Rosetta 2?\n\nI build from source code using XCode 15.0.1 command line tools. I have tried different CMake option combinations, and they all fail the same:\n\n1) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Debug -DWITH_DEBUG=ON -DMYSQL_MAINTAINER_MODE=ON -DDOWNLOAD_BOOST=ON -DWITH_BOOST=~/vilniusdb/mysql-boost/ -DWITH_SYSTEM_LIBS=ON -DFORCE_COLORED_OUTPUT=ON\n2) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_CONFIG=mysql_release -DCMAKE_BUILD_TYPE=Release -DMYSQL_MAINTAINER_MODE=ON -DDOWNLOAD_BOOST=ON -DWITH_BOOST=~/vilniusdb/mysql-boost/ -DWITH_SYSTEM_LIBS=ON -DFORCE_COLORED_OUTPUT=ON\n3) Like 1) but with -DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON\n4) -DCMAKE_BUILD_TYPE=Debug -DWITH_DEBUG=ON -DWITH_BOOST=~/vilniusdb/mysql-boost\n5) -DCMAKE_BUILD_TYPE=Debug -DWITH_BOOST=~/vilniusdb/mysql-boost\n6) -DWITH_BOOST=~/vilniusdb/mysql-boost\n7) -DBUILD_CONFIG=mysql_release -DWITH_BOOST=~/vilniusdb/mysql-boost"
+    },
+    {
+      "anchor": "c538092",
+      "text": "Thank you, Laurynas.\nVerified as described.\n\nSincerely,\nUmesh"
+    },
+    {
+      "anchor": "c538106",
+      "text": "Thank you for verifying. But why the severity of this and sibling bugs has been changed to S7 (Test Cases?) This looks like a silent server miscompilation, I wast thinking S2 at least"
+    },
+    {
+      "anchor": "c538109",
+      "text": "Thank you for your feedback.\nUsually, during triage this would be corrected but for now changing here.\n\nSincerely,\nUmesh"
+    },
+    {
+      "anchor": "c538144",
+      "text": "Tested a few different compilers.\nFailing: XCode 15.0.0, LLVM 15, 16, 17 from Homebrew\nPassing: LLVM 14 from Homebrew."
+    },
+    {
+      "anchor": "c538483",
+      "text": "Exactly the same on 8.2.0, with exactly the same failing/working compiler versions"
+    },
+    {
+      "anchor": "c538484",
+      "text": "Exactly the same on 8.2.0, with exactly the same failing/working compiler versions"
+    },
+    {
+      "anchor": "c538514",
+      "text": "Posted by developer:\n \nDuplicate of\n    Bug#36017204 MTR tests for SELECT fail with ICP, MRR, possibly other flags\n    \n    Recent versions of Clang have changed their implementation of\n    std::sort(), and our own 'varlen_sort()' function returns wrong\n    results.\n    \n    The result is that some of our .mtr tests using the MRR strategy are\n    failing."
+    },
+    {
+      "anchor": "c539756",
+      "text": "As I wrote on bug 113046, whose status I cannot change, the fix is not test-only and the bugs are too serious not to have a release notes entry."
+    },
+    {
+      "anchor": "c539760",
+      "text": "Posted by developer:\n \nyes, and a fix is coming. It affects recent versions of Visual Studio as well."
+    },
+    {
+      "anchor": "c539761",
+      "text": "I see, thank you Tor!"
+    },
+    {
+      "anchor": "c539762",
+      "text": "I see, thank you Tor!"
+    }
+  ]
+}

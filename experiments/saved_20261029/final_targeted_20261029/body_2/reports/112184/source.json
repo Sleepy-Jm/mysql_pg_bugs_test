@@ -1,0 +1,34 @@
+{
+  "report_id": "112184",
+  "title": "cannot create user if they are listed as creator in views or routines",
+  "task_ids": [
+    "mysql-112184-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\961f847f466b_bug_112184.html",
+  "source_sha256": "961f847f466bdd63adaf7412e50a011bd5cd3f1b67ea7efb301002933e0e07ac",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nCREATE USER IF NOT EXISTS `eqemu`@`%`;\nERROR 4006 (HY000): Operation CREATE USER failed for 'eqemu'@'%' as it is referenced as a definer account in a view.\n\nafter changing creator in the offending view ......\n\nERROR 4006 (HY000): Operation CREATE USER failed for 'eqemu'@'%' as it is referenced as a definer account in a stored routine.\n\nthis seems to be the same issue as Bug #107139 with the exception that I am running this as root with all grants and privileges so do not see a way to give root any more authority then it has. \n\nI am not even sure what the point of this check ( on user creation ) is anyway ? The user exists or it does not ? what does it matter if they are listed as a definer from a security or functional standpoint ? \n\nHow to repeat:\nin my case i am trying to load a dump from another computer into a fresh mysql instance the dump was created with mysqlsh utilities both instances are 8.34\n\n util.loadDump(\"/tmp/dump/\", {dryRun :\"false\"})\n\nalso \n\ncreate user from terminal as root fails the same as the upload dump\nmysql> CREATE USER IF NOT EXISTS `eqemu`@`%`;\nERROR 4006 (HY000): Operation CREATE USER failed for 'eqemu'@'%' as it is referenced as a definer account in a view.\n\nhere are the grants for root on this system :\n\nmysql> show grants\n    -> ;\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Grants for root@%                                                                                                                                                                                                                                                                                                                                                                                |\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE, CREATE ROLE, DROP ROLE ON *.* TO `root`@`%` WITH GRANT OPTION |\n| GRANT ALL PRIVILEGES ON `*`.* TO `root`@`%` WITH GRANT OPTION                                                                                                                                                                                                                                                                                                                                    |\n| GRANT ALL PRIVILEGES ON `%`.* TO `root`@`%` WITH GRANT OPTION\n\nSuggested fix:\nremove this check on definers in user creation unless there is a good reason for it ? \n\nwhy root can not do this I do not know , is there an obscure server variable that needs switched to allow this if there are definers defined ?"
+    },
+    {
+      "anchor": "c535661",
+      "text": "sorry,  used creator instead of DEFINER in a couple of instances"
+    },
+    {
+      "anchor": "c535675",
+      "text": "Hello!\n\nThank you for the report and feedback.\nIMHO this is duplicate of Bug #107139.\nHave you tried the suggestion from Bug #107139? GRANT SET_USER_ID ON *.* TO `root`@`%`? Also see - https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_set-user-id\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c535706",
+      "text": "yes i did all that and even granted super to a couple of accounts and root (didn't help) ,I  ended up just removing the offending user names . Will be using regular old mysqldump to csv  next time, had nothing but problems and OMG slow trying to load from the mysql shell utility this one problem turned out to be the least of them.\n\nI  don't report bugs until i waste a few hours searching and working for an answer from people smarter then me.. \n\nlike the \"regex binary\" problem I have with eqemu .  works in 8.0.21 but not 8.0.34 or from what i can figure out 8.0.22 so after hours setting up my server .. should i regress os to dedian whatever to get mysql 8.21 ( spend days back-porting dependencies to install it on deb12 ? .. another change that has drastic effects for some of my projects i don't understand the reason for ...\n\nsorry beeching .. last couple of updates have caused problems and the changes don't really make sense to me ( or the reasons are pretty lame in the overall scheme of things ... haha )"
+    },
+    {
+      "anchor": "c536085",
+      "text": "Hi Mr. Dog,\n\nPlease, follow the developments in the original bug report, which is stated above."
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "report_id": "112557",
+  "source_sha256": "1c35756129007f140630b7436b6c810e7fa8d26f43ce553a7289f68cb5e33e2e",
+  "tasks": [
+    {
+      "task_id": "mysql-112557-8.0.35",
+      "report_id": "112557",
+      "title": "Inconsistent results of SELECT statement with EXISTS clause",
+      "target_version": "8.0.35",
+      "adjacent_comparison_version": "8.0.34",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=112557",
+      "source_snapshot_from_plan_root": "原文快照/bug_112557.html",
+      "source_anchors": [
+        "cmain"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain"
+        ],
+        "reason": "已有可操作场景、输入与可观察对照；纳入探索队列不等于确认目标版本受影响。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "原t1两行(20,30000,59,NULL),(59,69000,NULL,NULL)。",
+        "steps": "执行原FIRST_VALUE窗口+CASE相关EXISTS查询，分别TRUE AND EXISTS与EXISTS。",
+        "oracle": "移除恒真AND不应改变NULL/0输出，9.1修复不推8.0。",
+        "requirements": [
+          "独立测试实例",
+          "保存完整SQL、配置、输出与错误日志"
+        ],
+        "target_applicability": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。"
+      },
+      "source_environment": {
+        "OS": "Any",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server: DML"
+      },
+      "explicit_requirements": [
+        "独立测试实例",
+        "保存完整SQL、配置、输出与错误日志"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    }
+  ],
+  "source": {
+    "id": "112557",
+    "title": "Inconsistent results of SELECT statement with EXISTS clause",
+    "header": {
+      "Bug #112557": "Inconsistent results of SELECT statement with EXISTS clause",
+      "Submitted": "28 Sep 2023 7:40",
+      "Modified": "5 Aug 2024 16:17",
+      "Reporter": "Zuming Jiang",
+      "Email Updates": "",
+      "Status": "Closed",
+      "Impact on me": "None",
+      "Category": "MySQL Server: DML",
+      "Severity": "S2 (Serious)",
+      "Version": "8.0.27,8.0.34",
+      "OS": "Any",
+      "Assigned to": "",
+      "CPU Architecture": "Any",
+      "Tags": "regression"
+    },
+    "comments": [
+      {
+        "anchor": "cmain",
+        "date": "28 Sep 2023 7:40",
+        "author": "Zuming Jiang",
+        "text": "Description:\nDear MySQL developers,\n\nI used my fuzzer to test MySQL and found a logic bug that made the MySQL server output inconsistent results.\n\nHow to repeat:\n*** Set up the database ***\n\ncreate table t1 (vkey int, pkey int, c5 int, c7 varchar(200));\ninsert into t1 values (20, 30000, 59, null);\ninsert into t1 values (59, 69000, null, null);\n\n*** Test Case 1 ***\n\nselect  \n  ref_0.c5 >= (case when (true and exists (\n        select  \n              ref_2.pkey as c_3\n            from \n              t1 as ref_2\n            where ref_2.vkey between ref_0.c5 and ref_0.c5\n        )) then null else (case when (FIRST_VALUE('') over (partition by ref_0.c7 order by ref_0.vkey asc, ref_0.pkey desc) >= null) then null else ref_0.pkey end\n        ) end\n      ) as c_6\nfrom \n  t1 as ref_0;\n\nI simplified \"true and exists(...)\" to \"exists(...)\", and got Test Case 2:\n\n*** Test Case 2 ***\n\nselect  \n  ref_0.c5 >= (case when (exists (\n        select  \n              ref_2.pkey as c_3\n            from \n              t1 as ref_2\n            where ref_2.vkey between ref_0.c5 and ref_0.c5\n        )) then null else (case when (FIRST_VALUE('') over (partition by ref_0.c7 order by ref_0.vkey asc, ref_0.pkey desc) >= null) then null else ref_0.pkey end\n        ) end\n      ) as c_6\nfrom \n  t1 as ref_0;\n\n*** Expected results ***\n\nTest Case 1 and Test Case 2 return the same results.\n\n*** Actual results ***\n\nTest Case 1 and Test Case 2 return inconsistent results.\n\nTest Case 1 return:\n\n+------+\n| c_6  |\n+------+\n| NULL |\n| NULL |\n+------+\n2 rows in set (0.00 sec)\n\nTest Case 2 return:\n\n+------+\n| c_6  |\n+------+\n|    0 |\n| NULL |\n+------+\n2 rows in set (0.00 sec)\n\n*** Note ***\n\nThe bug can be reproduced in version 8.0.27 - 8.0.34. In version 8.0.0 - 8.0.26, both Test Case 1 and 2 return the same results:\n\n+------+\n| c_6  |\n+------+\n| NULL |\n| NULL |\n+------+\n2 rows in set (0.00 sec)"
+      },
+      {
+        "anchor": "c536506",
+        "date": "28 Sep 2023 9:34",
+        "author": "MySQL Verification Team",
+        "text": "Hello Zuming Jiang,\n\nThank you for the report and test case.\n\nregards,\nUmesh"
+      },
+      {
+        "anchor": "c536507",
+        "date": "28 Sep 2023 9:37",
+        "author": "MySQL Verification Team",
+        "text": "Looks like regression as 8.0.11 not affected\n\n./mtr --nocheck-testcases bug112557\nLogging: ./mtr  --nocheck-testcases bug112557\n2023-09-28T09:37:11.294492Z 0 [System] [MY-010116] [Server] /export/home/tmp/ushastry/mysql-8.0.11/bin/mysqld (mysqld 8.0.11) starting as process 9399\nMySQL Version 8.0.11\nChecking supported features...\n - SSL connections supported\nCollecting tests...\nChecking leftover processes...\nRemoving old var directory...\nCreating var directory '/export/home/tmp/ushastry/mysql-8.0.11/mysql-test/var'...\nInstalling system database...\nUsing parallel: 1\n\n==============================================================================\n\nTEST                                      RESULT   TIME (ms) or COMMENT\n--------------------------------------------------------------------------\n\nworker[1] Using MTR_BUILD_THREAD 300, with reserved ports 13000..13009\ncreate table t1 (vkey int, pkey int, c5 int, c7 varchar(200));\ninsert into t1 values (20, 30000, 59, null);\ninsert into t1 values (59, 69000, null, null);\nselect\nref_0.c5 >= (case when (true and exists (\nselect\nref_2.pkey as c_3\nfrom\nt1 as ref_2\nwhere ref_2.vkey between ref_0.c5 and ref_0.c5\n)) then null else (case when (FIRST_VALUE('') over (partition by ref_0.c7 order by ref_0.vkey asc, ref_0.pkey desc) >= null) then null else ref_0.pkey end\n) end\n) as c_6\nfrom\nt1 as ref_0;\nc_6\nNULL\nNULL\nselect\nref_0.c5 >= (case when (exists (\nselect\nref_2.pkey as c_3\nfrom\nt1 as ref_2\nwhere ref_2.vkey between ref_0.c5 and ref_0.c5\n)) then null else (case when (FIRST_VALUE('') over (partition by ref_0.c7 order by ref_0.vkey asc, ref_0.pkey desc) >= null) then null else ref_0.pkey end\n) end\n) as c_6\nfrom\nt1 as ref_0;\nc_6\nNULL\nNULL\nmain.bug112557                           [ pass ]     44\n--------------------------------------------------------------------------"
+      },
+      {
+        "anchor": "c537445",
+        "date": "31 Oct 2023 9:56",
+        "author": "huahua xu",
+        "text": "Hi All,\n\nFor Test Case 2, I tracked its execution in version 8.0.30: \n\nstep 1: buffer all the rows in the same window.  \n\n  copy_funcs(m_temp_table_param, thd(), CFT_HAS_NO_WF)\n  \tparam->items_to_copy = 0x00000250d04cde98 {...}\n  \tinnodb(ref0.*) --> temptable(<temporary>.*)       // copy the fields from the input table's buffer to the out table's fields\n  \tsave_in_field_no_error_check                      // execute the non-window functions which do not rely on window functions, and copy the result into the out table's fields   \n  \n  buffer_windowing_record                             // buffer the current row to the frame buffer\n  \tbool copy_fields(Temp_table_param *param, const THD *thd, bool reverse_copy)\n  \t\tparam->copy_fields = { size=5 }  \n  \t\tparam\t0x00000250d066bd60 {copy_fields={ size=5 } group_buff=0x0000000000000000 <NULL> items_to_copy=0x00000250d04ceea0 {...} ...}\tTemp_table_param *\n  \t\ttemptable(<temporary>.*) --> temptable(<>.*)    // copy the fields from the out table's buffer to the window frame buffer\n    buffer_record_somewhere\n      t->file->ha_write_row(record)                   // save the window frame buffer to the frame buffer temporary table \n\nstep 2: process the buffered rows by evaluating/aggregating the window functions defined over this window on the current frame.  \n\n  process_buffered_windowing_record\n  \tbring_back_frame_row\n  \t\tread_frame_buffer_row\n  \t\t\tt->file->ha_rnd_pos                          // read row from the frame buffer temporary table\n  \t\tbool copy_fields(Temp_table_param *param, const THD *thd, bool reverse_copy)\n  \t\t\tparam->copy_fields = { size=5 } \n  \t\t\tparam\t0x00000250d066bd60 {copy_fields={ size=5 } group_buff=0x0000000000000000 <NULL> items_to_copy=0x00000250d04ceea0 {...} ...}\tTemp_table_param *\n  \t\t\ttemptable(<>.*) --> temptable(<temporary>.*) // copy the fields from the window frame buffer to the out table's buffer\n  \tcopy_funcs(param, thd, CFT_WF_NON_FRAMING)       // execute the non framing window function, and copy the result into the out table's fields  \n  \tcopy_funcs(param, thd, CFT_WF_FRAMING)           // execute the framing window function, and copy the result into the out table's fields (the function Item_first_last_value `FIRST_VALUE('') over (partition by ref_0.c7 order by ref_0.vkey asc, ref_0.pkey desc)` would be executed) \n  \n\t\n\nstep 3: execute all non-wf functions, and prepare the output row.   \n\n  bring_back_frame_row\n  \tread_frame_buffer_row\n  \t\tt->file->ha_rnd_pos                            // read row from the frame buffer temporary table\n  \tbool copy_fields(Temp_table_param *param, const THD *thd, bool reverse_copy)\n  \t\tparam->copy_fields = { size=5 } \n  \t\tparam\t0x00000250d066bd60 {copy_fields={ size=5 } group_buff=0x0000000000000000 <NULL> items_to_copy=0x00000250d04ceea0 {...} ...}\tTemp_table_param *\n  \t\ttemptable(<>.*) --> temptable(<temporary>.*)   // copy the fields from the window frame buffer to the out table's buffer\n  copy_funcs(param, thd, CFT_HAS_WF)\t\t\t           // execute the non-wf functions, and copy the result into the out table's fields (the function Item_func_ge `ref_0.c5 >= (case when ... )` would be executed) \t\t\n\nObviously, the result could be incorrect when the function Item_func_ge `ref_0.c5 >= (case when ... )` is executed, because the values of its referenced fields comes from the last record in the input table for each window."
+      },
+      {
+        "anchor": "c537488",
+        "date": "31 Oct 2023 15:12",
+        "author": "Dag Wanvik",
+        "text": "Posted by developer:\n \nBisect points to this commit:\n\n16054f827f57ffbd2e044141d5e5f0c1aaeb35af is the first bad commit\ncommit 16054f827f57ffbd2e044141d5e5f0c1aaeb35af\nAuthor: Steinar H. Gunderson <steinar.gunderson@oracle.com>\nDate:   Thu Apr 15 22:52:53 2021 +0200\n\n    Bug #32644631: PRELIMINARY FIXES FOR WL #14419 [wf framebuffer, noclose]\n    Bug #32802301: REGRESSION: TYPE_CONVERSION_STATUS FIELD_VARSTRING::STORE: ASSERTION `!TABLE || (!TABLE->WRITE_SET || BITMAP_IS_SET(TABLE->WRITE_SET, FIELD_INDEX()))' FAILED."
+      },
+      {
+        "anchor": "c537535",
+        "date": "1 Nov 2023 13:12",
+        "author": "huahua xu",
+        "text": "Hi Dag Wanvik,\n\nI agree with your opinion. For Test Case 2, I also tracked its execution in version 8.0.19: \n\n```\n\nstep 1: buffer all the rows in the same window.  \n\ncopy_fields_and_funcs(m_temp_table_param, thd(), CFT_HAS_NO_WF)     \n\tparam\t0x000002374c66e448 {grouped_expressions={ size=0 } copy_fields={ size=5 } group_buff=0x0000000000000000 <NULL> ...}\tTemp_table_param *\n\tbool copy_fields(Temp_table_param *param, const THD *thd, bool reverse_copy) \n\t\tparam->copy_fields = { size=5 }\n\t\tinnodb(ref0.*) --> temptable(<temporary>.*)     // copy the fields from the input table's buffer to the out table's fields\n\tbool copy_funcs(Temp_table_param *param, const THD *thd, Copy_func_type type)  \n\t  param->items_to_copy                            // execute the non-window functions which do not rely on window functions, and copy the result into the out table's fields \n\nbuffer_windowing_record                             // buffer the current row to the frame buffer\n  param = 0x000002374c66d888 {grouped_expressions={ size=0 } copy_fields={ size=6 } group_buff=0x0000000000000000 <NULL> ...}\n  bool copy_fields(Temp_table_param *param, const THD *thd, bool reverse_copy)\n\t\tparam->copy_fields = { size=6 }\n\t\tinnodb(ref0.*) --> temptable(<>.*)              // copy the fields from the input table's buffer to the window frame buffer\n  buffer_record_somewhere\n    t->file->ha_write_row(record)                   // save the window frame buffer to the frame buffer temporary table \n    \n\nstep 2: process the buffered rows by evaluating/aggregating the window functions defined over this window on the current frame.  \n\nprocess_buffered_windowing_record\n\tbool bring_back_frame_row(THD *thd, Window *w, Temp_table_param *out_param, ...)  \n\t\tparam\t0x000002374c66d888 {grouped_expressions={ size=0 } copy_fields={ size=6 } group_buff=0x0000000000000000 <NULL> ...}\tTemp_table_param *\n\t\tread_frame_buffer_row\n\t\t\tt->file->ha_rnd_pos                          // read row from the frame buffer temporary table\n\t\tbool copy_fields(Temp_table_param *param, const THD *thd, bool reverse_copy) \n\t\t\tparam->copy_fields = { size=6 }\n\t\t\ttemptable(<>.*) --> innodb<ref0.*>           // copy the fields from the window frame buffer to the input table's buffer\n\t\tbool copy_fields(Temp_table_param *param, const THD *thd, bool reverse_copy)\n      param\t0x000002374c66e448 {grouped_expressions={ size=0 } copy_fields={ size=5 } group_buff=0x0000000000000000 <NULL> ...}\tTemp_table_param *\n\t\t\tparam->copy_fields = { size=5 }\n\t\t\tinnodb(ref0.*) --> temptable(<temporary>.*)  // copy the fields from the input table's buffer to the out table's fields\n\tcopy_funcs(param, thd, CFT_WF_NON_FRAMING)       // execute the non framing window function, and copy the result into the out table's fields \n\tcopy_funcs(param, thd, CFT_WF_FRAMING)           // execute the framing window function, and copy the result into the out table's fields (the function Item_first_last_value `FIRST_VALUE('') over (partition by ref_0.c7 order by ref_0.vkey asc, ref_0.pkey desc)` would be executed) \n\nstep 3: execute all non-wf functions, and prepare the output row.   \n\nbool bring_back_frame_row(THD *thd, Window *w, Temp_table_param *out_param, ...) \n\tread_frame_buffer_row\n\t\tt->file->ha_rnd_pos                           // read row from the frame buffer temporary table\n\tbool copy_fields(Temp_table_param *param, const THD *thd, bool reverse_copy) \n\t\tparam\t0x000002374c66d888 {grouped_expressions={ size=0 } copy_fields={ size=6 } group_buff=0x0000000000000000 <NULL> ...}\tTemp_table_param *\n\t\tparam->copy_fields = { size=6 }\n\t\ttemptable(<>.*) --> innodb(ref0.*)            // copy the fields from the window frame buffer to the input table's buffer\n\tbool copy_fields(Temp_table_param *param, const THD *thd, bool reverse_copy)\n  \tparam\t0x000002374c66e448 {grouped_expressions={ size=0 } copy_fields={ size=5 } group_buff=0x0000000000000000 <NULL> ...}\tTemp_table_param *\n\t\tparam->copy_fields = { size=5 }\n\t\tinnodb(ref0.*) --> temptable(<temporary>.*)   // copy the fields from the input table's buffer to the out table's fields\n\tcopy_funcs(param, thd, CFT_HAS_WF)              // execute the non-wf functions, and copy the result into the out table's fields (the function Item_func_ge `ref_0.c5 >= (case when ... )` would be executed) \t\n\n```\n\nIn the commit https://github.com/mysql/mysql-server/commit/1407269ba68f5a4f07431f6b6010d8aaf1b81510, a related modification is: \n\n```\n\n@@ -492,11 +491,11 @@ bool bring_back_frame_row(THD *thd, Window *w, Temp_table_param *out_param,\n\n  if (!rc) {\n    if (out_param) {\n      if (copy_funcs(out_param, thd, CFT_FIELDS)) return true;\n      // fields are in IN and in OUT\n      // fields are in OUT\n      if (rowno >= 1) w->set_row_has_fields_in_out_table(rowno);\n    } else\n      // we only wrote IN record, so OUT and IN are inconsistent\n      // TODO(sgunders): Is this still needed?\n      w->set_row_has_fields_in_out_table(0);\n  }\n  \n```"
+      },
+      {
+        "anchor": "c538930",
+        "date": "13 Dec 2023 11:53",
+        "author": "shan he",
+        "text": "Could you please confirm whether the simplification process we applied has been helpful for developers in diagnosing and addressing this issue?\n\nAlthough not obvious for this example, it removes \" partition by ref_0.c7 order by ref_0.vkey asc, ref_0.pkey desc) >= null\".\n\nHere's our output\n*****\n\ncreate table t1 (vkey int, pkey int, c5 int, c7 varchar(200));\ninsert into t1 values (20, 30000, 59, null);\ninsert into t1 values (59, 69000, null, null);\n\nselect  \n  (case when (true and exists (\n        select  \n              ref_2.pkey as c_3\n            from \n              t1 as ref_2\n            where ref_2.vkey between ref_0.c5 and ref_0.c5\n        )) then null else (case when (FIRST_VALUE('') over () >= null) then null else ref_0.pkey end\n        ) end\n      ) as c_6\nfrom \n  t1 as ref_0;\n\n+-------+\n| c_6   |\n+-------+\n|  NULL |\n| 69000 |\n+-------+\n\nselect  \n  (case when (exists (\n        select  \n              ref_2.pkey as c_3\n            from \n              t1 as ref_2\n            where ref_2.vkey between ref_0.c5 and ref_0.c5\n        )) then null else (case when (FIRST_VALUE('') over () >= null) then null else ref_0.pkey end\n        ) end\n      ) as c_6\nfrom \n  t1 as ref_0;\n\n+-------+\n| c_6   |\n+-------+\n| 30000 |\n| 69000 |\n+-------+"
+      },
+      {
+        "anchor": "c546013",
+        "date": "5 Aug 2024 16:17",
+        "author": "Jon Stephens",
+        "text": "Documented fix as follows in the MySQL 9.1.0 changelog:\n\n    Queries using CASE (WHEN TRUE AND EXISTS (/subquery/)) sometimes\n    did not return the same result as with CASE (EXISTS (/subquery/)).\n\nClosed."
+      }
+    ],
+    "targets": {
+      "8.0.34": {
+        "field": true,
+        "hits": [
+          {
+            "anchor": "cmain",
+            "author": "Zuming Jiang",
+            "snippets": [
+              " c_6  | +------+ |    0 | | NULL | +------+ 2 rows in set (0.00 sec)  *** Note ***  The bug can be reproduced in version 8.0.27 - 8.0.34. In version 8.0.0 - 8.0.26, both Test Case 1 and 2 return the same results:  +------+ | c_6  | +------+ | NULL | | NULL | +------+ 2 rows in set (0.00 sec)"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

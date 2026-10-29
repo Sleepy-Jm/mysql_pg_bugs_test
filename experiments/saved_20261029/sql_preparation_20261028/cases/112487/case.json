@@ -1,0 +1,70 @@
+{
+  "report_id": "112487",
+  "title": "Assertion Failure in /mysql-8.0.34/sql/sql_optimizer.cc:343",
+  "source_sha256": "36d4fe71c7844410f7acf2f44f6d3615e0c131abfecf8e2a122f1008721bd57f",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "ab837ce9f7648846af2b0c586b5de5f1f524de3deb537e8673a1beb4ef3d0ed7"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "a1545d405cd7e1f009f0cee1204d10650a7f061390a2ff0f7975b505e3993238"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0 VARCHAR150 DEFAULT 表及 i0"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "91/73/103/83"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force 逐语句留存；原查询可能含 RAND/除零/类型转换，普通警告不计 crash。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "安全执行或返回正常 SQL 语义错误，连接与服务器存活；异常：JOIN::optimize query_tables_locked"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "安全执行或返回正常 SQL 语义错误，连接与服务器存活",
+    "failure": "JOIN::optimize query_tables_locked",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "目标debug构建",
+    "debug；保持原字符串转义，NO_BACKSLASH_ESCAPES 关闭"
+  ],
+  "transformations": [
+    "完整原 SQL 字节段抽取；随机表达式不作为确定结果 oracle"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

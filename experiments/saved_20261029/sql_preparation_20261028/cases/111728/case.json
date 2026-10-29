@@ -1,0 +1,83 @@
+{
+  "report_id": "111728",
+  "title": "Incorrect result",
+  "source_sha256": "7bc3a0baa4abac82a6c25898711e462c4c0d217f4ef891c72bd54cf9716fe27b",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "8a7d669e69f4a0f643d7b50a9c0ece83065f4b2aaf3d81342b330fe630de44cd"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "398cf73343943327fe98fa2535b6b9859d041d62827d31922e854fb7962ff891"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "ta BIGINT主键，tb VARCHAR50。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "两张表各一行，保留不同的19位十进制字面值及类型。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "默认与NO_INDEX提示的相同IN谓词结果多重集须一致；原报告0对1。不能把BIGINT/VARCHAR隐式近似转换的数值相等本身独立判bug，须核对实际计划是否采用提示。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS ta,tb;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "默认与NO_INDEX提示的相同IN谓词结果多重集须一致；原报告0对1。不能把BIGINT/VARCHAR隐式近似转换的数值相等本身独立判bug，须核对实际计划是否采用提示。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "记录SQL mode、optimizer_switch、EXPLAIN与warnings，ANSI_QUOTES须关闭或逐字说明。"
+  ],
+  "transformations": [
+    "移除mysql提示符和结果表，仅保留源文6条语句。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/111728.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

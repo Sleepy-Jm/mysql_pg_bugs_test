@@ -1,0 +1,118 @@
+{
+  "task_id": "mysql-110771-8.0.33",
+  "report_id": "110771",
+  "target_version": "8.0.33",
+  "previous_version": "8.0.32",
+  "title": "Failed to update NULL to empty value on instant col for REDUNDANT table",
+  "source_review_complete": true,
+  "ready_for_previous_replay": true,
+  "source_sql_sha256": "82a85b2ef71b6b1602402a0b20094b151400a0e3ec1a6028ad77a6e813f9a060",
+  "sql_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\version_boundary_20261029\\v33\\cases\\110771\\source.sql",
+  "postcheck_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\version_boundary_20261029\\v33\\cases\\110771\\postcheck.sql",
+  "postcheck_sha256": "32554995f36548f35b7a0c3a242735d1c52dc0b408a5c5466fccf4d4bb3873d0",
+  "target_record_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\version_boundary_20261029\\v33\\cases\\110771\\target_record.json",
+  "target_record_origin": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\records.jsonl",
+  "target_evidence": {
+    "stdout_file": {
+      "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\runs\\target_110771_8_0_33_r1\\stdout.txt",
+      "sha256": "afc2783250ad0ab34292a6817bacaddeba699d2280bbfb8c080348f8d2c2b6eb",
+      "copied_file": "target_stdout.txt"
+    },
+    "stderr_file": {
+      "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\runs\\target_110771_8_0_33_r1\\stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copied_file": "target_stderr.txt"
+    },
+    "server_log_file": {
+      "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\runs\\target_110771_8_0_33_r1\\server.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copied_file": "target_server.log"
+    },
+    "environment_file": {
+      "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\environment-8.0.33.json",
+      "sha256": "c57ada67bc843fe2f0135c3d4c008478b39886c143291e842e10a27ce95e015c",
+      "copied_file": "target_environment-8.0.33.json"
+    },
+    "executed_sql_file": {
+      "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\runs\\target_110771_8_0_33_r1\\executed.sql",
+      "sha256": "87ceeae34c88d69a6353d703626db59856394656c1017fc070ce446857d0ee31",
+      "copied_file": "target_executed.sql"
+    }
+  },
+  "oracle": {
+    "normal": "a=0的c非NULL空串且LENGTH=0；其余两行NULL，a/b不变",
+    "reported": "release UPDATE成功却a=0的c仍NULL/长度NULL；异常发生在UPDATE t1 SET c=空串 WHERE a=0。若release崩溃，只记其他异常待归因；不能冒充debug断言复现",
+    "prerequisites": [
+      "全新隔离 schema；客户端保留逐语句输出及错误日志",
+      "独立测试实例",
+      "保存完整SQL、配置、输出与错误日志"
+    ],
+    "expected_errors": [],
+    "kind": "wrong_result",
+    "source_oracle": {
+      "kind": "wrong_result",
+      "expected": "a=0 行 c 应为非NULL空串(LENGTH=0)，其余两行 c 为NULL，a/b不变；debug不应断言、release不应不更新或损坏。",
+      "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+      "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+    },
+    "crash_handling": "For release, a crash is other_anomaly unless additional report-specific evidence supports it; target outcome is successful UPDATE failing to change NULL to empty string.",
+    "boundary_review_note": "UPDATE succeeds but a=0 remains NULL; correct a=0 is non-NULL empty string with length 0. REDUNDANT and instant-column prerequisites required. A release crash is other anomaly, not this wrong-result oracle."
+  },
+  "mysql_force": false,
+  "expected_errors": [],
+  "historical_classification": "needs_previous_replay",
+  "historical_evidence_path": null,
+  "additional_prior_same_source_records": 0,
+  "gaps": [],
+  "comparison_contract": {
+    "must_match": [
+      "source SQL byte hash",
+      "postcheck byte hash or explicit historical validation SQL",
+      "release build class",
+      "session sql_mode/charset/collation/timezone",
+      "engines and required optimizer settings",
+      "fresh isolated data and same row controls"
+    ],
+    "normal_required": "Oracle-defined correct result and all source/control statements complete; previous-version syntax/unsupported-feature errors are unknown, never normal.",
+    "not_claimed": [
+      "new independent bug",
+      "introducing commit",
+      "original downstream build equivalence"
+    ]
+  },
+  "manual_review_state": "complete_source_oracle_target_evidence_review",
+  "ready": true,
+  "sql_sha256": "82a85b2ef71b6b1602402a0b20094b151400a0e3ec1a6028ad77a6e813f9a060",
+  "boundary_status": "unknown",
+  "manual_review_note": "UPDATE succeeds but a=0 remains NULL; correct a=0 is non-NULL empty string with length 0. REDUNDANT and instant-column prerequisites required. A release crash is other anomaly, not this wrong-result oracle.",
+  "evidence": {
+    "target": {
+      "stdout_file": {
+        "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\runs\\target_110771_8_0_33_r1\\stdout.txt",
+        "sha256": "afc2783250ad0ab34292a6817bacaddeba699d2280bbfb8c080348f8d2c2b6eb",
+        "copied_file": "target_stdout.txt"
+      },
+      "stderr_file": {
+        "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\runs\\target_110771_8_0_33_r1\\stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "copied_file": "target_stderr.txt"
+      },
+      "server_log_file": {
+        "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\runs\\target_110771_8_0_33_r1\\server.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "copied_file": "target_server.log"
+      },
+      "environment_file": {
+        "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\environment-8.0.33.json",
+        "sha256": "c57ada67bc843fe2f0135c3d4c008478b39886c143291e842e10a27ce95e015c",
+        "copied_file": "target_environment-8.0.33.json"
+      },
+      "executed_sql_file": {
+        "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_6\\b001_8_0_33\\results\\runs\\target_110771_8_0_33_r1\\executed.sql",
+        "sha256": "87ceeae34c88d69a6353d703626db59856394656c1017fc070ce446857d0ee31",
+        "copied_file": "target_executed.sql"
+      }
+    },
+    "historical_boundary_path": null
+  }
+}

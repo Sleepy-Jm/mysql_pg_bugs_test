@@ -1,0 +1,26 @@
+{
+  "report_id": "111068",
+  "title": "Lock failure",
+  "task_ids": [
+    "mysql-111068-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\828b3adfcc4e_bug_111068.html",
+  "source_sha256": "828b3adfcc4e8a62c43039bbf79e91f7486f1278dbd655ebd25f362a38f3c724",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\n\nconnection A\nmysql> create table t1(a int primary key, b int unique, c int) engine=InnoDB;\nQuery OK, 0 rows affected (0.75 sec)\n\nmysql> insert into t1 values(1,1,1),(3,3,3),(5,5,5);\nQuery OK, 3 rows affected (0.12 sec)\nRecords: 3  Duplicates: 0  Warnings: 0\n\nmysql> start transaction;\nQuery OK, 0 rows affected (0.00 sec)\n\nmysql> alter table t1 secondary_engine = test;\nQuery OK, 0 rows affected (0.18 sec)\nRecords: 0  Duplicates: 0  Warnings: 0\n\nmysql> select * from t1 where a > 2 for update;\n+---+------+------+\n| a | b    | c    |\n+---+------+------+\n| 3 |    3 |    3 |\n| 5 |    5 |    5 |\n+---+------+------+\n2 rows in set (0.00 sec)\n\nconnection B\nmysql> start transaction;\nQuery OK, 0 rows affected (0.01 sec)\n\nmysql> insert into t1 values(9,9,9);\nQuery OK, 1 row affected (0.00 sec)\n\nConnection B can insert data, should fail\n\nHow to repeat:\nconnection A\ncreate table t1(a int primary key, b int unique, c int) engine=InnoDB;\ninsert into t1 values(1,1,1),(3,3,3),(5,5,5);\nstart transaction;\nalter table t1 secondary_engine = test;\nselect * from t1 where a > 2 for update;\n\nconnection B\nstart transaction;\ninsert into t1 values(9,9,9);"
+    },
+    {
+      "anchor": "c532653",
+      "text": "Hello linfeng chen,\n\nThank you for the report and test case.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c552515",
+      "text": "well, after you execute DDL in connection A, the current transaction has been automatically committed. so Connection B can insert data."
+    }
+  ]
+}

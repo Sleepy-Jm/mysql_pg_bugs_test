@@ -1,0 +1,22 @@
+{
+  "report_id": "120974",
+  "title": "Client connection kill command doesn't kill process",
+  "task_ids": [
+    "mysql-120974-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\1df8c1761e36_bug_120974.html",
+  "source_sha256": "1df8c1761e36095b95a19ebf837370cdd26cbf16653ca52bd5279144087c0015",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen running an information_schema query, cannot kill the query.\n\nHow to repeat:\nConnect directly to the MySQL instance using localhost root privileges.  Run the following:\n\nSELECT TABLE_ID, NAME\nFROM INFORMATION_SCHEMA.INNODB_TABLES\nWHERE TABLE_ID = 12345678;\n\nThe query runs a long time.  \n\nAttempt to kill the process using any kill command, normal, etcetera.  The status says killed.\nConnect again using the privileged user.\nNow have original process and another duplicated process running.\n\n| 1704  executing  SELECT TABLE_ID, NAME FROM INFORMATION_SCHEMA.INNODB_TABLES\nWHERE TABLE_ID = 12345678 | 1662990 |         0 |             0 |\n| 1849  executing  SELECT TABLE_ID, NAME FROM INFORMATION_SCHEMA.INNODB_TABLES\nWHERE TABLE_ID = 12345678 |  320291 \n\nThis appears to affect these types of queries.  \n\nSuggested fix:\nThe kill command using a privileged user should be able to do just that."
+    },
+    {
+      "anchor": "c558192",
+      "text": "Percona versions and 8.0.x are not supported.\nLet us know if this is reproducible on 8.4.10 from dev.mysql.com"
+    }
+  ]
+}

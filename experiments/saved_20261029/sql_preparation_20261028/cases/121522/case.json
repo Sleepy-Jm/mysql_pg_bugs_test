@@ -1,0 +1,67 @@
+{
+  "report_id": "121522",
+  "title": "REGEXP_INSTR/REGEXP_SUBSTR/REGEXP_REPLACE truncate pos and occurrence to 32-bit int: occurrence 4294967298 acts as 2",
+  "source_sha256": "b55201529b0302a4ffb2f15b99573c9e165a0a08f470e33a43b8a38e53c18392",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "bdbfe751d9f394c913714564e5dd3a6f97a9af584774895c9b64a226ff1c302f"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "not_needed",
+      "detail": "仅标量表达式/系统元数据，无自建 schema 对象。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "短ASCII常量"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force；第二条预期错误3686，仍需执行第三条；分别保存结果/错误。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "occurrence4及4294967298均无匹配0；越界pos按原3686拒绝；超大occurrence替换保持原串；异常：按低32位命中/替换"
+    },
+    "cleanup": {
+      "status": "not_needed",
+      "detail": "无持久对象；断开专用会话。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "occurrence4及4294967298均无匹配0；越界pos按原3686拒绝；超大occurrence替换保持原串",
+    "failure": "按低32位命中/替换",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "保存正则字符集设置",
+    "不由客户端窄化大整数字面量"
+  ],
+  "transformations": [
+    "保留原How to repeat最小三条大整数用例，补字符集"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标版本具备ICU正则函数，是否同样截断待执行。 本轮尚未执行。",
+    "8.0.33": "目标版本具备ICU正则函数，是否同样截断待执行。 本轮尚未执行。",
+    "8.0.34": "目标版本具备ICU正则函数，是否同样截断待执行。 本轮尚未执行。",
+    "8.0.35": "目标版本具备ICU正则函数，是否同样截断待执行。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

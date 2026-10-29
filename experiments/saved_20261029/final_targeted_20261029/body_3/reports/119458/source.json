@@ -1,0 +1,22 @@
+{
+  "report_id": "119458",
+  "title": "server cannot restart after crash when relay_log_recovery=1 and have both mgr and normal slave",
+  "task_ids": [
+    "mysql-119458-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\38385a963bad_bug_119458.html",
+  "source_sha256": "38385a963badbaebe288bd13bb39f3893bc987b089a0009a95dfe3b0dd6e724b",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\n1. the server configure in group_replication\n2. the server still act as a normal slave from another mysql server\n3. for group_replication channel, group_replication_start_on_boot=ON\n4. for normal slave, relay_log_recovery=1\n\nwhen this server crash and restart, it will hang and cannot work.\n\nHow to repeat:\nrun new add testcase:\nmtr gr_file_pos_replica_recovery_bug --nocheck-testcases\n\nafter server1 restart, we can see below log, and server hang:\n2025-11-25T09:04:58.819387Z 0 [Note] [MY-010574] [Repl] Slave: MTS group recovery relay log info group_master_log_name server-binary-log.000001, event_master_log_pos 575.\n2025-11-25T09:04:58.819416Z 0 [Note] [MY-010574] [Repl] Slave: MTS group recovery relay log info group_master_log_name server-binary-log.000001, event_master_log_pos 853.\n2025-11-25T09:04:58.819445Z 0 [Note] [MY-010574] [Repl] Slave: MTS group recovery relay log info group_master_log_name server-binary-log.000001, event_master_log_pos 1131.\n2025-11-25T09:04:58.819473Z 0 [Note] [MY-010574] [Repl] Slave: MTS group recovery relay log info group_master_log_name server-binary-log.000001, event_master_log_pos 1409.\n2025-11-25T09:04:58.819501Z 0 [Note] [MY-010574] [Repl] Slave: MTS group recovery relay log info group_master_log_name server-binary-log.000001, event_master_log_pos 1687.\n2025-11-25T09:04:58.819529Z 0 [Note] [MY-010574] [Repl] Slave: MTS group recovery relay log info group_master_log_name server-binary-log.000001, event_master_log_pos 1965.\n2025-11-25T09:04:58.819557Z 0 [Note] [MY-010574] [Repl] Slave: MTS group recovery relay log info group_master_log_name server-binary-log.000001, event_master_log_pos 2243.\n2025-11-25T09:04:58.819588Z 0 [Note] [MY-010574] [Repl] Slave: MTS group recovery relay log info group_master_log_name server-binary-log.000001, event_master_log_pos 2521.\n2025-11-25T09:04:58.819617Z 0 [Note] [MY-010574] [Repl] Slave: MTS group recovery relay log info group_master_log_name server-binary-log.000001, event_master_log_pos 2799.\n2025-11-25T09:04:58.822483Z 0 [Note] [MY-010541] [Repl] MTS recovery: starting coordinator thread to fill MTS gaps."
+    },
+    {
+      "anchor": "c555106",
+      "text": "and i find an similar bug, https://bugs.mysql.com/bug.php?id=108278. \n\nfrom bug#108278, it says dup with Bug#34233264, this is in-correctly. The Bug#34233264 is an innodb bug, which detail is:\nInnoDB: After upgrading to MySQL 8.0.29, a failure occurred when attempting to access a table with an instantly added column. (Bug #34233264)\n\nso, this is a mistake, and bug#108278 not fix yet, and still happen in 8.0.32, as this bug way. And it also can happen in 8.4.4."
+    }
+  ]
+}

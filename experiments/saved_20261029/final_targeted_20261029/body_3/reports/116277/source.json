@@ -1,0 +1,22 @@
+{
+  "report_id": "116277",
+  "title": "Insert rounds datetime/timestamp fractions instead of truncating",
+  "task_ids": [
+    "mysql-116277-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\2280174864f4_bug_116277.html",
+  "source_sha256": "2280174864f4b0451f95ad9be7ed3d7b72bf879a1b1d4a3687f691b489ebd82b",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nINSERT seems to round the fraction part of DATETIME and TIMESTAMP columns, instead truncating them.\n\nThis can be serious when not having enough precision for a datetime column, resulting in events have the next second/minute/day/month or even year, instead of the current one! Like if something is inserted as '2023-12-31 23:59:59.511111' it is stored as '2024-01-01 00:00:00'.\n\nFor time it does not make sense to round up.\n\nNOW() and UTC_TIMESTAMP() does truncate.\n\nHow to repeat:\ncreate table t (dt datetime, dt6 datetime(6), ts timestamp, ts6 timestamp(6));\ninsert into t values (now(6), now(6), now(6), now(6));\nselect sleep(0.5);\ninsert into t values (now(6), now(6), now(6), now(6));\ninsert into t values (now(), now(), now(), now());\nselect sleep(0.5);\ninsert into t values (now(), now(), now(), now());\nselect * from t;\n\nResults in:\n+---------------------+----------------------------+---------------------+----------------------------+\n| dt                  | dt6                        | ts                  | ts6                        |\n+---------------------+----------------------------+---------------------+----------------------------+\n| 2024-10-01 16:40:57 | 2024-10-01 16:40:57.399706 | 2024-10-01 16:40:57 | 2024-10-01 16:40:57.399706 |\n| 2024-10-01 16:40:58 | 2024-10-01 16:40:57.903779 | 2024-10-01 16:40:58 | 2024-10-01 16:40:57.903779 | <= Rounded UP dt and ts!!\n| 2024-10-01 16:40:57 | 2024-10-01 16:40:57.000000 | 2024-10-01 16:40:57 | 2024-10-01 16:40:57.000000 | <= Note that NOW() does truncate!\n| 2024-10-01 16:40:58 | 2024-10-01 16:40:58.000000 | 2024-10-01 16:40:58 | 2024-10-01 16:40:58.000000 | \n+---------------------+----------------------------+---------------------+----------------------------+\n\nSuggested fix:\nNever round time, always truncate it!"
+    },
+    {
+      "anchor": "c547469",
+      "text": "Hmm, probably a duplicate of https://bugs.mysql.com/bug.php?id=68760.\nI couldn't find it before, as well as it seems documented and a part of the SQL standard:\nhttps://dev.mysql.com/doc/refman/5.7/en/fractional-seconds.html"
+    }
+  ]
+}

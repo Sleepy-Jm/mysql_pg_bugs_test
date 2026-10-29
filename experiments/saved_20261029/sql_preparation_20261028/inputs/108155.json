@@ -1,0 +1,268 @@
+{
+  "report_id": "108155",
+  "source_sha256": "d05f13099426ae62e7bb476ab4df291d505f8c6edb4688f893b8950fc460f1f9",
+  "tasks": [
+    {
+      "task_id": "mysql-108155-8.0.34",
+      "report_id": "108155",
+      "title": "BEFORE INSERT trigger causes Error 1048 during UPDATE",
+      "target_version": "8.0.34",
+      "adjacent_comparison_version": "8.0.33",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=108155",
+      "source_snapshot_from_plan_root": "原文快照/bug_108155.html",
+      "source_anchors": [
+        "cmain",
+        "c532853",
+        "c541387"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain",
+          "c532853",
+          "c541387"
+        ],
+        "reason": "空BEFORE INSERT触发器、漏填非空列再UPDATE的完整最小用例及workaround可对照，最后已承认重复于113464。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "sql_mode空；InnoDB表c1/c2 CHAR(1) NOT NULL；建立空BEFORE INSERT触发器。",
+        "steps": "按正文仅插入c1=a再UPDATE c2=b；与同时填两列、加空BEFORE UPDATE触发器或FLUSH TABLES对照。",
+        "oracle": "非严格模式已接受插入后，设置非NULL的UPDATE不应错误报c2 cannot be null；记录真实行值及警告。",
+        "requirements": [
+          "创建表/触发器权限",
+          "明确sql_mode"
+        ],
+        "target_applicability": "目标有该触发器/隐式默认路径；8.0.35反馈不是本轮执行证据，重复归并沿用主记录。"
+      },
+      "source_environment": {
+        "OS": "Any",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server: DML"
+      },
+      "explicit_requirements": [
+        "创建表/触发器权限",
+        "明确sql_mode"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    }
+  ],
+  "source": {
+    "id": "108155",
+    "title": "BEFORE INSERT trigger causes Error 1048 during UPDATE",
+    "header": {
+      "Bug #108155": "BEFORE INSERT trigger causes Error 1048 during UPDATE",
+      "Submitted": "16 Aug 2022 16:22",
+      "Modified": "12 Mar 2024 11:04",
+      "Reporter": "Jason Brunette",
+      "Email Updates": "",
+      "Status": "Duplicate",
+      "Impact on me": "None",
+      "Category": "MySQL Server: DML",
+      "Severity": "S3 (Non-critical)",
+      "Version": "8.0.30",
+      "OS": "Any",
+      "Assigned to": "",
+      "CPU Architecture": "Any"
+    },
+    "comments": [
+      {
+        "anchor": "cmain",
+        "date": "16 Aug 2022 16:22",
+        "author": "Jason Brunette",
+        "text": "Description:\nA BEFORE INSERT trigger can cause an UPDATE to throw error 1048 \"Column ... cannot be null\" under specific conditions:\n\n- STRICT_TRANS_TABLES must NOT be in effect. \n- Table has NOT NULL columns.\n- A BEFORE INSERT trigger must exist on the table... it can have code or it can be blank.\n- INSERT sets one column's value but leaves another NOT NULL field uninitialized, triggering warning error 1364 \"Field ... doesn't have a default value\".\n- UPDATE attempts to set the other NOT NULL field's value, triggering Error 1048.\n- INSERT and UPDATE must occur on the same connection. If you do the INSERT on one connection and the UPDATE on another, the error does not occur.\n\nWorkarounds I've found:\n- Include all NON NULL fields in INSERT statement\n- Do the INSERT with one connection, and UPDATE on another\n- Include a BEFORE UPDATE trigger... it can have code or it can be blank.\n\nHow to repeat:\nERROR TEST CASE:\n\nDROP TABLE IF EXISTS error_1048_test;\nCREATE TABLE `error_1048_test` (\n  `c1` char(1) NOT NULL,\n  `c2` char(1) NOT NULL\n) ENGINE=InnoDB;\nDROP TRIGGER IF EXISTS `error_1048_test_BEFORE_INSERT`;\nCREATE TRIGGER `error_1048_test_BEFORE_INSERT` BEFORE INSERT ON `error_1048_test` FOR EACH ROW begin\nend;\nINSERT INTO error_1048_test(c1) VALUES (\"a\");\nUPDATE error_1048_test SET c2 = 'b';\n\nWORKAROUND TEST CASE #1 (include all fields in INSERT statement):\n\nDROP TABLE IF EXISTS error_1048_test;\nCREATE TABLE `error_1048_test` (\n  `c1` char(1) NOT NULL,\n  `c2` char(1) NOT NULL\n) ENGINE=InnoDB;\nDROP TRIGGER IF EXISTS `error_1048_test_BEFORE_INSERT`;\nCREATE TRIGGER `error_1048_test_BEFORE_INSERT` BEFORE INSERT ON `error_1048_test` FOR EACH ROW begin\nend;\nINSERT INTO error_1048_test(c1, c2) VALUES (\"a\", \"b\");\nUPDATE error_1048_test SET c2 = 'b';\n\nWORKAROUND TEST CASE #2 (include a BEFORE UPDATE trigger):\n\nDROP TABLE IF EXISTS error_1048_test;\nCREATE TABLE `error_1048_test` (\n  `c1` char(1) NOT NULL,\n  `c2` char(1) NOT NULL\n) ENGINE=InnoDB;\nDROP TRIGGER IF EXISTS `error_1048_test_BEFORE_INSERT`;\nCREATE TRIGGER `error_1048_test_BEFORE_INSERT` BEFORE INSERT ON `error_1048_test` FOR EACH ROW begin\nend;\nDROP TRIGGER IF EXISTS `error_1048_test_BEFORE_UPDATE`;\nCREATE TRIGGER `error_1048_test_BEFORE_UPDATE` BEFORE UPDATE ON `error_1048_test` FOR EACH ROW begin\nend;\nINSERT INTO error_1048_test(c1) VALUES (\"a\");\nUPDATE error_1048_test SET c2 = 'b';"
+      },
+      {
+        "anchor": "c524973",
+        "date": "17 Aug 2022 11:52",
+        "author": "MySQL Verification Team",
+        "text": "Hi Mr. Brunette,\n\nThank you for your bug report.\n\nHowever, we can not repeat the behaviour that you report with 8.0.30.\n\nYour triggers are empty and do nothing. The only correct behaviour is that INSERT command MUST (for the kind of table that you have created) contain values that do nothing.\n\nIn our testing, we get errors whenever there is only one column in your INSERT, regardless of which triggers are present and which are not present.\n\nHence, even in your last example, when both triggers are present, we do get the error, which is correct behaviour.\n\nCan't repeat."
+      },
+      {
+        "anchor": "c524987",
+        "date": "17 Aug 2022 14:37",
+        "author": "Jason Brunette",
+        "text": "\"In our testing, we get errors whenever there is only one column in your INSERT, regardless of which triggers are present and which are not present.\"\n\nThat's why I mentioned that strict mode must be turned off. Run this before running the error case:\n\nSET SESSION sql_mode = ''; \n\nWith that turned off, the behavior is as described."
+      },
+      {
+        "anchor": "c525001",
+        "date": "18 Aug 2022 11:32",
+        "author": "MySQL Verification Team",
+        "text": "Hi Mr. Brunette,\n\nWe got the same behaviour with SQL_MODE annulled as with full SQL_MODE.\n\nNot a bug."
+      },
+      {
+        "anchor": "c525013",
+        "date": "18 Aug 2022 14:44",
+        "author": "Jason Brunette",
+        "text": "So just to be absolutely clear, when you run the following, you're saying that you are getting a HARD ERROR (NOT a warning) during the INSERT statement, correct? Can you double check? Turning off strict mode would not make that a hard error.\n\nSET SESSION sql_mode = ''; \nDROP TABLE IF EXISTS error_1048_test;\nCREATE TABLE `error_1048_test` (\n  `c1` char(1) NOT NULL,\n  `c2` char(1) NOT NULL\n) ENGINE=InnoDB;\nDROP TRIGGER IF EXISTS `error_1048_test_BEFORE_INSERT`;\nCREATE TRIGGER `error_1048_test_BEFORE_INSERT` BEFORE INSERT ON `error_1048_test` FOR EACH ROW begin\nend;\nINSERT INTO error_1048_test(c1) VALUES (\"a\");\nUPDATE error_1048_test SET c2 = 'b';"
+      },
+      {
+        "anchor": "c525027",
+        "date": "19 Aug 2022 11:20",
+        "author": "MySQL Verification Team",
+        "text": "Hi,\n\nI have added the necessary change to the SQL_MODE at the very start of the script.\n\nSimply, regardless of the presence of triggers or not, DML that adds both columns passes without errors and warnings, while in every other case, the error is returned."
+      },
+      {
+        "anchor": "c532853",
+        "date": "25 May 2023 11:31",
+        "author": "Sami Ahlroos",
+        "text": "Hi,\nJust ran into this issue, thanks Jason for including the workarounds!\n\nIt's surprising that this is marked as \"can't repeat\". I would like to elaborate, hoping that helps in repeating this.\n\nOn 8.0.26 and earlier, this succeeds:\n\n---\nmysql> SET SESSION sql_mode = '';\nQuery OK, 0 rows affected (0.00 sec)\n\nmysql> DROP TABLE IF EXISTS error_1048_test;\nQuery OK, 0 rows affected (0.01 sec)\n\nmysql> CREATE TABLE `error_1048_test` (\n    ->   `c1` char(1) NOT NULL,\n    ->   `c2` char(1) NOT NULL\n    -> ) ENGINE=InnoDB;\nQuery OK, 0 rows affected (0.01 sec)\n\nmysql> DROP TRIGGER IF EXISTS `error_1048_test_BEFORE_INSERT`;\nQuery OK, 0 rows affected, 1 warning (0.00 sec)\n\nmysql> CREATE TRIGGER `error_1048_test_BEFORE_INSERT` BEFORE INSERT ON `error_1048_test` FOR EACH ROW begin\n    -> end;\nQuery OK, 0 rows affected (0.00 sec)\n\nmysql> INSERT INTO error_1048_test(c1) VALUES (\"a\");\nQuery OK, 1 row affected, 1 warning (0.00 sec)\n\nmysql> UPDATE error_1048_test SET c2 = 'b';\nQuery OK, 1 row affected (0.00 sec)\nRows matched: 1  Changed: 1  Warnings: 0\n---\n\nStarting with 8.0.27, and up to 8.0.33 (latest when writing this) the last UPDATE fails with:\n\n---\nmysql> UPDATE error_1048_test SET c2 = 'b';\nERROR 1048 (23000): Column 'c2' cannot be null\n---\n\n\"c2 cannot be null\", well, nobody wants it to be NULL. That error just can't be right.\n\nAs Jason mentions, adding a no-op BEFORE UPDATE trigger makes the UPDATE work again. \nThis goes thru on 8.0.27 and later with no errors:\n\n---\nSET SESSION sql_mode='';\nDROP TABLE IF EXISTS error_1048_test;\nCREATE TABLE `error_1048_test` (\n  `c1` char(1) NOT NULL,\n  `c2` char(1) NOT NULL\n) ENGINE=InnoDB;\nDROP TRIGGER IF EXISTS `error_1048_test_BEFORE_INSERT`;\nCREATE TRIGGER `error_1048_test_BEFORE_INSERT` BEFORE INSERT ON `error_1048_test` FOR EACH ROW begin\nend;\nCREATE TRIGGER `error_1048_test_BEFORE_UPDATE` BEFORE UPDATE ON `error_1048_test` FOR EACH ROW begin\nend;\nINSERT INTO error_1048_test(c1) VALUES (\"a\");\nUPDATE error_1048_test SET c2 = 'b';\n---"
+      },
+      {
+        "anchor": "c532861",
+        "date": "25 May 2023 12:46",
+        "author": "MySQL Verification Team",
+        "text": "Hi Mr. Brunette.\n\nThere are sql_modes that are deprecated and there are some that were made mandatory since 8.0.27.\n\nBy setting sql_mode to '', you are removing mandatory SQL modes. \n\nIn this case, you removed a mode that requires that all columns have some value, whether by default or explicitly in your statement.\n\nHence, your error is in the INSERT, which surfaces in the UPDATE.\n\nPlease, read our entire Reference Manual, very carefully.\n\nNot a bug."
+      },
+      {
+        "anchor": "c538611",
+        "date": "3 Dec 2023 18:16",
+        "author": "Eric Johnson",
+        "text": "I am experiencing this issue as well.  I did not find any reference to \"mandatory SQL modes\" in the documentation.  My understanding is that \"Implicit Default Handling\" would set the default values in the case that there was no default value and STRICT_TRANS_TABLES was not in effect."
+      },
+      {
+        "anchor": "c538629",
+        "date": "4 Dec 2023 10:46",
+        "author": "MySQL Verification Team",
+        "text": "Hi,\n\nYour conclusions are wrong.\n\nFirst of all, you should search for the page about sql_mode, not the one you quoted.\n\nNext, STRICT_TRANS_TABLES has nothing to do with it and implicit defaults are not available for all types and change from version to version.\n\nNot a bug."
+      },
+      {
+        "anchor": "c538702",
+        "date": "5 Dec 2023 15:20",
+        "author": "Jason Brunette",
+        "text": "I guess I'll keep fighting for this, since there is absolutely a bug somewhere.\n\nRegarding your comment on 18 Aug 2022, \"We got the same behaviour with SQL_MODE annulled as with full SQL_MODE.\" ... that cannot be right. The lack of STRICT_TRANS_TABLES should make the INSERT warn, not error.\n\nCan you please paste here the results of the following statements?\n\nSET SESSION sql_mode = '';\nDROP TABLE IF EXISTS error_1048_test;\nCREATE TABLE `error_1048_test` (\n  `c1` char(1) NOT NULL,\n  `c2` char(1) NOT NULL\n) ENGINE=InnoDB;\nINSERT INTO error_1048_test(c1) VALUES (\"a\");\nUPDATE error_1048_test SET c2 = 'b';\n\n... and then do the same for the following, which simply adds the blank BEFORE INSERT trigger:\n\nSET SESSION sql_mode = '';\nDROP TABLE IF EXISTS error_1048_test;\nCREATE TABLE `error_1048_test` (\n  `c1` char(1) NOT NULL,\n  `c2` char(1) NOT NULL\n) ENGINE=InnoDB;\nDROP TRIGGER IF EXISTS `error_1048_test_BEFORE_INSERT`;\nCREATE TRIGGER `error_1048_test_BEFORE_INSERT` BEFORE INSERT ON `error_1048_test` FOR EACH ROW begin\nend;\nINSERT INTO error_1048_test(c1) VALUES (\"a\");\nUPDATE error_1048_test SET c2 = 'b';\n\nPlease humor me. Thanks."
+      },
+      {
+        "anchor": "c538761",
+        "date": "7 Dec 2023 1:32",
+        "author": "Eric Johnson",
+        "text": "Hi Verification Team,\n\nRegarding \"There are sql_modes that are deprecated and there are some that were made mandatory since 8.0.27.\" and \"First of all, you should search for the page about sql_mode, not the one you quoted.\"\n\nI have reread the sql-mode page and see that the following is said: \"The default SQL mode in MySQL 8.0 includes these modes: ONLY_FULL_GROUP_BY, STRICT_TRANS_TABLES, NO_ZERO_IN_DATE, NO_ZERO_DATE, ERROR_FOR_DIVISION_BY_ZERO, and NO_ENGINE_SUBSTITUTION.\"  \n\nWhile these are the default modes, nothing indicates that these are the required so I assume no modes is a valid state.\n\nWith my instance of this issue, I am using an AWS RDS database and the mode was set to NO_ENGINE_SUBSTITUTION."
+      },
+      {
+        "anchor": "c538776",
+        "date": "7 Dec 2023 11:02",
+        "author": "MySQL Verification Team",
+        "text": "Hi All,\n\nBoth of the above test cases returned no errors at all. Everything worked smoothly and fine.\n\nWe even added SHOW WARNINGS in several places and got no warnings at all.\n\nWe must, however, point out that we did our tests on MySQL 8.0.35 release binary.\n\nWe are only supporting our own binaries and not any of the clone's products.\n\nCan't repeat."
+      },
+      {
+        "anchor": "c538782",
+        "date": "7 Dec 2023 13:13",
+        "author": "Jason Brunette",
+        "text": "Thanks for testing again. I'm hoping you could take a look at the following short Youtube video I made. It shows me installing a vanilla, release copy of MySQL Community Server 8.0.35, initializing a brand new database, connecting with the mysql command line utility and running the statements that trigger the error. Reminder, the test sets sql_mode to '', turning STRICT_TRANS_TABLES off, so no errors should occur.\n\nCould you tell me please what I'm doing differently than what you're doing please?\n\nhttps://www.youtube.com/watch?v=IBe0-IOF0WE"
+      },
+      {
+        "anchor": "c538784",
+        "date": "7 Dec 2023 13:46",
+        "author": "Jason Brunette",
+        "text": "Here is a follow-up, even shorter video demonstrating that the connection used to do the test is somehow corrupted as reconnecting, clearing sql_mode again and running the exact same UPDATE statement suddenly works. Why would it fail on the first connection and not the second, when both connections clear sql_mode?\n\nhttps://www.youtube.com/watch?v=7SjArIu6T30"
+      },
+      {
+        "anchor": "c538785",
+        "date": "7 Dec 2023 13:58",
+        "author": "MySQL Verification Team",
+        "text": "Hi,\n\nWe truly can not say exactly why.\n\nYou could have some problem with your OS, including TCP/IP setup , tuning and similar ...... It is possible that your permission on the socket file and the directories above it are not well set.\n\nIt is also possible that you have some random RAM or disk problems. Most of these problems are transient and cannot be caught by hardware checking software. We use highly reliable hardware, with ECC RAM parity checks. We also use quality HDD, cached by quality SSD.\n\nIt is also problems that you have some MySQL warnings that you did not print or some messages in the MySQL and system error logs that you have not reviewed.\n\nWe ran your tests many times and had no problems with a single test. Without a single MySQL warning, without a single line in the (verbosity=3) error log, nor any error in the OS error logs."
+      },
+      {
+        "anchor": "c538788",
+        "date": "7 Dec 2023 14:59",
+        "author": "Jason Brunette",
+        "text": "This error occurs on multiple platforms. I first encountered it on RHEL 8, then performed the test on Windows 11 as an administrator. Multiple users here have indicated they can reproduce it. Are you saying we all have the exact same, unexplainable hardware/software issues that somehow only affect this impossibly specific case?\n\nMy RHEL 8 server is an Azure virtual machine that is rebuilt completely from scratch every few months. Should I notify Microsoft that their Azure platform is defective?\n\nThis was my last shot. Sorry folks."
+      },
+      {
+        "anchor": "c538789",
+        "date": "7 Dec 2023 15:03",
+        "author": "Jason Brunette",
+        "text": "The idea that a vendor would dismiss an inconsistent out-of-the-box experience in their database product using a tiny test case is... it's something else."
+      },
+      {
+        "anchor": "c538790",
+        "date": "7 Dec 2023 15:03",
+        "author": "Jason Brunette",
+        "text": "The idea that a vendor would dismiss an inconsistent out-of-the-box experience in their database product using a tiny test case is... it's something else."
+      },
+      {
+        "anchor": "c538792",
+        "date": "7 Dec 2023 15:07",
+        "author": "MySQL Verification Team",
+        "text": "Hi,\n\nThis is a forum for the reports with fully reproducible test cases.\n\nWe have tested several times all of the test cases that you have sent us and we did not get a single error nor a single warning.\n\nIf we can not repeat it, then we can not fix it."
+      },
+      {
+        "anchor": "c539586",
+        "date": "9 Jan 2024 23:56",
+        "author": "Eric Johnson",
+        "text": "I believe Bug 113464 which has been verified is a duplicate of this issue."
+      },
+      {
+        "anchor": "c539605",
+        "date": "10 Jan 2024 10:34",
+        "author": "MySQL Verification Team",
+        "text": "Hi,\n\nYes, it could be a duplicate.\n\nHowever, that test case we managed to repeat, while this test case worked without problems.\n\nThat means that some of the settings in this report were not provided.\n\nHence, you can follow the destiny of the other, mentioned bug report."
+      },
+      {
+        "anchor": "c541374",
+        "date": "11 Mar 2024 18:07",
+        "author": "Mike Lehan",
+        "text": "Really interesting that the code provided to recreate this bug (108155) is the same (except for table/column names) as the code in https://bugs.mysql.com/bug.php?id=113464 but this is marked as not a bug and that one is marked severe.\n\nWe've encountered this today and can confirm running \"FLUSH TABLES my_table\" where my_table is the affected table will allow the subsequent update to succeed whereas otherwise it would have failed.\n\nI also linked here on a related StackOverflow issue, as originally we were suspecting it was a bug in PHP's PDO library, so it's worth the maintainers of that knowing to direct here in the event people report to them."
+      },
+      {
+        "anchor": "c541387",
+        "date": "12 Mar 2024 11:04",
+        "author": "MySQL Verification Team",
+        "text": "Hi,\n\nYou are quite correct.\n\nThis bug report is a duplicate of the following bug:\n\nhttps://bugs.mysql.com/bug.php?id=113464\n\nHence, follow it's destiny and then you will know when is it fixed.\n\nWe have also left a remark in that bug report."
+      }
+    ],
+    "targets": {
+      "8.0.33": {
+        "field": false,
+        "hits": [
+          {
+            "anchor": "c532853",
+            "author": "Sami Ahlroos",
+            "snippets": [
+              "t SET c2 = 'b'; Query OK, 1 row affected (0.00 sec) Rows matched: 1  Changed: 1  Warnings: 0 ---  Starting with 8.0.27, and up to 8.0.33 (latest when writing this) the last UPDATE fails with:  --- mysql> UPDATE error_1048_test SET c2 = 'b'; ERROR 1048 (23000): Column 'c2' cannot be null ---  \"c2 cannot be null\", well, nobody wants it "
+            ]
+          }
+        ]
+      },
+      "8.0.35": {
+        "field": false,
+        "hits": [
+          {
+            "anchor": "c538776",
+            "author": "MySQL Verification Team",
+            "snippets": [
+              "ven added SHOW WARNINGS in several places and got no warnings at all.  We must, however, point out that we did our tests on MySQL 8.0.35 release binary.  We are only supporting our own binaries and not any of the clone's products.  Can't repeat."
+            ]
+          },
+          {
+            "anchor": "c538782",
+            "author": "Jason Brunette",
+            "snippets": [
+              "take a look at the following short Youtube video I made. It shows me installing a vanilla, release copy of MySQL Community Server 8.0.35, initializing a brand new database, connecting with the mysql command line utility and running the statements that trigger the error. Reminder, the test sets sql_mode to '', turning STRICT_TRANS_TABL"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

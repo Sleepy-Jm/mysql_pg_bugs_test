@@ -1,0 +1,112 @@
+{
+  "report_id": "111157",
+  "title": "Column info missing for view after doing a \"table swap\" where view uses function",
+  "source_sha256": "82e6a0bd068e4bcaf78830f8dc6a0949c22db15769c8e1c0d8b4627006bacd6d",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "needs_safety_review",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "90987294f0b29d0ad658382eb8a6681e19960b0e9b600d61cc1e640088e4a98d"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "445f2171fea7fe33b54ebb38318c7bf35e175f0c5003be59a2c05357c2d96627"
+    },
+    {
+      "path": "admin_setup.sql",
+      "role": "setup",
+      "sha256": "7d79c2bcc801a98672b30d3b4f448354500760cf0cfa561df88b60c4b1178577"
+    },
+    {
+      "path": "admin_control.sql",
+      "role": "control",
+      "sha256": "43864265ce8b7c914a8bbe1741112487f1a52c60cc354957b0cc78ea99089dec"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "固定test_database内test_table、test_function、test_view；definer与applier是本用例独占账号。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原表空表，无需添加行。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "已审批一次性实例预装mysql_no_login插件；管理员admin_setup.sql；applier新连接运行reproducer.sql；另一个全新同配置实例做admin_control.sql后再applier换表对照；管理员cleanup.sql。本轮不安装插件，不进行切换。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "管理员建好视图时SHOW FIELDS成功；applier换表后，具有函数EXECUTE的DEFINER视图应保持列元数据可用。对比SHOW FIELDS、SELECT和SHOW CREATE VIEW，原报告1356仅列信息失败不能自动泛化到SELECT失败。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "USE test_database;\nDROP VIEW IF EXISTS test_view;\nDROP FUNCTION IF EXISTS test_function;\nDROP TABLE IF EXISTS test_table,test_table_new;\nDROP DATABASE test_database;\nDROP USER IF EXISTS 'applier'@'%';\nDROP USER IF EXISTS 'definer'@'localhost';"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "管理员建好视图时SHOW FIELDS成功；applier换表后，具有函数EXECUTE的DEFINER视图应保持列元数据可用。对比SHOW FIELDS、SELECT和SHOW CREATE VIEW，原报告1356仅列信息失败不能自动泛化到SELECT失败。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "多账户/授权权限",
+    "mysql_no_login插件或等效不可登录definer"
+  ],
+  "transformations": [
+    "只提取SQL，删除podman/mysql启动命令和exit；按账号角色拆分；控制组须从干净实例重建，避免重复换表混淆。"
+  ],
+  "blockers": [
+    "认证插件、全局授权与DEFINER对象；须先审核账号和实例隔离范围。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标支持视图字典重建和definer权限模型。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标支持视图字典重建和definer权限模型。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标支持视图字典重建和definer权限模型。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/111157.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "plugin",
+      "detail": "源文需要mysql_no_login.so；本轮不安装或替换认证插件。",
+      "requires_review": true
+    },
+    {
+      "kind": "multi_connection",
+      "detail": "管理员与applier分别连接；不能同一身份拼接。",
+      "requires_review": true
+    },
+    {
+      "kind": "privilege_change",
+      "detail": "创建不可登录definer和applier，授予全局权限；仅隔离实例，清理两账号。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "认证插件、全局授权与DEFINER对象；须先审核账号和实例隔离范围。"
+    ],
+    "restriction": null
+  }
+}

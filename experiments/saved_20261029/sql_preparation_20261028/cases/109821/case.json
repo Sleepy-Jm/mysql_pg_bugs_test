@@ -1,0 +1,88 @@
+{
+  "report_id": "109821",
+  "title": "Subquery optimizer error",
+  "source_sha256": "3babd0fd635928dc30f11a5563f5e3a4cafbafa1608afeb605a3d255744859d6",
+  "source_anchors": [
+    "cmain",
+    "c529336"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "aac68d1f91cee638ba20e2ead4b61bc5512e208ce1f008ea68719b6d2aeaedc0"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "7a27834e592984e3a343cabb43c6bbe79cded3d814a07466c3a77c1deca5b949"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 INT)、t1(c0 INT)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "两空表；无数据依赖。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两个空表下 VALUES 两行分别为1和NULL；不得触发 nj_counter>0 断言、ASan/UBSan异常或服务退出。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t0,t1;"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "两个空表下 VALUES 两行分别为1和NULL；不得触发 nj_counter>0 断言、ASan/UBSan异常或服务退出。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "debug构建优先"
+  ],
+  "transformations": [
+    "只取原文完整三条 SQL；补充显式清理，不修改派生表别名。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "8.0目标支持VALUES行构造器与派生列名，输入不依赖数据。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "8.0目标支持VALUES行构造器与派生列名，输入不依赖数据。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "8.0目标支持VALUES行构造器与派生列名，输入不依赖数据。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c529336 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/109821.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "原文 WITH_DEBUG=1, WITH_ASAN=ON, WITH_UBSAN=ON；发布构建未崩溃不能排除 debug 断言。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

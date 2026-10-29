@@ -1,0 +1,88 @@
+{
+  "report_id": "110818",
+  "title": "ANY assertion error",
+  "source_sha256": "a824395e7a532389cab2b628b42d772cd794ec34e00daf08a987a7019111ace7",
+  "source_anchors": [
+    "cmain",
+    "c532047"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "743ef8a8d2a8d6ffc169a65f1b771ffdfd37a0c032f2b823439bcdbb4482f63a"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "870af000a91c9c21f9663eac55451c771494060fd3d2d158124336dbe8c8e026"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 INT)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "一行NULL。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "查询返回一个 NULL，且不出现 item_func.cc:1879 is_nullable 断言；release 与 debug 的历史结果分开。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "查询返回一个 NULL，且不出现 item_func.cc:1879 is_nullable 断言；release 与 debug 的历史结果分开。",
+    "failure": "不应出现报告所述服务器断言/异常退出；受控 SQL 错误须单独记录，连接存活/服务日志而非仅客户端错误作为判据。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "debug构建"
+  ],
+  "transformations": [
+    "正文 SQL 逐字保留，仅统一换行。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "待审目标同具ANY比较路径，8.0.33 debug受影响不证明其他版。 本轮未实测。",
+    "8.0.34": "待审目标同具ANY比较路径，8.0.33 debug受影响不证明其他版。 本轮未实测。",
+    "8.0.35": "待审目标同具ANY比较路径，8.0.33 debug受影响不证明其他版。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c532047 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "cmain 要求 WITH_DEBUG/ASan/UBSan；c532047 给出 release NULL 和 debug 断言对照。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

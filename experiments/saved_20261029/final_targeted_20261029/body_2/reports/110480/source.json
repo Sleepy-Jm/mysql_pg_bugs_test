@@ -1,0 +1,34 @@
+{
+  "report_id": "110480",
+  "title": "XML ExtractValue with XPath using last() function return wrong result",
+  "task_ids": [
+    "mysql-110480-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\2dce842a7ed6_bug_110480.html",
+  "source_sha256": "2dce842a7ed6e777f088c6c3fa02ccf0ce5c081496726eb1e3cf945dbe45f5db",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nFor XML document \n\n<A><B>1</B>1</A>\n\nwith XPath Query\n\n//*[last() <= 1]\n\nMySQL returns empty result. \n\nShould return result 1 1 as BaseX, Saxon & Oracle db returns result\n\n<A>\n   <B>1</B>1</A>\n<B>1</B>\n\nHow to repeat:\nExecute statement: \n\nselect ExtractValue('<A><B>1</B>1</A>','//*[last() <= 1]');\n\nSee error in output."
+    },
+    {
+      "anchor": "c531052",
+      "text": "Hi,\n\nActually, this functionality is fully supported, only with some minor adjustments ......\n\nYou should set your XQuery like this:\n\nselect ExtractValue('<A><B>1</B>1</A>','last()' <=1);\n+-----------------------------------------------+\n| ExtractValue('<A><B>1</B>1</A>','last()' <=1) |\n+-----------------------------------------------+\n| 1                                             |\n+-----------------------------------------------+\n\nYou can easily amend your query to return the result that you would like to ...... These are just small variation in the syntax, all of which are within the rules .......\n\nNot a bug."
+    },
+    {
+      "anchor": "c531053",
+      "text": "Here are some other further examples:\n\nselect extractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[count(.)=last()]');\nextractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[count(.)=last()]')\nB1 B2\nselect extractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[last()]');\nextractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[last()]')\nB2\nselect extractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[last()-1]');\nextractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[last()-1]')\nB1\nselect extractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[last()=1]');\nextractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[last()=1]')\n\nselect extractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[last()=2]');\nextractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[last()=2]')\nB1 B2\nselect extractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[last()=position()]');\nextractvalue('<a>A<b>B1</b><b>B2</b></a>','/a/b[last()=position()]')\nB2"
+    },
+    {
+      "anchor": "c531056",
+      "text": "Thanks for your reply!"
+    },
+    {
+      "anchor": "c531058",
+      "text": "You are truly welcome."
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "report_id": "38733",
+  "title": "Stored procedure using rlike against a null-valued parameter hangs",
+  "source_sha256": "7757e00b9661f719a302e7f4a2c997dd77c8083b0dea1c9f82ea170ee54093e6",
+  "source_anchors": [
+    "c180702",
+    "c185118"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "eee23c19cc9cf46e6a2b09096b82396ba8f35a49371d568c9378fbeb6c0a0e47"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "3df59fb1519ef5039d7fc1aaa83df072f6c7c78a06a073d642096037225c7e9f"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "SQL 中的 CREATE 定义已与源文核对；使用 runner 分配的新库。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "三行 Joe/Jessica/Alan 来自验证评论。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql 客户端执行 DELIMITER；外部 runner 需独立超时并记录超时与服务器存活，不能把正常等待直接当 crash。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "Joe(seph)? 返回 Joe 一行；Sarah? 返回空集；NULL 参数的 CALL 与直接 SELECT 都返回 Joe/Jessica/Alan 三行并正常结束。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP PROCEDURE IF EXISTS lstContacts;\nDROP TABLE IF EXISTS entContact;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "Joe(seph)? 返回 Joe 一行；Sarah? 返回空集；NULL 参数的 CALL 与直接 SELECT 都返回 Joe/Jessica/Alan 三行并正常结束。",
+    "failure": "NULL CALL 持续不返回、服务器失去响应或返回不等价结果。",
+    "limitations": "只完成静态准备；源报告中的历史输出不是本次目标版本的执行证据。"
+  },
+  "requirements": [
+    "fresh_isolated_schema",
+    "mysql_client_utf8mb4",
+    "statement_timeout_monitor"
+  ],
+  "transformations": [
+    "去掉源固定库 dg，改由 runner 新库承载。",
+    "保留最小过程与三个关键调用；去掉重复直接匹配演示。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "RLIKE/NULL/存储过程语义仍可在四目标检验；不同正则实现不妨碍该NULL短路场景的探索。",
+    "8.0.33": "RLIKE/NULL/存储过程语义仍可在四目标检验；不同正则实现不妨碍该NULL短路场景的探索。",
+    "8.0.34": "RLIKE/NULL/存储过程语义仍可在四目标检验；不同正则实现不妨碍该NULL短路场景的探索。",
+    "8.0.35": "RLIKE/NULL/存储过程语义仍可在四目标检验；不同正则实现不妨碍该NULL短路场景的探索。"
+  },
+  "source_reading": "核对锚点 c180702, c185118 的定义、输入、触发顺序和历史输出；相关历史修复信息不当作目标版本已验证。"
+}

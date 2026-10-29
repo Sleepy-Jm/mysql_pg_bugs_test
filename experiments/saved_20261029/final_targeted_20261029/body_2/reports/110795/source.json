@@ -1,0 +1,22 @@
+{
+  "report_id": "110795",
+  "title": "mysql insert is deadlocked",
+  "task_ids": [
+    "mysql-110795-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\5047b2b3993b_bug_110795.html",
+  "source_sha256": "5047b2b3993b5462092369a8a337ab4adf68181a00db8cc0c69b20028bd0361a",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nFor this deadlock case, we combined with the source code analysis:\n\nConcluded that transaction T1 when performing a second insert statement, the record is in transaction T1 to perform the insert for the first time, have obtained next_rec (ua record of 10) LOCK_REC | LOCK_X | LOCK_REC_NOT_GAP lock.\n\nHowever, a look at the source code reveals that since lock_rec_insert_check_and_lock() does not have lock_rec_lock_slow(), the function lock_rec_has_expl() checks for a stronger lock on a transaction. Instead, the lock_rec_get_first() is used to determine if there is a lock on another transaction, causing the transaction to execute the second insert statement, unable to acquire the lock and blocked. A deadlock is formed.\n\nTherefore, it is suggested that the lock_rec_insert_check_and_lock() function, after the lock_rec_get_first() function determines that the record has a lock, then the lock_rec_has_expl() function checks for a stronger lock on the transaction. To avoid unnecessary deadlocks.\n\nSpecific source analysis path, see the attached figure. Among them:\n\nThe blue line represents the logic executed by T1 for the first insertion;\nThe purple line represents the logic executed by T2's first insertion;\nThe black line indicates the logic performed by T1's second insertion;\nLock operations associated with unique index insertion records are marked with red short arrows;\nA vertical bar crossed with a red spike indicates that the function was executed, otherwise it is not executed.\n\nHow to repeat:\nAfter verification, it can be repeated in the following scenarios:\n\nCREATE TABLE `dl_tab` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` int NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `ua` (`name`)\n) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n\ninsert into dl_tab values(1,3);\ninsert into dl_tab values(5,7);\ninsert into dl_tab values(9,13);\ninsert into dl_tab values(17,23);\n\nT2:                                              |  T1:\nbegin;                                           |                  begin;\n                                                 |\n                                                 |  insert into dl_tab(id,name) values(26,10);   \n                                                 | \ninsert into dl_tab(id,name) values(30,10);       |\n                                                 |\n                                                 |  insert into dl_tab(id,name) values(40,8);\nERROR 1213 (40001): Deadlock found when trying   |\nto get lock; try restarting transaction          |"
+    },
+    {
+      "anchor": "c531910",
+      "text": "Hello xichao li,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    }
+  ]
+}

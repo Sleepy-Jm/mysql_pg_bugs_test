@@ -1,0 +1,26 @@
+{
+  "report_id": "111585",
+  "title": "Order by aggregate assertion error",
+  "task_ids": [
+    "mysql-111585-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\257f07b391cd_bug_111585.html",
+  "source_sha256": "257f07b391cd9465ce482b7a920a0ce6e6c3864cd12ba089aeca59c961c79d53",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nRun the following queries:\n\nCREATE TABLE t0 (c0 INT);\n(SELECT 1) UNION (SELECT DISTINCT rank() OVER () x FROM t0 GROUP BY t0.c0 ORDER BY min(x));\n\nThe UNION query will throw an assertion error at sql/sql_tmp_table.cc:1074\nassert(!distinct);\n\nIf I run the DISTINCT query outside the UNION I get a proper error.\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the queries above."
+    },
+    {
+      "anchor": "c533991",
+      "text": "Hello Pedro Ferreira,\n\nThank you for the report and feedback.\nObserved that 8.0.33 debug build is affected.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c534037",
+      "text": "Fixed by BUG#35168639 in MySQL 8.0.34.\n\nClosed."
+    }
+  ]
+}

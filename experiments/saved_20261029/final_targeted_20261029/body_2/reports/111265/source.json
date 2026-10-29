@@ -1,0 +1,30 @@
+{
+  "report_id": "111265",
+  "title": "Return wrong result",
+  "task_ids": [
+    "mysql-111265-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\763c3d70c711_bug_111265.html",
+  "source_sha256": "763c3d70c71115c8a66de770028e4545783898c5d056a413bc37313e0ba1c91c",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nselect 1 from data_b_tmp right join data_a_tmp using(a3) where char(data_b_tmp.a3) > -1;\nEmpty set (0.00 sec)\n\nselect 1 from data_b_tmp right join data_a_tmp using(a3);\n+---+\n| 1 |\n+---+\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n+---+\n11 rows in set (0.00 sec)\n\nselect * from data_b_tmp;\nEmpty set (0.00 sec)\n\nsince data_b_tmp is empty, these two queries should return the same result. The first query return the wrong result.\n\nHow to repeat:\ncreate table data_a_tmp(a1 float, a2 float, a3 float, a4 float);\ninsert into data_a_tmp(a1, a2, a3, a4) values (6.97,2.13,4.5,4.0);\ninsert into data_a_tmp(a1, a2, a3, a4) values (9.52,4.87,5.33,7.21);\ninsert into data_a_tmp(a1, a2, a3, a4) values (4.69,3.82,5.66,7.22);\ninsert into data_a_tmp(a1, a2, a3, a4) values (3.8,7.55,5.18,7.82);\ninsert into data_a_tmp(a1, a2, a3, a4) values (9.95,5.0,5.26,6.09);\ninsert into data_a_tmp(a1, a2, a3, a4) values (3.98,6.8,5.93,6.8);\ninsert into data_a_tmp(a1, a2, a3, a4) values (3.3,5.89,5.44,6.22);\ninsert into data_a_tmp(a1, a2, a3, a4) values (2.07,7.09,3.01,6.82);\ninsert into data_a_tmp(a1, a2, a3, a4) values (4.98,4.9,3.04,5.11);\ninsert into data_a_tmp(a1, a2, a3, a4) values (8.98,8.46,5.93,4.28);\ninsert into data_a_tmp(a1, a2, a3, a4) values (6.97,2.13,4.5,NULL);\n\ncreate table data_b_tmp(b1 float, b2 float, a3 float);"
+    },
+    {
+      "anchor": "c533131",
+      "text": "select 1 from (select char(data_b_tmp.a3) > -1  from data_b_tmp right join data_a_tmp using (a3)) tmp(a3);\n+---+\n| 1 |\n+---+\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n| 1 |\n+---+\n11 rows in set (0.00 sec)\nThis query also return the correct result."
+    },
+    {
+      "anchor": "c533169",
+      "text": "Please verify if it is a true bug, thx."
+    },
+    {
+      "anchor": "c533219",
+      "text": "Hi Mrs. Li,\n\nThank you for your bug report.\n\nHowever, it is not a bug.\n\nYou can not compare floating point values with equality operator ('=') or with USING. You can do that with INTeger values. For floating point types, you have to check the values in tuples within a range.\n\nThis is explained in our Reference Manual, in the section on Data Types.\n\nNot a bug."
+    }
+  ]
+}

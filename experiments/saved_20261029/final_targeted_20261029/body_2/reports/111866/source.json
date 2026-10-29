@@ -1,0 +1,26 @@
+{
+  "report_id": "111866",
+  "title": "executing a rename table statement could cause a transaction to be committed",
+  "task_ids": [
+    "mysql-111866-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\e23492713c7c_bug_111866.html",
+  "source_sha256": "e23492713c7c428f16e4c0c5f040f439ee12744b7ee0356d24f3c37b4e66a801",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nRun a series of statements in a single transaction starting with \"start transaction\" statement and ending with \"commit\" statement.Wherein a \"rename table\" statement lies and no matter whether it succeeds, this transaction will be commited at its position.\n\nHow to repeat:\n1. create a table in any database using statement below:\ncreate table t1 (n int);\n\n2. insert a row into t1:\ninsert into t1 values(1);\n\n3. run statements below:\nstart transaction;\nupdate t1 set n=n+1;\nrename table t2 to t3; (t2 doesn't exists)\ncommit;\n\nSince t2 doesn't exists, the third statement should fail and cause transaction to rollback. However, the fact is that the transaction will be committed normally.\n\nSuggested fix:\n\"rename table \" statement should not cause transaction to be committed."
+    },
+    {
+      "anchor": "c534710",
+      "text": "Since mysql does not support transactional DDL, this is not a bug."
+    },
+    {
+      "anchor": "c534741",
+      "text": "Hi Mr. remriver,\n\nYou are quite correct. \n\nAny DDL will make an implicit COMMIT during the transaction ....\n\nNot a bug."
+    }
+  ]
+}

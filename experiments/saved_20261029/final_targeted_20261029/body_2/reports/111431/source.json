@@ -1,0 +1,26 @@
+{
+  "report_id": "111431",
+  "title": "condition_fanout_filter optimizer wrong result?",
+  "task_ids": [
+    "mysql-111431-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\a425f299783a_bug_111431.html",
+  "source_sha256": "a425f299783a56e70ca63019a59b4be0a7ccfe29dc0c17e3c3873ad11c4ca5aa",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nRun the queries:\n\nCREATE TABLE t0 (c0 INT AUTO_INCREMENT UNIQUE KEY, c1 INT);\nCREATE TABLE t1 (c0 INT, c1 INT AUTO_INCREMENT UNIQUE KEY);\nINSERT INTO t0 VALUES (1,1),(2,1),(4,1),(5,2),(6,3),(7,4);\nINSERT INTO t1 VALUES (1,1),(2,2),(3,3),(4,4);\n\nSET @@SESSION.OPTIMIZER_SWITCH = 'condition_fanout_filter=off';\nSELECT c0 FROM (SELECT lag(t1.c1, 3) OVER () FROM t0 JOIN t1 ON t0.c0 = (t0.c0 DIV t0.c0)) t0 (c0) ORDER BY c0;\n\n+------+\n| c0   |\n+------+\n| NULL |\n| NULL |\n| NULL |\n|    4 |\n+------+\n\nSET @@SESSION.OPTIMIZER_SWITCH = 'condition_fanout_filter=on';\nSELECT c0 FROM (SELECT lag(t1.c1, 3) OVER () FROM t0 JOIN t1 ON t0.c0 = (t0.c0 DIV t0.c0)) t0 (c0) ORDER BY c0;\n\n+------+\n| c0   |\n+------+\n| NULL |\n| NULL |\n| NULL |\n|    1 |\n+------+\n\nDespite the explicit order by clause in the outermost query, the query results are different. Is this a bug?\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the queries above."
+    },
+    {
+      "anchor": "c533602",
+      "text": "Hello Pedro Ferreira,\n\nThank you for the report and feedback.\nVerified as described.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c533944",
+      "text": "Hi Pedro Ferreira,\n\nThe parameter `condition_fanout_filter` affected the choice of driver table which made by optimizer. For the case, You can use  STRAIGHT_JOIN to avoid puting the tables in the wrong order by the join optimizer\n\nmysql> SET @@SESSION.OPTIMIZER_SWITCH = 'condition_fanout_filter=on';\nmysql> SELECT c0 FROM (SELECT lag(t1.c1, 3) OVER () FROM t0 STRAIGHT_JOIN t1 ON t0.c0 = (t0.c0 DIV t0.c0)) t0 (c0) ORDER BY c0;\n+------+\n| c0   |\n+------+\n| NULL |\n| NULL |\n| NULL |\n|    1 |\n+------+\n\nmysql>  SET @@SESSION.OPTIMIZER_SWITCH = 'condition_fanout_filter=off';\nmysql> SELECT c0 FROM (SELECT lag(t1.c1, 3) OVER () FROM t0 STRAIGHT_JOIN t1 ON t0.c0 = (t0.c0 DIV t0.c0)) t0 (c0) ORDER BY c0;\n+------+\n| c0   |\n+------+\n| NULL |\n| NULL |\n| NULL |\n|    1 |\n+------+\n\nIn addition, I do not think that it is a bug."
+    }
+  ]
+}

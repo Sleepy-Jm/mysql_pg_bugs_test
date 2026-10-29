@@ -1,0 +1,68 @@
+{
+  "report_id": "113537",
+  "title": "False match of multibyte chars when checking existence of a control character",
+  "source_sha256": "1784188cebe97623c3eb16cdc498150eba32da8931ef63457ba38331e4945dd3",
+  "source_anchors": [
+    "cmain",
+    "c539414",
+    "c539449"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "717f1c7f179d2890799cfd2de4795301c5387161510898b32120654fec62a3dd"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "not_needed",
+      "detail": "仅标量表达式/系统元数据，无自建 schema 对象。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "ASCII、é、😂 原字符常量"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "无NUL的 abcdef/abcdéf 及二进制对照 LOCATE均0；emoji的00..10控制字符矩阵均不应匹配；异常：abcdéf 错返位置5或emoji伪匹配"
+    },
+    "cleanup": {
+      "status": "not_needed",
+      "detail": "无持久对象；断开专用会话。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "无NUL的 abcdef/abcdéf 及二进制对照 LOCATE均0；emoji的00..10控制字符矩阵均不应匹配",
+    "failure": "abcdéf 错返位置5或emoji伪匹配",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "utf8mb4 客户端；ANSI_QUOTES关闭；保存实际字符串 HEX"
+  ],
+  "transformations": [
+    "采用官方简化 NUL 用例为主；原 emoji 矩阵保留；不使用错误的 CHAR(字符串) 对照"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain, c539414, c539449 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

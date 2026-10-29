@@ -1,0 +1,75 @@
+{
+  "report_id": "67351",
+  "title": "Cardinality samples of partitioned tables sometimes widely off",
+  "source_sha256": "15125ad50afb8eed6e40784531af2195373165176e5d4f53e36d195ab108b672",
+  "source_anchors": [
+    "c409557",
+    "c456508",
+    "c459759"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "a67659ca79f552df41f1fdec119e2538587525f3f5c9f6b716ed75de677eb868"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "0faf002be4f0b162bb90d339d1430d0b1939dfaf04d78114c9a6671f44a88f12"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "采用 c456508 的8,192行四范围分区样例；不执行4百万行随机大用例。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "1 行13次倍增8,192行，按 id 计算 a/b，然后更新 b>5000 的a。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql 命令行按文件顺序执行；保存完整 stdout/stderr 与 SELECT 输出。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "记录 UPDATE 前后 SHOW KEYS Cardinality 与真实 DISTINCT；统计为近似值，不能要求完全相等，也不能仅因分区前后变化判 bug。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t1;"
+    }
+  },
+  "oracle": {
+    "kind": "plan_diff",
+    "expected": "记录 UPDATE 前后 SHOW KEYS Cardinality 与真实 DISTINCT；统计为近似值，不能要求完全相等，也不能仅因分区前后变化判 bug。",
+    "failure": "需先冻结统计误差阈值和重复测量协议，之后才可判定异常偏差。",
+    "limitations": "只完成静态准备；源报告中的历史输出不是本次目标版本的执行证据。"
+  },
+  "requirements": [
+    "fresh_isolated_schema",
+    "mysql_client_utf8mb4"
+  ],
+  "transformations": [
+    "选完整有界 c456508 变体；追加实际 COUNT/DISTINCT 对照。"
+  ],
+  "blockers": [
+    "原文证明近似统计存在偏差，但未给8.0目标可接受误差界限；需冻结 Cardinality 误差和重复采样判定标准。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0支持InnoDB原生分区、持久统计及同SQL；未知为偏差大小，不缺数据构造。",
+    "8.0.33": "目标8.0支持InnoDB原生分区、持久统计及同SQL；未知为偏差大小，不缺数据构造。",
+    "8.0.34": "目标8.0支持InnoDB原生分区、持久统计及同SQL；未知为偏差大小，不缺数据构造。",
+    "8.0.35": "目标8.0支持InnoDB原生分区、持久统计及同SQL；未知为偏差大小，不缺数据构造。"
+  },
+  "source_reading": "核对锚点 c409557, c456508, c459759 的定义、输入、触发顺序和历史输出；相关历史修复信息不当作目标版本已验证。"
+}

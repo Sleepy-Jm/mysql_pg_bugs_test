@@ -1,0 +1,19 @@
+{
+  "normal": "a=0的c非NULL空串且LENGTH=0；其余两行NULL，a/b不变",
+  "reported": "release UPDATE成功却a=0的c仍NULL/长度NULL；异常发生在UPDATE t1 SET c=空串 WHERE a=0。若release崩溃，只记其他异常待归因；不能冒充debug断言复现",
+  "prerequisites": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "expected_errors": [],
+  "kind": "wrong_result",
+  "source_oracle": {
+    "kind": "wrong_result",
+    "expected": "a=0 行 c 应为非NULL空串(LENGTH=0)，其余两行 c 为NULL，a/b不变；debug不应断言、release不应不更新或损坏。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "crash_handling": "For release, a crash is other_anomaly unless additional report-specific evidence supports it; target outcome is successful UPDATE failing to change NULL to empty string.",
+  "boundary_review_note": "UPDATE succeeds but a=0 remains NULL; correct a=0 is non-NULL empty string with length 0. REDUNDANT and instant-column prerequisites required. A release crash is other anomaly, not this wrong-result oracle."
+}

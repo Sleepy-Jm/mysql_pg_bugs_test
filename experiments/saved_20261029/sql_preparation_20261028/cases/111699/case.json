@@ -1,0 +1,70 @@
+{
+  "report_id": "111699",
+  "title": "Incorrect results",
+  "source_sha256": "4c1f207e7353bd92e6c78304cac06d5db893caea2d71e655416596426b516b23",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "1ac9baa1a1c9181de1f80462d394fb7f60f05c9c30e0b888e3a6aaf15ed25118"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "80ffd71157c1408e2c7f733eeceba4e3a2499712bbce64fd13c3cd192014d6d0"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0 TEXT；t1 TINYINT UNSIGNED ZEROFILL UNIQUE + FLOAT"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原 8/5 行含 NULL 和字符串"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "Q 无真值时 P OR Q 与 P 多重集相同，原期望 3 行 NULL；异常：P OR Q 扩增至 9 行"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "Q 无真值时 P OR Q 与 P 多重集相同，原期望 3 行 NULL",
+    "failure": "P OR Q 扩增至 9 行",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "仅移除终端结果，保留精确浮点整数与字符串数据；保持 subquery_to_derived=on"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

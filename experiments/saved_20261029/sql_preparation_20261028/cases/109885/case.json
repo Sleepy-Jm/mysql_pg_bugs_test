@@ -1,0 +1,107 @@
+{
+  "report_id": "109885",
+  "title": "ALTER TABLE doesn't update use_stopword when dropping & recreating",
+  "source_sha256": "909bdaef07d06c4f34bb8fdf1b60629c54e4a42bcc7d62672b1c74ef8f957070",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "c5769e406eda949bc6562d78f278f07ac5ee65548565d1391ff63b7d6540fa3c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "3974b3a9b48f2c5b6ac80b60be66de35a869ee64c9a781cbbff2bd0038a96be1"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "test(id INT,name VARCHAR(255))，InnoDB FTS。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "不依赖表数据；按源文空表/常量触发。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 顺序在同一全新隔离 schema 和 mysql 会话执行；保留逐句输出/错误；预期错误处用 --force 继续，正常 SQL 错误不计 crash。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "三次 use_stopword 预期为 1、0、0；同条删建不应保留旧的 1。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "按 cleanup.sql 清理本用例对象；结束会话，销毁专用 schema。实例级条件按 execution_conditions 恢复或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "configuration",
+    "expected": "三次 use_stopword 预期为 1、0、0；同条删建不应保留旧的 1。",
+    "failure": "在所列前提成立时，违反上述逐例结果/错误/存活约束才记录异常；保存原始输出，初始化失败单列。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在；静态检查不证明服务器语法接受或根因独立。"
+  },
+  "requirements": [
+    "全新隔离 schema 和专用会话；保存真实版本、sql_mode、字符集和日志",
+    "ngram解析器",
+    "设置FTS辅助表权限",
+    "ngram parser 可用；不在本轮安装。",
+    "innodb_ft_aux_table 为全局状态；仅一次性实例，由相同会话保存和恢复；若会话丢失销毁实例。"
+  ],
+  "transformations": [
+    "按已核对的原文 SQL 整理；结果表、提示符、栈记录留在 inputs 原文中，不当作 SQL。",
+    "将源文 <snip>/test 替换为 CONCAT(DATABASE(), /test) 对应未来新库，显式冻结 InnoDB；新增保存/恢复变量。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标支持InnoDB FTS配置及同语句删建索引。 本轮未在该版本执行。",
+    "8.0.34": "目标支持InnoDB FTS配置及同语句删建索引。 本轮未在该版本执行。",
+    "8.0.35": "目标支持InnoDB FTS配置及同语句删建索引。 本轮未在该版本执行。"
+  },
+  "source_reading": "逐份核对 cmain 的定义、输入、顺序和判据；其他评论中的历史结果不外推为目标版本实测。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "InnoDB test(id INT,name VARCHAR(255))，ngram可用，设置innodb_ft_aux_table为该表。",
+    "steps": "先启用stopword建FTS，设会话stopword=0后同一ALTER删建索引并查询INNODB_FT_CONFIG；再拆成两句删建对照。",
+    "oracle": "新建索引use_stopword应反映新配置，单句/双句处理不应意外保留旧值。",
+    "requirements": [
+      "ngram解析器",
+      "设置FTS辅助表权限"
+    ],
+    "target_applicability": "目标支持InnoDB FTS配置及同语句删建索引。"
+  },
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "plugin",
+      "detail": "ngram parser 可用；不在本轮安装。",
+      "requires_review": true
+    },
+    {
+      "kind": "global_configuration",
+      "detail": "innodb_ft_aux_table 为全局状态；仅一次性实例，由相同会话保存和恢复；若会话丢失销毁实例。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

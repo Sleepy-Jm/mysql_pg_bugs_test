@@ -1,0 +1,26 @@
+{
+  "report_id": "112915",
+  "title": "CTE double materialization issue",
+  "task_ids": [
+    "mysql-112915-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\e6c582746236_bug_112915.html",
+  "source_sha256": "e6c58274623681b6446a8e0ebb6dfd3a05b2fec7b9b2bfc01797c3a0f08edc18",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nI am not sure if this can be labeled as a bug or a missing feature, so please close if this is not the case.\n\nRun these queries:\nCREATE TEMPORARY TABLE t0 (c0 INT);\nWITH x(x) AS (SELECT 1 FROM t0) SELECT 1 FROM x WHERE (SELECT 1 FROM x);\n\nThe CTE query will fail with the error:\nERROR 1137 (HY000): Can't reopen table: 't0'\n\nThis is happening because table t0 is being opened twice. However, I would expect the CTE to be materialized only once during the whole query, then the error shouldn't happen. Can this be improved?\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the queries above."
+    },
+    {
+      "anchor": "c537582",
+      "text": "Hello Pedro Ferreira,\n\nThank you for the report and test case.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c537587",
+      "text": "Posted by developer:\n \nThis is not a bug. Check documentation in Error messages appendix of the user manual:\n\nYou cannot refer to a TEMPORARY table more than once in the same query. For example, the following does not work:\n\n  SELECT * FROM temp_table JOIN temp_table AS t2;\n\nThe statement produces this error:\n\n  ERROR 1137: Can't reopen table: 'temp_table'\n\nYou can work around this issue if your query permits use of a common table expression (CTE) rather than a TEMPORARY table. For example, this fails with the Can't reopen table error:\nTo avoid the error, use a WITH clause that defines a CTE, rather than the TEMPORARY table:"
+    }
+  ]
+}

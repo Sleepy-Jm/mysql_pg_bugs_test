@@ -1,0 +1,26 @@
+{
+  "report_id": "111172",
+  "title": "X protocol does not report \"too many connections\"",
+  "task_ids": [
+    "mysql-111172-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\d76622546fc4_bug_111172.html",
+  "source_sha256": "d76622546fc4433cf0cd8c16f56cb62a5d006c14e569a40fe1d14f744c6f1219",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen ysing the X Protocol, and setting `mysqlx_max_connections` to something very low, connections run out, and the X Protocol Client will get an EOF from the server.\n\nThis is in contrast with the Classic Protocol, where the MySQL server correctly reports an 1040 \"Too many connections\".\n\nI faced this problem while debugging another issue using my own Connector using X Protocol written in Go. The source for that is included in \"How to repeat\".\n\nHow to repeat:\nmysql> set GLOBAL mysqlx_max_connections = 1;\nmysql> set GLOBAL max_connections = 1;\n\n# Using non-root user\n# this will work\nsh> mysqlsh scott:tiger@127.0.0.1:33060/\n# this will fail (since first connection is still open)\nsh> mysqlsh scott:tiger@127.0.0.1:33060/\n\n# error message is\nArgumentError: X protocol error: MySQL server has gone away\nClassic protocol error: MySQL Error 2013 (HY000): Lost connection to MySQL server at 'reading initial communication packet', system error: 0\n\n#\n# Classic Protocol\n#\n# open a few, then error would happen:\nsh> mysqlsh scott:tiger@127.0.0.1:3306/\n\nMySQL Error 1040 (HY000): Too many connections\n\nSuggested fix:\nIt would be great if we X Protocol could handle the error that user has reached her limit, just as the Classic Protocol does. Now I cannot tell the user what is wrong and need to report a generic \"bad connection\". The \"server has gone away\" is infamously bad.\n\nCan we check in the Plugin the stats and then report an error? If I connect with a wrong password, I also get an error back, this is very similar."
+    },
+    {
+      "anchor": "c532939",
+      "text": "Looking at the source, and trying to find a way to fix this, I can see that lots of errors are simply logged but not returned to the client, just closing the connection. That's not nice.\n\nIn X plugin client.cc, you'll find:\n\n  } catch (std::exception &e) {\n    log_error(ER_XPLUGIN_FORCE_STOP_CLIENT, client_id(), e.what());\n  }\n\nBut Client::run returns void.\n\nThere are ways to returns the error, since some things are indeed reported back."
+    },
+    {
+      "anchor": "c532964",
+      "text": "Hello Geert,\n\nThank you for the report and feedback.\n\nRegards,\nUmesh"
+    }
+  ]
+}

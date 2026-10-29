@@ -1,0 +1,26 @@
+{
+  "report_id": "112238",
+  "title": "Inconsistent results caused by FIELD()",
+  "task_ids": [
+    "mysql-112238-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\78510402d82e_bug_112238.html",
+  "source_sha256": "78510402d82e09ef4314588946cf3bedf4a1b960c110afa8e24f3b941cfabdab",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nDear MySQL developers,\n\nI used my new fuzzer to fuzz MySQL and found a logic bug that make MySQL server output inconsistent results.\n\nHow to repeat:\n\n*** Test Case 1 ***\n\nselect FIELD((case when true then ('Q' || 'k') else '?;' end), null, 'c', null) as c0;\n\nI simplified \"case when true then ('Q' || 'k') else '?;' end\" to \"('Q' || 'k')\", and got Test Case 2:\n\n*** Test Case 2 ***\n\nselect FIELD(('Q' || 'k'), null, 'c', null) as c0;\n\n*** Expected results ***\n\nTest Case 1 and Test Case 2 return the same results.\n\n*** Actual results ***\n\nTest Case 1 and Test Case 2 returned inconsistent results.\n\nTest Case 1 returned:\n\n+----+\n| c0 |\n+----+\n|  0 |\n+----+\n\nTest Case 2 returned:\n\n+----+\n| c0 |\n+----+\n|  2 |\n+----+"
+    },
+    {
+      "anchor": "c535811",
+      "text": "Hello Zuming Jiang,\n\nThank you for the report and test case.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c535985",
+      "text": "For test case 1, the result type of `case when true then ('Q' || 'k') else '?;' end` is `STRING_RESULT` and all other parameters' result type is `STRING_RESULT`, so the compare type of function `Item_func_field` is `STRING_RESULT`.\n\nFor test case 2, the result type of `('Q' || 'k')` is `INT_RESULT` and all other parameters' result type is `STRING_RESULT`, so the compare type of function `Item_func_field` is `REAL_RESULT`."
+    }
+  ]
+}

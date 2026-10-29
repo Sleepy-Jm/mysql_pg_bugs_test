@@ -1,0 +1,50 @@
+{
+  "report_id": "111062",
+  "title": "Cannot disable TLS in MySQL 8.0.33",
+  "task_ids": [
+    "mysql-111062-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\2065e5a71018_bug_111062.html",
+  "source_sha256": "2065e5a71018415843c147f103331c2df63deb3900f6f18bd324fcd5009e6088",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThis is nearly a copy of #106459 but for the newest version as it still does not work.\n\nIt seems that there is no clear way to disable SSL/TLS.\n\nHow to repeat:\nI tried it with the old optn ssl=0 and also with tls_version='' but both throw warnings in the logfile.\nPlease see the following logs. the third one is with both ssl/tls options disabled.\n\n###################################################################\n\nssl=0\n#tls_version=''\n\n2023-05-17T18:36:24.6NZ mysqld_safe Starting mysqld daemon with databases from /services/mysql/db\n2023-05-17T18:36:24.392220Z 0 [Warning] [MY-011068] [Server] The syntax '--ssl=off' is deprecated and will be removed in a future release. Please use --tls-version='' instead.\n2023-05-17T18:36:24.392327Z 0 [System] [MY-010116] [Server] /bin/mysqld (mysqld 8.0.33) starting as process 50183\n2023-05-17T18:36:24.396964Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\n2023-05-17T18:36:24.426971Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\n2023-05-17T18:36:24.486854Z 0 [Warning] [MY-011302] [Server] Plugin mysqlx reported: 'Failed at SSL configuration: \"SSL context is not usable without certificate and private key\"'\n2023-05-17T18:36:24.486894Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060, socket: /tmp/mysqlx.sock\n2023-05-17T18:36:24.486910Z 0 [System] [MY-010931] [Server] /bin/mysqld: ready for connections. Version: '8.0.33'  socket: '/tmp/mysql.sock'  port: 3306  Homebrew.\n\n###################################################################\n\n#ssl=0\ntls_version=''\n\n2023-05-17T18:37:55.6NZ mysqld_safe Starting mysqld daemon with databases from /services/mysql/db\n2023-05-17T18:37:55.161382Z 0 [System] [MY-010116] [Server] /bin/mysqld (mysqld 8.0.33) starting as process 50650\n2023-05-17T18:37:55.165999Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\n2023-05-17T18:37:55.195959Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\n2023-05-17T18:37:55.246933Z 0 [Warning] [MY-013595] [Server] Failed to initialize TLS for channel: mysql_main. See below for the description of exact issue.\n2023-05-17T18:37:55.246946Z 0 [Warning] [MY-010069] [Server] Failed to set up SSL because of the following SSL library error: TLS version is invalid\n2023-05-17T18:37:55.255752Z 0 [Warning] [MY-011302] [Server] Plugin mysqlx reported: 'Failed at SSL configuration: \"SSL context is not usable without certificate and private key\"'\n2023-05-17T18:37:55.255793Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060, socket: /tmp/mysqlx.sock\n2023-05-17T18:37:55.255809Z 0 [System] [MY-010931] [Server] /bin/mysqld: ready for connections. Version: '8.0.33'  socket: '/tmp/mysql.sock'  port: 3306  Homebrew.\n\n###################################################################\n\n#ssl=0\n#tls_version=''\n\n2023-05-17T18:40:29.6NZ mysqld_safe Starting mysqld daemon with databases from /services/mysql/db\n2023-05-17T18:40:29.501047Z 0 [System] [MY-010116] [Server] /bin/mysqld (mysqld 8.0.33) starting as process 51554\n2023-05-17T18:40:29.505564Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\n2023-05-17T18:40:29.535101Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\n2023-05-17T18:40:29.589251Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.\n2023-05-17T18:40:29.589269Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.\n2023-05-17T18:40:29.594359Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060, socket: /tmp/mysqlx.sock\n2023-05-17T18:40:29.594374Z 0 [System] [MY-010931] [Server] /bin/mysqld: ready for connections. Version: '8.0.33'  socket: '/tmp/mysql.sock'  port: 3306  Homebrew.\n\nSuggested fix:\nThe setting tls_version='' should disable SSL/TLS completly and also prevent generation of (selfsigned) certificate files."
+    },
+    {
+      "anchor": "c532641",
+      "text": "Hi,\n\nSetting --tls-version='' is the correct way to disable TLS. In the 2nd case mentioned in bug description:\n\n###################################################################\n\n#ssl=0\ntls_version=''\n\n2023-05-17T18:37:55.6NZ mysqld_safe Starting mysqld daemon with databases from /services/mysql/db\n2023-05-17T18:37:55.161382Z 0 [System] [MY-010116] [Server] /bin/mysqld (mysqld 8.0.33) starting as process 50650\n2023-05-17T18:37:55.165999Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\n2023-05-17T18:37:55.195959Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\n2023-05-17T18:37:55.246933Z 0 [Warning] [MY-013595] [Server] Failed to initialize TLS for channel: mysql_main. See below for the description of exact issue.\n2023-05-17T18:37:55.246946Z 0 [Warning] [MY-010069] [Server] Failed to set up SSL because of the following SSL library error: TLS version is invalid\n2023-05-17T18:37:55.255752Z 0 [Warning] [MY-011302] [Server] Plugin mysqlx reported: 'Failed at SSL configuration: \"SSL context is not usable without certificate and private key\"'\n2023-05-17T18:37:55.255793Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060, socket: /tmp/mysqlx.sock\n2023-05-17T18:37:55.255809Z 0 [System] [MY-010931] [Server] /bin/mysqld: ready for connections. Version: '8.0.33'  socket: '/tmp/mysql.sock'  port: 3306  Homebrew.\n\n###################################################################\n\nWarnings related to SSL configuration failures are indicators that TLS is disabled.\n\nTo disable automatic generation of certificates, please set auto_generate_certs to OFF.\nFor more details, refer to: https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_auto_generate_..."
+    },
+    {
+      "anchor": "c532645",
+      "text": "Thank you for the quick answer but I see a few issues:\n\nif I pass --tls-version='' as a parameter it leads in an error (yes, version 8.0.33):\n\n2023-05-18T07:05:32.285830Z 0 [ERROR] [MY-013835] [Server] Option --tls-version or --admin-tls-version is set to an invalid value ''.\n\nIf I set tls_version='' in my.cnf it works partially.\nSSL/TLS is disabled but it shows the 3 listed warnings.\nWhats the sense to show warnings regarding SSL/TLS if its disabled explicitly?\n\n2023-05-18T07:08:33.828439Z 0 [Warning] [MY-013595] [Server] Failed to initialize TLS for channel: mysql_main. See below for the description of exact issue.\n2023-05-18T07:08:33.828454Z 0 [Warning] [MY-010069] [Server] Failed to set up SSL because of the following SSL library error: TLS version is invalid\n2023-05-18T07:08:33.838042Z 0 [Warning] [MY-011302] [Server] Plugin mysqlx reported: 'Failed at SSL configuration: \"SSL context is not usable without certificate and private key\"'\n\nfirst line: It did not FAIL, it was DISABLED, so no need to warn!?\nsecond line: why should there be an SSL library error? SSL is disabled so there should be no SS-lib error!?\nthird line: for sure its not usable becaue its disabled. so why throw the warning?\n\nthank you and best regards"
+    },
+    {
+      "anchor": "c532648",
+      "text": "Hi,\n\nJust to confirm my understanding: TLS connections are disabled when --tls-version='' is supplied and this is expected behavior.\n\nHowever, your concerns are:\n1. The option does not behave consistently\n2. Additional warnings at start-up are added on server start up\n\nThus, as a part of the bug fix, we will try to simplify error messages. It is likely that we would keep at least one warning in place to inform user that TLS is disabled.\n\nThanks,\n- Harin"
+    },
+    {
+      "anchor": "c532649",
+      "text": "Correct, the parameter does not work correctly (it generates an error) but the value in the cnf file works.\n\nOne warning that TLS was disabled sounds reasonable."
+    },
+    {
+      "anchor": "c532657",
+      "text": "Verified as described."
+    },
+    {
+      "anchor": "c532715",
+      "text": "One more comment:\n\nThe setting auto_generate_certs=0 disables the creation of the following six files:\n\nca-key.pem\nca.pem\nclient-cert.pem\nclient-key.pem\nserver-cert.pem\nserver-key.pem\n\nbut these two are still created:\n\nprivate_key.pem\npublic_key.pem\n\nis that intended or also an issue?"
+    },
+    {
+      "anchor": "c532745",
+      "text": "This is intended. These files are controlled by different system variables.\nPlease see:\nhttps://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_caching_sha2_p...\nhttps://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_sha256_passwor...\n\nPlease set these variables to OFF if these files are not needed."
+    },
+    {
+      "anchor": "c532750",
+      "text": "Thank you, Harin."
+    }
+  ]
+}

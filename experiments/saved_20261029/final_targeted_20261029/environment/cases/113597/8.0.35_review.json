@@ -1,0 +1,69 @@
+{
+  "task_id": "mysql-113597-8.0.35",
+  "report_id": "113597",
+  "target_versions": [
+    "8.0.35"
+  ],
+  "official_version_field": "8.0.35",
+  "source_url": "https://bugs.mysql.com/bug.php?id=113597",
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\2c5f34ca7d7d_bug_113597.html",
+  "source_sha256": "2c5f34ca7d7d938ad3d507d75f0a44782e86035bedde9edd0fc505e2760f1f87",
+  "source_anchors": [
+    "cmain",
+    "c539719"
+  ],
+  "source_comments_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\final_targeted_20261029\\environment\\cases\\113597\\source_comments.json",
+  "source_review_complete": true,
+  "review_scope": "Environment necessity and relevant primary-source claims/comments; executable SQL independently checked only for ready items. Long stack frames are retained but not treated as extra setup instructions.",
+  "prior_gaps": [
+    "完整oracle要求读取隔离数据目录FTS文件与information_schema.FILES交叉核对；当前SQL仅字典部分，缺专用文件审查/目录定位及权限预检。不执行部分后冒充完整复现。"
+  ],
+  "ready": false,
+  "actual_executions": 0,
+  "gaps": [
+    "Dedicated runner/environment preflight and complete postchecks not yet available; SQL must be reviewed for that runner before admission."
+  ],
+  "sql_paths": [
+    "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\pending230\\626074a6a52c_reproducer.sql"
+  ],
+  "cleanup_paths": [
+    "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\pending230\\b071453492d1_cleanup.sql"
+  ],
+  "original_environment": {
+    "actual": [],
+    "runs": [],
+    "requirements": [
+      "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+      "独立实例",
+      "可读取测试datadir文件列表",
+      "每组使用新建表避免残留污染",
+      "全新隔离 schema/实例；每次 SELECT 同时由runner保存测试库物理文件清单，不能删除未知文件"
+    ],
+    "conditions": []
+  },
+  "original_oracle": {
+    "normal": "分开/一起删除两个FTS索引后均5个公共FTS字典项且与磁盘文件一致",
+    "reported": "分开删除剩5；一起删除字典剩11但磁盘仅5，6条index文件字典幽灵记录",
+    "prerequisites": [
+      "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+      "独立实例",
+      "可读取测试datadir文件列表",
+      "每组使用新建表避免残留污染",
+      "全新隔离 schema/实例；每次 SELECT 同时由runner保存测试库物理文件清单，不能删除未知文件"
+    ],
+    "expected_errors": [],
+    "kind": "metadata_difference",
+    "source_oracle": {
+      "kind": "metadata_difference",
+      "expected": "两种删除方式均不应保留已删索引的 _index_1..6 文件条目；DROP表后该表全部 FTS 条目清除",
+      "failure": "同时 DROP 两索引残留其中6个已不存在文件的字典条目",
+      "limitations": "SQL 已完成字典对照；物理文件不存在的主张必须结合运行时文件清单，不仅凭行数。"
+    }
+  },
+  "environment_group": "release_fts_filesystem_audit",
+  "build_necessity": "Require full before/after information_schema.FILES AND read-only filesystem listings in exclusively owned datadir, separate-drop control then combined-drop target. SQL dictionary rows alone cannot establish stale entries. No debug requirement.",
+  "required_environment": [
+    "Require full before/after information_schema.FILES AND read-only filesystem listings in exclusively owned datadir, separate-drop control then combined-drop target. SQL dictionary rows alone cannot establish stale entries. No debug requirement."
+  ],
+  "review_completed_at_utc": "2026-10-29T07:01:59.937475+00:00"
+}

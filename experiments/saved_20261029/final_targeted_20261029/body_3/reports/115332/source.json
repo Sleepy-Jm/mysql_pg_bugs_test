@@ -1,0 +1,26 @@
+{
+  "report_id": "115332",
+  "title": "Abnormal increase in the Innodb_rows_inserted metric value",
+  "task_ids": [
+    "mysql-115332-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\a8642e35a8d1_bug_115332.html",
+  "source_sha256": "a8642e35a8d1bf384036395ef224564a55cabebeb577355666d6612372cdfa73",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nInnodb_rows_inserted : The number of rows inserted into `InnoDB` tables.\n\nIt has been found that querying the information_schema.processlist table causes an increase in the Innodb_rows_inserted value. When a large number of processlist table queries are performed, this can result in the metric not accurately reflecting the actual business write situation.\n\nThe function row_insert_for_mysql_using_cursor does not categorize the processlist table as a system table. It would be more reasonable to use n_system_rows_inserted (Innodb_system_rows_inserted) here.\n\n    dict_table_n_rows_inc(node->table);\n\n    if (node->table->is_system_table) {\n      srv_stats.n_system_rows_inserted.inc();\n    } else {\n      srv_stats.n_rows_inserted.inc();\n    }\n  }\n\nHow to repeat:\n\nmysql [localhost:8024] {msandbox} (sysdb) > show  status like 'Innodb_rows_inserted';\n+----------------------+--------+\n| Variable_name        | Value  |\n+----------------------+--------+\n| Innodb_rows_inserted | 400005 |\n+----------------------+--------+\n1 row in set (0.00 sec)\n\nmysql [localhost:8024] {msandbox} (sysdb) > select id from information_schema.processlist where USER='tdsqlsys_agent' and info like '%%_shard_%%';\nEmpty set (0.00 sec)\n\nmysql [localhost:8024] {msandbox} (sysdb) > show  status like 'Innodb_rows_inserted';\n+----------------------+--------+\n| Variable_name        | Value  |\n+----------------------+--------+\n| Innodb_rows_inserted | 400007 |\n+----------------------+--------+\n1 row in set (0.00 sec)"
+    },
+    {
+      "anchor": "c544304",
+      "text": "any os can repeat"
+    },
+    {
+      "anchor": "c544305",
+      "text": "Hi Mr. lee,\n\nThank you for your bug report.\n\nHowever, this is not a bug . We have used our latest bug fix release which clearly says:\n\n+---------+------+-------------------------------------------------------------------------------------------------------------------------------------------+\n| Level   | Code | Message                                                                                                                                   |\n+---------+------+-------------------------------------------------------------------------------------------------------------------------------------------+\n| Warning | 1287 | 'INFORMATION_SCHEMA.PROCESSLIST' is deprecated and will be removed in a future release. Please use performance_schema.processlist instead |\n+---------+------+-------------------------------------------------------------------------------------------------------------------------------------------+\n\nHence, I_S.processlist is no longer supported.\n\nWhen P_S is used, everything is just fine:\n\nmysql>  show  status like 'Innodb_rows_inserted';\n+----------------------+-------+\n| Variable_name        | Value |\n+----------------------+-------+\n| Innodb_rows_inserted | 2     |\n+----------------------+-------+\n1 row in set (0.00 sec)\n\nmysql>  select id from performance_schema.processlist where USER='tdsqlsys_agent' and info like '%%_shard_%%';\nEmpty set (0.03 sec)\n\nmysql>  show  status like 'Innodb_rows_inserted';\n+----------------------+-------+\n| Variable_name        | Value |\n+----------------------+-------+\n| Innodb_rows_inserted | 2     |\n+----------------------+-------+\n1 row in set (0.00 sec)\n\nUnsupported."
+    }
+  ]
+}

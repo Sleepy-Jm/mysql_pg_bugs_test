@@ -1,0 +1,87 @@
+{
+  "report_id": "112983",
+  "title": "Assertion Failure in /mysql-8.0.34/sql/sql_base.cc:7731",
+  "source_sha256": "72dfcf2f159edff33038d66e05a87dee02a37b373ef955ba36af34e576ef810f",
+  "source_anchors": [
+    "cmain",
+    "c537781",
+    "c537782"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "4fd59d1cfce41f3d63989f0aefeaaf0fad828bd257c2cb07207b1bca210589f3"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "dab05702e89440d871a6c69e66bb0c35bc9281d169ba9c678a40290b41777833"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "x(x VARCHAR(1))，CTE与表同名是原触发结构。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "四行x/NULL/x/1 IN(SELECT1)。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "同名嵌套CTE/窗口/子查询应安全返回结果或SQL错误，不得出现sql_base上下文断言；不用随机化或化简替换原表达式。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "同名嵌套CTE/窗口/子查询应安全返回结果或SQL错误，不得出现sql_base上下文断言；不用随机化或化简替换原表达式。",
+    "failure": "不应出现报告所述服务器断言/异常退出；受控 SQL 错误须单独记录，连接存活/服务日志而非仅客户端错误作为判据。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "目标debug构建"
+  ],
+  "transformations": [
+    "只用cmain原始SQL变体，评论中不同长查询不拼入。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c537781, c537782 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "原文要求 WITH_DEBUG；记录与 release 构建的差异。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

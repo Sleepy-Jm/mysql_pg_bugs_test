@@ -1,0 +1,30 @@
+{
+  "report_id": "110819",
+  "title": "EXISTS with dependent subquery can return incorrect results",
+  "task_ids": [
+    "mysql-110819-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\e4e2071caa6f_bug_110819.html",
+  "source_sha256": "e4e2071caa6fcaafebbdab1442107745ba04160a4e60864aec7c3e4e671c1745",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nSometimes a query using EXISTS with dependent subquery can return wrong results.\n\nHow to repeat:\n#The issue can be reproduced on 8.0.16 and above.\n\ndocker run --name bug_mysql -p 6603:3306 -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -d mysql:8.0.33\n\n# Wait a few seconds.\nmysql -uroot -h 127.0.0.1 -P 6603\n\n# Copy the following SQL statements into mysql.\nCREATE DATABASE bug_db;\nCREATE TABLE bug_db.bug_t(id INT NOT NULL AUTO_INCREMENT, col_str VARCHAR(255), col_int INT, PRIMARY KEY (id), INDEX col_str (col_str), INDEX col_int_ind (col_int));\n\nINSERT INTO bug_db.bug_t(id, col_str, col_int) VALUES (1, \"a\", 1), (2, \"a\", 1), (3, \"a\", 1);\n\nSELECT id\nFROM bug_db.bug_t t1\nWHERE EXISTS (\nSELECT 1\nFROM bug_db.bug_t t2\nWHERE t1.id > t2.id\nAND t1.col_str = t2.col_str\nAND t1.col_int = t2.col_int);\n\n# The expected result is 2 and 3, but the actual result is 2.\n\nexit;\n\n# Clean up\ndocker stop bug_mysql && docker rm bug_mysql\n\nSuggested fix:\nThis bug is not reproducible on 8.0.15 and below. The changelog of 8.0.16 has the following:\n\n\"An EXISTS subquery is converted to a semijoin operation. The optimizer chooses a materialization lookup strategy for this semijoin, but because the subquery is not correlated with the outer query block, there were no keys to use for the lookup, which caused the parent query to fail. To solve this issue, we use two equal constant items as keys, to ensure that the materialized query gets the constant as a key (and so that the materialized table consists of at most one row). (Bug #28805105)\"\n\nMaybe the fix to Bug #28805105 has a regression."
+    },
+    {
+      "anchor": "c531965",
+      "text": "Disabling semijoin (set optimizer_switch='semijoin=off';) can fix the issue."
+    },
+    {
+      "anchor": "c531986",
+      "text": "Hello Chehai Wu,\n\nThank you for the report and test case.\nVerified as described.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c532343",
+      "text": "Posted by developer:\n \n\nBisect says:\n\nd538f0b38d147e574d6833b14a79dcfd7a8ce4b1 is the first bad commit\ncommit d538f0b38d147e574d6833b14a79dcfd7a8ce4b1\nAuthor: Roy Lyseng <roy.lyseng@oracle.com>\nDate:   Wed Nov 14 14:03:16 2018 +0100\n\n    WL#4389 Transform EXISTS subqueries to semi-join\n    \n    Extend semi-join check to accept EXISTS subqueries in addition to IN.\n    Filter out non-deterministic subqueries."
+    }
+  ]
+}

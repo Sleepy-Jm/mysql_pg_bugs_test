@@ -1,0 +1,99 @@
+{
+  "report_id": "111304",
+  "title": "The Query Rewrite Plugin mixes-up LIMIT and OFFSET.",
+  "source_sha256": "3386d7341fa3973995472dc556c1f7de09013b0406e911fe59082fbe69b4ac7e",
+  "source_anchors": [
+    "cmain",
+    "c533246"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "needs_safety_review",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "9ad7380beeb8753a361efeda1a97593492c14f19f0471a150443e7d87f4b812c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "cf293e588c213c0a38fabac53877c022111036fc016cb3fcaa9f925eff4d5c4f"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "独占test_jfg.t；使用发行包已安装rewriter及其query_rewrite.rewrite_rules。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原三行(1,1),(2,2),(3,3)。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "无规则时(id,v)=(3,3)；规则启用后只能一行(3,4)。出现两行(2,3),(3,4)或warnings显示LIMIT2 OFFSET1表示位置参数交换。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DELETE FROM query_rewrite.rewrite_rules WHERE id=@case_rule1;\nCALL query_rewrite.flush_rewrite_rules();\nDROP TABLE IF EXISTS test_jfg.t;\nDROP DATABASE test_jfg;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "无规则时(id,v)=(3,3)；规则启用后只能一行(3,4)。出现两行(2,3),(3,4)或warnings显示LIMIT2 OFFSET1表示位置参数交换。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "可用 Query Rewrite Plugin",
+    "具备安装插件和规则表权限"
+  ],
+  "transformations": [
+    "把shell here-string中的SQL转写为顺序脚本；规则id用LAST_INSERT_ID保存，只删本例规则，不使用源评论的TRUNCATE全表。",
+    "不把安装插件脚本放入SQL执行序列，单列环境预检。"
+  ],
+  "blockers": [
+    "修改实例级SQL重写规则；需审查插件及规则表状态，不能用于共享实例。"
+  ],
+  "version_notes": {
+    "8.0.32": "这些插件接口及 LIMIT/OFFSET 在目标 8.0 存在，可探索绑定次序。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "这些插件接口及 LIMIT/OFFSET 在目标 8.0 存在，可探索绑定次序。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "这些插件接口及 LIMIT/OFFSET 在目标 8.0 存在，可探索绑定次序。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c533246 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/111304.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "plugin",
+      "detail": "需要目标发行版Query Rewrite Plugin及install_rewriter.sql对应对象，另行安装审批。",
+      "requires_review": true
+    },
+    {
+      "kind": "global_configuration",
+      "detail": "flush_rewrite_rules影响实例查询规则，必须用本例独占实例。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": true,
+    "reasons": [
+      "修改实例级SQL重写规则；需审查插件及规则表状态，不能用于共享实例。"
+    ],
+    "restriction": null
+  }
+}

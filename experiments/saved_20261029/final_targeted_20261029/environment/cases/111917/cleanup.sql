@@ -1,0 +1,1 @@
+-- No persistent objects; close this exclusive session.

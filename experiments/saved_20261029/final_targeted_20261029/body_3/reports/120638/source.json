@@ -1,0 +1,26 @@
+{
+  "report_id": "120638",
+  "title": "The value of Rows_examined is incorrect when there is a query involving a union of derived tables",
+  "task_ids": [
+    "mysql-120638-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\60c1f5ce345c_bug_120638.html",
+  "source_sha256": "60c1f5ce345c935fc2d6c3723043a5ec3e5f8043ba20117b55bc9c399a8d57e2",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThe value of Rows_examined is incorrect when there is a query involving a union of derived tables\n\nIt is not possible to quickly locate the problematic SQL that causes 100% CPU usage based on the values of innodb_rows_read and innodb_buffer_pool_read_requests\n\nHow to repeat:\nThe reproduction method is as follows:\nEnable the slow query log and execute the following SQL：\n\ndrop table if exists test_Rows_examined;  \ncreate table  if not exists test_Rows_examined\n(\n id int\n);\ninsert into test_Rows_examined\nvalues(1),(2),(3),(4),(5),(6),(7),(8),(9),(0);\nSELECT SUM(num) as num FROM (\nSELECT COUNT(1) num FROM test_Rows_examined \nUNION ALL\nSELECT COUNT(1) num FROM  test_Rows_examined  where sleep(1)=0\n) a;\n\n-----------------------------------------------------------------\nslow.log：\n\n# Time: 2026-06-09T08:31:17.393565Z\n# User@Host: root[root] @ localhost [::1]  Id:     9\n# Query_time: 10.083400  Lock_time: 0.000003 Rows_sent: 1  Rows_examined: 2\nuse sss;\nSET timestamp=1780993867;\nSELECT SUM(num) as num FROM (\nSELECT COUNT(1) num FROM test_Rows_examined \nUNION ALL\n\nSELECT COUNT(1) num FROM  test_Rows_examined  where sleep(1)=0\n) a\nLIMIT 0, 300;\n\nRows_examined is displayed as 2 (incorrect), it should be 20\n\nSuggested fix:\nFixing it will make it easier for users to locate the problem"
+    },
+    {
+      "anchor": "c557464",
+      "text": "Thank you, for your bug report.\nThis is a duplicate of Bug#109034.\n\nThe issue is not specific to derived tables with union, but can be observed for any derived table:\n\nmysql> SELECT SUM(num) as num FROM ( SELECT COUNT(1) num FROM test_Rows_examined ) a;\n+------+\n| num  |\n+------+\n|   10 |\n+------+\n1 row in set (0.00 sec)\n\nmysql> select thread_id, digest_text, timer_wait/1000000000 \"Time (ms)\", rows_examined, rows_sent from performance_schema.events_statements_history order by timer_start desc limit 1\\G\n*************************** 1. row ***************************\n    thread_id: 69\n  digest_text: SELECT SUM ( `num` ) AS `num` FROM ( SELECT COUNT (?) `num` FROM `test_Rows_examined` ) `a`\n    Time (ms): 0.8860\nrows_examined: 1\n    rows_sent: 1\n1 row in set (0.00 sec)"
+    },
+    {
+      "anchor": "c557866",
+      "text": "The reason for this issue is that the optimizer applies the UNQUALIFIED_COUNT operator optimization to the SELECT COUNT(1) FROM table statement. This operator directly uses the storage engine's custom interface, handler::records(), and as a result, it bypasses the actual row-by-row scanning process, which leads to the number of scanned rows (examined_rows) not being recorded."
+    }
+  ]
+}

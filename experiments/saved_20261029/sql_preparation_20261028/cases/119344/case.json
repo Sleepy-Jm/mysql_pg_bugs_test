@@ -1,0 +1,94 @@
+{
+  "report_id": "119344",
+  "title": "Floating-point precision loss happen after changing UNION to UNION ALL",
+  "source_sha256": "bfa6e53203712acc43330ce547d13b6db0e7b78ad8bfdb07c99abedc4af54713",
+  "source_anchors": [
+    "cmain",
+    "c555013"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "118bedef883e74da661f3e2a423df570cd39751f52d358ab8d4200eb7fa6a62d"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "74228a093285e8e36486ed528b61adaf56d4ae5c41e1da2e2a1a30b1cebb90f5"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原t1六列、t2十五列及idx_t1_c3_c5_c6前缀索引，保留INT/FLOAT(8,2)/DOUBLE类型。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原t1三行、t2六行的全部长文本、二进制、日期和浮点值完整保留。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "保留原两个三分支查询；末空分支UNION/UNION ALL变化后的已有FLOAT值差异必须用返回类型元数据和足够精度数值区分显示差异、集合去重与实际精度损失。仅文本90.91对90.910003…不足以单独证明bug。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t1,t2;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "保留原两个三分支查询；末空分支UNION/UNION ALL变化后的已有FLOAT值差异必须用返回类型元数据和足够精度数值区分显示差异、集合去重与实际精度损失。仅文本90.91对90.910003…不足以单独证明bug。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "完整正文DDL与INSERT",
+    "保留浮点类型及客户端格式设置",
+    "显式类型对照"
+  ],
+  "transformations": [
+    "只移除test全库DROP/CREATE/USE；原DDL/DML与两条查询完整复制，不最小化长字段。"
+  ],
+  "blockers": [
+    "UNION与UNION ALL的类型聚合/格式化差异是否改变数值，原文本输出无法独立判定。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c555013 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/119344.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "uncertain",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [
+    {
+      "point": "UNION与UNION ALL的类型聚合/格式化差异是否改变数值，原文本输出无法独立判定。",
+      "evidence": "cmain显示小数精度差异，c555013验证但未给统一类型/二进制值证据。",
+      "needed": "结果列类型/decimals元数据、二进制协议值或统一DECIMAL精度控制；明确浮点容差后再判。"
+    }
+  ],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

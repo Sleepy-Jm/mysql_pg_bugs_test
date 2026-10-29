@@ -1,0 +1,46 @@
+{
+  "report_id": "110535",
+  "title": "Mysql instance cannot be initialized correctly because autocommit is turned off.",
+  "task_ids": [
+    "mysql-110535-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\b30275d7439f_bug_110535.html",
+  "source_sha256": "b30275d7439f56bebf54ef441de0a04d40d5bdc39c206349de54622ab2739f5a",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nmysql version: mysql 8.0.31\n\n[root@mydb ~]# mysql -V\nmysql  Ver 8.0.31 for Linux on x86_64 (MySQL Community Server - GPL)\nscene 1: autocommit=OFF\n1.Initialize the mysql instance\n\n[root@mydb ~]# mysqld --defaults-file=/etc/my.cnf --initialize-insecure --user=mysql --basedir=/mysql/app/mysql --datadir=/mysql/data/3306/data/\n2.Log information:\n\n2023-03-25T16:32:50.775041+08:00 0 [System] [MY-013169] [Server] /mysql/app/mysql-8.0.31-linux-glibc2.17-x86_64-minimal/bin/mysqld (mysqld 8.0.31) initializing of server in progress as process 12421\n2023-03-25T16:32:50.800058+08:00 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\n2023-03-25T16:32:51.194754+08:00 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\n2023-03-25T16:32:52.510564+08:00 6 [Note] [MY-010454] [Server] A temporary password is generated for root@localhost: BsP/v#Ngv4Zd\n2023-03-25T16:32:53.625209+08:00 6 [ERROR] [MY-000061] [Server] 1694  Cannot modify @@session.sql_log_bin inside a transaction.\n2023-03-25T16:32:53.627885+08:00 0 [ERROR] [MY-013236] [Server] The designated data directory /mysql/data/3306/data/ is unusable. You can remove all files that the server added to it.\n2023-03-25T16:32:53.627936+08:00 0 [ERROR] [MY-010119] [Server] Aborting\n2023-03-25T16:32:55.275093+08:00 0 [System] [MY-010910] [Server] /mysql/app/mysql-8.0.31-linux-glibc2.17-x86_64-minimal/bin/mysqld: Shutdown complete (mysqld 8.0.31)  MySQL Community Server - GPL.\n3.Start the database and log in\n\n[root@mydb ~]# mysql -uroot\n\nmysql> show databases;\n+--------------------+\n| Database           |\n+--------------------+\n| information_schema |\n| mysql              |\n| performance_schema |\n+--------------------+\n3 rows in set (0.00 sec)\nNo default sys database found\n\nHow to repeat:\nscene 2: autocommit=ON\n1.Initialize the mysql instance\n\n[root@mydb ~]# mysqld --defaults-file=/etc/my.cnf --initialize-insecure --user=mysql --basedir=/mysql/app/mysql --datadir=/mysql/data/3306/data/\n2.Log information:\n\n2023-03-25T16:56:42.250746+08:00 0 [System] [MY-013169] [Server] /mysql/app/mysql-8.0.31-linux-glibc2.17-x86_64-minimal/bin/mysqld (mysqld 8.0.31) initializing of server in progress as process 12903\n2023-03-25T16:56:42.262931+08:00 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\n2023-03-25T16:56:42.673819+08:00 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\n2023-03-25T16:56:44.004737+08:00 6 [Warning] [MY-010453] [Server] root@localhost is created with an empty password ! Please consider switching off the --initialize-insecure option.\n3.Start the database and log in\n\n[root@mydb ~]# mysql -uroot\n\nmysql> show databases;\n+--------------------+\n| Database           |\n+--------------------+\n| information_schema |\n| mysql              |\n| performance_schema |\n| sys                |\n+--------------------+\n4 rows in set (0.01 sec)\nFour default databases exist\n\nSuggested fix:\nAutocommit parameter should not affect the initialization of mysql instance, please ask the staff to make reasonable repairs."
+    },
+    {
+      "anchor": "c531255",
+      "text": "Hi Mr. William,\n\nThank you for your bug report.\n\nHowever, insecure initialisation is not recommended by us, as per our Reference Manual.\n\nMore important, for the initialisation, you should not set any settings by yourself, manually. You can test it with secure initialisation as well.\n\nNot a bug."
+    },
+    {
+      "anchor": "c531371",
+      "text": "I tried to initialize with --initialize, and I got the same result when autocommit equals OFF or ON.\n1. 1.--initialize and autocommit=ON, initialization can be completed normally, and there is no error in the error log, and the default four databases exist.\n2.-initialize and autocommit = off, initialization can be completed, and there is an error in the error log. By default, only three databases exist.\n\n[root@mydb ~]# mysqld --defaults-file=/mysql/data/3306/my.cnf --initialize --user=mysql --basedir=/mysql/app/mysql --datadir=/mysql/data/3306/data/\n[root@mydb ~]#\n[root@mydb ~]# log\n2023-04-03T11:00:05.998286+08:00 0 [System] [MY-013169] [Server] /mysql/app/mysql-8.0.31-linux-glibc2.17-x86_64-minimal/bin/mysqld (mysqld 8.0.31) initializing of server in progress as process 3185\n2023-04-03T11:00:06.009875+08:00 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\n2023-04-03T11:00:06.408290+08:00 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\n2023-04-03T11:00:07.429903+08:00 6 [Note] [MY-010454] [Server] A temporary password is generated for root@localhost: rsQ&XBMip9jY\n2023-04-03T11:00:08.482970+08:00 6 [ERROR] [MY-000061] [Server] 1694  Cannot modify @@session.sql_log_bin inside a transaction.\n2023-04-03T11:00:08.485490+08:00 0 [ERROR] [MY-013236] [Server] The designated data directory /mysql/data/3306/data/ is unusable. You can remove all files that the server added to it.\n2023-04-03T11:00:08.485519+08:00 0 [ERROR] [MY-010119] [Server] Aborting\n2023-04-03T11:00:09.437634+08:00 0 [System] [MY-010910] [Server] /mysql/app/mysql-8.0.31-linux-glibc2.17-x86_64-minimal/bin/mysqld: Shutdown complete (mysqld 8.0.31)  MySQL Community Server - GPL.\n^C\n\nmysql> alter user root@'localhost' identified by 'root';\nQuery OK, 0 rows affected (0.02 sec)\n\nmysql> show databases;\n+--------------------+\n| Database           |\n+--------------------+\n| information_schema |\n| mysql              |\n| performance_schema |\n+--------------------+\n3 rows in set (0.01 sec)"
+    },
+    {
+      "anchor": "c531393",
+      "text": "Hi,\n\nOnce again .....\n\nWhen initialising a new data directory, you should NOT set any configuration variables manually.\n\nNot a bug."
+    },
+    {
+      "anchor": "c531405",
+      "text": "Hello shu William,\n\nThank you for the report and feedback.\n\nSincerely,\nUmesh"
+    },
+    {
+      "anchor": "c531413",
+      "text": "Thank you Shane, correcting the Synopsis from \"Mysql instance cannot be initialized correctly because autocommit is turned on.\" to \"Mysql instance cannot be initialized correctly because autocommit is turned off\"."
+    },
+    {
+      "anchor": "c536831",
+      "text": "Posted by developer:\n \nAdded the following note to the MySQL Server 8.2.0 release notes:\n\nMySQL Server did not initialize correctly, using --initialize or --initialize-insecure, if autocommit was\nset to OFF. The sys schema was not present.\nAs of this release, non-default values of autocommit are ignored for this scenario."
+    },
+    {
+      "anchor": "c536852",
+      "text": "Thank you, Edward."
+    }
+  ]
+}

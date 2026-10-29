@@ -1,0 +1,46 @@
+{
+  "report_id": "112198",
+  "title": "Incorrect multiple equality optimization causes performance degradation",
+  "task_ids": [
+    "mysql-112198-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\58a575d661a5_bug_112198.html",
+  "source_sha256": "58a575d661a5e8ab615d4cd4cefa3285a89c0ac372416c8b32c15d59e2ebc657",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nFor query `select * from t1 left join t2 on t1.a = t2.a and t2.a > 0;`, the condition `t2.a > 0` can apparently be pushed down to be a filter uppon the inner table. But it does not do so as the condition is optimized to `t1.a > 0`, which causes a bigger join buffer consumption and performance degradation.\n\nHow to repeat:\ncreate table t1(a int, b int, c varchar(100));\ncreate table t2(a int, b int, c varchar(100));\nexplain format=tree select * from t1 left join t2 on t1.a = t2.a and t2.a > 0\\G\n\n*************************** 1. row ***************************\n-> Left hash join (t2.a = t1.a), extra conditions: (t1.a > 0)  (cost=0.70 rows=1)\n    -> Table scan on t1  (cost=0.35 rows=1)\n    -> Hash\n        -> Table scan on t2  (cost=0.35 rows=1)\n\nSuggested fix:\nThe optimization for multiple equality is based on the assumption that fields belong to tables in the front of the join order set up by JOIN::make_join_plan will be retrieved first. However, it's not the case for outer joins."
+    },
+    {
+      "anchor": "c535684",
+      "text": "Hello Wen He,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c541096",
+      "text": "Hi, I just submitted a patch to fix the issue.\n\nProblem:\nFor a query like SELECT * FROM t1 LEFT JOIN t2 ON t1.a=t2.a AND t2.a>0; during the optimization stage, substitute_for_best_equal_field() will convert t2.a>0 to t1.a>0 as t1 has a higher priority in compare_fields_by_table_order(). This prevents the condition t2.a>0 (now t1.a>0) from being pushed down to t2 in function CreateHashJoinAccessPath(), as it now depends on t1 due to the substitution.\n\nFix:\nOnly perform the substitution if the condition is EQ_FUNC. Equality conditions can be pushed down normally as it takes a different optimization path."
+    },
+    {
+      "anchor": "c541097",
+      "text": "I do think the bypass of the field substitution should be applied more carefully, like only if the condition is on the inner table of an outer join. \nHowever, I was unable to check such information at the stage when the optimization happened. I tried query_block->outer_join and is_inner_table_of_outer_join(), but they both contain no useful information (I suppose their values haven't been set when the substitution happens?).\nPlease let me know if it breaks other parts of MySQL, and I'll try to modify the patch."
+    },
+    {
+      "anchor": "c557376",
+      "text": "Posted by developer: Bug status updated to 'Patch pending'"
+    },
+    {
+      "anchor": "c557668",
+      "text": "Posted by developer: Bug status updated to 'Patch approved'"
+    },
+    {
+      "anchor": "c557674",
+      "text": "Posted by developer: Bug status updated to 'Documenting'"
+    },
+    {
+      "anchor": "c558482",
+      "text": "Posted by developer:\n \nAdded the following note to the MySQL Server 9.7.2 and 26.7.0 release notes:\n\n\tFor some LEFT JOIN queries, an optimizer rewrite could prevent a\n        non-equality condition from being applied while building a hash\n        join. As a result, more rows than necessary could be added to\n        the hash table before filtering.\n\n        The optimizer now remaps eligible predicates to the build-side\n        table when possible, allowing earlier filtering and more\n        efficient hash join execution without changing inner-join\n        filtering behavior."
+    }
+  ]
+}

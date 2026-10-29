@@ -1,0 +1,22 @@
+{
+  "report_id": "111476",
+  "title": "The value for field update_time of information_schema.tables is lost",
+  "task_ids": [
+    "mysql-111476-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\d131f37628b2_bug_111476.html",
+  "source_sha256": "d131f37628b22e2a26c2b9fa322451bcfb07ee636b803b99c59193cf46f58cae",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen we executed a DML SQL, and commit the transaction, the value for field update_time for information_schema.tables is changed to be a valid datetime string, like 2023-06-18 21:53:06.\n\nAfter that, shutdown the MySQL, and start it.\n\nWhen we logined to MySQL again, and execute the SQL: analyze table <table_name>, the value of update_time was changed to be NULL, that is to say: it has lost.\n\nHow to repeat:\n1. Login to MySQL\n2. Execute the SQL: set information_schema_stats_expiry = 5\n3. Execute the SQL: create database test default charset utf8\n4. Execute the SQL: use test\n5. Execute the SQL: create table t_update_time(id int auto_increment primary key, str1 varchar(64)) engine = InnoDB default charset utf8\n6. Execute the SQL: insert into t_update_time(str1) values ('s1')\n7. Execute the SQL: select table_schema, table_name, update_time from information_schema.tables where table_schema = 'test' and table_name = 't_update_time'\n   The result is:\n   +--------------+---------------+---------------------+\n   | TABLE_SCHEMA | TABLE_NAME    | UPDATE_TIME         |\n   +--------------+---------------+---------------------+\n   | test         | t_update_time | 2023-06-18 21:41:23 |\n   +--------------+---------------+---------------------+\n8. Shutdown the MySQL, and then start it\n9. Login to MySQL\n10. Execute the SQL: analyze table test.t_update_time\n11. Execute the SQL: select table_schema, table_name, update_time from information_schema.tables where table_schema = 'test' and table_name = 't_update_time'\n   The result is:\n   +--------------+---------------+-------------+\n   | TABLE_SCHEMA | TABLE_NAME    | UPDATE_TIME |\n   +--------------+---------------+-------------+\n   | test         | t_update_time | <null>      |\n   +--------------+---------------+-------------+\n\nSuggested fix:\nIf this is confirmed to be a bug, I will be glad to fixed it."
+    },
+    {
+      "anchor": "c533751",
+      "text": "Hi Mr. cao,\n\nThank you for your bug report.\n\nHowever, this is not a bug.\n\nThe I_S column for `update_time` is valid only for the period during the uptime of MySQL server.\n\nNot a bug."
+    }
+  ]
+}

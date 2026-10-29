@@ -1,0 +1,26 @@
+{
+  "report_id": "109996",
+  "title": "There is no local IP address matching the one configured for the local node",
+  "task_ids": [
+    "mysql-109996-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\e5f929619058_bug_109996.html",
+  "source_sha256": "e5f9296190581f0ae27ee2949ff2c3d83e91700e8fa478e67699cce05f6b7401",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nI have setup a MySQL innodb cluster based on 3 systemd-nspawn containers. I tried to verify HA of the cluster by rebooting a randomly chosen container and then  checking if the MySQL instance within the rebooted container can successfully rejoin the cluster. But the instance failed to rejoin. The relevant log:\n\n[GCS] There is no local IP address matching the one configured for the local node\n\nI verified that when the MySQL instance was being started by Systemd, no IP had yet been assigned by DHCP. Journalctl shows the MySQL server was started after the network target but before the network-online target after which an IP was available.\n\nI overrode the original MySQL systemd service unit configuraiton:\nUnit]\nAfter=network-online.target\nWants=network-online.target\n\nThen this issue is fixed.\n\nThere are two other issues with same bug message as this one, but the cause is different.\nhttps://bugs.mysql.com/bug.php?id=92665\nhttps://bugs.mysql.com/bug.php?id=93004\n\nHow to repeat:\na MySQL innodb cluster based on 3 systemd-nspawn containers. The containers do not use private network but a host bridge which allows them to share the same network sub-net with the host.\n\nTo reproduce the issue, the IP assignment by DHCP should have a latency window so that MySQL should be started by Systemd in this window and it shouldn't have a valid IP to rejoin the cluster.\n\nSuggested fix:\nThe service unit file contained in MySQL packages (rpm, deb...) for download should use After=network-online.target instead of After=network.target"
+    },
+    {
+      "anchor": "c529756",
+      "text": "Hi,\n\nThanks for this report, great catch!!! This is not only related to group replication but many other scenarios as well.\n\nkind regards"
+    },
+    {
+      "anchor": "c531489",
+      "text": "Posted by developer:\n \nFixed as of the upcoming MySQL Server 8.0.33 release, and here's the proposed changelog entry from the documentation team:\n\nChanged the MySQL systemd service unit configuration from\nAfter=network-online.target to Wants=network-online.target to ensure that\nall configured network devices are available and have an IP address\nassigned before the service is started.\n\nThank you for the bug report."
+    }
+  ]
+}

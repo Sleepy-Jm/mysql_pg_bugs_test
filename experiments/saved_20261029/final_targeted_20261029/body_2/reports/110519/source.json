@@ -1,0 +1,26 @@
+{
+  "report_id": "110519",
+  "title": "Wrong Allowed Values range for connection_memory_chunk_size in documentation.",
+  "task_ids": [
+    "mysql-110519-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\5ed87283f007_bug_110519.html",
+  "source_sha256": "5ed87283f007e56e80780915476dea414e43ff933f2bd2c8d5bb37016ffdc102",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWrong Allowed Values range for connection_memory_chunk_size in documentation.\n\nhttps://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_connection_mem...\n\nFrom Code:\n########\n\nhttps://github.com/mysql/mysql-server/blob/mysql-8.0.32/sql/sys_vars.cc#L3475\n\nstatic Sys_var_ulong Sys_connection_memory_chunk_size(\n    \"connection_memory_chunk_size\",\n    \"Chunk size regulating frequency of updating the global memory counter\",\n    SESSION_VAR(conn_mem_chunk_size), CMD_LINE(REQUIRED_ARG),\n    VALID_RANGE(1, 1024 * 1024 * 512), DEFAULT(8912), BLOCK_SIZE(1),\n    NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(check_session_admin),\n    ON_UPDATE(nullptr));\n\nHow to repeat:\nmysql> select @@version;\n+-----------+\n| @@version |\n+-----------+\n| 8.0.28    |\n+-----------+\n1 row in set (0.00 sec)\n\nmysql> set global  connection_memory_chunk_size=0;\nQuery OK, 0 rows affected, 1 warning (0.00 sec)\n\nmysql> show warnings;\n+---------+------+-------------------------------------------------------------+\n| Level   | Code | Message                                                     |\n+---------+------+-------------------------------------------------------------+\n| Warning | 1292 | Truncated incorrect connection_memory_chunk_size value: '0' |\n+---------+------+-------------------------------------------------------------+\n1 row in set (0.00 sec)\n\nmysql> show global variables like 'connection_memory_chunk_size';\n+------------------------------+-------+\n| Variable_name                | Value |\n+------------------------------+-------+\n| connection_memory_chunk_size | 1     |\n+------------------------------+-------+\n1 row in set (0.00 sec)\n\nSuggested fix:\nFix the documentation"
+    },
+    {
+      "anchor": "c531180",
+      "text": "Hello Pranay,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c531206",
+      "text": "WL#13458, in which this variable was implemented, states:\n\n     Note: This variable allows to control frequency of \n     updating the global memory counter. **0 means that \n     global memory counter won't be updated.**\n\nTherefore, this is a software bug which has existed since implementation.\n\nUpdating category, etc. to align with this."
+    }
+  ]
+}

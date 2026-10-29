@@ -1,0 +1,22 @@
+{
+  "report_id": "109977",
+  "title": "Contribution by Tencent: semisync plugin may print a negative server id",
+  "task_ids": [
+    "mysql-109977-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\a1208dea0c80_bug_109977.html",
+  "source_sha256": "a1208dea0c803db3f6f304c657559ec49d854c05b2c4439fd3f32524d6957ad7",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThe server id in mysql is declared as uint32 type, but in the semisync plugin, the server id is printed by %d, and a negative server id may be printed by mistake.\n\nHow to repeat:\nread code\n\nSuggested fix:\nfix for mysql5.7:\n\ndiff --git a/plugin/semisync/semisync_master_plugin.cc b/plugin/semisync/semisync_master_plugin.cc\nindex 54dbb4fbc87..e3ecf001430 100644\n--- a/plugin/semisync/semisync_master_plugin.cc\n+++ b/plugin/semisync/semisync_master_plugin.cc\n@@ -159,7 +159,7 @@ int repl_semi_binlog_dump_start(Binlog_transmit_param *param,\n   else\n     param->set_dont_observe_flag();\n \n-  sql_print_information(\"Start %s binlog_dump to slave (server_id: %d), pos(%s, %lu)\",\n+  sql_print_information(\"Start %s binlog_dump to slave (server_id: %u), pos(%s, %lu)\",\n                        semi_sync_slave != 0 ? \"semi-sync\" : \"asynchronous\",\n                        param->server_id, log_file, (unsigned long)log_pos);\n \n@@ -170,7 +170,7 @@ int repl_semi_binlog_dump_end(Binlog_transmit_param *param)\n {\n   bool semi_sync_slave= is_semi_sync_dump();\n \n-  sql_print_information(\"Stop %s binlog_dump to slave (server_id: %d)\",\n+  sql_print_information(\"Stop %s binlog_dump to slave (server_id: %u)\",\n                         semi_sync_slave ? \"semi-sync\" : \"asynchronous\",\n                         param->server_id);\n   if (semi_sync_slave)\n\nfix for mysql8.0:\n\ndiff --git a/share/messages_to_error_log.txt b/share/messages_to_error_log.txt\nindex c593f51ca01..59b25683b18 100644\n--- a/share/messages_to_error_log.txt\n+++ b/share/messages_to_error_log.txt\n@@ -3567,10 +3567,10 @@ ER_SEMISYNC_FAILED_REGISTER_SLAVE_TO_RECEIVER\n   eng \"Failed to register slave to semi-sync ACK receiver thread.\"\n \n ER_SEMISYNC_START_BINLOG_DUMP_TO_SLAVE\n-  eng \"Start %s binlog_dump to slave (server_id: %d), pos(%s, %lu).\"\n+  eng \"Start %s binlog_dump to slave (server_id: %u), pos(%s, %lu).\"\n \n ER_SEMISYNC_STOP_BINLOG_DUMP_TO_SLAVE\n-  eng \"Stop %s binlog_dump to slave (server_id: %d).\"\n+  eng \"Stop %s binlog_dump to slave (server_id: %u).\"\n \n ER_SEMISYNC_UNREGISTER_TRX_OBSERVER_FAILED\n   eng \"unregister_trans_observer failed.\""
+    },
+    {
+      "anchor": "c529694",
+      "text": "Hello  Yewei Xu,\n\nThank you for the report and contribution.\n\nregards,\nUmesh"
+    }
+  ]
+}

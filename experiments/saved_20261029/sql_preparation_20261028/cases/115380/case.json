@@ -1,0 +1,98 @@
+{
+  "report_id": "115380",
+  "title": "Update Multiple table failed when table is partitioned and using MRR path",
+  "source_sha256": "01d2bd66a236a6e601c9d00a298ed0b9600f3126f1d3b90c1901a8856a83ef54",
+  "source_anchors": [
+    "cmain",
+    "c544466"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "4507475761a868b4d2cc92c5ad33a92ac3f2bbd0cfc066c59645f0b777e621b5"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "419743ded15cd7f186a5c9422fb22920bad800ebc7e316f91bc09c589dc1fe26"
+    },
+    {
+      "path": "original_explain_analyze.sql",
+      "role": "independent_variant",
+      "sha256": "14da04600322dbe9df0114a5ec0a5044edfe6777f9cb92927999b127e2072710"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原三范围分区t15的主键/cc/m索引，t2主键。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "t15原四行及t2两行1/0。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "主文件同会话逐条执行一次；原EXPLAIN ANALYZE变体必须在另一个全新同构schema上单独执行，可能实际更新，不能在主文件后重复执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "实际UPDATE后id4、5的t为test，id8、9仍abcdef。debug断言和结果更新遗漏分别记录；若MRR/rowid_intersect路径未出现，只能记本配置未触发。原EXPLAIN ANALYZE DML语法不支持不计该bug。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "实际UPDATE后id4、5的t为test，id8、9仍abcdef。debug断言和结果更新遗漏分别记录；若MRR/rowid_intersect路径未出现，只能记本配置未触发。原EXPLAIN ANALYZE DML语法不支持不计该bug。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "确认MRR/索引合并计划"
+  ],
+  "transformations": [
+    "将EXPLAIN ANALYZE UPDATE拆为不执行的EXPLAIN和实际UPDATE并加前后数据观察，避免执行DML两次；原语句单列独立诊断文件。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0有分区MRR功能，语法支持差异不能冒充该bug。 本轮未实测。",
+    "8.0.34": "目标8.0有分区MRR功能，语法支持差异不能冒充该bug。 本轮未实测。",
+    "8.0.35": "目标8.0有分区MRR功能，语法支持差异不能冒充该bug。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c544466 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "可用debug核对key_rec_cmp断言，release核对实际更新；不混计。",
+      "requires_review": true
+    },
+    {
+      "kind": "other",
+      "detail": "核对实际MRR/rowid_intersect及分区计划；m列utf8mb4_bin依赖字符集设置。",
+      "requires_review": false
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

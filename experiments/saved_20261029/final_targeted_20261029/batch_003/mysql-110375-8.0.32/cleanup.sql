@@ -1,0 +1,1 @@
+-- Read-only constants; no objects created.

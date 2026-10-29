@@ -1,0 +1,85 @@
+{
+  "report_id": "110354",
+  "title": "SELECT Query choose different index return different results",
+  "source_sha256": "142db03b7dd4012bc73c67b128df922ec674bc16bfbbf8c005992707db3868eb",
+  "source_anchors": [
+    "cmain",
+    "f32102"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "8b17b5df2ed8b8d39afc0757ff757bb6ed597d08579859cfcb77e0cfb67fed5c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "a90cfeefc724b2c176da73952c1f454485df11d9e76ab4ffd3d5be2dd9b04d6f"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原tt TIMESTAMP/TIME与b_idx/a_b_idx。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "保留原21行；为装载零日期且保留1970-01-01 08:00:01，明确受控非严格模式与+08:00。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两个强制索引及无索引路径结果多重集应一致；三值逻辑下仅 b 小于06:59:59的六行满足。NULL值、等于下界和更大值均不满足。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS tt;\nSET SESSION sql_mode=@case_old_mode;\nSET SESSION time_zone=@case_old_tz;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "两个强制索引及无索引路径结果多重集应一致；三值逻辑下仅 b 小于06:59:59的六行满足。NULL值、等于下界和更大值均不满足。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "记录时区和零日期模式",
+    "成功装载正文全部行",
+    "全部21行须成功装载；不足则初始化失败，不进行结果判断。"
+  ],
+  "transformations": [
+    "将源数据所需时区和SQL mode显式设置为受控变体；保存/恢复会话值，记录这不是原报告明示配置。",
+    "追加IGNORE INDEX双索引的全扫对照。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0支持索引及TIME范围比较，材料完整可测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0支持索引及TIME范围比较，材料完整可测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0支持索引及TIME范围比较，材料完整可测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, f32102 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/110354.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

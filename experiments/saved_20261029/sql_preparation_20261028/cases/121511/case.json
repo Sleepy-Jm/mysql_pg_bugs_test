@@ -1,0 +1,72 @@
+{
+  "report_id": "121511",
+  "title": "FORMAT(X, D) takes D modulo 2^32: FORMAT(1.5, 4294967298) = '1.50' and FORMAT(1.5, 2147483648) = '2'",
+  "source_sha256": "d2543f8d45ab35dc3233807fa30f70ff76291b8d082285b8b6c7a8483b152758",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d7341bf2ab218ac967870df6bc985abebfbcf65052725446e179e0ecdb5a4cf5"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "29073191c1493319ed7216698faa8e11188ca21567544bf7fb0cd5c89a33164c"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t016 BIGINT"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "2,4294967298,2147483648"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "正D>30均应按同版本D40封顶为30位；1.5输出长度32，负D按原0位规则；异常：大正D被截为2位或负数0位"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "正D>30均应按同版本D40封顶为30位；1.5输出长度32，负D按原0位规则",
+    "failure": "大正D被截为2位或负数0位",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "原样保留64位常量",
+    "保存返回类型/字符串和warnings"
+  ],
+  "transformations": [
+    "完整保留2/3参数FORMAT及ROUND/TRUNCATE对照，移除结果表"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标版本支持FORMAT及BIGINT参数，当前仅探索是否保留相同窄化行为。 本轮尚未执行。",
+    "8.0.33": "目标版本支持FORMAT及BIGINT参数，当前仅探索是否保留相同窄化行为。 本轮尚未执行。",
+    "8.0.34": "目标版本支持FORMAT及BIGINT参数，当前仅探索是否保留相同窄化行为。 本轮尚未执行。",
+    "8.0.35": "目标版本支持FORMAT及BIGINT参数，当前仅探索是否保留相同窄化行为。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

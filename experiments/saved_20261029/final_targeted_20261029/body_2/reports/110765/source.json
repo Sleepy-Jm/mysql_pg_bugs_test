@@ -1,0 +1,34 @@
+{
+  "report_id": "110765",
+  "title": "Function returns incorrect value inside a session",
+  "task_ids": [
+    "mysql-110765-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\884d5777d2d5_bug_110765.html",
+  "source_sha256": "884d5777d2d5df6410dcb0ec80fbeac4e1b96ca6a86c04429f5ab15ba9f984ac",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nTeam, \n\nWe have an issue with a function which is returning incorrect results inside a same session. \n\nIt returns good value on the first run ,but if we wait in the same session for sometime and call the same query ,we get wrong data. details in the how to repeat step.\n\nAny suggestions will be helpful .\n\nHere is the create function statement .\n\n1. First_Name\n\nCREATE DEFINER=`yyy`@`%` FUNCTION `fx_profile_first_name`(idprospect_p int(11)) RETURNS varchar(55) CHARSET latin1\nbegin\n\n    return (select value from table1 a inner join table2 b on a.attribute_id=b.id where a.contact_id=idprospect_p and b.tag='first_name' limit 1 );\n\nend;\n\n2. Last_Name\n\nCREATE DEFINER=`yyy`@`%` FUNCTION `fx_profile_last_name`(idprospect_p int(11)) RETURNS varchar(55) CHARSET utf8mb4 COLLATE utf8mb4_bin\nbegin\n\n    return (select value from table1 a inner join table2 b on a.attribute_id=b.id where a.contact_id=idprospect_p and b.tag='last_name' limit 1 );\n\nend;\n\nHow to repeat:\n\nstep 1 - connect to the schema and callout the function in the SELECT\nstep 2 - Wait for sometime (around 6 mins ) inside the same session\nstep 3 - Again call the same SELECT ,You would see a different Value\n\nDetails:\n\nmysql> use zzz\nReading table information for completion of table and column names\nYou can turn off this feature to get a quicker startup with -A\n\nDatabase changed\nmysql> select fx_profile_first_name(79), fx_profile_last_name(79);\n+---------------------------+--------------------------+\n| fx_profile_first_name(79) | fx_profile_last_name(79) |\n+---------------------------+--------------------------+\n| John                      | Amun-Ra                  |\n+---------------------------+--------------------------+\n1 row in set (0.00 sec)\n\nmysql> select now();\n+---------------------+\n| now()               |\n+---------------------+\n| 2023-04-21 16:24:18 |\n+---------------------+\n1 row in set (0.00 sec)\n\nmysql> select now();\n+---------------------+\n| now()               |\n+---------------------+\n| 2023-04-21 16:30:29 |\n+---------------------+\n1 row in set (0.00 sec)\n\nmysql> select fx_profile_first_name(79), fx_profile_last_name(79);\n+---------------------------+--------------------------+\n| fx_profile_first_name(79) | fx_profile_last_name(79) |\n+---------------------------+--------------------------+\n| John                      | 1037                     |\n+---------------------------+--------------------------+\n1 row in set (0.01 sec)\n\nmysql> exit\nBye\n\nSuggested fix:"
+    },
+    {
+      "anchor": "c531886",
+      "text": "Hi Mr. Vanier,\n\nThank you for your bug report.\n\nFirst of all, your category is wrongly chosen. You are not using UDF's , but stored routines, more precisely, stored functions.\n\nMuch more important then that,  we can not repeat the behaviour that you are reporting.\n\nWe used some of our own tables , but we get the consistent results.\n\nIn order that you get consistent results, you need that several factors are met, of which the most important are the following ones.\n\n* There are no DML's running in-between read-only statements\n\n* Both joins return only one result row\n\nWe also recommend that you use DECLARE and store the result of the query into it and return the value of the local variable.\n\nCan't repeat."
+    },
+    {
+      "anchor": "c531887",
+      "text": "Hi,\n\nWe would like to note that there is one more problem, BIG problem with your queries. You have limited the result set to one row.\n\nHowever, according to SQL standard, if it is not specified explicitly, result sets are not ordered by any attribute..\n\nSo for example, if result set has two rows, like:\n\n2\n\n1000\n\nin one run you can get 2 as a first row and in another run you can get 1000 as the first row. That is how SQL works and that is 100 % according to all SQL standards."
+    },
+    {
+      "anchor": "c544836",
+      "text": "I believe this is the same behavior we're discussing, and it looks like a fix is coming with version 8.0.38.\n\nhttps://bugs.mysql.com/bug.php?id=114235"
+    },
+    {
+      "anchor": "c544863",
+      "text": "Hi Mr. Vanier,\n\nWe can not confirm nor deny your statements, for the simple reason that you never provided us with a fully repeatable test case."
+    }
+  ]
+}

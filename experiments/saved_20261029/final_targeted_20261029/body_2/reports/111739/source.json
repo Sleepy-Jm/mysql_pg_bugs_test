@@ -1,0 +1,22 @@
+{
+  "report_id": "111739",
+  "title": "The query results are inconsistent.",
+  "task_ids": [
+    "mysql-111739-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\e20d55efd039_bug_111739.html",
+  "source_sha256": "e20d55efd039feb36746eb25042fd8cf0c04e8f44200732eda3d86c58dfee962",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nAfter mysqld is restarted, the first query result is different from the subsequent query result.\n\nHow to repeat:\n1.Preparing Data\n\nSet the following parameters in the my.cnf configuration file:\nsql_mode=''\n\nStart mysqld and import data(The data files can be obtained by decompressing the attachment.):\n\nbin/mysql --defaults-file=./my.cnf -uroot -e \"drop database if exists test;\"\n\nbin/mysql --defaults-file=./my.cnf -uroot -e \"create database test;\"\n\nbin/mysql --defaults-file=./my.cnf -uroot -Dtest --force < tbl_1_all_rangehashpart_type3index_desc_simplified.sql\n\nbin/mysql --defaults-file=./my.cnf -uroot -Dtest --force < tbl_1_all_typeindex.sql\n\nbin/mysql --defaults-file=./my.cnf -uroot -Dtest -e \"create view vil_1_all_typeindex as select * from tbl_1_all_typeindex;\"\n\n2.Bug Verification.\n\n2.1 Restart mysqld!\n\n2.2 Login and execute：\n\nbin/mysql --defaults-file=./my.cnf -uroot -Dtest\n\nmysql> SELECT /*+ JOIN_FIXED_ORDER() */ A.set_col, A.datetime_col FROM (VALUES ROW(1,3,5), ROW(2,4,6) limit 1 offset 1) AS vtb(id_col,int_col,big_int_col) LEFT JOIN tbl_1_all_rangehashpart_type3index_desc A ON (true) JOIN vil_1_all_typeindex B ON (A.set_col = B.set_col) XOR (A.datetime_col = B.datetime_col) WHERE B.datetime_col = '2001-04-06 00:00:00.000000' GROUP BY 1 ORDER BY 1;\n+---------+----------------------------+\n| set_col | datetime_col               |\n+---------+----------------------------+\n| 111     | 2012-11-09 00:00:00.000000 |\n+---------+----------------------------+\n1 row in set (0.25 sec)\n\nmysql> SELECT /*+ JOIN_FIXED_ORDER() */ A.set_col, A.datetime_col FROM (VALUES ROW(1,3,5), ROW(2,4,6) limit 1 offset 1) AS vtb(id_col,int_col,big_int_col) LEFT JOIN tbl_1_all_rangehashpart_type3index_desc A ON (true) JOIN vil_1_all_typeindex B ON (A.set_col = B.set_col) XOR (A.datetime_col = B.datetime_col) WHERE B.datetime_col = '2001-04-06 00:00:00.000000' GROUP BY 1 ORDER BY 1;\n+---------+----------------------------+\n| set_col | datetime_col               |\n+---------+----------------------------+\n| 111     | 1000-01-01 00:00:00.000000 |\n+---------+----------------------------+\n1 row in set (0.04 sec)\n\nThe execution results are inconsistent."
+    },
+    {
+      "anchor": "c534406",
+      "text": "Hello Chi Zhang,\n\nThank you for the report and test case.\nVerified as described.\n\nregards,\nUmesh"
+    }
+  ]
+}

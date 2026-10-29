@@ -1,0 +1,26 @@
+{
+  "report_id": "112128",
+  "title": "The parameters such as MySQL password_history does not take effect",
+  "task_ids": [
+    "mysql-112128-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\9f17b85486b0_bug_112128.html",
+  "source_sha256": "9f17b85486b0868ecb0538b9e94672d21561c7f6ee6e33c6d2ed54bc782dd5b2",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen I set the default values of password-related parameters such as default_password_lifetime, password_history, and password_reuse_interval, creating a new user does not inherit the default values of these parameters, and the configuration observed in the mysql.user table is still NULL\n\nHow to repeat:\n1. set variables\nset global default_password_lifetime=365;\nset global password_history=5;\nset global password_reuse_interval=1;\n\n2. reconnect and create new user\ncreate user 'aaa' identified by 'aaa';\n\n3. check mysql.user\nselect user,host,password_lifetime,Password_reuse_history,Password_reuse_time from mysql.user where user='aaa';\n\nSuggested fix:\nIs this phenomenon a bug or the way I use it is wrong. If it is not a bug, is it convenient to give a standard usage process? I don’t see any special requirements from the official documents"
+    },
+    {
+      "anchor": "c535506",
+      "text": "update title"
+    },
+    {
+      "anchor": "c535533",
+      "text": "Hello!\n\nThank you for the bug report.\nImho this is not a bug. Quoting Georgi's comment from Bug #89349.\n\nThe way it works is as follows:\n1. There is the global system variable default_password_lifetime that specifies the policy for all accounts that are set to use the default password lifetime. This is done by ALTER USER PASSWORD EXPIRE DEFAULT. In the system table (not that it matters, but still) this stores a NULL. The NULL value is used as a flag that the account in question does not have a special per user password lifetime. The special per-user password lifetime is set via ALTER USER PASSWORD EXPIRE NEVER (which sets the column to 0) or ALTER USER PASSWORD EXPIRE INTERVAL N DAY (which sets the column to N). \nAs a consequence all password lifetimes for all users that do not have a specific password lifetime set will follow the value of the global variable.\nAnd if you store a specific password lifefile for a user account it will \"detach\" itself from the global variable's value and will be pegged to whatever you've set for it. Until you reset it back to the default of course.\n\nRegards,\nAshwini Patil"
+    }
+  ]
+}

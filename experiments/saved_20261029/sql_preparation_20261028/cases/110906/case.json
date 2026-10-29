@@ -1,0 +1,81 @@
+{
+  "report_id": "110906",
+  "title": "Index creation assertion error 3",
+  "source_sha256": "136cd9af0759d7ee1755e807210d68470b3dda873db240e9b6e21181dc593011",
+  "source_anchors": [
+    "cmain",
+    "c532215"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "7cc11c498a016e14b8629a2b28de921bc820d2cf6ded87c2136c439d2ce497f7"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "a09f58f14f61728e746dc9028fcd7e8cebafa78c04e2089e8b87863ee6baf14d"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "debug目标空库，无数据。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。执行cmain含INDEX i1(((SELECT DISTINCT1 FROM(SELECT1)x(x) ORDER BY x.x)))的CREATE TABLE t0(c0 INT) AS SELECT1 c0。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "含子查询的函数索引可合法拒绝；不得 aggregate_check fixed 断言崩溃。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "含子查询的函数索引可合法拒绝；不得 aggregate_check fixed 断言崩溃。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "debug构建优先",
+    "目标debug构建。"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0解析功能索引和CTAS路径适用，健壮性oracle明确。 本轮仅静态准备。",
+    "8.0.34": "目标8.0解析功能索引和CTAS路径适用，健壮性oracle明确。 本轮仅静态准备。",
+    "8.0.35": "目标8.0解析功能索引和CTAS路径适用，健壮性oracle明确。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c532215 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "debug目标空库，无数据。",
+    "steps": "执行cmain含INDEX i1(((SELECT DISTINCT1 FROM(SELECT1)x(x) ORDER BY x.x)))的CREATE TABLE t0(c0 INT) AS SELECT1 c0。",
+    "oracle": "函数索引不允许子查询可正常拒绝，不能aggregate_check fixed断言崩溃。",
+    "requirements": [
+      "debug构建优先"
+    ],
+    "target_applicability": "目标8.0解析功能索引和CTAS路径适用，健壮性oracle明确。"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "report_id": "37745",
+  "title": "Arithmetic exceeding range fails silently, unless \"zerofill\"",
+  "source_sha256": "2dfd29980405334c6a7219f4bfea6baf4114f69c26aefeff7dffae3307e7e435",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "42661e3f2c4d8b3d4c23e26ed595979baf18c6561ef7fa43eb155c20493750eb"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "23fd2ffb23d10010c5d3f94dfc9124a36c0d36fcaaecaadaa06213c845b20ea6"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "fn2/fn3 两个存储函数"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原文浮点常量"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "fn2 原文期望 18400000000000000000；fn3 原样使用 1.84e17 期望 184000000000000000；异常：fn2 错返 9223372036854775808；浮点舍入/告警需记录并单独审查"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "fn2 原文期望 18400000000000000000；fn3 原样使用 1.84e17 期望 184000000000000000",
+    "failure": "fn2 错返 9223372036854775808；浮点舍入/告警需记录并单独审查",
+    "limitations": "只覆盖原文完整给出的 fn2/fn3 子例，未复建缺失 sp07 全套测试。fn3 输入量级不同，不能把它当仅 zerofill 单因素对照。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "Windows目标二进制",
+    "创建函数权限",
+    "记录SQL_MODE",
+    "Windows 平台对照；允许存储函数创建（binlog trust 或关闭 binlog）"
+  ],
+  "transformations": [
+    "从带行号的 result 片段重建 fn2/fn3；未编造缺失 sp07 等全套 funcs_1 测试"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "BIGINT UNSIGNED和存储函数算术可用于四目标，需实际判定旧Windows异常是否延续 本轮尚未执行。",
+    "8.0.33": "BIGINT UNSIGNED和存储函数算术可用于四目标，需实际判定旧Windows异常是否延续 本轮尚未执行。",
+    "8.0.34": "BIGINT UNSIGNED和存储函数算术可用于四目标，需实际判定旧Windows异常是否延续 本轮尚未执行。",
+    "8.0.35": "BIGINT UNSIGNED和存储函数算术可用于四目标，需实际判定旧Windows异常是否延续 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "anchor": "cmain",
+    "text": "Description:\nWhen starting mysqld and using innodb_disable_sort_file_cache=ON, we will fail to create a full-text index on the table.\n\nThe error message: Temporary file write failure\n\nWhen this error occurs, the disk still has a lot of space.\n\nThe reason for this error is that when innodb_disable_sort_file_cache=ON, during the process of parsing DDL, fail to write 25 bytes to temporary file.\n\nHow to repeat:\n\n// 1. start mysqld with innodb_disable_sort_file_cache=ON \n\n// 2. show innodb_disable_sort_file_cache\n\nmysql> show variables like 'innodb_disable_sort_file_cache';\n\n+--------------------------------+-------+\n| Variable_name                  | Value |\n+--------------------------------+-------+\n| innodb_disable_sort_file_cache | ON    |\n+--------------------------------+-------+\n1 row in set (0.00 sec)\n\n// 3. create a table\n\nmysql> CREATE TABLE test (\nmysql> `id` int(0) NOT NULL AUTO_INCREMENT,\nmysql> `name` varchar(255),\nmysql> `img` varchar(255),\nmysql> PRIMARY KEY (`id`) USING BTREE,\nmysql> FULLTEXT INDEX `testfulltext`(`img`) WITH PARSER `ngram`\nmysql> ) ENGINE = InnoDB;\n\n// 4. insert some data into the table\n\nmysql> INSERT INTO test (name) VALUE (\"hey\");\n\nQuery OK, 1 row affected (0.00 sec)\n\n// 5. create full-test index \n\nmysql> ALTER TABLE test ADD FULLTEXT INDEX IDX_NAME(name) WITH PARSER ngram;\n\nERROR 1878 (HY000): Temporary file write failure."
+  },
+  {
+    "anchor": "c531279",
+    "text": "Hello linkang zhang,\n\nThank you for the report and test case.\n\nregards,\nUmesh"
+  },
+  {
+    "anchor": "f32497",
+    "text": "Contributed patch\n\n(*) I confirm the code being submitted is offered under the terms of the OCA, and that I am authorized to contribute it.Contribution: bug110557_fts_create_index_fail.patch (application/octet-stream, text), 5.41 KiB."
+  },
+  {
+    "anchor": "c535189",
+    "text": "Thank you, Shaohua Wang for the contribution.\n\nregards,\nUmesh"
+  },
+  {
+    "anchor": "f32797",
+    "text": "Contributed patch\n\n(*) I confirm the code being submitted is offered under the terms of the OCA, and that I am authorized to contribute it.Contribution: bug110557_fts_create_index_fail_v2.patch (application/octet-stream, text), 6.59 KiB."
+  },
+  {
+    "anchor": "c537763",
+    "text": "The new patch is modified according new commit in 8.0.34, in which we got heap buffer overflow in ascan test.\n\nascan test failures:\ninnodb_fts.large_records innodb.innodb_bulk_create_index_flush\n\ncommit 11f7d6dfc55fc0a45ce0139ca04d0615d6fc21ec\nAuthor: Marcin Babij <marcin.babij@oracle.com>\nDate:   Wed Apr 5 09:24:03 2023 +0200\n\n    Bug#35194732    InnoDB: DDL should not use large pages nor direct memory like mmap"
+  },
+  {
+    "anchor": "c542637",
+    "text": "Posted by developer:\n \nContribution highlighted other issues, addressing which also fixed this issue. Helpful as it was, we did not use the contribution.\n\nThank you for the bug report."
+  }
+]

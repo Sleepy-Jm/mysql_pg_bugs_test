@@ -1,0 +1,34 @@
+{
+  "report_id": "111088",
+  "title": "src tarball made from github repo and provided in src.rpm files is not the same",
+  "task_ids": [
+    "mysql-111088-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\d94273b4ec70_bug_111088.html",
+  "source_sha256": "d94273b4ec7040b84e8763466f752382a7055975c200d78ff6d59351647794d4",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nI notice that if I generate a tar ball from the github.com/mysql/mysql-server tree for say 8.0.32 I get a certain content.\n\nI downloaded the RHEL8 mysql-community-8.0.32.el8.src.rpm file and \"installed\" it which provides the files required to rebuild the binaries.  I then extracted the provided mysql-8.0.32.tar.gz file.\n\nWhen comparing the contents the files were not the same.\nI've seen this in older versions of MySQL too. \n\nGiven the source is different this is somewhat confusing. It would be better to clean this up.\n\nHow to repeat:\nGenerate a tar ball for 8.0.32 from the github repo (in this case for 8.0.32):\n\n$ git archive --format=tar.gz -o ../mysql-8.0.32-github.tar.gz --prefix=mysql-8.0.32-github/ mysql-8.0.32\n\nDownload the src.rpm file for 8.0.32 (I did this for RHEL8), mysql-community-8.0.32-1.el8.src.rpm\n\n$ rpm -ivh mysql-community-8.0.32-1.el8.src.rpm to get the tarball installed into ~/rpmbuild/SOURCES\n\nExtract the 2 tarballs using slightly different names:\n\n$ cd ~/rpmbuild/SOURCES\n$ tar xzf mysql-8.0.32.tar.gz\n\nSee the diff -uNr output shows that in the src.rpm generated tarball there is an additional compiled mysql-8.0.32-srcrpm/sql/sql_hints.yy.cc file, and a Docs/INFO_SRC file (which doesn't really matter so much):\n\ndiff -uNr mysql-8.0.32-github/Docs/INFO_SRC mysql-8.0.32-srcrpm/Docs/INFO_SRC\n--- mysql-8.0.32-github/Docs/INFO_SRC   1970-01-01 01:00:00.000000000 +0100\n+++ mysql-8.0.32-srcrpm/Docs/INFO_SRC   2022-12-16 16:56:12.000000000 +0100\n@@ -0,0 +1,7 @@\n+commit: 683372e870fea4430bafe8bf06ef6f06a234e539\n+date: 2022-12-16 13:56:25 +0100\n+build-date: 2022-12-16 15:36:03 +0000\n+short: 683372e870f\n+branch: mysql-8.0.32-release\n+\n+MySQL source 8.0.32\ndiff -uNr mysql-8.0.32-github/sql/sql_hints.yy.cc mysql-8.0.32-srcrpm/sql/sql_hints.yy.cc\n--- mysql-8.0.32-github/sql/sql_hints.yy.cc     1970-01-01 01:00:00.000000000 +0100\n+++ mysql-8.0.32-srcrpm/sql/sql_hints.yy.cc     2022-12-16 16:57:58.000000000 +0100\n@@ -0,0 +1,2503 @@\n+/* A Bison parser, made by GNU Bison 3.0.4.  */\n+\n+/* Bison implementation for Yacc-like parsers in C\n+\n+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.\n...\n\n[sjmudd@mad17 SOURCES]$ wc -l mysql-8.0.32-srcrpm/sql/sql_hints.yy.cc\n2503 mysql-8.0.32-srcrpm/sql/sql_hints.yy.cc\n[sjmudd@mad17 SOURCES]$\n\nSo this is an unneeded 2503 line long file. I presume the standard build procedure within rpm will rebuild this file so it's not needed.\n\nSuggested fix:\nRemove the unneeded file from the tarball created from the .src.rpm. This tarball is what's used by rpm to build the binaries.  The sql_hints.yy.cc file is not needed as the standard rpm build process should recreate it."
+    },
+    {
+      "anchor": "c532740",
+      "text": "Hello Simon,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c533086",
+      "text": "Thanks for the bug report.\n\nWe ship and use one source tarball across platforms to be consistent. Due to the limitations on some platforms, the source tarball includes some generated files which are strictly not required on all platforms."
+    },
+    {
+      "anchor": "c533123",
+      "text": "ok, can you share the procedure for generating these from the git source so that I can reproduce the procedure or point me at the documentation or code for doing this if it exists already?\n\nThanks."
+    },
+    {
+      "anchor": "c533124",
+      "text": "rpm works on the basis of repeatable builds from the source.\n\nThe source in git is different so it would be convenient to know how you build the tarball so I can reproduce the same build process being used by Oracle for building the binaries on the platforms I'm interested in.\n\nrpm assumes source comes in tarballs which was true in the 90s but is no longer typical and the idea of the src rpm is you have a clean well defined source from which to build your code.  Given the tarball I saw was not the same as the source fro the git tree this is somewhat confusing and it also makes it harder to compare different versions based on sources in \"source tar balls\" or \"git trees\" as I'd expect them to be the same but as you point out this is not actually the case."
+    }
+  ]
+}

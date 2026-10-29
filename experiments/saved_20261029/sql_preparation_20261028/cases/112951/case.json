@@ -1,0 +1,88 @@
+{
+  "report_id": "112951",
+  "title": "Assertion `fixed' failed in MySQL 8.1.0",
+  "source_sha256": "eeb41a37d9f08cd0f61e5d552105781df137297a2cf6ffff26ec22ef7e16e443",
+  "source_anchors": [
+    "cmain",
+    "c537633"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "2697f1d880a605eb533bf3315938e84ebab3f0812ef21f67eb61973836b3af27"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "fafab806108cb96c5c894622372e6385027e34339281ce72b0b34c87ec82000e"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "单条原t0带CHECK和CTAS DDL。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SELECT true AS ca3，保留原RAND；不补造数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "原CHECK引用其他列/子查询应受控拒绝（源发布版3813）；不得Item_sum::aggregate_check_group fixed断言或进程退出。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t0;"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "原CHECK引用其他列/子查询应受控拒绝（源发布版3813）；不得Item_sum::aggregate_check_group fixed断言或进程退出。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "目标debug构建"
+  ],
+  "transformations": [
+    "取How to repeat完整代码块；故意非法CHECK不改写，随机值不作结果oracle。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c537633 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/112951.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "WITH_DEBUG及原ASan条件；记录ONLY_FULL_GROUP_BY。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "report_id": "110322",
+  "title": "Binary column primary key query with wrong result",
+  "source_sha256": "b980af72a6d2dae486c0e3b6f6e19901c914ac22e9be247dbddb5c967345b3ae",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "e9f7f0a703519197cf56b42dd395c3a66320f73c17a510dab0784d82f4ed19ed"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "878618dcbbd3b17c30c299e2433651742f64a499ab4b58dc55383a46c5231b08"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(c0 BINARY(200) PRIMARY KEY)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原文四个二进制值，包括 X''；不缩短BINARY长度。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "同一 BETWEEN 谓词的 WHERE 匹配行数与投影 SUM 真值数应相同；原报告3对4，空二进制行不得仅一侧丢失。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t1;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "同一 BETWEEN 谓词的 WHERE 匹配行数与投影 SUM 真值数应相同；原报告3对4，空二进制行不得仅一侧丢失。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "记录日期/二进制隐式转换warnings，不直接以原历史4行代替实测。"
+  ],
+  "transformations": [
+    "移除说明句；原样保留四值、日期字面量及两个查询。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/110322.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

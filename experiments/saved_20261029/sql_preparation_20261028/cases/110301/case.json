@@ -1,0 +1,109 @@
+{
+  "report_id": "110301",
+  "title": "Change column wrong result",
+  "source_sha256": "c99d48a7f14471ca2c218bf6e190e39c76db927e5619b35f6ec385c8d5cecd52",
+  "source_anchors": [
+    "cmain",
+    "c530541"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "49387e528bcc298931685282af7f8bf7fa2eda9d074bb18f0714925a017f3afc"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "5afd9190b1c895e3d7bdeaaca876278cc702050b19b36c6cf3d7a9b580d762ff"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "保留 INT 转 DATE NOT NULL。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "保留原文同表缺省引用 INSERT，不手工强插零日期。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 顺序在同一全新隔离 schema 和 mysql 会话执行；保留逐句输出/错误；预期错误处用 --force 继续，正常 SQL 错误不计 crash。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "保存插入是否被 sql_mode 拒绝；成功时比较 IS NULL 过滤与投影，但零日期历史兼容语义尚未厘清，不能仅凭差异断言 bug。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "按 cleanup.sql 清理本用例对象；结束会话，销毁专用 schema。实例级条件按 execution_conditions 恢复或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "保存插入是否被 sql_mode 拒绝；成功时比较 IS NULL 过滤与投影，但零日期历史兼容语义尚未厘清，不能仅凭差异断言 bug。",
+    "failure": "在所列前提成立时，违反上述逐例结果/错误/存活约束才记录异常；保存原始输出，初始化失败单列。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在；静态检查不证明服务器语法接受或根因独立。"
+  },
+  "requirements": [
+    "全新隔离 schema 和专用会话；保存真实版本、sql_mode、字符集和日志",
+    "记录NO_ZERO_DATE/STRICT模式",
+    "debug优先",
+    "必须记录 STRICT/NO_ZERO_DATE；不为制造前提擅改模式。"
+  ],
+  "transformations": [
+    "按已核对的原文 SQL 整理；结果表、提示符、栈记录留在 inputs 原文中，不当作 SQL。"
+  ],
+  "blockers": [
+    "零日期 DATE NOT NULL 的 IS NULL 过滤可能涉及兼容特殊行为，既有正文未排除该解释。"
+  ],
+  "version_notes": {
+    "8.0.33": "目标8.0支持DATE与同表插入引用，可在原模式前提下比较谓词；目标影响未知。 本轮未在该版本执行。",
+    "8.0.34": "目标8.0支持DATE与同表插入引用，可在原模式前提下比较谓词；目标影响未知。 本轮未在该版本执行。",
+    "8.0.35": "目标8.0支持DATE与同表插入引用，可在原模式前提下比较谓词；目标影响未知。 本轮未在该版本执行。"
+  },
+  "source_reading": "逐份核对 cmain, c530541 的定义、输入、顺序和判据；其他评论中的历史结果不外推为目标版本实测。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "debug目标空t1(c0 INT)，ALTER c0为DATE NOT NULL。",
+    "steps": "按正文INSERT t1(c0) VALUES ROW(t1.c0)，记录sql_mode/警告及0000-00-00；比较WHERE c0 IS NULL行数与投影CAST(IS NULL)的SUM。",
+    "oracle": "两种相同谓词应一致；若插入被模式拒绝则记录不适用，不能强造数据称复现。",
+    "requirements": [
+      "记录NO_ZERO_DATE/STRICT模式",
+      "debug优先"
+    ],
+    "target_applicability": "目标8.0支持DATE与同表插入引用，可在原模式前提下比较谓词；目标影响未知。"
+  },
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "uncertain",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "other",
+      "detail": "必须记录 STRICT/NO_ZERO_DATE；不为制造前提擅改模式。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [
+    {
+      "point": "零日期 DATE NOT NULL 的 IS NULL 过滤可能涉及兼容特殊行为，既有正文未排除该解释。",
+      "evidence": "cmain 观察零日期和 WHERE/SUM 差异，c530541 仅确认收到报告。",
+      "needed": "目标 8.0 IS NULL 对零日期的正式语义依据；原始 sql_mode，后续静态判据审查。"
+    }
+  ],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

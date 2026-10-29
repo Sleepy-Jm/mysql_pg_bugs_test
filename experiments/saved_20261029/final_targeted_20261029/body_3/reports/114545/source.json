@@ -1,0 +1,22 @@
+{
+  "report_id": "114545",
+  "title": "performance_schema.processlist tuncates query info",
+  "task_ids": [
+    "mysql-114545-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\371090154fe6_bug_114545.html",
+  "source_sha256": "371090154fe60cf03e856389993560396a002b8f9dfcea14d05725dde1c46e3c",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nTable PROCESSLIST in Performance Schema crops query info. Even more, if I set performance_schema_show_processlist ON, output in SHOW FULL PROCESSLIST would be truncates as well.\n\nHow to repeat:\n1. Prepare very long query:\n\necho \"select sleep(10), '\" >> test.sql\nfor i in `seq 1 1 1024000`; do echo $i>>test.sql; done\necho \"';\" >>test.sql\n\n2. Run tests:\n\nmysqlmtr < test.sql > /dev/null\n\n3. Check output of \n\nselect * from information_schema.processlist\\G\nselect * from performance_schema.processlist\\G\nshow full processlist\\G\n\nIt will print:\n\nselect * from information_schema.processlist\\G\n...\n12768\n12769\n12770\n1\n3 row in set, 1 warning (0,01 sec)\n\nselect * from performance_schema.processlist\\G\n...\n274\n275\n276\n277\n278\n\nEXECUTION_ENGINE: PRIMARY\n3 row in set (0,00 sec)\n\nshow full processlist\\G (performance_schema_show_processlist ON)\n...\n274\n275\n276\n277\n278\n\n3 rows in set (0,00 sec)\n\nshow full processlist\\G (performance_schema_show_processlist OFF)\n...\n1023996\n1023997\n1023998\n1023999\n1024000\n'\n3 rows in set, 1 warning (0,02 sec)"
+    },
+    {
+      "anchor": "c542095",
+      "text": "Hello Sveta,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    }
+  ]
+}

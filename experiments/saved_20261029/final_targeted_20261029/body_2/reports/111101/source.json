@@ -1,0 +1,58 @@
+{
+  "report_id": "111101",
+  "title": "Join by index returns incorrect results",
+  "task_ids": [
+    "mysql-111101-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\920fca05d488_bug_111101.html",
+  "source_sha256": "920fca05d4883039085307f82b12727a7351712501a89e9d26d160e9bbe85ae3",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nIn case 1, the query outputs an incorrect result.\nIf I remove the index (case 2) or remove data that do not satisfy the condition (case 3), the query result becomes correct.\n\nHow to repeat:\n-- case 1 --\nCREATE TABLE t0(c0 TEXT);\nCREATE TABLE t1(c0 DECIMAL) ;\nCREATE INDEX i0 ON t1(c0);\nINSERT INTO t0(c0) VALUES('0v'), ('a');\nINSERT INTO t1(c0) VALUES (0), (-1);\nSELECT * FROM t0, t1 WHERE (t0.c0) = (t1.c0); -- {(a|0)}\n\n-- case 2 --\nCREATE TABLE t0(c0 TEXT);\nCREATE TABLE t1(c0 DECIMAL) ;\nINSERT INTO t0(c0) VALUES('0v'), ('a');\nINSERT INTO t1(c0) VALUES (0), (-1);\nSELECT * FROM t0, t1 WHERE (t0.c0) = (t1.c0); -- {(a|0), (0v|0)}\n\n-- case 3 --\nCREATE TABLE t0(c0 TEXT);\nCREATE TABLE t1(c0 DECIMAL) ;\nCREATE INDEX i0 ON t1(c0);\nINSERT INTO t0(c0) VALUES('0v'), ('a');\nINSERT INTO t1(c0) VALUES (0);\nSELECT * FROM t0, t1 WHERE (t0.c0) = (t1.c0); -- {(a|0), (0v|0)}"
+    },
+    {
+      "anchor": "c532749",
+      "text": "Hi Mr. Jove,\n\nThank you for your bug report.\n\nHowever, this is not a bug.\n\nThis is expected behaviour.\n\nColumn types of DECIMAL and TEXT are totally incompatible. So, when you do not have indices, MySQL server has to compare values by finding a common denominator.  So, without indices, each value is converted to the nearest possible type and those are compared.\n\nHowever, when you use indices, then only index is used by searching for the exact value. In that case, the tuple can not be found. In that case, conversion can not be done, since B+ trees are searched by nodes.\n\nNot a bug."
+    },
+    {
+      "anchor": "c532756",
+      "text": "Thanks for your detailed instructions.\nDoes this mean that the SELECT in case 1 uses the index to search the exact value, and only 0 and `a` satisfy the equal condition, but 0 and `0v` does not?"
+    },
+    {
+      "anchor": "c532762",
+      "text": "No, in the first case, none of the values satisfy the conditions, because DECIMAL type can not have values of '0v' or 'a' or similar .......\n\nWhen there is no index, then server is searching for common denominator, which sometimes requires changing the values of the strings, in your case."
+    },
+    {
+      "anchor": "c532770",
+      "text": "But, there is a conflict. In the first case, the SELECT did return the values (a|0). I paste the execution results in the followings.\n\nmysql> SELECT * FROM t0, t1 WHERE (t0.c0) = (t1.c0);\n+------+------+\n| c0   | c0   |\n+------+------+\n| a    |    0 |\n+------+------+\n1 row in set, 2 warnings (0.00 sec)\n\nmysql> show warnings;\n+---------+------+--------------------------------------------------------+\n| Level   | Code | Message                                                |\n+---------+------+--------------------------------------------------------+\n| Warning | 1366 | Incorrect decimal value: '0v' for column 'c0' at row 1 |\n| Warning | 1366 | Incorrect decimal value: 'a' for column 'c0' at row 1  |\n+---------+------+--------------------------------------------------------+\n2 rows in set (0.00 sec)\n\nmysql> EXPLAIN SELECT * FROM t0, t1 WHERE (t0.c0) = (t1.c0);\n+----+-------------+-------+------------+------+---------------+------+---------+------------+------+----------+------------------------------+\n| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref        | rows | filtered | Extra                        |\n+----+-------------+-------+------------+------+---------------+------+---------+------------+------+----------+------------------------------+\n|  1 | SIMPLE      | t0    | NULL       | ALL  | NULL          | NULL | NULL    | NULL       |    2 |   100.00 | Using where; Using temporary |\n|  1 | SIMPLE      | t1    | NULL       | ref  | i0            | i0   | 6       | test.t0.c0 |    1 |   100.00 | Using where; Using index     |\n+----+-------------+-------+------------+------+---------------+------+---------+------------+------+----------+------------------------------+\n2 rows in set, 1 warning (0.01 sec)\n\nmysql> show warnings;\n+-------+------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Level | Code | Message                                                                                                                                                                                                 |\n+-------+------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Note  | 1003 | /* select#1 */ select sql_buffer_result `test`.`t0`.`c0` AS `c0`,`test`.`t1`.`c0` AS `c0` from `test`.`t0` join `test`.`t1` where (cast(`test`.`t0`.`c0` as double) = cast(`test`.`t1`.`c0` as double)) |\n+-------+------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.00 sec)\n\nmysql> select @@version;\n+-----------+\n| @@version |\n+-----------+\n| 8.0.32    |\n+-----------+\n1 row in set (0.00 sec)"
+    },
+    {
+      "anchor": "c532785",
+      "text": "Hi,\n\nSorry, but what you wrote in your last comment contradicts what you wrote in your opening comment ...."
+    },
+    {
+      "anchor": "c532788",
+      "text": "Sorry, I may misunderstand the sentence “No, in the first case, none of the values satisfy the conditions, because DECIMAL type can not have values of '0v' or 'a' or similar .......”. Does this mean that the SELECT in the first case should not return values?"
+    },
+    {
+      "anchor": "c532791",
+      "text": "That depends ......\n\nIf there are not sufficient rows in the table, so that index can not be used, then there would be no search by index and different results would return.\n\nIf there are sufficient rows for the index to be used , then you should get no result.\n\nNumber of sufficient rows is calculated by the optimiser and depend on the column type and width."
+    },
+    {
+      "anchor": "c532792",
+      "text": "Thanks. I may get this point. The approximate value of 0 and `a` in this case is the same, but their exact values are different. When using an index, it compares their exact values, so no result is returned. And the optimiser is free to match the values either using an index or not use. In this way, the first case is acceptable. That's when compare 0 and `a`, it does not use the index and compares their approximate values, but for 0 and `0v`, it uses the index. Do I understand correctly?"
+    },
+    {
+      "anchor": "c532885",
+      "text": "By the way, I try to evaluate the same predicate in the followings.\n\nCREATE TABLE t0(c0 TEXT);\nCREATE TABLE t1(c0 DECIMAL) ;\nCREATE INDEX i0 ON t1(c0);\nINSERT INTO t0(c0) VALUES('0v'), ('a');\nINSERT INTO t1(c0) VALUES (0), (-1);\nSELECT (t0.c0) = (t1.c0) FROM t0, t1; -- {0,0,1,1}\nSELECT * FROM t0, t1 WHERE (t0.c0) = (t1.c0); -- {(a|0)}\n\nThe SELECT returns two 1s, which is different from the number of results in case 1. Is this case sill acceptable?"
+    },
+    {
+      "anchor": "c532913",
+      "text": "Yes, it is OK as a result, since you have forced a Cartesian product."
+    }
+  ]
+}

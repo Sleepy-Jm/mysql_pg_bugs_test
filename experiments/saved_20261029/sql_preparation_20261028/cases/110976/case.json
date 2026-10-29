@@ -1,0 +1,101 @@
+{
+  "report_id": "110976",
+  "title": "full-text index does not change when ngram parser changed",
+  "source_sha256": "c1c337b3cc4c85953ba9f58d6ec14373ac89774aad7a739c553b9db8aa9561da",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "a5136e632ced196326f5e269283c3fd64fb76b27a42fc914832eb7cb440d171f"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "4d9c0b7149d95eff7dfa3442dfe032aede0fb6c0fb056bd88d67cd7bef14ec30"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原文 InnoDB t(name VARCHAR(256))。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "完整原文一行 goat勒布朗，UTF-8 客户端。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 顺序在同一全新隔离 schema 和 mysql 会话执行；保留逐句输出/错误；预期错误处用 --force 继续，正常 SQL 错误不计 crash。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "三种重建均应显示 PARSER ngram，固定相同 ngram/停用词配置时 MATCH 返回同一行；保存实际配置避免把默认差异计 bug。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "按 cleanup.sql 清理本用例对象；结束会话，销毁专用 schema。实例级条件按 execution_conditions 恢复或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "三种重建均应显示 PARSER ngram，固定相同 ngram/停用词配置时 MATCH 返回同一行；保存实际配置避免把默认差异计 bug。",
+    "failure": "在所列前提成立时，违反上述逐例结果/错误/存活约束才记录异常；保存原始输出，初始化失败单列。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在；静态检查不证明服务器语法接受或根因独立。"
+  },
+  "requirements": [
+    "全新隔离 schema 和专用会话；保存真实版本、sql_mode、字符集和日志",
+    "ngram可用",
+    "记录字符集",
+    "ngram 可用；保存 ngram_token_size、stopword 设置，脚本不安装 parser。"
+  ],
+  "transformations": [
+    "按已核对的原文 SQL 整理；结果表、提示符、栈记录留在 inputs 原文中，不当作 SQL。",
+    "将示例输出的 utf8mb3 明确写入建表；将原文二选一修正方案串行记录为独立对照阶段。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。"
+  },
+  "source_reading": "逐份核对 cmain 的定义、输入、顺序和判据；其他评论中的历史结果不外推为目标版本实测。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "InnoDB t(name VARCHAR256)插入goat勒布朗，普通FTS。",
+    "steps": "同条ALTER DROP/ADD同名FTS WITH PARSER ngram ALGORITHM=INPLACE；与COPY及分两条DDL对照。",
+    "oracle": "SHOW CREATE应保留ngram且MATCH结果与正确重建一致。",
+    "requirements": [
+      "ngram可用",
+      "记录字符集"
+    ],
+    "target_applicability": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。"
+  },
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "plugin",
+      "detail": "ngram 可用；保存 ngram_token_size、stopword 设置，脚本不安装 parser。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

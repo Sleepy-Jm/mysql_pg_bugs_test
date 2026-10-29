@@ -1,0 +1,91 @@
+{
+  "report_id": "112907",
+  "title": "Assertion `to->field_ptr() != from->field_ptr()' failed in MySQL 8.1.0",
+  "source_sha256": "f621b4535fba6ca3463dfc5a108de28fc830812d33506b5c8a9f28d3df28f932",
+  "source_anchors": [
+    "cmain",
+    "c537517",
+    "c537518",
+    "c537519"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "0327d67dd08ef8cd4563969efacb52094c94f37d5c3ff1b358ab01af5e71f689"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "f06ba62413ad00979d61728ff1fbab0232a8d07e1c8e169f4b2726e49147aabe"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0 CHAR(0) koi8r/VARCHAR(1)主键/STORED生成列，InnoDB。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "完整五个原INSERT行含NOW及列引用；不替换fixme/honeypot字面量。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "INSERT IGNORE可产生截断、重复键及NULL警告，但不得field_conv_with_cache field_ptr断言；不以历史4行/10warnings作为跨版本硬判据。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "INSERT IGNORE可产生截断、重复键及NULL警告，但不得field_conv_with_cache field_ptr断言；不以历史4行/10warnings作为跨版本硬判据。",
+    "failure": "不应出现报告所述服务器断言/异常退出；受控 SQL 错误须单独记录，连接存活/服务日志而非仅客户端错误作为判据。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "目标debug构建",
+    "记录sql_mode"
+  ],
+  "transformations": [
+    "取原复现围栏，不移除有意超长字符串或列引用；fixme为数据。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c537517, c537518, c537519 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "原文要求 WITH_DEBUG；记录与 release 构建的差异。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

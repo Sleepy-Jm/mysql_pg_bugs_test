@@ -1,0 +1,70 @@
+{
+  "report_id": "114475",
+  "title": "COUNT(1) vs SUM of partial counts",
+  "task_ids": [
+    "mysql-114475-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\576162629b6a_bug_114475.html",
+  "source_sha256": "576162629b6a1199ba00831af0b7b42f08d956b4928d31eb3566037256c0756c",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nI have a table t(k1 int, k2 int, f varchar(4000) )\nwith 3M rows, size in disk 10GB\n\nrunning\n        select count(1) from t;\ntakes 30 minutes.\n\nrunning\n        select sum(a) from (select count(1) a, k1 from test.t4 group by 2) as b;\ntakes 1 minute.\n\nFor a table of half the size both sqls run in 10 seconds.\n\nI can reproduce this on different windows pc's, but not on a Linux box.\n\nHow to repeat:\ncreate schema test;\ndrop table if exists test.h; \ndrop table if exists test.t4; \nCREATE TABLE test.t4 (k1 int NOT NULL,k2 int not null\n , f varchar(4000) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\n  PRIMARY KEY (k1,k2)\n ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin \n ROW_FORMAT=COMPRESSED;\n\ncreate table test.h (i int);\ninsert into test.h values (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);\ninsert into test.t4 (k1,k2,f) select 0 , \n h0.i+10*h1.i+100*h2.i+1000*h3.i+10000*h4.i, SPACE(4000)\n from test.h h0,test.h h1,test.h h2,test.h h3,test.h h4;\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f \nfrom test.t4;\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\nselect sum(a) from (select count(1) a, k1 from test.t4 group by 2) as b;\nselect count(1) from test.t4;\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\nselect sum(a) from (select count(1) a, k1 from test.t4 group by 2) as b;\nselect count(1) from test.t4;\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\nselect sum(a) from (select count(1) a, k1 from test.t4 group by 2) as b;\nselect count(1) from test.t4;\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\nselect sum(a) from (select count(1) a, k1 from test.t4 group by 2) as b;\nselect count(1) from test.t4;"
+    },
+    {
+      "anchor": "c541872",
+      "text": "HI Mr. Nix,\n\nThank you for your bug report.\n\nHowever, this is not our bug.\n\nWe repeated your test case, but we found out that difference between different operating systems, different settings of the operating systems is due only to the performance of the filesystem cacheing.\n\nIt is a very well known fact that Linux has by far the best filesystem cacheing of all existing operating systems. Even macOS has excellent filesystem cacheing, unlike Windows.\n\nYou should report this bug to Microsoft.\n\nNot a bug."
+    },
+    {
+      "anchor": "c541884",
+      "text": "Thank you for your quick reply. Is there any explanation on why this problem does not arise when you run an sql that counts subtotals? Both are supposed to do a full index scan."
+    },
+    {
+      "anchor": "c541895",
+      "text": "Hi,\n\nYes, there is an explanation .....\n\nWhen calculating subtotals, filesystem has to be touched, just touched, due to the aggregation .... That improves Windows filesystem cacheing ..... which is why Windows is   not as widespread for production as Linux ....."
+    },
+    {
+      "anchor": "c541916",
+      "text": "Please run EXPLAIN ANALYZE of the queries."
+    },
+    {
+      "anchor": "c541926",
+      "text": "Thank you, Roy."
+    },
+    {
+      "anchor": "c542040",
+      "text": "EXPLAIN analyze select sum(a) from (select count(1) a, k1 from test.t3 group by 2) as b;\n\n137.157 sec \n\n-> Aggregate: sum(b.a)  (cost=4.63e+6..4.63e+6 rows=1) (actual time=137153..137153 rows=1 loops=1)\n    -> Table scan on b  (cost=4.63e+6..4.63e+6 rows=1) (actual time=137152..137152 rows=128 loops=1)\n        -> Materialize  (cost=4.63e+6..4.63e+6 rows=1) (actual time=137152..137152 rows=128 loops=1)\n            -> Group aggregate: count(1)  (cost=4.63e+6 rows=1) (actual time=5242..137151 rows=128 loops=1)\n                -> Covering index scan on t3 using PRIMARY  (cost=3.71e+6 rows=9.28e+6) (actual time=11.7..136670 rows=12.8e+6 loops=1)\n\nEXPLAIN analyze select count(1) from test.t3\n\n8260.390 sec\n\n-> Count rows in t3  (actual time=8.26e+6..8.26e+6 rows=1 loops=1)\n\nIt could be that the problem is caused by paging, therefore I tried this script with the page file set to max 4 GB. The runtimes were the same as with 20GB of pagefile (selected by windows)."
+    },
+    {
+      "anchor": "c542065",
+      "text": "Hi Mr. Nix,\n\nThis turns out to be potentially a performance problems with InnoDB.\n\nHence, we shall consult InnoDB team on whether this could qualify as Performance bug."
+    },
+    {
+      "anchor": "c542075",
+      "text": "Thank you for your quick update"
+    },
+    {
+      "anchor": "c543014",
+      "text": "Hello Robbert,\n\nIt looks like this problem is fixed in 8.0.37. Would you be able to confirm it, please."
+    },
+    {
+      "anchor": "c543131",
+      "text": "Hi Mr. Nix,\n\nThis bug is definitely  fixed in 8.0.35.\n\nWe checked it 4 (four) times.\n\nThis bug is now closed."
+    },
+    {
+      "anchor": "c543348",
+      "text": "Hallo, I upgraded to 8.0.37 today, and I can comfirm that the problem has been fixed for me.\nOut of curiosity: can you tell me what the problem was?\nIs there any relation to windows paging mechanism?\n\nMany thanks, Robbert"
+    },
+    {
+      "anchor": "c543352",
+      "text": "Thank you Robbert for conforming. \nI did not investigate the problem or zeroed it down to an individual commit.\nBut if I were to guess it would be https://bugs.mysql.com/bug.php?id=113482 fix. \n\nPerhaps you would be using HDD that would have saturated the IO. \nThe fix is to enable to linear read ahead during scan."
+    },
+    {
+      "anchor": "c543358",
+      "text": "Thank you, Rahul."
+    }
+  ]
+}

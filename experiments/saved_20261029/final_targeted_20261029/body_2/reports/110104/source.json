@@ -1,0 +1,26 @@
+{
+  "report_id": "110104",
+  "title": "Query exception caused by union in 8.0.32",
+  "task_ids": [
+    "mysql-110104-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\a6e35c165600_bug_110104.html",
+  "source_sha256": "a6e35c16560007452bbb241cefae78e013defb64efcd262105b92a0f67618a80",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nIn 8.0.32, the matching query of Chinese characters is included, and the result set is incorrect\n\nHow to repeat:\nCREATE TABLE test_1(id INT,NAME VARCHAR(100));\nCREATE TABLE test_2(id INT,NAME VARCHAR(100));\n\nINSERT INTO test_1 VALUES(1,'aaa');\nINSERT INTO test_1 VALUES(2,'bbb');\nINSERT INTO test_1 VALUES(3,'ccc');\nINSERT INTO test_1 VALUES(4,'ddd');\nINSERT INTO test_1 VALUES(5,'测试');\n\nINSERT INTO test_2 VALUES(11,'eee');\n\n##Query at this time\n\nSELECT * FROM (\nSELECT * FROM test_1 WHERE NAME = '测试'\nUNION \nSELECT * FROM test_2 WHERE NAME = 'bbb'\n) tmp\n\n##Results obtained\n    id  name    \n------  --------\n     5  测试  \n\n## after adding a where condition\n\nSELECT * FROM (\nSELECT * FROM test_1 WHERE NAME = '测试'\nUNION \nSELECT * FROM test_2 WHERE NAME = 'bbb'\n) tmp\nWHERE NAME = '测试'\n\n##Results obtained\n    id  name    \n------  --------\n\nSuggested fix:\nThe new version of BUG has not been repaired"
+    },
+    {
+      "anchor": "c530013",
+      "text": "Hello tuantuan Xue,\n\nThank you for the report and feedback.\nConfirmed internally that this is duplicate of Bug #109699, please see Bug #109699 which is fixed in the MySQL 8.0.33. Since 8.0.33 is not yet released, we suggest you to please use the workaround for now.\n\nQuoting Roy's note from another bug - Possible workaround: set optimizer_switch='derived_condition_pushdown=off';\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c530060",
+      "text": "ok，Thank you very much！"
+    }
+  ]
+}

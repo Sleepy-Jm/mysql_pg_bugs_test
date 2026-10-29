@@ -1,0 +1,11 @@
+-- MySQL report #113316; source: cmain, c538619
+-- Static preparation only. NOT EXECUTED. Read case.json; use a fresh isolated case schema.
+create table t0 (`int_col` int,`bit_col` bit(8) DEFAULT b'0', KEY `ndx_bit_col` (`bit_col` DESC)) partition by hash(int_col) partitions 3;
+
+insert into t0(int_col) values(1);
+
+SELECT bit_col, int_col FROM t0 A WHERE bit_col = '0x00';
+
+alter table t0 drop key ndx_bit_col;
+
+SELECT bit_col, int_col FROM t0 A WHERE bit_col = '0x00';

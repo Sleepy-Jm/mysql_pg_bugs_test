@@ -1,0 +1,26 @@
+{
+  "report_id": "111965",
+  "title": "default NULL column leads to foreign key constraint failure",
+  "task_ids": [
+    "mysql-111965-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\8de1e1bcfee5_bug_111965.html",
+  "source_sha256": "8de1e1bcfee53ae0b041867c5180b2f62080c8d9bea0acc2c6d40dcf08ed8c23",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nIf the table contains default NULL fields, it will break through the foreign key constraint\n\nHow to repeat:\nRun mtr test case:\n\n# SHOW foreign_key_checks\nSHOW VARIABLES LIKE \"foreign_key_checks\";\n\n# CREATE TABLE t1 and t2 with columns DEFAULT NULL.\nCREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(50) DEFAULT NULL,\n  PRIMARY KEY (`id`) USING BTREE,\n  KEY `my_key` (`id`,`name`)\n);\n\ncreate table t2 (\n  `id_c` int NOT NULL AUTO_INCREMENT,\n  `name_c` varchar(50) DEFAULT NULL,\n FOREIGN KEY (`id_c`,`name_c`) REFERENCES t1(`id`,`name`)\n);\n\n# Insert full fields, error happens.\n--error 1452\nINSERT INTO t2 value(1, \"test\");\n\n# Insert default fields, no error found.\nINSERT INTO t2 values();\n\n# Do select\nSELECT * FROM t1;\n\nSELECT * FROM t2;\n\n# Cleanup\nDROP TABLE t2;\nDROP TABLE t1;\n\nSuggested fix:\nImprove the handling of NULL fields. Currently, there are some places where NULL is special, leading to logical errors"
+    },
+    {
+      "anchor": "c534989",
+      "text": "Hello Huaxiong Song,\n\nThank you for the report and steps.\nVerified as described.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c535065",
+      "text": "It is not a issue. \n\nIf any of the foreign key fields in entry is SQL NULL, the innodb suppress the foreign key check which is compatible with Oracle. Reference the document: https://dev.mysql.com/doc/refman/8.0/en/ansi-diff-foreign-keys.html"
+    }
+  ]
+}

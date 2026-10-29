@@ -1,0 +1,26 @@
+{
+  "report_id": "112779",
+  "title": "Not auto rejoin after failing to parse relay log",
+  "task_ids": [
+    "mysql-112779-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\48b1d4e4e868_bug_112779.html",
+  "source_sha256": "48b1d4e4e8687dd9c79ea65cd15afa7c43982a68ce3edb014b4c5be2f7c54f29",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nAfter some network errors, one nodes of MySQL cluster just left the group and not auto rejoin even though group_replication_autorejoin_tries is 3.\n\nlog:\n\n2023-09-10T13:05:33.220875Z 14 [ERROR] [MY-010596] [Repl] Error reading relay log event for channel 'group_replication_applier': corrupted data in log event\n2023-09-10T13:05:33.221651Z 14 [ERROR] [MY-013121] [Repl] Replica SQL for channel 'group_replication_applier': Relay log read failure: Could not parse relay log event entry. The possible reasons are: the source's binary log is corrupted (you can check this by running 'mysqlbinlog' on the binary log), the replica's relay log is corrupted (you can check this by running 'mysqlbinlog' on the relay log), a network problem, the server was unable to fetch a keyring key required to open an encrypted relay log file, or a bug in the source's or replica's MySQL code. If you want to check the source's binary log or replica's relay log, you will be able to know their names by issuing 'SHOW REPLICA STATUS' on this replica. Error_code: MY-013121\n\nHow to repeat:\nset random packet drop on network\n\nSuggested fix:\nNodes should auto rejoin as config."
+    },
+    {
+      "anchor": "c537152",
+      "text": "Hi,\n\nI cannot reproduce this. If I set packet drop server will try to rejoin 3 times every 5 minutes and will stop trying then as expected."
+    },
+    {
+      "anchor": "c537221",
+      "text": "From source code, when some network problem causes failure to parse binlog, it will leave group without AUTO_REJOIN. My problem is why not?\n\nNo auto-rejoin from applier.cc :\n\n    leave_group_on_failure::mask leave_actions;\n    /*\n      Only follow exit_state_action if we were already inside a group. We may\n      happen to come across an applier error during the startup of GR (i.e.\n      during the execution of the START GROUP_REPLICATION command). We must not\n      follow exit_state_action on that situation.\n    */\n    leave_actions.set(leave_group_on_failure::HANDLE_EXIT_STATE_ACTION,\n                      gcs_module->belongs_to_group());\n    leave_group_on_failure::leave(leave_actions,\n                                  ER_GRP_RPL_APPLIER_EXECUTION_FATAL_ERROR,\n                                  nullptr, exit_state_action_abort_log_message);\n\nanother case with auto-rejoin\n\n    const char *exit_state_action_abort_log_message =\n        \"Member was expelled from the group due to network failures.\";\n    leave_group_on_failure::mask leave_actions;\n    leave_actions.set(leave_group_on_failure::ALREADY_LEFT_GROUP, true);\n    leave_actions.set(leave_group_on_failure::CLEAN_GROUP_MEMBERSHIP, true);\n    leave_actions.set(leave_group_on_failure::STOP_APPLIER, true);\n    leave_actions.set(leave_group_on_failure::HANDLE_EXIT_STATE_ACTION, true);\n    leave_actions.set(leave_group_on_failure::HANDLE_AUTO_REJOIN, true);\n    leave_group_on_failure::leave(leave_actions, ER_GRP_RPL_MEMBER_EXPELLED,\n                                  &m_notification_ctx,\n                                  exit_state_action_abort_log_message);"
+    }
+  ]
+}

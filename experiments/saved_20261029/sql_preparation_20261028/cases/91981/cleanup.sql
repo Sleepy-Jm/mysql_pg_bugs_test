@@ -1,0 +1,4 @@
+-- MySQL report #91981; source anchors: cmain, c478671
+-- Prepared offline; NOT EXECUTED. Run only in a disposable isolated environment.
+DROP USER IF EXISTS '123456789012345678901234567890ab'@'123456789012345678901234567890123456789012345678901234567890';
+DROP TABLE IF EXISTS max_len_grantee;

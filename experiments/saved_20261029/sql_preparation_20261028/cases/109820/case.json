@@ -1,0 +1,81 @@
+{
+  "report_id": "109820",
+  "title": "optimizer hints in definition of views seem to be ignored",
+  "source_sha256": "e9513a6fcbe58fa181c5068970a4eceecf29e6126d4f72fd6f1be099f8768c54",
+  "source_anchors": [
+    "cmain",
+    "c529314"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "a09f719e2a5ca9d8e38cdb02bac9fe6b4e4ae7a36f4bbf83fda469cba0ff5d0b"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "7706624a0bacc910e15f3c76fd08940f89ca283ff22bded84e91dabdf383e224"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(id int)插入1/2；create view v_1 as select /*+ NO_MERGE() */ * from (select * from t1) dt。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。对直接SELECT及SELECT * FROM v_1执行EXPLAIN/SHOW WARNINGS/SHOW CREATE VIEW；以ALGORITHM=TEMPTABLE作对照。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "检查 NO_MERGE 提示在原查询、视图保存定义及执行计划是否保留/被接受；计划差异只记 plan_diff，提示作用域未裁定前不宣称wrong_result。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "plan_diff",
+    "expected": "检查 NO_MERGE 提示在原查询、视图保存定义及执行计划是否保留/被接受；计划差异只记 plan_diff，提示作用域未裁定前不宣称wrong_result。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "创建视图权限"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。",
+    "去掉 test1 库操作和客户端结果，新增 SHOW WARNINGS/SHOW CREATE VIEW。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标存在NO_MERGE/派生表视图路径。 本轮仅静态准备。",
+    "8.0.34": "目标存在NO_MERGE/派生表视图路径。 本轮仅静态准备。",
+    "8.0.35": "目标存在NO_MERGE/派生表视图路径。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c529314 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "t1(id int)插入1/2；create view v_1 as select /*+ NO_MERGE() */ * from (select * from t1) dt。",
+    "steps": "对直接SELECT及SELECT * FROM v_1执行EXPLAIN/SHOW WARNINGS/SHOW CREATE VIEW；以ALGORITHM=TEMPTABLE作对照。",
+    "oracle": "已接受且应生效的NO_MERGE不应在视图保存后无提示丢失；按提示作用域契约判断，不把任何计划差异计wrong_result。",
+    "requirements": [
+      "创建视图权限"
+    ],
+    "target_applicability": "目标存在NO_MERGE/派生表视图路径。"
+  }
+}

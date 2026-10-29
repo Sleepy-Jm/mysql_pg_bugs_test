@@ -1,0 +1,71 @@
+{
+  "report_id": "112959",
+  "title": "Wrong rows examined in P_S and slow log for Index Merge.",
+  "source_sha256": "0b8c41ea3afc3e9136ce5f2b4dd968f44ca95b05c59a5807cb8c016939e203ae",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "63bc2505fb96d40352e7b0d509588827227e4816bb80af1a992c9f3a9e4d1be8"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "10826e614efaa4ef5cc021afebc708821a12c0b808ce11d32bae5ac34ccb2828"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "test_jfg.t 主键及两索引；统计表仅一次性实例清空"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "三行(1,1),(2,2),(3,3)"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "独占实例，无并发语句；清空统计仅此一次性实例；按文本识别目标 SELECT 记录，结束销毁实例。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "COUNT=2；在 index_merge union 计划下对应 digest/slow log rows_examined 应为 2；异常：实际读到两行却 rows_examined=0"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "本用例要求一次性实例。SQL 清理只清本例对象；运行结束销毁该实例/数据目录恢复全局设置、日志或表空间状态。若未执行，不进行清理。"
+    }
+  },
+  "oracle": {
+    "kind": "metadata_difference",
+    "expected": "COUNT=2；在 index_merge union 计划下对应 digest/slow log rows_examined 应为 2",
+    "failure": "实际读到两行却 rows_examined=0",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "管理权限",
+    "确认index_merge计划",
+    "一次性实例，P_S=ON，slow_query_log=ON，log_output=TABLE，long_query_time=0；必须确认 index_merge"
+  ],
+  "transformations": [
+    "从 shell heredoc 提取完整 SQL；SQL 不含部署命令"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "8.2修复不自动回补8.0，目标可探索。 本轮尚未执行。",
+    "8.0.33": "8.2修复不自动回补8.0，目标可探索。 本轮尚未执行。",
+    "8.0.34": "8.2修复不自动回补8.0，目标可探索。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

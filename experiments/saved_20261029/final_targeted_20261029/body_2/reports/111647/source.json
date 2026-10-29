@@ -1,0 +1,50 @@
+{
+  "report_id": "111647",
+  "title": "Blob partial update in undo record may lead potential crash",
+  "task_ids": [
+    "mysql-111647-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\67f3b6b3f3c9_bug_111647.html",
+  "source_sha256": "67f3b6b3f3c90483d8b39e0c2ebccadb47ef316bd05e9af722fad05025bae143",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nThe blob partial update may record in undo record, if it is a small change. We found that the binary diff server calculated may have the length 0. And this binary diff may send it to innodb and finally record in undo record.\nDuring row_search_mvcc process, reading this record with length 0 may lead to a potential crash. It is verified to be crash in 8.0.25. However, due to some malloc mechanism, it is okay in 8.0.33.\n\nHow to repeat:\nFollow the sql below it is easy to reproduce the case that binary diff is calculated to be 0:\n\n1,\ncreate table t (a int primary key, b json);\ninsert into t values (1, '[ \"abc\", \"def\" ]');\n \nthe memory of this record will be like :\n       0x02 - type: small JSON array\n        0x02 - number of elements (low byte)\n        0x00 - number of elements (high byte)\n        0x12 - number of bytes (low byte)\n        0x00 - number of bytes (high byte)\n        0x0C - type of element 0 (string)\n        0x0A - offset of element 0 (low byte)\n        0x00 - offset of element 0 (high byte)\n        0x0C - type of element 1 (string)\n        0x0E - offset of element 1 (low byte)\n        0x00 - offset of element 1 (high byte)\n        0x03 - length of element 0\n        'a'\n        'b'  - content of element 0\n        'c'\n        0x03 - length of element 1\n        'd'\n        'e'  - content of element 1\n        'f'\n\n2, UPDATE t SET b = JSON_REMOVE(b, '$[1]') where a = 1;\nAfter this update the memory layout may like this:\n                    0x02 - type: small JSON array\n CHANGED 0x01 - number of elements (low byte)\n CHANGED 0x00 - number of elements (high byte)\n                    0x12 - number of bytes (low byte)\n                    0x00 - number of bytes (high byte)\n                    0x0C - type of element 0 (string)\n                    0x0A - offset of element 0 (low byte)\n                    0x00 - offset of element 0 (high byte)\n                    0x0C - type of element 1 (string)\n                    0x0E - offset of element 1 (low byte)\n                    0x00 - offset of element 1 (high byte)\n                    0x03 - length of element 0\n                    'a'\n                    'b'  - content of element 0\n                    'c'\n [Free]         0x03 - length of element 1\n [Free]         'd'\n [Free]         'e'  - content of element 1\n [Free]         'f'\n\nSuggested fix:\nIn Value::remove_in_shadow  maybe need to check whether this binary diff length is zero. If it is zero, don't  invoke add_binary_diff."
+    },
+    {
+      "anchor": "c534152",
+      "text": "During the update sql executing, two parts of binary diff is calculated. First binary diff is array meta. It is showed in the memory layout and marked as CHANGED. This binary diff's length is 2 bytes. Another binary diff is array data copy. However, this json type is array and we need to remove the last one element in the array. According to the current code logic, we don't need any array data copy. The remove data is marked as freed and the binary diff length is 0."
+    },
+    {
+      "anchor": "c534153",
+      "text": "The potential crash happen if the  select sql goes the row_search_mvcc process. \n In trx_undo_read_blob_update func, lob_diff.m_length is the parsed undo partial\n update length. Because server calculated blob binary diff and record it into undo record,  this could be zero.\n\nlob_undo_data.copy_old_data may have different behavior on 8.0.25 and 8/0/33 when handling malloc array size is 0 condition.\nIn 8.0.25, it returns nullptr and pass this nullptr to undo_ptr. That leads to a crash when execute\nmach_read_next_compressed(&undo_ptr);\nIn 8.0.33, it returns array meta instead of nullptr. \n\n    /* Copy the data only if the lob_undo is not null. */\n    if (lob_seq != nullptr) {\n      undo_ptr = lob_undo_data.copy_old_data(undo_ptr, lob_diff.m_length);\n    } else {\n      undo_ptr += lob_diff.m_length;\n    }\n...\n\n    /* Read the number of LOB index entries modified. */\n    ulint n_entry = mach_read_next_compressed(&undo_ptr);\n\nIn some other day, if the return value of malloc array with length 0 changed to be nullptr. This crash may happen.\n\nThe reproduce step of crash in 8.0.25 is:\n\nclient1\ncreate table t (a int primary key, b json);\ninsert into t values (1, '[ \"abc\", \"def\" ]');\nupdate t set b=JSON_SET(b, '$[0]', REPEAT('w', 10000));\n\nclient2\nset SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;\nbegin;\nselect * from t where a =1\\G\n\nclient1\nUPDATE t SET b = JSON_REMOVE(b, '$[1]') where a = 1;\n\nclient2\nselect * from t where a =1\\G\n\nThe stack is the same as https://bugs.mysql.com/bug.php?id=107953"
+    },
+    {
+      "anchor": "c534166",
+      "text": "To CORRECT the memory lay out after exec UPDATE t SET b = JSON_REMOVE(b, '$[1]') where a = 1; command.\nMemory layout should be:\n0x02 - type: small JSON array\n CHANGED 0x01 - number of elements (low byte)\n CHANGED 0x00 - number of elements (high byte) \n         0x12 - number of bytes (low byte)\n         0x00 - number of bytes (high byte)\n         0x0C - type of element 0 (string)\n         0x0A - offset of element 0 (low byte)\n         0x00 - offset of element 0 (high byte)\n [Free]  0x0C - type of element 1 (string)\n [Free]  0x0E - offset of element 1 (low byte)\n [Free]  0x00 - offset of element 1 (high byte)\n         0x03 - length of element 0\n         'a'\n         'b'  - content of element 0\n         'c'\n         0x03 - length of element 1\n         'd'\n         'e'  - content of element 1\n         'f'\nTwo binary diff is calculated. First part is number of elements. In this case this binary diff is calculated to be 2 bytes(marked as CHANGED). The second binary diff is array meta binary diff. In normal case, to ensure the array meta is continuous with no hollow, some binary meta need to be copied. However, removed element is the last one of this array. No binary meta data need to be copied. (marked as FREE)"
+    },
+    {
+      "anchor": "c534168",
+      "text": "Hi Mr. zhao,\n\nThank you for your bug report.\n\nHowever, 8.0.24 is a bug fix release, just like 8.0.33 is a bug fix release. That means that bugs reported for 8.0.24 are fixed in later release. So, 8.0.33 bugs will be fixed in 8.0.34 or some later release.\n\nHence, it is expected behaviour that 8.0.33 has no problem. We repeated your test case and everything worked quite fine with 8.0.33.\n\nCan't repeat."
+    },
+    {
+      "anchor": "c534188",
+      "text": "To simplify what I want to say. There are two parts of code in 8.0.33(current newest version) is not reasonable. JSON_REMOVE may produce a zero length binary diff. It is unnecessary and could cause a potential crash. Code in trx_undo_read_blob_update listed above could parse this zero length diff and could crash which depends on the different behavior of malloc array with 0 length.  Different release acts different behavior. (Details lists above). If this behavior changes again, crash may happen."
+    },
+    {
+      "anchor": "c534205",
+      "text": "HI Mr. zhao,\n\nYes, malloc(0) is a hard error.\n\nHowever, we test it in so many places that it is now very unlikely that it could happen.\n\nAlso, many system malloc libraries test it as well.\n\nWe can not verify a report based on \"it might happen\" ......."
+    },
+    {
+      "anchor": "c534214",
+      "text": "Thank you for your response."
+    },
+    {
+      "anchor": "c534222",
+      "text": "You are welcome ....."
+    }
+  ]
+}

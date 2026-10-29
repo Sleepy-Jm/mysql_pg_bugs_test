@@ -1,0 +1,81 @@
+{
+  "report_id": "111376",
+  "title": "Assertion `!thd->lex->is_exec_started() || thd->lex->is_query_tables_locked()' f",
+  "source_sha256": "c2a85aebe12ec10e72a1f0ed119181cbc0e1dd7e7209ecdd35da8632dde0c015",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "96ae378c41511bfdb89fced469d9f23097209652e1383a82458f6189ebd2c11f"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "cbf1762503afbc83af6cc0409eb54146c5f77bce953fd976987251aedd96d739"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "调试构建；SQL_MODE=NO_ENGINE_SUBSTITUTION，按报告关闭 mysqlx/P_S。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。建立 v0(c1 INT)，按正文建立 v3(c4 NATIONAL CHAR) PARTITION BY HASH(c1) AS TABLE v0，再建立 v5(INDEX((c4 SOUNDS LIKE TRUE))) AS TABLE v3。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "允许合法执行或拒绝复杂CTAS/函数索引组合，不得 query_tables_locked 断言退出。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "允许合法执行或拒绝复杂CTAS/函数索引组合，不得 query_tables_locked 断言退出。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "WITH_DEBUG 构建",
+    "目标debug构建；源启动参数performance_schema=OFF/mysqlx=OFF需记录。"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。",
+    "移除原test123数据库重建，由runner分配新隔离schema；将配置文件SQL_MODE固定为会话设置。保留故意无效语句。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标版本包含分区与函数索引，可执行相同语法路径以探索安全失败。 本轮仅静态准备。",
+    "8.0.34": "目标版本包含分区与函数索引，可执行相同语法路径以探索安全失败。 本轮仅静态准备。",
+    "8.0.35": "目标版本包含分区与函数索引，可执行相同语法路径以探索安全失败。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "调试构建；SQL_MODE=NO_ENGINE_SUBSTITUTION，按报告关闭 mysqlx/P_S。",
+    "steps": "建立 v0(c1 INT)，按正文建立 v3(c4 NATIONAL CHAR) PARTITION BY HASH(c1) AS TABLE v0，再建立 v5(INDEX((c4 SOUNDS LIKE TRUE))) AS TABLE v3。",
+    "oracle": "任何无效组合应安全拒绝，不应在 query_tables_locked 处断言退出。",
+    "requirements": [
+      "WITH_DEBUG 构建"
+    ],
+    "target_applicability": "目标版本包含分区与函数索引，可执行相同语法路径以探索安全失败。"
+  }
+}

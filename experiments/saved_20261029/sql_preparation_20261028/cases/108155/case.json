@@ -1,0 +1,68 @@
+{
+  "report_id": "108155",
+  "title": "BEFORE INSERT trigger causes Error 1048 during UPDATE",
+  "source_sha256": "d05f13099426ae62e7bb476ab4df291d505f8c6edb4688f893b8950fc460f1f9",
+  "source_anchors": [
+    "cmain",
+    "c524987",
+    "c541387"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d983124ed7e85acda6034a0e849d51c466a9dc899c76b97fd1ce2d297069950c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "1d4ec4843cb54bcc807ca2602f598ea0410fef36373f5aa0dcb622576d4d11fe"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原两列 NOT NULL 表及空 BEFORE INSERT 触发器"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "只指定 c1=a 的原 INSERT"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force 同连接；先记录 INSERT 结果及 warnings，再 UPDATE，不把 INSERT 被拒当 UPDATE 缺陷。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "非严格 INSERT 已成功后 UPDATE 应得到 (a,b)；异常：UPDATE 错误 1048；INSERT 自身硬错误要分开记录"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "非严格 INSERT 已成功后 UPDATE 应得到 (a,b)",
+    "failure": "UPDATE 错误 1048；INSERT 自身硬错误要分开记录",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "创建表/触发器权限",
+    "明确sql_mode"
+  ],
+  "transformations": [
+    "补明确 SET sql_mode 空与 mysql delimiter；只选原 ERROR TEST CASE，未混入 workaround"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.34": "目标有该触发器/隐式默认路径；8.0.35反馈不是本轮执行证据，重复归并沿用主记录。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain, c524987, c541387 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

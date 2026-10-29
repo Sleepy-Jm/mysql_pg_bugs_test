@@ -1,0 +1,113 @@
+{
+  "report_id": "112579",
+  "source_sha256": "cc121db37545af7667f26ffa2461d1bff7419188353ba89b1900f010bd9f9385",
+  "tasks": [
+    {
+      "task_id": "mysql-112579-8.0.35",
+      "report_id": "112579",
+      "title": "Inconsistent results of SELECT with <=> and NULLIF",
+      "target_version": "8.0.35",
+      "adjacent_comparison_version": "8.0.34",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=112579",
+      "source_snapshot_from_plan_root": "原文快照/bug_112579.html",
+      "source_anchors": [
+        "cmain",
+        "c536592"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain",
+          "c536592"
+        ],
+        "reason": "NULLIF及NULL安全比较组合违反三值布尔恒等变换，完整两行对照可检验。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "t2(c14 double,c16 double)插入(38.64,-0.0),(NULL,-58.49)。",
+        "steps": "执行正文复杂谓词与WHERE NOT(FALSE OR(5<0))简化对照。",
+        "oracle": "(b AND NOT b) AND(b IS NOT NULL)恒为FALSE，两个查询都应返回两行。",
+        "requirements": [
+          "同一数据/会话设置"
+        ],
+        "target_applicability": "目标8.0.35支持这些表达式，历史复现不是目标确认。"
+      },
+      "source_environment": {
+        "OS": "Any",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server: DML"
+      },
+      "explicit_requirements": [
+        "同一数据/会话设置"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    }
+  ],
+  "source": {
+    "id": "112579",
+    "title": "Inconsistent results of SELECT with <=> and NULLIF",
+    "header": {
+      "Bug #112579": "Inconsistent results of SELECT with <=> and NULLIF",
+      "Submitted": "30 Sep 2023 8:37",
+      "Modified": "2 Oct 2023 9:15",
+      "Reporter": "Zuming Jiang",
+      "Email Updates": "",
+      "Status": "Verified",
+      "Impact on me": "None",
+      "Category": "MySQL Server: DML",
+      "Severity": "S2 (Serious)",
+      "Version": "8.0.14 - 8.0.34",
+      "OS": "Any",
+      "Assigned to": "",
+      "CPU Architecture": "Any"
+    },
+    "comments": [
+      {
+        "anchor": "cmain",
+        "date": "30 Sep 2023 8:37",
+        "author": "Zuming Jiang",
+        "text": "Description:\nDear MySQL developers,\n\nI used my fuzzer to test MySQL and found a logic bug that made the MySQL server output inconsistent results.\n\nHow to repeat:\n*** Set up the database ***\n\ncreate table t2 (c14 double, c16 double);\ninsert into t2 values (38.64, -0.0);\ninsert into t2 values (null, -58.49);\n\n*** Test Case 1 ***\n\nselect * from t2\nwhere not (\n    ((((t2.c14 <=> nullif(-92.48, t2.c16)) or (t2.c16 <= t2.c14))\n    and\n    (not ((t2.c14 <=> nullif(-92.48, t2.c16)) or (t2.c16 <= t2.c14))))\n    and\n    (((t2.c14 <=> nullif(-92.48, t2.c16)) or (t2.c16 <= t2.c14)) is not null))\n    or (5 < 0));\n\nBecause a boolean value can be only either TRUE, FALSE, or NULL, ((boolean_value and (not boolean_value)) and (boolean_value is not null)) must be FALSE.\nTherefore, I simplified \"((((t2.c14 <=> nullif(-92.48, t2.c16)) or (t2.c16 <= t2.c14)) and (not ((t2.c14 <=> nullif(-92.48, t2.c16)) or (t2.c16 <= t2.c14)))) and (((t2.c14 <=> nullif(-92.48, t2.c16)) or (t2.c16 <= t2.c14)) is not null))\" to \"FALSE\", and got Test Case 2:\n\n*** Test Case 2 ***\n\nselect * from t2\nwhere not (FALSE\n    or (5 < 0));\n\n*** Expected results ***\n\nTest Case 1 and Test Case 2 return the same results.\n\n*** Actual results ***\n\nTest Case 1 and Test Case 2 return inconsistent results.\n\nTest Case 1 return:\n\n+-------+------+\n| c14   | c16  |\n+-------+------+\n| 38.64 |    0 |\n+-------+------+\n1 row in set (0.00 sec)\n\nTest Case 2 return:\n\n+-------+--------+\n| c14   | c16    |\n+-------+--------+\n| 38.64 |      0 |\n|  NULL | -58.49 |\n+-------+--------+\n2 rows in set (0.00 sec)\n\n*** Note ***\n\nThe bug can be reproduced in version 8.0.14 - 8.0.34. In version 5.5, 5.6, 5.7, 8.0.0 - 8.0.13, both Test Case 1 and 2 return the same results:\n\n+-------+--------+\n| c14   | c16    |\n+-------+--------+\n| 38.64 |      0 |\n|  NULL | -58.49 |\n+-------+--------+\n2 rows in set (0.00 sec)"
+      },
+      {
+        "anchor": "c536592",
+        "date": "2 Oct 2023 9:15",
+        "author": "MySQL Verification Team",
+        "text": "Hello Zuming Jiang,\n\nThank you for the report and test case.\n\nregards,\nUmesh"
+      }
+    ],
+    "targets": {
+      "8.0.34": {
+        "field": true,
+        "hits": [
+          {
+            "anchor": "cmain",
+            "author": "Zuming Jiang",
+            "snippets": [
+              "  0 | |  NULL | -58.49 | +-------+--------+ 2 rows in set (0.00 sec)  *** Note ***  The bug can be reproduced in version 8.0.14 - 8.0.34. In version 5.5, 5.6, 5.7, 8.0.0 - 8.0.13, both Test Case 1 and 2 return the same results:  +-------+--------+ | c14   | c16    | +-------+--------+ | 38.64 |      0 | |  NULL | -58.49 | +-------+---"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

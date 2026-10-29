@@ -1,0 +1,86 @@
+{
+  "report_id": "120687",
+  "title": "Incorrect result of MEMBER OF",
+  "source_sha256": "a00f262dec94d5694b73f1748860304ebb17f0dbb82629898a92304a94b4146b",
+  "source_anchors": [
+    "cmain",
+    "c557529"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "83315f12e571b43c2e7cc1ceb0dc2a08b361b207f74418c5d3a8eb9743ac0f7d"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "b1e991207391d9182fcff367072e89e541ee52d7b914da646fd407da3387f547"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t(j JSON)含DATE ARRAY和DATETIME ARRAY两个多值索引。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "两个原JSON数组字符串，各含一个完整日期时间。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "JSON数组未包含查询字面量2001-01-01 00:00:00，COUNT应0；默认与IGNORE INDEX结果须相同。DATE多值索引截断时间不能改变字符串MEMBER OF语义。DDL不支持记先决条件失败。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "JSON数组未包含查询字面量2001-01-01 00:00:00，COUNT应0；默认与IGNORE INDEX结果须相同。DATE多值索引截断时间不能改变字符串MEMBER OF语义。DDL不支持记先决条件失败。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "多值索引DDL预检",
+    "原始JSON字符串字面量",
+    "相同SQL模式"
+  ],
+  "transformations": [
+    "取复现围栏，保留JSON字符串及两种ARRAY类型。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标版含JSON成员运算与多值索引功能；9.7.0验证不直接确认四目标。 本轮未实测。",
+    "8.0.33": "目标版含JSON成员运算与多值索引功能；9.7.0验证不直接确认四目标。 本轮未实测。",
+    "8.0.34": "目标版含JSON成员运算与多值索引功能；9.7.0验证不直接确认四目标。 本轮未实测。",
+    "8.0.35": "目标版含JSON成员运算与多值索引功能；9.7.0验证不直接确认四目标。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c557529 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

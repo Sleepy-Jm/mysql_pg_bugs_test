@@ -1,0 +1,26 @@
+{
+  "report_id": "113694",
+  "title": "misleading error message comparing a spatial column with numeric using < or such",
+  "task_ids": [
+    "mysql-113694-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\263954512396_bug_113694.html",
+  "source_sha256": "2639545123960dc54637627c25f1657ddca8a6297532a8ff96ac1e514d063fd7",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nexecuting SELECT ... WHERE ... col1 < col2 ...\n\nwhere col2 is a spatial column whereas col2 is numeric results in this error message:\n\nERROR: 1210 (HY000): Incorrect arguments to >=\n\n2 problems:\n\n1. there is no >= but rather <\n2. 'Incorrect arguments' is vague, it would be better to mention geospatial\n\noverall it results in a high unpleasant surprise factor.\n\nHow to repeat:\ntable:\n\nshow create table test_schema_longer_name_000000001.tt1\\G\n*************************** 1. row ***************************\n       Table: tt1\nCreate Table: CREATE TABLE `tt1` (\n  `pk1` tinyint NOT NULL,\n  `pk2` smallint NOT NULL,\n  `col1` varbinary(58) NOT NULL,\n  `col2` varchar(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,\n  `col3` json DEFAULT NULL,\n  `__col4` json NOT NULL,\n  `test_5_column_abc123defaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` int NOT NULL,\n  `col6` tinytext,\n  `col7` varchar(100) NOT NULL,\n  `__col8` multipolygon NOT NULL /*!80003 SRID 4326 */,\n  `test_9_column_abc123defaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` timestamp NULL DEFAULT NULL,\n  `__col10` binary(8) NOT NULL,\n  PRIMARY KEY (`pk1`,`pk2`)\n) /*!80023 AUTOEXTEND_SIZE=4194304 */ ENGINE=InnoDB DEFAULT CHARSET=latin1 STATS_PERSISTENT=1 STATS_SAMPLE_PAGES=1 ROW_FORMAT=DYNAMIC\n\nSELECT:\n\nSELECT * FROM test_schema_longer_name_000000001.tt1 WHERE test_5_column_abc123defaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa < 'aaaaaaaaaaaaaaaaaaaaaaaaa    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa    aaaaaaaaaa' AND col2 <=> __col4 <=> col1 OR 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' AND NOT  'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' < __col8 OR test_9_column_abc123defaaaaaaaaaaaaaa    aaaaaaaaaaaaaaaaaaa IS NULL;\n\nthe culprit is 'a' < __col8 part because __col8 is a MULTIPOLIGON"
+    },
+    {
+      "anchor": "c539866",
+      "text": "Hi Mr. Izioumthchenko,\n\nThank you for your bug report.\n\nWe have repeated your bug report and your report is definitely not a bug.\n\nSQL standard strictly prohibits using different data types in any expressions, including the comparison expressions in the WHERE clause.\n\nIn short, you are prohibited to compare integer to strings, polygon to strings , json type with varbinary or any CHAR-derived type.\n\nAccording to the SQL standard, the error should be returned. But, MySQL database tries to do more , when it can do it and in the manner when it can do it.\n\nHence, it is our choice which common denominator would we use or which  error messages we are going to return. What you saw in the output is our choice for MySQL and we do not see a necessity to change it.\n\nNot a bug."
+    },
+    {
+      "anchor": "c539879",
+      "text": "indeed there is nothing in the standard that says that error messages should make any sense"
+    }
+  ]
+}

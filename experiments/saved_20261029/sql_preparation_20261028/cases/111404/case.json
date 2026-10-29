@@ -1,0 +1,89 @@
+{
+  "report_id": "111404",
+  "title": "Assertion `is_prepared()' failed.",
+  "source_sha256": "03b9756549826ef188de19770034d84c81597d22095b7989ccadabb78c366250",
+  "source_anchors": [
+    "cmain",
+    "c533545",
+    "c533546"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "b0165ab79e610b92ad65616da044a1acfb0f7912628e59d80760a2b525fd4f7b"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "0537746e59bd5b7550412ac6e85e312aee174c86036f4fc34c30ce91a6827220"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "v0(c1 INT)，p3尝试创建v2。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "v0空表，无额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一专用会话运行，mysql --force 以在预期错误后观测存活；独立控制器仍需检查错误日志；最后cleanup.sql。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "CALL可返回受控3812等CHECK表达式错误（c533546发布版观察），但不得is_prepared断言/断连。无此断言并非证明所有CHECK行为正确。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP PROCEDURE IF EXISTS p3;\nDROP TABLE IF EXISTS v0,v2;\nSET SESSION sql_mode=@case_sql_mode;"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "CALL可返回受控3812等CHECK表达式错误（c533546发布版观察），但不得is_prepared断言/断连。无此断言并非证明所有CHECK行为正确。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "调试构建"
+  ],
+  "transformations": [
+    "去除test123全库DROP/CREATE/USE，使用runner新schema；源单语句过程不需DELIMITER；保留故意非法CHECK，不修复其SELECT。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标支持存储过程、CHECK、CTAS，安全错误路径可探索。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标支持存储过程、CHECK、CTAS，安全错误路径可探索。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标支持存储过程、CHECK、CTAS，安全错误路径可探索。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c533545, c533546 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/111404.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "debug_build",
+      "detail": "WITH_DEBUG，源报告仅debug受影响。",
+      "requires_review": true
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

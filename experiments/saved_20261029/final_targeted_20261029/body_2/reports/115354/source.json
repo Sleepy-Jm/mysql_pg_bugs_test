@@ -1,0 +1,58 @@
+{
+  "report_id": "115354",
+  "title": "MySQL installation fails due to internet connectivity",
+  "task_ids": [
+    "mysql-115354-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\be207fabf7c9_bug_115354.html",
+  "source_sha256": "be207fabf7c9a457c56efce3225cfaee5bf6eb8151fa41599d8de32e5acf1eb1",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nMySQL server installation fails with below error due internet connectivity on windows machine.\n\"Unknown suffix '.' used for variable 'mysqlx-port' (value '0.0').\"\n\nThis happens with both GUI and commandline based installation of MySQL server.\nAnd it occurred for both versions 5.7.42 and above, 8.0.35 and above.\n\nLogs:\n-----\nBeginning configuration step: Initializing database (may take a long time)\n\nAttempting to run MySQL Server with --initialize-insecure option...\nStarting process for MySQL Server 8.0.35...\nStarting process with command: C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqld.exe --defaults-file=\"C:\\ProgramData\\MySQL\\MySQL Server 8.0\\my.ini\" --console --initialize-insecure=on --lower-case-table-names=1...\nC:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqld.exe (mysqld 8.0.35) initializing of server in progress as process 6492\nUnknown suffix '.' used for variable 'mysqlx-port' (value '0.0').\noption 'mysqlx-port': unsigned value 0 adjusted to 1.\nC:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqld.exe: Error while setting value '0.0' to 'mysqlx-port'.\nParsing options for plugin 'mysqlx' failed.\nInnoDB initialization has started.\nInnoDB initialization has ended.\nunknown variable 'mysqlx_port=0.0'.\nThe newly created data directory C:\\ProgramData\\MySQL\\MySQL Server 8.0\\Data\\ by --initialize is unusable. You can remove it.\nAborting\nC:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqld.exe: Shutdown complete (mysqld 8.0.35)  MySQL Community Server - GPL.\nProcess for mysqld, with ID 6492, was run successfully and exited with code 1.\nFailed to start process for MySQL Server 8.0.35.\n\nHow to repeat:\nWe have seen this issue on several windows machine and it is easily reproducible.\n\nStep 1: Reserve a windows machine\nStep 2: Download mysql community installer (mysql-installer-community-X.X.X.X.msi) 8.0.35 or 5.7.42 and above from https://downloads.mysql.com/archives/installer/\nStep 3: Install MySQL server from any medium\n\nFailure logs are mentioned above."
+    },
+    {
+      "anchor": "c544353",
+      "text": "Hi Mr. Kumar,\n\nThank you for your bug report.\n\nWe tried with the release 8.0.37 and we could not repeat the problem.\n\nCan you please tell us whether you experience the same with 8.0.37.\n\nIf you do, please let us know which GUI did you use exactly and what options have you passed it to.\n\nMany thanks in advance."
+    },
+    {
+      "anchor": "c544402",
+      "text": "I have exactly the same error, now on 3 different Windows PCs with win 10 and 11.\nI tried at least 15 different port parameterizations. None works.\nI tried different server versions: 8.0.35, 8.0.36, 8.0.37 and 5.7.42. None works.\nThe error\n[ERROR] [MY-000058] [Server] Unknown suffix '.' used for variable 'mysqlx-port' (value '0.0').\nin the error log is always the same with me as already posted in the description.\n\nThe last 2 lines in my.ini are\n# The TCP/IP Port the MySQL Server X Protocol will listen on.\nmysqlx_port=0.0\n\nmy.ini is repeatedly overwritten during installation.\n\nStarting the server with \"net start mysql80\" and corrected my.ini (mysqlx_port=33060) results in subsequent errors.\n\nI haven't changed the GUI version: 1.6.9.0 since the last successful installation several weeks ago.\n\nThere was no successful Windows update on my PC."
+    },
+    {
+      "anchor": "c544403",
+      "text": "Sorry, I forgot to say that I have had the error since June 14th, 2024."
+    },
+    {
+      "anchor": "c544427",
+      "text": "Hi,\n\nSetting mysqlx_port that way is an error ........\n\nPlease, read our Reference Manual:\n\nmysqlx_port\n\nCommand-Line Format\t--mysqlx-port=port_num\nSystem Variable\tmysqlx_port\nScope\tGlobal\nDynamic\tNo\nSET_VAR Hint Applies\tNo\nType\tInteger\nDefault Value\t33060\nMinimum Value\t1\nMaximum Value\t65535\n\n----------------------------------\n\nHence, imysqlx_port accepts only integer values.\n\nTry to set it manually when installing, using the options that come with GUI Installer.\n\nAlso, the category of this report is wrong.\n\nThis is not \"MySQL Server\" related problem."
+    },
+    {
+      "anchor": "c544428",
+      "text": "Hi,\n\nWe followed a default procedure with GUI installer that came with 8.0.37, with no options and we could not repeat your problem."
+    },
+    {
+      "anchor": "c544430",
+      "text": "I tried reinstalling MySql again:\n\n1. In the Installer Catalog updated and installed the latest Installer (1.6.11.0).\n2. All existing components including the data removed.\n3. Did a full install (with the offered server 8.0.32)\n4. The message „Workbench path exists“ ignored.\n5. The installation went through without any errors!!! (the first time since 5 days)\n6. Imported the dump with my data via the workbench.\n7. Update to the latest versions (Server 8.0.37) carried out.\n8. Workbench started and tried to connect to the server ==>>\n   Password request. The correct password was not accepted\n\nWith every attempt to give the correct password the following message in the Error.log:\n2024-06-18T12:46:52.558929Z 15 [Warning] [MY-013360] [Server] Plugin mysql_native_password reported: ''mysql_native_password' is deprecated and will be removed in a future release. Please use caching_sha2_password instead'\n\nPreviously there were the following interesting entries in the Error.log:\n2024-06-18T12:02:29.582152Z 0 [Warning] [MY-011070] [Server] '--sync-relay-log-info' is deprecated and will be removed in a future release.\n\nAnd especially:\n2024-06-18T12:02:30.237993Z 0 [ERROR] [MY-010901] [Server] Can't open shared library 'C:\\Program Files\\MySQL\\MySQL Server 8.0\\lib\\plugin\\auth_socket.so' ( errno: 126 The specified module was not found.).\n\nRestarting the PC leads to the same steps/messages as from step 8.\n\nWhat can I do?"
+    },
+    {
+      "anchor": "c544431",
+      "text": "Hi,\n\nIn 8.0, native passwords are deprecated.\n\nYou should create a user with SSL encrypted password.\n\nThe entire procedure is described in our Reference Manual.\n\nYou are supposed to read the all relevant parts of that Manual, prior to reporting a bug.\n\nFurthermore, this a forum for the bugs with a repeatable test cases.\n\nThis is not a forum for support.\n\nNot a bug."
+    },
+    {
+      "anchor": "c544438",
+      "text": "Hello,\nThanks for the informations.\n\nUnfortunately I have to reinstall MySql because the database crashed for a reason I don't know. But I'm a normal user who just uses the normal functions of the GUI installer without changing any of the default settings. But this no longer works! It had worked exactly the same way on various systems so far.\nI've been searching intensively for a solution for 5 days and yesterday I came across this bug report that describes my problem exactly. I have only added my findings to the description of the bug to help you troubleshoot.\n\nWhen installing, I left the “Authentication Method” unchanged as “Use Strong Password Encryption …”. But something goes wrong and that seems to be a bug. And the Reporter (Praveen Kumar) seems to have the same problem."
+    },
+    {
+      "anchor": "c544440",
+      "text": "Hi,\n\nThis is a forum for the reports with fully repeatable test cases.\n\nWe have not been able to repeat your problem(s)."
+    },
+    {
+      "anchor": "c544441",
+      "text": "If you wish we can also provide you with the links for the free and paid MySQL support."
+    }
+  ]
+}

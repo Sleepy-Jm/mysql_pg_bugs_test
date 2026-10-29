@@ -1,0 +1,70 @@
+{
+  "report_id": "112345",
+  "title": "Contribute by tencent: Repeated subquery plans were printed in format=tree.",
+  "source_sha256": "2c877bed585bc2837242b84a4e17101600445a5f1e5bd207b490ac43eeeca1cd",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "99681f551370be3c6fb8a717465c4f1d0c6795ecb8d2b30d20d1a1b92a81137c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "ee1edb834089043c94829be9e6793982550a4369329ad918f0b0d2c0d6f5a2b3"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原空 t1,t2,t3 三表"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "无行数据"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "TREE 顶层同一 Filter 下的 Select #3 不应因遍历嵌套重复输出；嵌套处合法引用仍保留；异常：同一访问路径子树额外重复；不等价于重复执行"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "plan_diff",
+    "expected": "TREE 顶层同一 Filter 下的 Select #3 不应因遍历嵌套重复输出；嵌套处合法引用仍保留",
+    "failure": "同一访问路径子树额外重复；不等价于重复执行",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "EXPLAIN FORMAT=TREE/JSON",
+    "实际计划必须存在相应相关子查询；计划不同只标不适用"
+  ],
+  "transformations": [
+    "截去 TREE 示例输出，补 JSON 对照"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "上述相关子查询和计划输出在目标8.0可用；尚无目标修复边界。 本轮尚未执行。",
+    "8.0.33": "上述相关子查询和计划输出在目标8.0可用；尚无目标修复边界。 本轮尚未执行。",
+    "8.0.35": "上述相关子查询和计划输出在目标8.0可用；尚无目标修复边界。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

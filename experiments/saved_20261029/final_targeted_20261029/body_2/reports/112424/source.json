@@ -1,0 +1,26 @@
+{
+  "report_id": "112424",
+  "title": "Crash during background rollback if both prepare and active transaction exist",
+  "task_ids": [
+    "mysql-112424-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\50e6bdef09f5_bug_112424.html",
+  "source_sha256": "50e6bdef09f53478bc69d0e64aae3d746f7669d5aaf194e3224e3d6ee901da6b",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nIn debug mode, If a server rollback both prepared and active transaction during crash recovery, server will crash with assert at storage/innobase/trx/trx0roll.cc:805.\n\nPrepared transaction will be rollback during binlog_recovery, it can happen before background thread begin to take MDL lock, which will make assert failed.\n\nHow to repeat:\n@@ -784,6 +784,9 @@ void trx_recovery_rollback(THD *thd) {\n   std::vector<MDL_ticket *> shared_mdl_list;\n   ut_ad(!srv_read_only_mode);\n\n+  DBUG_EXECUTE_IF(\"sleep_before_trx_recovery_rollback\",\n+                  {std::this_thread::sleep_for(std::chrono::seconds(5));});\n+\n   // Take MDL locks\n   /* During this stage the server is not open for external connections, and\n    * there will not be any concurrent threads requesting MDL, hence we don't\n\n+++ b/mysql-test/t/test_rollback_crash.test\n@@ -0,0 +1,18 @@\n+create table t1(n int);\n+\n+connect (con_4, localhost, root,,);\n+#SET debug_sync = \"bgc_before_flush_stage SIGNAL bgc_4 WAIT_FOR go\";\n+begin;\n+insert into t1 values(1);\n+\n+connection default;\n+#SET DEBUG_SYNC= 'now WAIT_FOR bgc_4';\n+\n+--source include/expect_crash.inc\n+SET debug = \"+d,crash_after_flush_engine_log\";\n+--error 2013\n+CREATE TABLE t2(n int);\n+\n+# Restart the server.\n+--let $restart_parameters = restart: --debug=d,sleep_before_trx_recovery_rollback\n+--source include/start_mysqld.inc\n\nAdd DBUG_EXECUTE_IF and run testcasae provided above in debug mode, server will crash.\n\nSuggested fix:\nRemove the assert in storage/innobase/trx/trx0roll.cc:805."
+    },
+    {
+      "anchor": "c536215",
+      "text": "Hello genze wu,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c541832",
+      "text": "Posted by developer:\n \nFixed as of the upcoming MySQL Server 8.0.37 and 8.4.1 releases, and here's the proposed changelog entry from the documentation team:\n\nIn debug builds, there was an assertion failure in InnoDB's background\nwhen a transaction it wanted to acquire an MDL lock on was no longer\nactive.\n\nThis fix is based on a patch from Genze Wu with\nAlibaba, thank you for the contribution.\n\nThank you for the bug report."
+    }
+  ]
+}

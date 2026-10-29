@@ -1,0 +1,91 @@
+{
+  "report_id": "119581",
+  "title": "FLOOR function shows inconsistent overflow handling",
+  "source_sha256": "2f56eaed95b568f6071b86fb3a85b9be67eb478a13716999bb6d1600cb92babb",
+  "source_anchors": [
+    "cmain",
+    "c555368"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "b0973f777526729f5e11d14a2f39e414287869e40f6427c4e4543642e4cd8369"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "599e71650bd680bc05849b7cadfbbde32de54c03a36d3aec6928e61334133216"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "test_floor(d DOUBLE)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原2^63边界值，不换成2^63-1。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force 在候选1690错误后继续其余两个类型控制；每条SELECT后SHOW WARNINGS；同一会话固定SQL mode；结束清理。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "分别记录DOUBLE列、DECIMAL字面量和新增DOUBLE字面量控制的值/1690错误/1292警告。DOUBLE列与同类型常量应一致；不能把DECIMAL与DOUBLE两种类型差别标作常量折叠差异。跨类型溢出应采用何种统一契约仍待确认。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS test_floor;"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "分别记录DOUBLE列、DECIMAL字面量和新增DOUBLE字面量控制的值/1690错误/1292警告。DOUBLE列与同类型常量应一致；不能把DECIMAL与DOUBLE两种类型差别标作常量折叠差异。跨类型溢出应采用何种统一契约仍待确认。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "移除test_bug数据库创建，使用runner新schema；按c555368类型澄清新增e0 DOUBLE字面量控制，标为对照而非原句。"
+  ],
+  "blockers": [
+    "DOUBLE与DECIMAL溢出错误/警告是否必须统一，原文只记录不同现象。"
+  ],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c555368 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/119581.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "uncertain",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [
+    {
+      "point": "DOUBLE与DECIMAL溢出错误/警告是否必须统一，原文只记录不同现象。",
+      "evidence": "c555368已澄清是DECIMAL vs DOUBLE，不是列vs常量；未给目标版本统一预期规则。",
+      "needed": "目标版本CAST/FLOOR溢出契约或修复说明；DOUBLE同类型控制实测输出。"
+    }
+  ],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

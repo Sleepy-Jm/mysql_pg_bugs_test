@@ -1,0 +1,68 @@
+{
+  "report_id": "113298",
+  "title": "Unexpected Results when Using IN for Floating-Point",
+  "source_sha256": "9666ad99b16025398aea278be15e60d01eb892a1d5a983778be5f33f648f07fb",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "8721f79806ab7291909b91680646707ee8ff864531cdabfc6de94554b23bb23c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "7d9a6da8aa05249af71cc2591b4180834d92c2f4ab2cac7b0e52099c056c3506"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0 INTEGER 与 i0"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "一行1"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "正谓词空集，NOT 返回1；去索引亦同，二者不能同时真；异常：索引路径两个互补谓词均返回该行"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "正谓词空集，NOT 返回1；去索引亦同，二者不能同时真",
+    "failure": "索引路径两个互补谓词均返回该行",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "完整原 SQL 代码块，补去索引重复对照"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

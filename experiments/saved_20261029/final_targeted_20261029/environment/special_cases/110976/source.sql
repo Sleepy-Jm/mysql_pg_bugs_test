@@ -1,0 +1,15 @@
+-- MySQL report #110976; source anchors: cmain
+-- Static preparation only. NOT EXECUTED. See case.json for conditions and oracle.
+CREATE TABLE t(name VARCHAR(256)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+INSERT INTO t VALUES('goat勒布朗');
+ALTER TABLE t ADD FULLTEXT INDEX ft_index(name);
+ALTER TABLE t DROP INDEX ft_index, ADD FULLTEXT INDEX ft_index(name) WITH PARSER ngram, ALGORITHM=INPLACE;
+SHOW CREATE TABLE t;
+SELECT * FROM t WHERE MATCH(name) AGAINST('goat');
+ALTER TABLE t DROP INDEX ft_index, ADD FULLTEXT INDEX ft_index(name) WITH PARSER ngram, ALGORITHM=COPY;
+SHOW CREATE TABLE t;
+SELECT * FROM t WHERE MATCH(name) AGAINST('goat');
+ALTER TABLE t DROP INDEX ft_index;
+ALTER TABLE t ADD FULLTEXT INDEX ft_index(name) WITH PARSER ngram, ALGORITHM=INPLACE;
+SHOW CREATE TABLE t;
+SELECT * FROM t WHERE MATCH(name) AGAINST('goat');

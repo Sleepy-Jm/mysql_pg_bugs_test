@@ -1,0 +1,94 @@
+{
+  "report_id": "114381",
+  "title": "Incorrect query result may caused by EXISTS and TIMEDIFF",
+  "source_sha256": "54aa8dae5b9979f9e7e05024fde1beb0698af151d03312a8413891d148bad9b4",
+  "source_anchors": [
+    "cmain",
+    "c541692"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d3e4757a5fb056fe81da55f35d0e3b7e9b1892d10116fab66d0cfacdffa82e78"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "e34d38dd8fc22777693727bbdcc65465b07121fc65fc2366644eb23db1b17f69"
+    },
+    {
+      "path": "original_where_false.sql",
+      "role": "independent_variant",
+      "sha256": "f099d49b21a64a05c845a6556652f7aaceed8d5a6ffe5942f611175e35381354"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 DOUBLE)，t1 LIKE t0。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "t0=0.1、t1=1。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "每个变体内，原谓词WHERE与相同谓词IS TRUE后WHERE flag=1应保留相同c0行；TIMEDIFF超范围warning及NULL处理均保留。cmain含WHERE FALSE、c541692无此项，两变体互不混用。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "每个变体内，原谓词WHERE与相同谓词IS TRUE后WHERE flag=1应保留相同c0行；TIMEDIFF超范围warning及NULL处理均保留。cmain含WHERE FALSE、c541692无此项，两变体互不混用。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "保持SQL模式并记录TIMEDIFF溢出告警",
+    "不要混用两变体结果"
+  ],
+  "transformations": [
+    "原文主段和评论简化版各自独立文件；移除结果表，不化简任何表达式。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标版本支持这些标量/子查询表达式；旧版能复现仅作为线索，目标待测。 本轮未实测。",
+    "8.0.33": "目标版本支持这些标量/子查询表达式；旧版能复现仅作为线索，目标待测。 本轮未实测。",
+    "8.0.34": "目标版本支持这些标量/子查询表达式；旧版能复现仅作为线索，目标待测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c541692 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "other",
+      "detail": "原SQL用双引号空串；ANSI_QUOTES关闭，记录mode与TIMEDIFF溢出warnings。",
+      "requires_review": false
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "report_id": "111917",
+  "title": "derived condition pushdown query with wrong result",
+  "source_sha256": "597235e11e0cd8e779151648113fd6979e27fc4bdd85afb61f10fe8f7cf2759e",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "40278daf3159152c32d4ff8c6f5cc589460b0f06d7a4a978a699b31e08850bd4"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "not_needed",
+      "detail": "仅标量表达式/系统元数据，无自建 schema 对象。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "派生表 b'1'"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "同 SQL_MODE 下 on/off 返回相同多重集；异常：derived_condition_pushdown 改变行集"
+    },
+    "cleanup": {
+      "status": "not_needed",
+      "detail": "无持久对象；断开专用会话。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "同 SQL_MODE 下 on/off 返回相同多重集",
+    "failure": "derived_condition_pushdown 改变行集",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "固定SQL mode",
+    "两次固定相同 SQL_MODE，记录 PIPES_AS_CONCAT 是否开启"
+  ],
+  "transformations": [
+    "保留 || 原样，不预定其模式语义"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标支持派生条件下推与BIT谓词。 本轮尚未执行。",
+    "8.0.33": "目标支持派生条件下推与BIT谓词。 本轮尚未执行。",
+    "8.0.35": "目标支持派生条件下推与BIT谓词。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

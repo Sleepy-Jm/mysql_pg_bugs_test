@@ -1,0 +1,81 @@
+{
+  "report_id": "110572",
+  "title": "Hypergraph optimizer assertion error",
+  "source_sha256": "49eecb464307ce2243365ae07b74f33cd3779ce41af25073078a45cb25f26946",
+  "source_anchors": [
+    "cmain",
+    "c531341"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "ff1cdfd725307d586437ab4461d6b0fb06370252d3f925372fde2fbe024d7571"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "8361efdc02cf0f841daefaee1d98142a2803f0422f35b040bf6b72bfb8b52b9d"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "not_needed",
+      "detail": "目标WITH_DEBUG及可启用hypergraph构建，ASan/UBSan可选。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。SET optimizer_switch='hypergraph_optimizer=on'；SELECT min(1) WHERE sysdate()=(ROW(2,5)=ROW(1,3))。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "启用 hypergraph 成功后不应 is_null_row 断言；若当前构建拒绝此实验优化器则记录不适用，不能跳过开关仍判通过。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "启用 hypergraph 成功后不应 is_null_row 断言；若当前构建拒绝此实验优化器则记录不适用，不能跳过开关仍判通过。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "支持hypergraph的debug构建",
+    "debug 构建且支持 hypergraph_optimizer；GA 不支持则不适用。"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标debug分支有实验优化器，不能将结果冒充标准发布构建缺陷。 本轮仅静态准备。",
+    "8.0.34": "目标debug分支有实验优化器，不能将结果冒充标准发布构建缺陷。 本轮仅静态准备。",
+    "8.0.35": "目标debug分支有实验优化器，不能将结果冒充标准发布构建缺陷。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c531341 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "目标WITH_DEBUG及可启用hypergraph构建，ASan/UBSan可选。",
+    "steps": "SET optimizer_switch='hypergraph_optimizer=on'；SELECT min(1) WHERE sysdate()=(ROW(2,5)=ROW(1,3))。",
+    "oracle": "应正常返回或受控错误，不能is_null_row断言退出；GA不支持开关时记不适用。",
+    "requirements": [
+      "支持hypergraph的debug构建"
+    ],
+    "target_applicability": "目标debug分支有实验优化器，不能将结果冒充标准发布构建缺陷。"
+  }
+}

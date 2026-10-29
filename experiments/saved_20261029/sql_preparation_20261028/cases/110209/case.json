@@ -1,0 +1,74 @@
+{
+  "report_id": "110209",
+  "title": "PRIMARY KEY should not change the query result.",
+  "source_sha256": "9713a76fd5c6258bd7e995535eb595e3ccb26267c4e2c122954da96fa916bd18",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "blocked_semantics",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "a8a34158c55c2a1eceab9885e0a93c06aa60b42115fdc6cbc33e6c24dbf95d4a"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "2ed37e1991d1e8eb9a24074d384d160389f40bb22c452efb6cac6484783b9663"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0 依次为 CHAR(1) PK 和无 PK"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "两例均插入字符串 1"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force；每例重建表后独立记录结果及警告。"
+    },
+    "oracle": {
+      "status": "blocked",
+      "detail": "PK 隐含 NOT NULL 可影响常量折叠与无符号中间类型；原回复否认 CHAR 场景缺陷，需确认溢出契约再自动判错"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "比较 CHAR 主键/可空两例在同一非 NULL 值的表达式溢出行为",
+    "failure": "同值一方成功另一方 1690 是待审差异",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "重建独立同名表",
+    "GIPK关闭"
+  ],
+  "transformations": [
+    "补两例之间 DROP TABLE，关闭 GIPK，保留原表达式"
+  ],
+  "blockers": [
+    "PK 隐含 NOT NULL 可影响常量折叠与无符号中间类型；原回复否认 CHAR 场景缺陷，需确认溢出契约再自动判错"
+  ],
+  "version_notes": {
+    "8.0.32": "8.0支持该类型、位反和常量折叠，输入完整而目标实际行为待查。 本轮尚未执行。",
+    "8.0.33": "8.0支持该类型、位反和常量折叠，输入完整而目标实际行为待查。 本轮尚未执行。",
+    "8.0.34": "8.0支持该类型、位反和常量折叠，输入完整而目标实际行为待查。 本轮尚未执行。",
+    "8.0.35": "8.0支持该类型、位反和常量折叠，输入完整而目标实际行为待查。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

@@ -1,0 +1,26 @@
+{
+  "report_id": "110774",
+  "title": "'show replica status' set the field_flag of 'Second_Behind_Source' NOTNULL",
+  "task_ids": [
+    "mysql-110774-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\fc27bceb2e2c_bug_110774.html",
+  "source_sha256": "fc27bceb2e2cdffd3624dc41031ec7d955ee5fbe8f60ba70bdd3e1fa317c24f5",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nDear MySQL team,\nThe value of Second_Behind_Source can be NULL,just as the source code shows:\nsql/replica.cc#3595\n\nif (mi->rli->slave_running) {\n    if ((mi->get_master_log_pos() == mi->rli->get_group_master_log_pos()) &&\n        (!strcmp(mi->get_master_log_name(),\n                 mi->rli->get_group_master_log_name()))) {\n      if (mi->slave_running == MYSQL_SLAVE_RUN_CONNECT)\n        protocol->store(0LL);\n      else\n        protocol->store_null();\n    } else {\n      long time_diff = ((long)(time(nullptr) - mi->rli->last_master_timestamp) -\n                        mi->clock_diff_with_master);\n      protocol->store(\n          (longlong)(mi->rli->last_master_timestamp ? max(0L, time_diff) : 0));\n    }\n  } else {\n    protocol->store_null();\n  }\n\nBut Second_Behind_Source's field_flag is actually NOT_NULL.\nBecause of this code:\nsql/replica.cc#3390\nfield_list->push_back(\n      new Item_return_int(\"Seconds_Behind_Source\", 10, MYSQL_TYPE_LONGLONG));\n\nclass Item_return_int inherits properties m_nullable(defalut false) from parent class Item, so that has the wrong flag NOTNULL.\n\nHow to repeat:\nI find this bug when I using golang reflect.\nNormally,I can use this function to get scanTypeNullInt,\nbut because of the wrong NOTNULL flag,I get scanTypeInt64 instead.\ncodes below:\n\"github.com/go-sql-driver/mysql/fields.go\"#140\nif mf.flags&flagNotNULL != 0 {\n    if mf.flags&flagUnsigned != 0 {\n\treturn scanTypeUint64\n    }\n    return scanTypeInt64\n}\nreturn scanTypeNullInt\n\nSuggested fix:\nI have tried a not good enough but useful way.Just add a subclass named Item_return_null_int.\nJust like this:\n\nclass Item_return_null_int : public Item_int {\n public:\n  Item_return_null_int(const char *name_arg, uint length,\n                  enum_field_types field_type_arg, longlong value_arg = 0)\n      : Item_int(Name_string(name_arg, name_arg ? strlen(name_arg) : 0),\n                 value_arg, length) {\n    set_data_type(field_type_arg);\n    set_nullable(true);  // add this\n    unsigned_flag = true;\n  }\n};\n\nfield_list->push_back(\n      new Item_return_null_int(\"Seconds_Behind_Source\", 10, MYSQL_TYPE_LONGLONG));"
+    },
+    {
+      "anchor": "c531889",
+      "text": "Hi Mr. yang,\n\nThank you for your bug report.\n\nYour code analysis is quite correct.\n\nHowever, it is intended behaviour that replica can not be NULL seconds behind master. Replica is always some seconds behind master, which is why NOT NULL is forced and some value is inserted.\n\nLet us know whether this is understandable."
+    },
+    {
+      "anchor": "c531903",
+      "text": "Dear MYSQL Team,\nThanks for your reply.\nBut Replica behind source is not always null indeed.\nProbably SQL thread or IO thread is not running,It may also be possible slave don't connect to the master.These situations may all lead to the value of Second_Behind_Source is NULL.\nActually,I found the value of Second_Behind_Source is NULL when i executed ‘show replica status’ in a master.\nThe same situation also occurs in SQL_Remaining_Delay.I find this description in your Official document：\nSQL_Remaining_Delay: When Replica_SQL_Running_State is Waiting until MASTER_DELAY seconds after master executed event, this field contains an integer indicating the number of seconds left of the delay. At other times, this field is NULL.  #https://dev.mysql.com/doc/refman/8.0/en/replication-delayed.html\nBest Regards."
+    }
+  ]
+}

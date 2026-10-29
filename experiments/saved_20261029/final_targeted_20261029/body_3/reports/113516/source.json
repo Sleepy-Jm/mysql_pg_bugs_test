@@ -1,0 +1,24 @@
+{
+  "report_id": "113516",
+  "title": "rejoin cluster failure as clone plugin is waiting for table metadata lock",
+  "task_ids": [
+    "mysql-113516-8.0.32",
+    "mysql-113516-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\8b88f6ded8a1_bug_113516.html",
+  "source_sha256": "8b88f6ded8a1f1e14c10bd0dcf9d9e446bf60112c0c52376e0c6d667eaa16c29",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nStart group_replication to rejoin cluster failure as clone plugin is waiting for table metadata lock\n\n46\tmysql.session\tlocalhost\tNULL\tQuery\t71\tWaiting for table metadata lock\tPLUGIN: DROP TABLE `test`.`t1`\n\nTABLE   test    t1      NULL    139876890984720 EXCLUSIVE       TRANSACTION     PENDING sql_parse.cc:6093       88      138596\nTABLE   test    t1      NULL    139876817266448 SHARED_WRITE    TRANSACTION     GRANTED mdl.cc:3694     57      4513\n\nHow to repeat:\n1.See the steps in the uploaded test case gr_xa_clone_rejoin_failure.test and Run it.\n2.Check the output of peformance_schema.metadata_locks in the logfile\n\n./mtr gr_xa_clone_rejoin_failure.test\nLogging: ./mtr  gr_xa_clone_rejoin_failure.test\nMySQL Version 8.0.32\nChecking supported features\nUsing 'all' suites\nCollecting tests\nChecking leftover processes\nRemoving old var directory\n\ngr_xa_clone_rejoin_failure.log shows:\n**** SHOW PROCESSLIST on server_2 ****\n46      mysql.session   localhost       NULL    Query   70      Waiting for table metadata lock PLUGIN: DROP TABLE `test`.`t1`\n\nselect * from performance_schema.metadata_locks;\nTABLE   test    t1      NULL    140632676629552 EXCLUSIVE       TRANSACTION     PENDING sql_parse.cc:6093       88      138690\nTABLE   test    t1      NULL    140632328857360 SHARED_WRITE    TRANSACTION     GRANTED mdl.cc:3694     57      4511\n\n**** SELECT * FROM performance_schema.threads on server_2 ****\n88      thread/group_rpl/THD_plugin_server_session      FOREGROUND      46      root    localhost       NULL    Query   70      Waiting for table metadata lock NULL    87      NULL    YES     YES     Plugin  1337840 SYS_default     PRIMARY 16720   29056   3276218 3366295\n\n**** replication_group_members on server_2 ****\nMEMBER_STATE    RECOVERING\n\nSuggested fix:\nWL#9335: Enable MDL Locking for Recovered and Detached Prepared XA Transactions\nhttps://dev.mysql.com/worklog/task/?id=9335\n\nAccording to the WL#9335 and the uploaded testcase, Detached Prepared XA Transactions hold SHARED_WRITE MDL lock, But Clone also needs EXCLUSIVE MDL lock to drop table when node rejoin to cluster\n\nIs this a bug? \nOtherwise, it should be stated in the document that it is a limitation of XA and clone, even though this is very unfriendly to use."
+    },
+    {
+      "anchor": "c539314",
+      "text": "Hello Zhejun Cai,\n\nThank you for the report and test case.\nVerified as described.\n\nregards,\nUmesh"
+    }
+  ]
+}

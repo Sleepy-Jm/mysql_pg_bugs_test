@@ -1,0 +1,70 @@
+{
+  "report_id": "112275",
+  "title": "\"Extra\" field has NULL value if table is temporary",
+  "source_sha256": "ec98a58d7f5855d71538271004f64e266fe2cdc0124e877cc2ac50d848b78d35",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "7c61c25396bbd3380fdf80fee90ce5ccc51cb55353ead47155b4057ffd3df77c"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "15f653c9371ba3413a65327314f3b7209976087540f88207556983628cea0227"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "temp 临时表、normal 普通表"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "无行数据"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两表无额外属性的 Extra 字段按原契约都为空字符串；异常：临时表 Extra 为真实 NULL 而普通表为空串"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "metadata_difference",
+    "expected": "两表无额外属性的 Extra 字段按原契约都为空字符串",
+    "failure": "临时表 Extra 为真实 NULL 而普通表为空串",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "同会话保留临时表",
+    "使用能区分协议 NULL 与空字符串的结果采集器"
+  ],
+  "transformations": [
+    "去掉原编号，使用当前隔离 schema；不把文字 NULL 与真正 NULL 混淆"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标支持临时表元数据路径，历史8.0.11到34已有同类行为。 本轮尚未执行。",
+    "8.0.33": "目标支持临时表元数据路径，历史8.0.11到34已有同类行为。 本轮尚未执行。",
+    "8.0.35": "目标支持临时表元数据路径，历史8.0.11到34已有同类行为。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

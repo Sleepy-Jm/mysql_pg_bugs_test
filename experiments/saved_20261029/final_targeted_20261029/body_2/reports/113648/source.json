@@ -1,0 +1,34 @@
+{
+  "report_id": "113648",
+  "title": "Reduced lock interval for purge_sys->pq_mutex",
+  "task_ids": [
+    "mysql-113648-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\c2a0169fab3f_bug_113648.html",
+  "source_sha256": "c2a0169fab3fa563a8fcd53858cb4070a89155adec7205c64f4b9ba7d2868d41",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\n1. Reduced lock interval for purge_sys->pq_mutex in trx_serialisation_number_get\n2. no need to execute trx_add_to_serialisation_list and elem.set_trx_no within pq_mutex \n\nHow to repeat:\njust read the code\n\nSuggested fix:\noptimize it just as the below patch based on 8.0.32"
+    },
+    {
+      "anchor": "c539724",
+      "text": "Hello Alex Xing,\n\nThank you for the report and contribution.\n\nregards,\numesh"
+    },
+    {
+      "anchor": "c539861",
+      "text": "IIUC your patch, then two threads which would execute this fragment of code in parallel can get assigned two `added_trx_no` values in ascedning order, but when they enqueue rsegs to the purge_queue they might do that in descending order of trx->no. \nIf purge coordinator thread looks into purge_queue in between those two inserts, then it will pop the larger of the two values only, and thus the batch will contain the Undo Log records of the later transaction but not the former.\nThis in turn will mean that undo log purge threads will try to purge Undo Logs of transaction with higher trx->no before purging the Undo Logs of transaction with smaller trx->no.\nMoreover, the purge coordinator thread might conclude, that all of the Undo Logs with smaller trx->no were already purged, by bumping the purge_sys->limit and purge_sys->iter positions to match the most recently purged Undo Log record, of the transaction with higher trx->no, even though the Undo Log records of the trx with smaller trx->no was not yet processed by purge.\nThis would be bad, because after purging the current batch the `trx_purge()` calls `trx_purge_truncate()` to free the old \"uneeded\" Undo Logs based on these iterators - it assumes that any Undo Logs with trx->no smaller than the one iterator points to are no longer needed.\nThus it might end up freeing Undo Logs of the trx which wasn't purged yet.\nThat will lead to leaking of delete marked records in secondary indexes, and perhaps to other problems, such as old versions of BLOBs not being garbage collected."
+    },
+    {
+      "anchor": "c539863",
+      "text": "Hello  Jakub Lopuszanski\nThank you for your detailed explanation, your innodb kernel skills are very profound, referring to my learning"
+    },
+    {
+      "anchor": "c542842",
+      "text": "Posted by developer:\n \nThis report describes an optimization, not a correctness issue.\nMoreover, the proposed patch would introduce a correctness issue.\nTherefore I am rejecting this bug report as \"Closed, Not a Bug\".\nThank you for trying to make MySQL better - feel free to report another patch without correctness issues"
+    }
+  ]
+}

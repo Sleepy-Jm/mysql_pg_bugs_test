@@ -1,0 +1,82 @@
+{
+  "report_id": "111918",
+  "title": "Auto increment column query wrong result",
+  "source_sha256": "753e8e58354b890e0eb39d5872dd7993f06d2253dd9818ac6c7f84090f966a5d",
+  "source_anchors": [
+    "cmain",
+    "c534860"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "8222c22ecba19b33e442e9b6ae29411159702e316fb4065c06c09052fe5c2ab1"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "7e8bb92c638972c7b3db5df9fe68b87572d5bc18eacfee47fc9e08250ef7704f"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(c0 INT AUTO_INCREMENT UNIQUE KEY)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "两条默认插入，原样保留INSERT IGNORE及X'0B36'字节。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "全表两行，P、NOT P、P IS NULL的多重集并应等于全表；原文期望NOT P为两行而另两支空。保存CAST警告及连接字符集。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "全表两行，P、NOT P、P IS NULL的多重集并应等于全表；原文期望NOT P为两行而另两支空。保存CAST警告及连接字符集。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "保留连接字符集和转换警告"
+  ],
+  "transformations": [
+    "保留正文全部查询与预期注释；不将X字面量转成其他字符表示。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持相同类型转换和索引比较，三值逻辑基线明确。 本轮未实测。",
+    "8.0.33": "目标8.0支持相同类型转换和索引比较，三值逻辑基线明确。 本轮未实测。",
+    "8.0.35": "目标8.0支持相同类型转换和索引比较，三值逻辑基线明确。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c534860 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

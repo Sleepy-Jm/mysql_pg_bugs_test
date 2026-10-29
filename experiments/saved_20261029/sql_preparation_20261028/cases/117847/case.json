@@ -1,0 +1,84 @@
+{
+  "report_id": "117847",
+  "title": "NULLIF Filtering Fails in WHERE Clause",
+  "source_sha256": "73ee517a80fae065d9d9e03c067cd83f0cfde254b5e4835aa4c0ec295245172f",
+  "source_anchors": [
+    "cmain",
+    "c551633"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "e97e6d21fa51fc437635b939d4f6e226c2d6f9904cd615f393d0997cfa82b97e"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "5891fd96318c77f2fd67fadf110472a99f38ba7445f4d8c4fbc6460be1d1f03f"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(c1 DOUBLE)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "一行0。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "第一查询一行0；第二查询必须空，不能保留显示w1=0的行。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "第一查询一行0；第二查询必须空，不能保留显示w1=0的行。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "相同SQL模式"
+  ],
+  "transformations": [
+    "去掉原文标题/结果表，仅重排SQL空白。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "虽然报告9.1，NULLIF与相关优化在8.0存在，可探索而非已影响。 本轮未实测。",
+    "8.0.33": "虽然报告9.1，NULLIF与相关优化在8.0存在，可探索而非已影响。 本轮未实测。",
+    "8.0.34": "虽然报告9.1，NULLIF与相关优化在8.0存在，可探索而非已影响。 本轮未实测。",
+    "8.0.35": "虽然报告9.1，NULLIF与相关优化在8.0存在，可探索而非已影响。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c551633 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

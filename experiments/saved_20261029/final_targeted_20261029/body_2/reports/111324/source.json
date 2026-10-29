@@ -1,0 +1,26 @@
+{
+  "report_id": "111324",
+  "title": "Return wrong result",
+  "task_ids": [
+    "mysql-111324-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\8ee72f0d6a5c_bug_111324.html",
+  "source_sha256": "8ee72f0d6a5c2f8884f17d9d03767f956d924baba61d7cee84b1ea6bdb82f581",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nselect '180153763202434582' = 180153763202434585;\n+-------------------------------------------+\n| '180153763202434582' = 180153763202434585 |\n+-------------------------------------------+\n|                                         1 |\n+-------------------------------------------+\n1 row in set (0.00 sec)\n\nThe query should return 0 but it returns 1, which is incorrect.\n\nHow to repeat:\nRun the query above."
+    },
+    {
+      "anchor": "c533361",
+      "text": "Hi,\n\nThe problem is that the values that you are using are larger then signed 64-big integer. This is a default type for the integer constants in SQL.\n\nBut, with a little extra SQL, it works just fine:\n\nselect cast('18015376320243458' as UNSIGNED INTEGER) = 180153763202434585;\n+------------------------------------------------------------------------------+\n| cast('18015376320243458' as UNSIGNED INTEGER) = 180153763202434585 |\n+------------------------------------------------------------------------------+\n|                                                                                                                              0 |\n+-----------------------------------------------------------------------------+\n\nNot a bug."
+    },
+    {
+      "anchor": "c534555",
+      "text": "Your interpretation is that '180153763202434582' was truncated to '18015376320243458', and '180153763202434585' was also truncated to '18015376320243458', thus making them equal. Is that correct?"
+    }
+  ]
+}

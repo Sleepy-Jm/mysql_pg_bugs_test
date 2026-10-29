@@ -1,0 +1,5 @@
+-- MySQL report #112983; source: cmain, c537781, c537782
+-- Static preparation only. NOT EXECUTED. Read case.json; use a fresh isolated case schema.
+CREATE TABLE x ( x VARCHAR ( 1 ) ) ;
+INSERT INTO x ( x ) VALUES ( 'x' ) , ( NULL ) , ( 'x' ) , ( 1 IN ( SELECT 1 ) ) ;
+WITH x AS ( SELECT 1.000000 AS x , 1 FROM x ) SELECT ( ( x = 1 AND x = 1 ) OR x = 1 ) AS x , x % ( x NOT IN ( x ) AND x IN ( SELECT x FROM ( SELECT 1 FROM x WHERE x != x ORDER BY ( SELECT x ORDER BY 1 ) , CASE WHEN x >= 1 THEN ( - x ) ELSE x IN ( SELECT x WHERE x = x OR ( ( WITH x ( x ) AS ( SELECT x FROM x GROUP BY x , 1.000000 , 1.000000 , 1 , 'x' , 'x' , 1 , 'x' , 'x' , 'x' , TRUE , 'x' , 'x' , 'x' , 'x' , 'x' , 'x' , 'x' , 'x' , 'x' ) SELECT ( SELECT DISTINCT x FROM x WHERE NULL = x ) FROM x WINDOW x AS ( PARTITION BY x ORDER BY x DESC ) ORDER BY ( SELECT x FROM ( SELECT x FROM x UNION SELECT x FROM x GROUP BY x HAVING x * ( SELECT 1 FROM x AS x ) WINDOW x AS ( PARTITION BY x ORDER BY x ) ) AS x ORDER BY 1 ) , x , x ) ) ) END , CASE WHEN x >= 1 THEN ( - x ) ELSE CASE 1.000000 WHEN 1 THEN 'x' WHEN 1 THEN 'x' ELSE 'x' END END % x ) AS x ) ) FROM x ;

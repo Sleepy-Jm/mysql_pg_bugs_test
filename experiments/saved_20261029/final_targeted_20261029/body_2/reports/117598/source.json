@@ -1,0 +1,30 @@
+{
+  "report_id": "117598",
+  "title": "Wrong sort order for queries with ORDER BY DESC when using range comparison with LIMIT",
+  "task_ids": [
+    "mysql-117598-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\9f0b1963ce4f_bug_117598.html",
+  "source_sha256": "9f0b1963ce4f2ac039637f99b1794ce3f0f513af9645b9f933f0ea8ff2cb3bf8",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nMySQL is ordering results in ASC order, when DESC order is specified (under very specific conditions)\n\nThis appears to occur for queries matching the following conditions:\n- A table that has a PRIMARY KEY on a BIGINT column\n- An index exists on multiple columns, where the index does not specify an order for the columns\n- The query has an ORDER BY on more than one column, where both columns are present in the INDEX above, and both columns are ORDER BY DESC\n- And the last column of the ORDER BY is the primary key\n- And the query has a filter using both >= and <= for the same value (e.g. month >= 100 AND month <= 100)\n\nThe expectation is that the data is sorted in descending order of primary key\n\nHow to repeat:\nSchema:\n\n```\nCREATE TABLE employee_payment (\n    _id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,\n    employee_id CHAR(11) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,\n    status ENUM('PAID', 'NOT_PAID', 'IN_PROGRESS') NOT NULL,\n    -- The month the employee was paid in\n    pay_month INT NOT NULL,\n    -- The amount paid to the employee\n    amount DECIMAL(16, 8) NOT NULL,\n\n    -- Support searching for all payments to an employee in a particular month.\n    INDEX employee_id_status_pay_month (employee_id, status, pay_month)\n);\n```\n\nExample query that reproduces the issue (test data will be uploaded as a separate attachment):\n\n```\nselect pay_month, _id\nfrom employee_payment\nwhere employee_id = 'EMP010'\nand pay_month >= 973\nand pay_month <= 973\nand status = 'PAID'\norder by pay_month desc, _id desc limit 10;\n```\n\nNoting that the issue is only reproducible when a certain amount of data exists in the table (will upload in a separate file)"
+    },
+    {
+      "anchor": "c550982",
+      "text": "Hello Daniel Morton,\n\nThank you for the report and test case.\nVerified as described.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c551608",
+      "text": "I also ran into this same problem using the IN operator. Using the same table and data as OP and on version 8.0.35, here is a reproducible example:\n\n```\n> select pay_month, _id from employee_payment where employee_id = 'EMP010' and pay_month IN (829, 973) and status = 'PAID' order by pay_month desc, _id desc limit 10;\n+-----------+-----+\n| pay_month | _id |\n+-----------+-----+\n|       973 |   6 |\n|       973 |  13 |\n|       973 |  19 |\n|       973 |  20 |\n|       973 |  38 |\n|       973 |  87 |\n|       973 | 111 |\n|       973 | 124 |\n|       973 | 151 |\n|       973 | 168 |\n+-----------+-----+\n10 rows in set (0.001 sec)\n```"
+    },
+    {
+      "anchor": "c554416",
+      "text": "This bug is in the LOW LIMIT recheck heuristic path. Here, the optimizer does not take into account the complete set of key parts required for an index to provide order (i.e. secondary __and__ primary key parts). Because of this, it ends up setting up the reverse scan without having accounting for the primary (suffix) key parts. This ends up triggering another optimization in the reverse range iterator, where it finds equality conditions on all key parts of the SK (other than the range), and not realizing there's are PK key parts suffixed to the SK key parts, it thinks the current range can be forward iterated. \n\nThe following should fix this: \n\ndiff --git a/fbcode/mysql/server/sql/sql_optimizer.cc b/fbcode/mysql/server/sql/sql_optimizer.cc\n--- a/fbcode/mysql/server/sql/sql_optimizer.cc\n+++ b/fbcode/mysql/server/sql/sql_optimizer.cc\n@@ -10348,9 +10348,25 @@\n                   used_index(tab->range_scan()) != MAX_KEY) {\n                 const uint ref_key = used_index(tab->range_scan());\n                 bool skip_quick;\n+                uint used_key_parts = 0;\n+                /*\n+                  bug#117598: when testing if the currently chosen key can\n+                  provide the requested ordering, always use the key parts\n+                  identified by test_if_order_by_key as essential in\n+                  providing the ordering (used_key_parts below). If the\n+                  requested ordering spans SK and PK key parts, then not\n+                  using `used_key_parts` means that only SK key parts are\n+                  actually considered essential for the reverse iterator.\n+\n+                  This makes the reverse iterator think that this is a\n+                  range where a forward scan will give the right results\n+                  (since all SK key parts get utilized and the current\n+                  range is interpreted as comprised of equal key parts)\n+                */\n+\n                 read_direction = test_if_order_by_key(\n                     thd, &join->order, tab->table(), tab->type(), ref_key,\n-                    nullptr, &skip_quick,\n+                    &used_key_parts, &skip_quick,\n                     join->query_expression()->select_limit_cnt);\n                 if (skip_quick) read_direction = 0;\n                 /*\n@@ -10365,8 +10381,7 @@\n                 if (read_direction == 1 ||\n                     (read_direction == -1 &&\n                      reverse_sort_possible(tab->range_scan()) &&\n-                     !make_reverse(get_used_key_parts(tab->range_scan()),\n-                                   tab->range_scan()))) {\n+                     !make_reverse(used_key_parts, tab->range_scan()))) {\n                   recheck_reason = DONT_RECHECK;\n                 }\n               }"
+    }
+  ]
+}

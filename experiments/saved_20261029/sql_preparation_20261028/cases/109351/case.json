@@ -1,0 +1,86 @@
+{
+  "report_id": "109351",
+  "title": "Value change caused by DISTINCT and date functions",
+  "source_sha256": "5ebd07404e6aa1e2e517fd4471002ac62b74084222771bc2c5c156b4d00d9711",
+  "source_anchors": [
+    "cmain",
+    "c528172",
+    "c556790"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "227ff87660931bd4ff4d2da0be27e7ef35f0768931fcf084f231fff087f34c56"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "70d592dbd6f8c06560f0958dda2e1ce96a62ff4b0b04151b32fdfc7ac435cc9a"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t(c1 INT) 单列。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "INSERT INTO t VALUES(1)。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "同一条基础表数据下，派生查询加 DISTINCT 仅可去重，不可改变值或有无行；原文8.0.27对照两者均为空，8.0.31为0对NULL。保留所有日期转换warnings，不将旧test_spec“空集/非空集”当唯一现象。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "同一条基础表数据下，派生查询加 DISTINCT 仅可去重，不可改变值或有无行；原文8.0.27对照两者均为空，8.0.31为0对NULL。保留所有日期转换warnings，不将旧test_spec“空集/非空集”当唯一现象。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "取 How to repeat 完整 SQL，保留表达式；来源说明中的结果与脚本分离。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c528172, c556790 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

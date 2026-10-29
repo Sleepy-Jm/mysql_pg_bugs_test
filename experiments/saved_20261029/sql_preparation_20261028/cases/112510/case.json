@@ -1,0 +1,70 @@
+{
+  "report_id": "112510",
+  "title": "Assertion Failure in /mysql-8.0.34/sql/sql_const_folding.cc:275",
+  "source_sha256": "d0cf95cba3acf30d671e6736c301d30f8b65f245901a906cfa9c84930658c2f2",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "12c30c9ea0929cfd8d620c70d43f68b6205745dde40ce69e6caa38ebe5d83a1b"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "d49bc7edd6729c248acc1e0e22a2f09d2ca49ab5c08224f445029e54a4ad6e53"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0 c3/c60 后添加 c34"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "84/18、-106/-59 及原表达式两行"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force；CREATE/INSERT/ALTER/SELECT 顺序保持，语义错误与断言分列。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "原语句安全执行或正常 SQL 错误，服务器存活；异常：sql_const_folding 精度断言"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "原语句安全执行或正常 SQL 错误，服务器存活",
+    "failure": "sql_const_folding 精度断言",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "目标debug构建",
+    "debug；保存错误日志；NO_BACKSLASH_ESCAPES 关闭"
+  ],
+  "transformations": [
+    "按 cmain 的完整 SQL 段逐字保留；不把 RAND 结果波动当缺陷"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "8.0.34明确受影响，后评只有修复提交而无8.0发布边界；可探索但须记录修复线索。 本轮尚未执行。",
+    "8.0.33": "8.0.34明确受影响，后评只有修复提交而无8.0发布边界；可探索但须记录修复线索。 本轮尚未执行。",
+    "8.0.35": "8.0.34明确受影响，后评只有修复提交而无8.0发布边界；可探索但须记录修复线索。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

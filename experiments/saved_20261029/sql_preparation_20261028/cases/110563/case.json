@@ -1,0 +1,81 @@
+{
+  "report_id": "110563",
+  "title": "NULL safe equality operator query with wrong result",
+  "source_sha256": "32910ae30ac71f415220a2f0e237717bc2d252af1d1b2518cff5317f669f4180",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "d98d8d2d519c711132d6dc6316179f367b00371309d60a965f6f1c2d0baffd87"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "bbad7732009326a7ef8353f82cebbc03203a37d5b1f730469c42f251c240341c"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c0 INT,c1 INT)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原两行(43,47),(92,71)。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "WHERE匹配1行且SUM真值数=1；(92,NULL)>=(71,71)首列已决定为真，(43,NULL)>=(47,47)为假。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t0;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "WHERE匹配1行且SUM真值数=1；(92,NULL)>=(71,71)首列已决定为真，(43,NULL)>=(47,47)为假。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "记录优化器设置"
+  ],
+  "transformations": [
+    "仅移除说明句，保留 RIGHT JOIN、<=> 和行比较原式。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "8.0目标支持NULL安全等号、行比较及外连接，未知仅优化行为。 仅记录适用性假设；未在该版本执行。",
+    "8.0.34": "8.0目标支持NULL安全等号、行比较及外连接，未知仅优化行为。 仅记录适用性假设；未在该版本执行。",
+    "8.0.35": "8.0目标支持NULL安全等号、行比较及外连接，未知仅优化行为。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/110563.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

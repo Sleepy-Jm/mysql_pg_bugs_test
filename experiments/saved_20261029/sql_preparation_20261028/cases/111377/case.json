@@ -1,0 +1,72 @@
+{
+  "report_id": "111377",
+  "title": "int mysql_execute_command(THD*, bool): Assertion `!thd->in_sub_stmt' failed",
+  "source_sha256": "b36bc3a8cfddb9252cfa67315ee4f09f9c8e95592974d21ff5fce98bdc7ba828",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "90821209b7555b552b77dd5c1e79a05b222e99de32cbcab840cf5829e29e3a6f"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "0fced690f9bb9b1bd21761d34f1f11c81b715e2b80b28fe791d6f24061525752"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "v0、AFTER UPDATE t2，尝试受限 UDF DDL"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "原 INSERT DELAYED IGNORE"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "mysql --force；逐语句记录诊断，故意非法语句不修正；崩溃时销毁隔离实例。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "原语句受控执行或安全报错，连接与服务器存活；异常：!thd->in_sub_stmt 断言"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TRIGGER t2、DROP TABLE v0；SONAME any_name 必须不存在，函数创建预期失败。无论结果均销毁一次性实例，避免残留 UDF 状态。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "原语句受控执行或安全报错，连接与服务器存活",
+    "failure": "!thd->in_sub_stmt 断言",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "目标debug构建",
+    "隔离无真实UDF测试库",
+    "一次性 debug 实例；--mysqlx=OFF --performance_schema=OFF；记录架构",
+    "开始前确认 plugin_dir 没有名为 any_name 的库；不提供或加载真实UDF库"
+  ],
+  "transformations": [
+    "取首个完整 SQL 代码块；移除 test123 库删除/创建/USE，使用 runner 隔离库；补原 SQL_MODE"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

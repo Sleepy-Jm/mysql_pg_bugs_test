@@ -1,0 +1,94 @@
+{
+  "report_id": "111241",
+  "title": "Wrong result of `IN` clause",
+  "source_sha256": "1e5eab56ad551fb512c14df5c8907b3c9405cc463401788af56734c81a21fcc7",
+  "source_anchors": [
+    "cmain",
+    "c533082"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "c3e16aa0e29b5b1e7a69eceb9f1766c4727f88ba699e316f6059501eb664499e"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "d7fde34baf6dddfd08472570bc47b5256c5ff1209d14052165adc157b31ec00e"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原文 t0(c0 BOOL)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "完整一行 TRUE。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 顺序在同一全新隔离 schema 和 mysql 会话执行；保留逐句输出/错误；预期错误处用 --force 继续，正常 SQL 错误不计 crash。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "MIN=1；用 IN(1) 与 IN(SELECT MIN(...)) 替换不应改变结果多重集。按正文逻辑两个过滤均应为空；同时保存 REGEXP/LIKE 转换 warning。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "按 cleanup.sql 清理本用例对象；结束会话，销毁专用 schema。实例级条件按 execution_conditions 恢复或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "MIN=1；用 IN(1) 与 IN(SELECT MIN(...)) 替换不应改变结果多重集。按正文逻辑两个过滤均应为空；同时保存 REGEXP/LIKE 转换 warning。",
+    "failure": "在所列前提成立时，违反上述逐例结果/错误/存活约束才记录异常；保存原始输出，初始化失败单列。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在；静态检查不证明服务器语法接受或根因独立。"
+  },
+  "requirements": [
+    "全新隔离 schema 和专用会话；保存真实版本、sql_mode、字符集和日志",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "按已核对的原文 SQL 整理；结果表、提示符、栈记录留在 inputs 原文中，不当作 SQL。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未在该版本执行。"
+  },
+  "source_reading": "逐份核对 cmain, c533082 的定义、输入、顺序和判据；其他评论中的历史结果不外推为目标版本实测。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "BOOL t0一行true。",
+    "steps": "执行原NOT REGEXP/NOT LIKE/CASE谓词，分别IN(1)与IN(SELECT MIN(c0))。",
+    "oracle": "同值IN条件不应改变结果；保存表达式逐项真值与warning。",
+    "requirements": [
+      "独立测试实例",
+      "保存完整SQL、配置、输出与错误日志"
+    ],
+    "target_applicability": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。"
+  },
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

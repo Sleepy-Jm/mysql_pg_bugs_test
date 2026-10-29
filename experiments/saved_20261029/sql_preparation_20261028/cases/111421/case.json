@@ -1,0 +1,82 @@
+{
+  "report_id": "111421",
+  "title": "Unexpected error when `CHECK` a predicate that is always true",
+  "source_sha256": "0b6a1a585b0045b61cabcbe82d5656121c8309213135b4ddb53f44645fe59e28",
+  "source_anchors": [
+    "cmain",
+    "c533592"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "7d759cacaf897d423420c3e8f7557d49f2ff6c15811c41f145a0fe7055fd88c9"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "eba77a1546d66037c807939dc90b559c2e6910b5f79d35becd0e197332639641"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "原文t0(c1 NUMERIC CHECK(true))。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "无须插入数据；检查DDL阶段。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "恒真列级CHECK不引用任何其他列，CREATE应成功；报“references other column”为本报告异常现象。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "恒真列级CHECK不引用任何其他列，CREATE应成功；报“references other column”为本报告异常现象。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "创建表权限"
+  ],
+  "transformations": [
+    "提取原文单条DDL，增加SHOW CREATE TABLE观察与cleanup。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标支持列级CHECK语法。 本轮未实测。",
+    "8.0.34": "目标支持列级CHECK语法。 本轮未实测。",
+    "8.0.35": "目标支持列级CHECK语法。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c533592 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

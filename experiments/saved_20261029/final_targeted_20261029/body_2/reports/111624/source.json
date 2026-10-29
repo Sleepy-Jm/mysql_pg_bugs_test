@@ -1,0 +1,22 @@
+{
+  "report_id": "111624",
+  "title": "It's storing -0 (Minus Zero) value",
+  "task_ids": [
+    "mysql-111624-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\e36d8997b68c_bug_111624.html",
+  "source_sha256": "e36d8997b68c85c04e8536bf017875ac7e6f2f6af7e3524251ee8f4a5fc477b6",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nBe careful when you work with MySql database. I found one scenario in which “-0” value is stored in column having (Double or Float) data type field. Ideally there is no value \"-0\".\n\nHere actually it's two bug if you look in details of below example.\n\nIF I do rounding of 2 with any minus value like(-0.00005) should return zero, It should not be the \"-0\".\n\nAlso while inserting data into the table Data type should handle it to avoid such cases.\n\nIn my experience it's possible from Procedure.\n\nHow to repeat:\nExample is mentioned below\n\nCREATE TABLE MYCHECK\n(\nFIELD1 DOUBLE\n)\nGO\nSELECT * FROM MYCHECK\nGO\nDROP PROCEDURE PROC_TEST\nGO\nCREATE PROCEDURE PROC_TEST()\nBEGIN\nDECLARE VAR DOUBLE;\n\nSET VAR = 0.00005 * -1 ;\nINSERT INTO MYCHECK VALUES(ROUND(VAR,2));\nEND;\nGO\nCALL PROC_TEST()\nGO\nSELECT * FROM MYCHECK\nGO\nResult:\n==========\nFIELD1\n---------\n-0\n\nSuggested fix:\nIf data insert from procedure or normal SQL, behavior should be similar.\nI think it should check and insert correct value from the Double and Float data type."
+    },
+    {
+      "anchor": "c534093",
+      "text": "Hi Mr. Lad,\n\nThank you for your bug report.\n\nMySQL fully follows IEEE standards on the floating point values, just as any other big company.\n\nAccording to that standard, -0.0 is absolutely valid floating point number, in any of the three available formats. \n\nYou should not get -0 with integers, where that value would be truly a bug.\n\nNot a bug."
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "report_id": "112372",
+  "title": "Select query returns duplicate rows",
+  "task_ids": [
+    "mysql-112372-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\17461a95936c_bug_112372.html",
+  "source_sha256": "17461a95936c69f99d8fc36eb0ac9f9bb69cb96dc83aafb3a4bb4ee8ed6dba3d",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nI have a simple table defined as follows: \n\nCREATE TABLE `item_image` (\n  `entityId` char(26) NOT NULL,\n  `itemId` char(26) NOT NULL,\n  `imageOrder` tinyint DEFAULT '0',\n  PRIMARY KEY (`entityId`),\n  KEY `fk_itemImage_itemId` (`itemId`),\n  CONSTRAINT `fk_itemImage_itemId` FOREIGN KEY (`itemId`) REFERENCES `item` (`entityId`)\n);\n\nI find that the below select query is returning duplicate rows, and in some cases is not returning records matching the criteria.\n\nQuery\nselect entityId, itemId, imageOrder from item_image where itemId in (\n\t'54ILO7TOL5DBNEHYBJ7ZUPD364', 'ADMAV2YD6ZAR5IFHB5D4DLMJDA', 'N3HLQJMSTRA4TI7ZWKX4VNI7JA', 'NBZRLM67UVCTHEME4MRFILGIDU', \n\t'7O5EHQ5SK5GB3IA5PUUPCJIEL4', 'EM7CWAV75BAZTFTTVQXZWKULYI', 'IK6WRK3IZREFRO2LGRHEHS7A5M', 'HW5XWDHBY5HW7CWEYKX365UGQI', \n\t'BD5BDG4ZEZFO7F4IB7KK43ZPKQ', 'KGKLWD2CFFCSFFDHXLZHGT25WA', 'MQPTICQZOBGFZMIYI636V2R3NU', 'BV3UU7N5VFGUVGY3RKUUIWPJNE', \n\t'NJG4JWHUUVCXDA2P3V7BVGSZNU', 'JIUH65FAXNCMHBXURNKXYQABJM', 'JCSI7SV435G25LPW4IPRF7EITU', 'MBBY2OW6N5ATDDKDRRMDLT4PNM', \n\t'MUISD7TN3RCD3B4HVNYVKE6D4U', 'JZQTRFSC7RBL7GU67LHWMGKLFY', '6AKLVWT7EFGSJG2FXIW4QNTBUA', 'AHUJQC3QL5FI5PZMTK6BE6GC4M', \n\t'M47TBT3MLBD73A4M4RARVJPNHM', '2HYHXJA7JJERDOFDOSOUA5ETE4', 'HXVGHY5DKRDUBO7PJHLYT22K6E', 'NDS6ADCAY5GFNNT65XMA4DPGAI')\norder by itemId, imageOrder;\n\nResult: \nFNPHL7URHFHJ3HODB4FMEIZK3E\t2HYHXJA7JJERDOFDOSOUA5ETE4\t1\nFNPHL7URHFHJ3HODB4FMEIZK3E\t2HYHXJA7JJERDOFDOSOUA5ETE4\t1\nFNPHL7URHFHJ3HODB4FMEIZK3E\t2HYHXJA7JJERDOFDOSOUA5ETE4\t1\nFNPHL7URHFHJ3HODB4FMEIZK3E\t2HYHXJA7JJERDOFDOSOUA5ETE4\t1\nOXENJVN2XFDWBNWUPLU52HTG6Y\t2HYHXJA7JJERDOFDOSOUA5ETE4\t2\n6KSCTYVJU5A6THC7WNWHLQQ3LM\t2HYHXJA7JJERDOFDOSOUA5ETE4\t3\n(omitted ...) \n\nWhen I simplify the IN clause to include just itemId 2HYHXJA7JJERDOFDOSOUA5ETE4, I see all item_image records are correctly returned. Similarly, when there are just a few itemIds in the IN clause it seems to be OK. \n\nQuery:\nselect entityId, itemId, imageOrder from item_image where itemId in ('2HYHXJA7JJERDOFDOSOUA5ETE4') order by itemId, imageOrder;\n\nResults:\nP53WEY6RQFCZTJNZ4PP4VA4K2E\t2HYHXJA7JJERDOFDOSOUA5ETE4\t0\nFNPHL7URHFHJ3HODB4FMEIZK3E\t2HYHXJA7JJERDOFDOSOUA5ETE4\t1\nOXENJVN2XFDWBNWUPLU52HTG6Y\t2HYHXJA7JJERDOFDOSOUA5ETE4\t2\n6KSCTYVJU5A6THC7WNWHLQQ3LM\t2HYHXJA7JJERDOFDOSOUA5ETE4\t3\n\nHow to repeat:\nI will upload a DB dump to AWS S3 by tomorrow to reproduce these exact results."
+    },
+    {
+      "anchor": "c536127",
+      "text": "Hi Mr. Sykes,\n\nThank you for your bug report.\n\nWe do have some remarks and questions.\n\nWe only accept test cases that are uploaded to our site. Go to \"Files\" tab and you will see how to upload your data, so that we can try to reproduce them.\n\nYou have not described why is it wrong to have duplicates. Your query is not written in a manner to avoid duplicates. You have to prove your point here on why are duplicates wrong.\n\nNext, you have to prove your point that there are rows in the result set that are missing. Please, be very specific on which rows should be in and are not there.\n\nLast, but not least, you should use ONLY our binary that can be downloaded from our dev.mysql.com site.\n\nWe are eagerly waiting on your full and comprehensive feedback.\n\nFor now, we are not able to repeat the behaviour."
+    },
+    {
+      "anchor": "c536178",
+      "text": "Hello, \n\nSorry for the state of my initial report - I was not aware of the file upload feature. I have attached a dataset for which I am seeing these results. To clarify the expected result of the provided query: \n\nselect entityId, itemId, imageOrder from item_image where itemId in (\n\t'54ILO7TOL5DBNEHYBJ7ZUPD364', 'ADMAV2YD6ZAR5IFHB5D4DLMJDA', 'N3HLQJMSTRA4TI7ZWKX4VNI7JA', 'NBZRLM67UVCTHEME4MRFILGIDU', \n\t'7O5EHQ5SK5GB3IA5PUUPCJIEL4', 'EM7CWAV75BAZTFTTVQXZWKULYI', 'IK6WRK3IZREFRO2LGRHEHS7A5M', 'HW5XWDHBY5HW7CWEYKX365UGQI', \n\t'BD5BDG4ZEZFO7F4IB7KK43ZPKQ', 'KGKLWD2CFFCSFFDHXLZHGT25WA', 'MQPTICQZOBGFZMIYI636V2R3NU', 'BV3UU7N5VFGUVGY3RKUUIWPJNE', \n\t'NJG4JWHUUVCXDA2P3V7BVGSZNU', 'JIUH65FAXNCMHBXURNKXYQABJM', 'JCSI7SV435G25LPW4IPRF7EITU', 'MBBY2OW6N5ATDDKDRRMDLT4PNM', \n\t'MUISD7TN3RCD3B4HVNYVKE6D4U', 'JZQTRFSC7RBL7GU67LHWMGKLFY', '6AKLVWT7EFGSJG2FXIW4QNTBUA', 'AHUJQC3QL5FI5PZMTK6BE6GC4M', \n\t'M47TBT3MLBD73A4M4RARVJPNHM', '2HYHXJA7JJERDOFDOSOUA5ETE4', 'HXVGHY5DKRDUBO7PJHLYT22K6E', 'NDS6ADCAY5GFNNT65XMA4DPGAI')\norder by itemId, imageOrder;\n\nRunning this query on the provided dataset will show that the item_image record with entityId=FNPHL7URHFHJ3HODB4FMEIZK3E and itemId=2HYHXJA7JJERDOFDOSOUA5ETE4 is returned 4 times (3 duplicate records). Additionally, you will see that the item_image with entityId=P53WEY6RQFCZTJNZ4PP4VA4K2E (also belonging to itemId=2HYHXJA7JJERDOFDOSOUA5ETE4 with imageOrder 0) is not returned at all. \n\nPlease let me know if I can provide further clarification."
+    },
+    {
+      "anchor": "c536192",
+      "text": "Hi Mr. Sykes,\n\nSorry, but regarding duplicate rows, have you tried to use DISTINCT ???\n\nHow did it change your results ????\n\nAlso, there is one table here and you have uploaded three files.\n\nCan you describe what are the contents of each of the uploaded files for ?????\n\nWe can also see that value of 2HYHXJA7JJERDOFDOSOUA5ETE4  is fully contained in the result set.\n\nWe are waiting on your feedback with explanations."
+    }
+  ]
+}

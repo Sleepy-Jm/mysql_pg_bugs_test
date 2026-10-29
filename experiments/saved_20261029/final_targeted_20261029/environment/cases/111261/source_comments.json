@@ -1,0 +1,14 @@
+[
+  {
+    "anchor": "cmain",
+    "text": "Description:\nThe problem is caused by the end_key, it is query similar with the Bug #100253.\n\nIn function IndexSkipScanIterator::Read()\n\n1. index_next_different is to find next different key \n2. ha_read_range_first is to use the new key to fetch rows\n\nThe ha_read_range_first may set end range, which saves in prebuilt->m_mysql_handler->end_range. The end_range can effect index_next_different function.\n\nThere are several trigger conditions\n1. use skip scan \n2. have delete-marked rows and not been purged yet.\n3. the delete-marked rows size is larger than a page size.\n\nThe location of the query error problem is at\n\n```\n    /** Compare the last record of the page with end range\n    passed to InnoDB when there is no ICP and number of\n    loops in row_search_mvcc for rows found but not\n    reporting due to search views etc. */\n    if (prev_rec != nullptr && !prebuilt->innodb_api &&\n        prebuilt->m_mysql_handler->end_range != nullptr &&\n        prebuilt->idx_cond == false && end_loop >= 100) {\n      dict_index_t *key_index = prebuilt->index;\n```\n\nHow to repeat:\nHere gives the test case, it must execute on debug binary.\n```\nSET global innodb_purge_stop_now=ON;\n\nCREATE TABLE t1 (id BIGINT AUTO_INCREMENT PRIMARY KEY, s_id BIGINT, t_id VARCHAR(100), pad VARCHAR(512), INDEX sid_name(s_id, t_id));\n\nDELIMITER //;\n\nCREATE PROCEDURE insert_numbers()\nBEGIN\n  DECLARE i INT DEFAULT 1;\n  WHILE i <= 1000 DO\n    INSERT INTO t1 (s_id, t_id, pad) VALUES (i/200, i, repeat('a', 512));\n    SET i = i + 1;\n  END WHILE;\nEND //\nDELIMITER ;//\n\nCALL insert_numbers();\nINSERT INTO t1 (s_id,t_id, pad) SELECT s_id,t_id, pad from t1;\n\nDELETE from t1 where s_id=3;\n\nselect id from t1 where t_id='800';\n\nselect id from t1 force index(primary) where t_id='800';\n\nSET global innodb_purge_stop_now=OFF;\n\n```"
+  },
+  {
+    "anchor": "c533126",
+    "text": "The problem is reproduced on the latest version 8.0.32.\n\nHere gives the result.\n\n```\nSET global innodb_purge_stop_now=ON;\nCREATE TABLE t1 (id BIGINT AUTO_INCREMENT PRIMARY KEY, s_id BIGINT, t_id VARCHAR(100), pad VARCHAR(512), INDEX sid_name(s_id, t_id));\nCREATE PROCEDURE insert_numbers()\nBEGIN\nDECLARE i INT DEFAULT 1;\nWHILE i <= 1000 DO\nINSERT INTO t1 (s_id, t_id, pad) VALUES (i/200, i, repeat('a', 512));\nSET i = i + 1;\nEND WHILE;\nEND //\nCALL insert_numbers();\nINSERT INTO t1 (s_id,t_id, pad) SELECT s_id,t_id, pad from t1;\nDELETE from t1 where s_id=3;\nselect id from t1 where t_id='800';\nid\nselect id from t1 force index(primary) where t_id='800';\nid\n800\n1800\nSET global innodb_purge_stop_now=OFF;\n\nDROP TABLE t1;\nDROP PROCEDURE insert_numbers;\n\n```"
+  },
+  {
+    "anchor": "c533149",
+    "text": "Hello Huang,\n\nThank you for the report and test case.\nVerified as described.\n\nregards,\nUmesh"
+  }
+]

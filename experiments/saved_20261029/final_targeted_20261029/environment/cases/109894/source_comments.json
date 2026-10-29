@@ -1,0 +1,22 @@
+[
+  {
+    "anchor": "cmain",
+    "text": "Description:\nInitialize the server directory with this command:\n\nbin/mysqld --log-error-verbosity=3 --initialize-insecure --basedir=... --datadir=...\n\nThen run it with this command:\n\nbin/mysqld --no-defaults --basedir=$MySQL_build_dir --datadir=... --plugin-dir=... --log-error-verbosity=3 --port=3306 --mysqlx-port=3307 --enforce-gtid-consistency --gtid-mode=ON \n\nRun these queries on the client:\n\nCREATE TABLE t0(c0 int);\nSET SESSION TRANSACTION READ ONLY;\nSET GLOBAL BINLOG_CHECKSUM = CRC32;\n\nIt will trigger an assertion error at sql_error.cc:374\n\nassert(!is_set());\n\nThe same issue also happens by replacing the `SET GLOBAL BINLOG_CHECKSUM = CRC32;` statement with:\n\nFLUSH BINARY LOGS;\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the statements above."
+  },
+  {
+    "anchor": "c529477",
+    "text": "Ignore $MySQL_build_dir and replace it with your base directory."
+  },
+  {
+    "anchor": "c529487",
+    "text": "Hello Pedro Ferreira,\n\nThank you for the report and feedback.\nObserved that 8.0.32 debug build is affected.\n\nregards,\nUmesh"
+  },
+  {
+    "anchor": "c532624",
+    "text": "Documented fix as follows in the MySQL  8.1.0 changelog:\n\n    Executing FLUSH BINARY LOG or SET GLOBAL CHECKSUM=CRC32 after\n    setting the session transaction access mode to READ ONLY led to\n    an unplanned shutdown. Execution of either of these statements\n    causes rotation of the binary log; before doing so it is\n    necessary to update the mysql.gtid_executed table, but this was\n    rejected due to the session transaction mode being READ ONLY.\n\n    We fix this by allowing the binary log rotation to proceed by\n    ignoring the READ ONLY access mode as is done when the server is\n    running in read-only or super-read-only mode.\n\nClosed."
+  },
+  {
+    "anchor": "c537377",
+    "text": "This is marked as fixed in 8.1, but nothing about 8.0.\n\nShouldn't this also be fixed in 8.0 before closing (maybe it is, and this is only a closing comment problem) ?"
+  }
+]

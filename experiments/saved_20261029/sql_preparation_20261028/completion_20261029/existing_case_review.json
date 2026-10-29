@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-29",
+  "scope": "对既有记录补充审查；不改写旧 case.json 或 SQL。以下覆盖仅用于最终总清单。",
+  "cases": {
+    "3437": {
+      "status_override": "blocked_source_gap",
+      "sql_completeness": "partial",
+      "uncertainties": [{"point": "前轮脚本加入了原文未提供的 a/b 数据，不能作为原始数据已还原。", "evidence": "cmain 只描述两列 InnoDB 表及过程；c7642 指出未声明 RAND 才是原问题。旧 transformations 明确记录 a/b 是合成数据。", "needed": "原始两表 DDL/数据，或另行确认将此脚本作为独立最小化探索变体；本轮不补造数据。"}]
+    },
+    "46189": {
+      "status_override": "blocked_source_gap",
+      "sql_completeness": "partial",
+      "uncertainties": [{"point": "前轮合成四表 id INT 定义；原始建表语句与引擎未提供。", "evidence": "cmain 仅列 CLSync/CLConf/CLMT14/CLMstr 表名、DROP 和 information_schema 查询；c239187 给出 Windows 安装包。", "needed": "原表 DDL/引擎、lower_case_table_names 与平台配置；或另行确认合成表只作独立元数据控制用例。"}]
+    },
+    "59154": {
+      "sql_completeness": "complete",
+      "oracle_sufficiency": "sufficient",
+      "uncertainties": [{"point": "SQL 齐全且内存错误判据明确，但 release 输出不能判定未释放内存读取。", "evidence": "cmain/c356750 的用户变量赋值与 Valgrind invalid read 证据；旧 case 标记 blocked_environment。", "needed": "未来回放前确定目标版本内存检测构建、Valgrind/等效检测器及进程日志采集；本轮不安装、不执行。"}]
+    },
+    "67351": {"uncertainties": [{"point": "近似 Cardinality 偏差的异常阈值未冻结。", "evidence": "c456508 的 8,192 行有界样例、c409557/c459759 的统计讨论；COUNT DISTINCT 可作为参照但不要求近似统计完全相等。", "needed": "目标版统计采样配置、重复采样协议、允许误差界限及性能影响判据。"}]},
+    "82330": {"uncertainties": [{"point": "ngram 子词停用词过滤是否违反目标版本契约未确认。", "evidence": "cmain 给出 baby 被 BA/AB/BY 停用词过滤的路径；c448555 为历史验证；c542132 纠正 ngram_token_size=1/2 混淆，size=2 仍 Empty set。", "needed": "目标版 ngram/停用词语义依据、冻结 token size=2 和停用词集合，区分报告期望与规范要求。"}]},
+    "83954": {"uncertainties": [{"point": "同 SELECT 用户变量赋值读取顺序与 JSON 数值精度契约同时未明确。", "evidence": "cmain/c535693/c542289 涉及 30 位 DECIMAL、JSON 文本往返与 @j0；指数显示本身不能证明数值错误。", "needed": "分离赋值控制方案、JSON_TYPE/原始数值及允许误差契约；不得仅凭显示形式判错。"}]},
+    "85918": {"uncertainties": [{"point": "严格模式中 WHERE 零日期转换被拒绝是否按设计。", "evidence": "cmain 的空表 SELECT/UPDATE；c459209 明确讨论可能保留这种严格行为；c533571/c535731/c535732 为补充历史现象。", "needed": "固定 SQL mode 后核对 SELECT、UPDATE、UPDATE IGNORE 对零日期转换的目标版契约。"}]},
+    "87794": {"uncertainties": [{"point": "FLOAT 文本输出约定与真实数值精度尚未分离。", "evidence": "cmain 的 1223482/1223484 及 c464661 的 FLT_DIG=6 说明；当前 SQL 只有文本路径。", "needed": "二进制协议字段类型/数值、文本格式约定和同值比较；显示舍入不直接记 wrong_result。"}]},
+    "106225": {"uncertainties": [{"point": "BIN 空串与 BIN(CAST 空串 AS UNSIGNED) 是否必须同义。", "evidence": "cmain 显示直接 BIN 返回 NULL、显式 CAST 返回 0 并产生 warning；c519279 仅确认收到报告，未定义转换契约。", "needed": "目标版本 BIN 参数转换规则、SQL mode 与 warning 语义依据。"}]},
+    "110209": {"uncertainties": [{"point": "原 CHAR 用例的运算类型/溢出判据与官方 BIGINT 变体需区分。", "evidence": "cmain 是 CHAR(1) 的 PK/非PK对照；c530251 确认 GIPK OFF；c530301 不接受 CHAR 推论但将列改 BIGINT 后确认历史问题。", "needed": "BIGINT 变体完整定义和预期溢出契约；保留原 CHAR 结果为待判差异，不自动把任一 1690 当 bug。"}]},
+    "110332": {"uncertainties": [{"point": "TIME/DATETIME CASE 与用户变量路径可能不是同类型比较。", "evidence": "cmain 给出 1/0 差异及 1292 warning，并提出缓存与 cmp 类型不同；c530590 只有接收/感谢语。", "needed": "目标版 CASE 合并类型、用户变量存储类型及数字比较的契约与同类型控制。"}]},
+    "110656": {"uncertainties": [{"point": "零 DATETIME 的 IS NULL 兼容语义未确定。", "evidence": "cmain/c531717/c540098 涉及 INSERT IGNORE 产生零值、JOIN USING 和 DATETIME PK；PK 非NULL本身不足以排除零日期兼容规则。", "needed": "目标 SQL_MODE、sql_auto_is_null、实际插入值和零日期/ODBC兼容规则。"}]},
+    "110857": {"uncertainties": [{"point": "NO_INDEX_USED 是否包含 UNION RESULT 的临时表扫描未确定。", "evidence": "cmain/c532041 是三个查询及 P_S 指标；源数据只有三行，优化器不保证选择 k_1。", "needed": "固定 instrumentation、当前线程 event_id、实际计划及指标统计范围契约。"}]},
+    "113256": {"uncertainties": [{"point": "表级与分区级 DATA_FREE 的统计时间/口径及误差要求尚未冻结。", "evidence": "cmain 是 40,000 次 INSERT 与分区0/表级4194304差异；c538485 确认历史 Information Schema bug，但不能替代目标版测量契约。", "needed": "目标统计缓存、ANALYZE 时机、页布局及 TABLES/PARTITIONS DATA_FREE 口径；记录过程循环替换 shell 循环的影响。"}]},
+    "113446": {"uncertainties": [{"point": "BIT 的数值相同但显示/协议类型不同，缺字段级判据。", "evidence": "cmain 的 0x00/0、0x01/1；c547939 的临时表/索引路径对照；c558079 仅称 9.7 不复现。", "needed": "目标版本协议 field type/flags/原始字节及 DISTINCT 保持类型的规范；不要将显示变化计为数值错误。"}]},
+    "113952": {"uncertainties": [{"point": "联合 UPDATE 的 undo 容量报错与正常限制的边界未确认。", "evidence": "cmain 明确双 MEDIUMTEXT 各7500字节和拆分更新；c540599 指向重复报告；c557246 是 patch pending，未给完整修复边界。", "needed": "目标页大小、行格式、undo 容量契约与修复证据；拆分成功本身不证明联合更新错误。"}]}
+  },
+  "accepted_comment_only_cleanup": {
+    "107109": "纯会话设置；结束专用连接恢复。cleanup.sql 中无可执行语句是预期。",
+    "109736": "纯表达式，无持久对象。cleanup.sql 仅说明是预期。",
+    "110562": "纯表达式，无持久对象。cleanup.sql 仅说明是预期。",
+    "110572": "optimizer_switch 是会话设置；关闭专用连接恢复。"
+  }
+}

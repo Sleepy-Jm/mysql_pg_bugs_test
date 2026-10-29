@@ -1,0 +1,113 @@
+{
+  "report_id": "112389",
+  "source_sha256": "8d4c36517b39a47f4bea0c5aa59acb935f51fcc9640b8badc2da6f8e49e45a29",
+  "tasks": [
+    {
+      "task_id": "mysql-112389-8.0.35",
+      "report_id": "112389",
+      "title": "Inconsistent results caused by a subquery in FROM clause",
+      "target_version": "8.0.35",
+      "adjacent_comparison_version": "8.0.34",
+      "adjacent_comparison_expected_state": "unknown",
+      "classification": {
+        "lane": "sql",
+        "basis": "Exact saved kind mapping; not execution readiness",
+        "source_field": "task.test_spec.kind",
+        "source_value": "sql"
+      },
+      "source_review_stage": "exploratory_candidate",
+      "source_url": "https://bugs.mysql.com/bug.php?id=112389",
+      "source_snapshot_from_plan_root": "原文快照/bug_112389.html",
+      "source_anchors": [
+        "cmain",
+        "c536189"
+      ],
+      "source_review_decision": {
+        "stage": "exploratory_candidate",
+        "anchors": [
+          "cmain",
+          "c536189"
+        ],
+        "reason": "两张空/单行表和CASE TRUE恒等替换对照完整，RIGHT JOIN空补值应保持等价。",
+        "ambiguity": false,
+        "review_kind": "reproducibility_review",
+        "review_date": "2026-10-28"
+      },
+      "test_spec": {
+        "kind": "sql",
+        "setup": "t0(c0 INT)插入16；t4(c17 INT)为空。",
+        "steps": "执行正文两查询，仅把派生投影CASE WHEN TRUE THEN c17 ELSE c17 END替换为c17。",
+        "oracle": "两种投影等价，RIGHT JOIN后的FIELD(NULL,NULL)=0应保留一行，不应因表达式简化丢行。",
+        "requirements": [
+          "保留重复关系待主报告去重"
+        ],
+        "target_applicability": "目标8.0.35具备相同外联接/派生优化，可探索未知修复范围。"
+      },
+      "source_environment": {
+        "OS": "Any",
+        "CPU Architecture": "Any",
+        "Category": "MySQL Server"
+      },
+      "explicit_requirements": [
+        "保留重复关系待主报告去重"
+      ],
+      "preparation_status": "needs_script_and_oracle_validation",
+      "ready_for_execution": false,
+      "variant_id": null,
+      "script_sha256": null,
+      "oracle_sha256": null,
+      "environment_manifest_sha256": null,
+      "execution_status": "not_run_this_round",
+      "reproduction_result": null,
+      "introduction_result": null,
+      "root_cause_id": null
+    }
+  ],
+  "source": {
+    "id": "112389",
+    "title": "Inconsistent results caused by a subquery in FROM clause",
+    "header": {
+      "Bug #112389": "Inconsistent results caused by a subquery in FROM clause",
+      "Submitted": "19 Sep 2023 14:56",
+      "Modified": "21 Sep 2023 9:19",
+      "Reporter": "Zuming Jiang",
+      "Email Updates": "",
+      "Status": "Duplicate",
+      "Impact on me": "None",
+      "Category": "MySQL Server",
+      "Severity": "S3 (Non-critical)",
+      "Version": "5.7, 8.0.0 - 8.0.34",
+      "OS": "Any",
+      "Assigned to": "",
+      "CPU Architecture": "Any"
+    },
+    "comments": [
+      {
+        "anchor": "cmain",
+        "date": "19 Sep 2023 14:56",
+        "author": "Zuming Jiang",
+        "text": "Description:\nDear MySQL developers,\n\nI used my new fuzzer to fuzz MySQL and found a logic bug that make MySQL server output inconsistent results:\n\nHow to repeat:\n*** Set up the database ***\n\ncreate table t0 (c0 int);\ncreate table t4 (c17 int);\ninsert into t0  values (16);\n\n*** Test Case 1 ***\n\nselect\n  1 as c_0\nfrom\n  ((select\n          case when true then ref_0.c17 else ref_0.c17 end as c_1\n        from\n          t4 as ref_0\n        ) as subq_0\n    right outer join t0 as ref_1\n    on (subq_0.c_1 = ref_1.c0))\nwhere FIELD(subq_0.c_1, null) <= (ref_1.c0);\n\nI changed \"case when true then ref_0.c17 else ref_0.c17 end\" to \"ref_0.c17\", and got Test Case 2:\n\n*** Test Case 2 ***\n\nselect\n  1 as c_0\nfrom\n  ((select\n          ref_0.c17 as c_1\n        from\n          t4 as ref_0\n        ) as subq_0\n    right outer join t0 as ref_1\n    on (subq_0.c_1 = ref_1.c0))\nwhere FIELD(subq_0.c_1, null) <= (ref_1.c0);\n\n*** Expected results ***\n\nTest Case 1 and Test Case 2 return the same results.\n\n*** Actual results ***\n\nTest Case 1 and Test Case 2 return inconsistent results.\n\nTest Case 1 return:\n\n+-----+\n| c_0 |\n+-----+\n|   1 |\n+-----+\n1 row in set (0.00 sec)\n\nTest Case 2 return:\n\nEmpty set (0.00 sec)\n\n*** Note ***\n\nThe bug can be reproduced in version 5.7, 8.0.0 - 8.0.34. In version 5.5 and 5.6, both Test Case 1 and 2 return the same results:\n\nEmpty set (0.00 sec)"
+      },
+      {
+        "anchor": "c536189",
+        "date": "21 Sep 2023 9:19",
+        "author": "MySQL Verification Team",
+        "text": "Hi Mr. Jiang,\n\nThank you for your bug report.\n\nWe have repeated a test case and it is truly a proper bug.\n\nWe have analysed our code and your queries and concluded that this (true and veritable) bug is a duplicate of the following bug:\n\nhttps://bugs.mysql.com/bug.php?id=112394\n\nWe simply do not verify multiple bugs that are caused by the same error in our code.\n\nHence, this is a true bug, but a duplicate of the above bug.\n\nDuplicate."
+      }
+    ],
+    "targets": {
+      "8.0.34": {
+        "field": true,
+        "hits": [
+          {
+            "anchor": "cmain",
+            "author": "Zuming Jiang",
+            "snippets": [
+              "row in set (0.00 sec)  Test Case 2 return:  Empty set (0.00 sec)  *** Note ***  The bug can be reproduced in version 5.7, 8.0.0 - 8.0.34. In version 5.5 and 5.6, both Test Case 1 and 2 return the same results:  Empty set (0.00 sec)"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

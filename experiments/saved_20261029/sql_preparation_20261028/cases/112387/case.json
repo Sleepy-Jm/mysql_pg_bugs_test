@@ -1,0 +1,78 @@
+{
+  "report_id": "112387",
+  "title": "Inconsistent results caused by \"UNION ALL\" with empty subqueries",
+  "source_sha256": "ed1519f96aab15fde94fc7917de1bd8f3ca08b7802e2d22299eae6decb18de28",
+  "source_anchors": [
+    "cmain",
+    "c536188"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "f6db980e19657f28577b6e0bb678185083fa10e3ecdf2082806921afa7f73fc6"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "220cb44475f8c9e1e6d09e7f37c1e23d9f966bfc4d0b40a8eb1b674f3289d821"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t0(c4 DOUBLE)、t1(c8 VARCHAR200)。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "t0两行-66.49/NULL，t1一行NULL。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "在 runner 分配并选中的全新隔离 schema，以同一 mysql 客户端会话按文件顺序执行；保存 stdout/stderr、SQL mode、warnings。本轮未执行。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两查询应都只保留c4=NULL的一行；该行的相关子查询为空，NULL IN空集为FALSE，因此NOT为TRUE。非NULL行相关子查询含NULL，应不保留。记录UNION类型推导，不将任意空分支删除都泛化为等价。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "DROP TABLE IF EXISTS t0,t1;"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "两查询应都只保留c4=NULL的一行；该行的相关子查询为空，NULL IN空集为FALSE，因此NOT为TRUE。非NULL行相关子查询含NULL，应不保留。记录UNION类型推导，不将任意空分支删除都泛化为等价。",
+    "failure": "前置条件成立且实际输出/存活状态违反上述具体约束时，保留为待复核异常；普通 SQL 错误和环境不满足不自动算 bug。",
+    "limitations": "未执行数据库，尚未验证 Bug 是否存在。源报告历史观察不等于目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema/实例；本轮只静态整理",
+    "完整SQL"
+  ],
+  "transformations": [
+    "删除段落和结果表，保留完整两个子查询；#112394重复关系仅记录，不宣称根因已独立确认。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.35": "8.0.35支持该查询；112394重复关系必须由合并层保留，不能计两独立bug。 仅记录适用性假设；未在该版本执行。"
+  },
+  "source_reading": "逐项核对 cmain, c536188 的定义、输入、顺序、原始观察及相关评论；源评论全文保留于 inputs/112387.json。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

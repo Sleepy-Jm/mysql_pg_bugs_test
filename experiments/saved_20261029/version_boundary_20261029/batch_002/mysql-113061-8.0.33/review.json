@@ -1,0 +1,118 @@
+{
+  "task_id": "mysql-113061-8.0.33",
+  "report_id": "113061",
+  "target_version": "8.0.33",
+  "previous_version": "8.0.32",
+  "title": "The result of avg(distinct xx）is different between from primary and secondary",
+  "source_review_complete": true,
+  "ready_for_previous_replay": true,
+  "source_sql_sha256": "7e10c2c4f542d686fdf4881e199dfc9dfcf98b284a86dc52aa35ab42b955ac0e",
+  "sql_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\version_boundary_20261029\\v33\\cases\\113061\\source.sql",
+  "postcheck_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\version_boundary_20261029\\v33\\cases\\113061\\postcheck.sql",
+  "postcheck_sha256": "b545b807c4352b7c182f220e7a7bb9651391324a7ca341b8ba5c040ebb698396",
+  "target_record_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\version_boundary_20261029\\v33\\cases\\113061\\target_record.json",
+  "target_record_origin": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\records.jsonl",
+  "target_evidence": {
+    "stdout_file": {
+      "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\runs\\target_113061_8_0_33_r2\\stdout.txt",
+      "sha256": "fe884726f55d766e42ac08ad81917bc202df7d73304a0de9ac8ff3f261bd3333",
+      "copied_file": "target_stdout.txt"
+    },
+    "stderr_file": {
+      "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\runs\\target_113061_8_0_33_r2\\stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copied_file": "target_stderr.txt"
+    },
+    "server_log_file": {
+      "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\runs\\target_113061_8_0_33_r2\\server.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copied_file": "target_server.log"
+    },
+    "environment_file": {
+      "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\environment-8.0.33.json",
+      "sha256": "8eb3cb65cf1650bd04b589c203fe6d1044f2c9f4ecc0df0a3a5b3e0d8adcdd2b",
+      "copied_file": "target_environment-8.0.33.json"
+    },
+    "executed_sql_file": {
+      "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\runs\\target_113061_8_0_33_r2\\executed.sql",
+      "sha256": "9735cede0ccf09922af50496f5eb2ecb870a51ccbddf60f241604058ba3c0430",
+      "copied_file": "target_executed.sql"
+    }
+  },
+  "oracle": {
+    "normal": "AVG(DISTINCT数值集合0,3,5,6)=3.5，SUM=14；两种访问路径一致",
+    "reported": "primary avg3.5/sum14，默认avg3.7/sum37；核对EXPLAIN实际索引及十行数据",
+    "prerequisites": [
+      "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+      "独立测试实例",
+      "保存完整SQL、配置、输出与错误日志",
+      "普通 SELECT 中转换警告单列；不能把警告当异常"
+    ],
+    "expected_errors": [],
+    "kind": "wrong_result",
+    "source_oracle": {
+      "kind": "wrong_result",
+      "expected": "PRIMARY 与二级索引路径同一 DISTINCT 数值聚合应一致；原候选正确集合数值0,3,5,6，SUM=14 AVG=3.5",
+      "failure": "二级索引把不同字符串重复数值重复累计为 SUM37/AVG3.7",
+      "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+    },
+    "boundary_review_note": "Distinct numeric set is {0,3,5,6}: AVG3.5 and SUM14 for both paths. Target secondary path AVG3.7 SUM37. Ten rows and idx_b_l/group-by plan required; conversion warnings legitimate."
+  },
+  "mysql_force": false,
+  "expected_errors": [],
+  "historical_classification": "needs_previous_replay",
+  "historical_evidence_path": null,
+  "additional_prior_same_source_records": 0,
+  "gaps": [],
+  "comparison_contract": {
+    "must_match": [
+      "source SQL byte hash",
+      "postcheck byte hash or explicit historical validation SQL",
+      "release build class",
+      "session sql_mode/charset/collation/timezone",
+      "engines and required optimizer settings",
+      "fresh isolated data and same row controls"
+    ],
+    "normal_required": "Oracle-defined correct result and all source/control statements complete; previous-version syntax/unsupported-feature errors are unknown, never normal.",
+    "not_claimed": [
+      "new independent bug",
+      "introducing commit",
+      "original downstream build equivalence"
+    ]
+  },
+  "manual_review_state": "complete_source_oracle_target_evidence_review",
+  "ready": true,
+  "sql_sha256": "7e10c2c4f542d686fdf4881e199dfc9dfcf98b284a86dc52aa35ab42b955ac0e",
+  "boundary_status": "unknown",
+  "manual_review_note": "Distinct numeric set is {0,3,5,6}: AVG3.5 and SUM14 for both paths. Target secondary path AVG3.7 SUM37. Ten rows and idx_b_l/group-by plan required; conversion warnings legitimate.",
+  "evidence": {
+    "target": {
+      "stdout_file": {
+        "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\runs\\target_113061_8_0_33_r2\\stdout.txt",
+        "sha256": "fe884726f55d766e42ac08ad81917bc202df7d73304a0de9ac8ff3f261bd3333",
+        "copied_file": "target_stdout.txt"
+      },
+      "stderr_file": {
+        "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\runs\\target_113061_8_0_33_r2\\stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "copied_file": "target_stderr.txt"
+      },
+      "server_log_file": {
+        "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\runs\\target_113061_8_0_33_r2\\server.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "copied_file": "target_server.log"
+      },
+      "environment_file": {
+        "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\environment-8.0.33.json",
+        "sha256": "8eb3cb65cf1650bd04b589c203fe6d1044f2c9f4ecc0df0a3a5b3e0d8adcdd2b",
+        "copied_file": "target_environment-8.0.33.json"
+      },
+      "executed_sql_file": {
+        "path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_5\\b007_8_0_33\\results\\runs\\target_113061_8_0_33_r2\\executed.sql",
+        "sha256": "9735cede0ccf09922af50496f5eb2ecb870a51ccbddf60f241604058ba3c0430",
+        "copied_file": "target_executed.sql"
+      }
+    },
+    "historical_boundary_path": null
+  }
+}

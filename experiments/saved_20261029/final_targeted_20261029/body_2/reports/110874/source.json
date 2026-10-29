@@ -1,0 +1,22 @@
+{
+  "report_id": "110874",
+  "title": "Possible missing query error",
+  "task_ids": [
+    "mysql-110874-8.0.33"
+  ],
+  "target_versions": [
+    "8.0.33"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\c5e9d527c245_bug_110874.html",
+  "source_sha256": "c5e9d527c2458d73ab6069381baa5b2501566f0c49cfc02afa02278cbd114e66",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nCreate the table:\n\nCREATE TABLE t0 (c0 INT);\n\nThen run these queries:\n\nSELECT 1 FROM t0 WHERE 1 NOT IN (SELECT count(t0.c0) WHERE FALSE);\nSELECT CAST(sum(c1) AS SIGNED) FROM (SELECT CAST(1 NOT IN (SELECT count(t0.c0) WHERE FALSE) AS SIGNED) FROM t0) t1 (c1);\n\nAlthough they are equivalent, the first query returns no rows, while the global aggregate on the second query returns 1. The number of rows of the first should be the same as the sum result.\n\nBy looking more carefully, the first query is using an aggregate from the outer table inside a subquery in the WHERE clause. This binding I suppose it shouldn't be allowed, and an error must be thrown.\n\nHow to repeat:\nRun the queries above."
+    },
+    {
+      "anchor": "c532120",
+      "text": "Hi Mr. Ferreira,\n\nThank you for your bug report.\n\nHowever, it is not a bug.\n\nAccording to the SQL standards, the first query must be (internally) rewritten from:\n\nSELECT 1 FROM t0 WHERE 1 NOT IN (SELECT count(t0.c0) WHERE FALSE);\n\ninto \n\nSELECT 1 FROM t0 WHERE 1 NOT IN (SELECT count(t0.c0) WHERE FALSE AND count(t0.c0) != 1);\n\nSimilar rules are valid for the second query ......\n\nHowever, much more important fact that the one mentioned is the one that those two queries are not identical and you can not reduce second one into the first one.\n\nThere are query reduction and translation rules and none of those would enable reducing the second query to the first one. Since , this forum is not for discussions,  but for bug verifications, no other explanations are necessary.\n\nNot a bug."
+    }
+  ]
+}

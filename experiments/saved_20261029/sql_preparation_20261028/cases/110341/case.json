@@ -1,0 +1,84 @@
+{
+  "report_id": "110341",
+  "title": "FOUND_ROWS() gives wrong result on prepared query against partitioned table",
+  "source_sha256": "596970e6f677150a672f3a72e259a8eb12add7da107954306ed057b4a8acd34c",
+  "source_anchors": [
+    "cmain",
+    "c530604",
+    "c530617"
+  ],
+  "target_versions": [
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "eaa5a99033784992c8a71734418fde1dc433c8e74023db3438afb477d3994584"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "cede3be1138f13b6c4800014764fd351be4ecb6a47f57da01da61c0e00571a99"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "普通表和DAYOFMONTH分区表各插入2023-02-03、2023-02-25。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "SQL 中保留所选源文的全部初始化语句；纯表达式/空表 DDL 用例不引入额外数据。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 会话执行；建议 --batch --raw --force --default-character-set=utf8mb4，记录各语句错误；错误不是自动 bug 结论。PREPARE按两个占位符IN筛选，EXECUTE后立即FOUND_ROWS；固定字面量和普通表对照。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "两次 EXECUTE 都返回两个日期，紧随其后的 FOUND_ROWS 都应为2；不要插入其他 SELECT 干扰 FOUND_ROWS。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "运行 cleanup.sql；结束专用会话，销毁 runner 为本用例创建的独立 schema。涉及实例级状态时按 requirements 销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "两次 EXECUTE 都返回两个日期，紧随其后的 FOUND_ROWS 都应为2；不要插入其他 SELECT 干扰 FOUND_ROWS。",
+    "failure": "仅在建立预期前提后，实际值/错误/存活状态违反上述明确约束才记候选异常；保存原始输出和日志。",
+    "limitations": "未执行目标版本；历史报告不是目标版本本地复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；客户端保留逐语句输出及错误日志",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志",
+    "关闭 ANSI_QUOTES 或改 SQL 字符串为单引号；专用会话；FOUND_ROWS 在目标8.0仍可用。"
+  ],
+  "transformations": [
+    "从指定原文锚点整理为 mysql 客户端 SQL；原始评论和版本 test_spec 保留在 inputs。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮仅静态准备。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮仅静态准备。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮仅静态准备。"
+  },
+  "source_reading": "核对 cmain, c530604, c530617 的建表/数据/触发 SQL 和预期；相关历史修复/复现评论仅作范围说明。",
+  "source_test_spec": {
+    "kind": "sql",
+    "setup": "普通表和DAYOFMONTH分区表各插入2023-02-03、2023-02-25。",
+    "steps": "PREPARE按两个占位符IN筛选，EXECUTE后立即FOUND_ROWS；固定字面量和普通表对照。",
+    "oracle": "均返回两行的查询FOUND_ROWS应为2不能仅分区参数化为0。",
+    "requirements": [
+      "独立测试实例",
+      "保存完整SQL、配置、输出与错误日志"
+    ],
+    "target_applicability": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。"
+  }
+}

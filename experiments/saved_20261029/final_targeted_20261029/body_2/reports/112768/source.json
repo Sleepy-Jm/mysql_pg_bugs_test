@@ -1,0 +1,26 @@
+{
+  "report_id": "112768",
+  "title": "Inconsistent results when tables are JOINed in a different order",
+  "task_ids": [
+    "mysql-112768-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\0e5f319022f9_bug_112768.html",
+  "source_sha256": "0e5f319022f95172b6bc48b2728ab4b810681514b8c4a3f191cdc963fd950e82",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nHello, I found a test case, when I use different hints to affect its query plan, it seems to come to distinct results: one gives an error and the other gives an empty result.\n\n```\nCREATE TABLE t0 ( c0 INT );\nCREATE TABLE t1 ( c2 DOUBLE );\nCREATE VIEW v0 AS SELECT t1.c2 FROM t1 WHERE json_extract( t1.c2 , '$.key' ) = 'abc' ;\nINSERT INTO t1 VALUES (1.0);\nSELECT * FROM t0 JOIN v0;\n\nmysql> SELECT /*+ JOIN_ORDER(t1, t0) */ * FROM t0 JOIN v0;\nERROR 3146 (22032): Invalid data type for JSON data in argument 1 to function json_extract; a JSON string or JSON type is required.\n\nmysql> SELECT /*+ JOIN_ORDER(t0, t1) */ * FROM t0 JOIN v0;\nEmpty set (0.00 sec)\n```\n\nI'm curious if this behavior is reasonable, if they should all give an error, or if they should all get an empty result set?\n\nHow to repeat:\nJust run the test case above."
+    },
+    {
+      "anchor": "c537087",
+      "text": "Hello Ke Wang,\n\nThank you for the report and test case.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c537093",
+      "text": "Posted by developer:\n \nThis is not a bug. EXPLAIN ANALYZE for the query that succeeds tells us:\n\n-> Inner hash join (no condition)  (cost=0.7 rows=1) (actual time=0.119..0.119 rows=0 loops=1)\n    -> Filter: (json_extract(t1.c2,'$.key') = 'abc')  (cost=0.35 rows=1) (never executed)\n        -> Table scan on t1  (cost=0.35 rows=1) (never executed)\n    -> Hash\n        -> Table scan on t0  (cost=0.35 rows=1) (actual time=0.0799..0.0799 rows=0 loops=1)\n\nThus, the predicate that may cause an error is never evaluated and thus the query completes normally.\nThe inverse join order will evaluate the predicate and cause an error."
+    }
+  ]
+}

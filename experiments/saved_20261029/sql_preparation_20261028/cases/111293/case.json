@@ -1,0 +1,70 @@
+{
+  "report_id": "111293",
+  "title": "Create table partition by hash subquery assertion error",
+  "source_sha256": "403a81875c2c76891e4863dc413df351098ef06d28112c66a4e32a2d501b7184",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "4dbb42a7799db81c2b762e7b158d10899bfd516e04e70e35dfc57876190a5a3d"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "fbcb4d95646c617597fb7fc6d76743d90ca1e4690e2b1545f1a2993723852cc7"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "尝试创建 t0 HASH CTAS"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "CTAS SELECT 1"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "同一 mysql 客户端连接，按文件顺序执行；独立全新 schema。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "非法分区子查询可受控拒绝，服务器存活；异常：aggregate_check fixed 状态断言"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "crash",
+    "expected": "非法分区子查询可受控拒绝，服务器存活",
+    "failure": "aggregate_check fixed 状态断言",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "WITH_DEBUG 构建",
+    "debug"
+  ],
+  "transformations": [
+    "保留非法 HASH 子查询，不修正成有效分区表达式"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "CTAS 和 HASH 分区语法可由目标解析，预期非法输入安全失败。 本轮尚未执行。",
+    "8.0.34": "CTAS 和 HASH 分区语法可由目标解析，预期非法输入安全失败。 本轮尚未执行。",
+    "8.0.35": "CTAS 和 HASH 分区语法可由目标解析，预期非法输入安全失败。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

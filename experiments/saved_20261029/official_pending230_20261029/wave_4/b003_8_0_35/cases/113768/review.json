@@ -1,0 +1,58 @@
+{
+  "report_id": "113768",
+  "target_versions": [
+    "8.0.35"
+  ],
+  "task_ids": [
+    "mysql-113768-8.0.35"
+  ],
+  "disposition": "ready",
+  "reason": "普通二行极值CAST查询；1690是目标错误，应继续执行直接CAST控制而非默认判失败。",
+  "sql_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\113768\\reproducer.sql",
+  "sql_sha256": "54b5c9112cb8d8331011c104b20ab51c06d47635e57d1f3980dd0d6abc181527",
+  "postcheck_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\partition2\\cases\\113768\\postcheck.sql",
+  "postcheck_sha256": "3949b13198708281034adfc9b43c62dd184eb395bd3e0feddbfef4bee3c769b2",
+  "oracle": {
+    "normal": "两个NOT IN行比较均不匹配右侧元组，返回两个1；直接CAST为有限DOUBLE数，不应BIGINT越界",
+    "reported": "目标SELECT在cast(9223372036854775807 as double)报1690/22003，而直接CAST可成功",
+    "prerequisites": [
+      "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+      "相同SQL模式",
+      "保留行比较原SQL",
+      "记录 REAL_AS_FLOAT；两次使用同一 SQL_MODE"
+    ],
+    "expected_errors": [
+      {
+        "code": 1690,
+        "sqlstate": "22003",
+        "stage": "SELECT 1 FROM tb A WHERE tuple NOT IN CAST tuples",
+        "message_contains": "BIGINT value is out of range",
+        "meaning": "target reported phenomenon; continue direct CAST and data probes; setup errors remain execution failure"
+      }
+    ],
+    "kind": "error_difference",
+    "source_oracle": {
+      "kind": "error_difference",
+      "expected": "两行 NOT IN 的第一分量均不等于92，第一候选第二分量110也不匹配，查询应正常处理而非浮点回转BIGINT溢出",
+      "failure": "1690 cast bigint max as double",
+      "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+    }
+  },
+  "mysql_force": true,
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "相同SQL模式",
+    "保留行比较原SQL",
+    "记录 REAL_AS_FLOAT；两次使用同一 SQL_MODE"
+  ],
+  "source_anchors": [
+    "cmain",
+    "c540096"
+  ],
+  "source_review_complete": true,
+  "source_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\inputs\\113768.json",
+  "source_sha256": "bf4b235963a94f553d715b6f1270b73958f241f57ad9c94a579b5c19f9bda49c",
+  "official_version_field": "8.0.35",
+  "cleanup_path": "<USER_HOME>\\Documents\\Codex\\2026-10-26\\mysql-bug-collect-py-c-users\\outputs\\普通SQL静态准备_20261029\\cases\\113768\\cleanup.sql",
+  "review_note": "Read cmain and named supporting comments; long stack frames or later patches are not treated as new instructions."
+}

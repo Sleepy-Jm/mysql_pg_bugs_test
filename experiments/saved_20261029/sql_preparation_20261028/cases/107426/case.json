@@ -1,0 +1,95 @@
+{
+  "report_id": "107426",
+  "title": "checksum table for innodb inconsistent",
+  "source_sha256": "c30b99930f209de7e4047516f2a9cd6c1188f62f7bbe0ef8f97b4aa6d8f6ae57",
+  "source_anchors": [
+    "cmain",
+    "c522887",
+    "c522889",
+    "c522890",
+    "c523107"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "783fcfc8623f00000d9fa77608cc0e5a236f87069ab9f7b46b153752e8945b8e"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "4a3c58d3e11834d4e975df51c7c20455c0c687c2101b1ede0843e4befa984bd9"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "cmain myt2，加 c522887 明确/隐式 DYNAMIC 对照 myt10/myt11；核对 c522889 相同有效格式。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "myt2 三行10/20/30，myt10/myt11各一行10。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "仅在默认及有效 ROW_FORMAT 都为 Dynamic 时比较：myt2 ALTER 前后 checksum 应一致；myt10 与 myt11 的同一 INT(10) 数据 checksum 应一致。不同checksum是校验语义差异，不是数据丢失证明。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "仅在默认及有效 ROW_FORMAT 都为 Dynamic 时比较：myt2 ALTER 前后 checksum 应一致；myt10 与 myt11 的同一 INT(10) 数据 checksum 应一致。不同checksum是校验语义差异，不是数据丢失证明。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "合并三条 INSERT 为等价多行 INSERT。",
+    "显式冻结会话默认引擎 InnoDB；INNODB_TABLES 查询用 DATABASE() 替代原文固定库名。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.35": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c522887, c522889, c522890, c523107 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [
+    {
+      "kind": "other",
+      "detail": "前提 innodb_default_row_format=DYNAMIC，需读取 INNODB_TABLES 权限；不改变全局设置。",
+      "requires_review": false
+    }
+  ],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

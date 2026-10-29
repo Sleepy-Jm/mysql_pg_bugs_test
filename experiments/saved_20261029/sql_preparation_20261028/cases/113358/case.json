@@ -1,0 +1,86 @@
+{
+  "report_id": "113358",
+  "title": "Wrong functional dependency in ONLY_FULL_GROUP_BY mode",
+  "source_sha256": "f9e5781b1251a43673d03bc6965f813931601cb734b75ecadfc8d45efb4d00ee",
+  "source_anchors": [
+    "cmain",
+    "c538763",
+    "c538769",
+    "c538772"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "0748e0f522e77eb0955d214459742ea8a93d0c845ae934a11dfd4cdef0ae7e19"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "0af871f433a57e058143f424a660631a4b0fe6b704d2db9520e61c5bc2d086c3"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "按c538763实际输出还原t1三列/t2一列，修正cmain漏逗号及t2多列笔误。"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "c538763明确给出的t1两行和t2三行。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "b相同但a为1/2，不满足函数依赖；ONLY_FULL_GROUP_BY下两条GROUP BY都应拒绝（通常1055），不能ON后返回任意2。无GROUP BY控制返回(1,2)/(1,1)。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "error_difference",
+    "expected": "b相同但a为1/2，不满足函数依赖；ONLY_FULL_GROUP_BY下两条GROUP BY都应拒绝（通常1055），不能ON后返回任意2。无GROUP BY控制返回(1,2)/(1,1)。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "独立测试实例",
+    "保存完整SQL、配置、输出与错误日志"
+  ],
+  "transformations": [
+    "根据评论证据修正文中DDL笔误；未编造表/数据。",
+    "显式开启ONLY_FULL_GROUP_BY，保存恢复mode和优化器开关。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.33": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。",
+    "8.0.34": "目标8.0支持所述SQL/功能；是否仍存在该异常须在各目标版本实测。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, c538763, c538769, c538772 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

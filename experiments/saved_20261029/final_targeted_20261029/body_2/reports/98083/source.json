@@ -1,0 +1,30 @@
+{
+  "report_id": "98083",
+  "title": "Restarting the computer when deleting the database will cause directory residues",
+  "task_ids": [
+    "mysql-98083-8.0.32"
+  ],
+  "target_versions": [
+    "8.0.32"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\9483ac688815_bug_98083.html",
+  "source_sha256": "9483ac6888152378e521054c923a81ece83125ffb0bed5a342b016bfe3f9556c",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen deleting the database, restart the computer, then pull up the database again, and create a database with the same name, the following error will be reported:\n\nERROR 3678 (HY000): Schema directory './test_db' already exists. This must be resolved manually (e.g. by moving the schema directory to another location).\n\nHow to repeat:\nWrite a shell script, continuously create and delete a database with the same name, and restart the computer. However, this approach may not necessarily occur, the method must be:\n\nModify sql_db.cc:mysql_rm_db\n\nif (! error && schema_dirp! = nullptr) {\n       Rmdir_error_handler rmdir_handler;\n       thd-> push_internal_handler (& rmdir_handler);\n       abort (); // add abort\n       (void) rm_dir_w_symlink (path, true);\n       thd-> pop_internal_handler ();\n}\n\nWhen the database hangs, pull up the database again, create a database with the same name, and then report the following error:\n\nERROR 3678 (HY000): Schema directory './test_db' already exists. This must be resolved manually (e.g. by moving the schema directory to another location)."
+    },
+    {
+      "anchor": "c496652",
+      "text": "Hi Mr. Liao,\n\nThank you for your bug report.\n\nHowever, this is not a bug.\n\nMySQL 8.0 has introduced complete mechanism for the management of the schema and tables. This system does not allow for the manual creation or deletion of tables or databases.\n\nThis is all described in our 8.0 Reference Manual.\n\nNot a bug."
+    },
+    {
+      "anchor": "c530668",
+      "text": "Hell Jinming,\nIndeed this operation is not crash-safe. DDLs are atomic and crash-safe for InnoDB tables, but a schema is not an InnoDB object and the MySQL Server does not seem to have provision for supporting it.\nIt should be improved. That is, the DROP DATABASE should be atomic and crash-safe, and this report is a legitimate issue. I'm re-opening the bug report.\nThanks for the bug report."
+    },
+    {
+      "anchor": "c530674",
+      "text": "Hello jinming liao,\n\nI'm able to reproduce this with 8.0.32.\nVerifying for now as Marcin concluded it as a valid request.\n\nregards,\nUmesh"
+    }
+  ]
+}

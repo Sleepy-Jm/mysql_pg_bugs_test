@@ -1,0 +1,26 @@
+{
+  "report_id": "113206",
+  "title": "BIT_OR returns erroneous values",
+  "task_ids": [
+    "mysql-113206-8.0.35"
+  ],
+  "target_versions": [
+    "8.0.35"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\3c5b66cb864b_bug_113206.html",
+  "source_sha256": "3c5b66cb864b23e2826e12f00c054cd3c5fb8f8b5a134a2b9a882f320bff1ba7",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen one of the argument values is -1, BIT_OR evaluates to 18446744073709551615, which seems problematic.\n\nHow to repeat:\nGiven a table defined as below\n```\nCREATE TABLE R (\n  x INTEGER\n);\n\nINSERT INTO R VALUES (-1);\nINSERT INTO R VALUES (1);\n```\n\nthe output of `SELECT BIT_OR(x) FROM R` is\n\n```\nBIT_OR(x)\n18446744073709551615\n```"
+    },
+    {
+      "anchor": "c538333",
+      "text": "Hello Pinhan Zhao,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c538355",
+      "text": "Posted by developer:\n \nNot a bug. From user manual:\n\nNumeric evaluation occurs otherwise, with argument value conversion to unsigned 64-bit integers as necessary.\n\nNote that there is no standard that covers the semantics of BIT_OR.\nBesides, MySQL has an unsigned data type that must be handled.\n\nIf you need the result as a signed integer, wrap the expression as CAST(BIT_OR(x) AS SIGNED)"
+    }
+  ]
+}

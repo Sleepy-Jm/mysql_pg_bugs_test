@@ -1,0 +1,77 @@
+{
+  "report_id": "112158",
+  "title": "Calling of stored procedure is not case sensitive",
+  "source_sha256": "f5f799de7f14ac2d54e5829a3dbcd528f90c609bca8f26d0ab1b87cfb06b0847",
+  "source_anchors": [
+    "cmain"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "1bd6d6375296bec2b8cbefb021aa0d0b6143fb32cdc85c304263e2767f92f89a"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "b3bc9c5e26df2069a6ce85835c202da67e78ab01dbaed8dd15d6228bd37820e3"
+    },
+    {
+      "path": "reverse.sql",
+      "role": "fresh_session_reverse_control",
+      "sha256": "6042f228e98dd4a7afdde31a1229ce4647bc9a6db9c69eaf19973f3e2d6669a6"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "两个大小写不同库及各自 p1"
+    },
+    "data": {
+      "status": "complete",
+      "detail": "标记字符串，无表数据"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "管理员执行 reproducer.sql；再在全新连接执行 reverse.sql。必须确认两个库分别创建成功后判定。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "CALL db1.p1 返回 db1.p1；CALL DB1.p1 返回 DB1.p1；异常：过程缓存混淆库名大小写"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "cleanup.sql 显式清理本用例对象；会话设置由断开连接恢复。"
+    }
+  },
+  "oracle": {
+    "kind": "wrong_result",
+    "expected": "CALL db1.p1 返回 db1.p1；CALL DB1.p1 返回 DB1.p1",
+    "failure": "过程缓存混淆库名大小写",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  },
+  "requirements": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "大小写敏感文件系统",
+    "目标官方MySQL构建",
+    "lower_case_table_names=0",
+    "一次性 Linux 大小写敏感文件系统，初始化 lower_case_table_names=0；ANSI_QUOTES 关闭"
+  ],
+  "transformations": [
+    "从终端抽取原命令；补反序新连接对照文件"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标版本支持上述模式和存储过程；原报告有派生发行版细节，官方确认仅作为线索，实际仍需官方构建验证。 本轮尚未执行。",
+    "8.0.33": "目标版本支持上述模式和存储过程；原报告有派生发行版细节，官方确认仅作为线索，实际仍需官方构建验证。 本轮尚未执行。",
+    "8.0.35": "目标版本支持上述模式和存储过程；原报告有派生发行版细节，官方确认仅作为线索，实际仍需官方构建验证。 本轮尚未执行。"
+  },
+  "source_reading": "逐项核对选定源锚点 cmain 的 schema/data/操作与原文预期；其他历史评论不作为目标版本实测证据。"
+}

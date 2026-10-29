@@ -1,0 +1,26 @@
+[
+  {
+    "anchor": "cmain",
+    "text": "Description:\nRun the following queries:\n\nCREATE TABLE t0 (c0 INT);\nINSERT INTO t0(c0) VALUES (2030666);\n\nThen run these two:\n\nSELECT 1 FROM t0 WHERE c0 BETWEEN 0 AND CASE WHEN 1 THEN TIME '571:0:0' ELSE 2 END;\nSELECT CAST(sum(c0) AS SIGNED) FROM (SELECT CAST(c0 BETWEEN 0 AND CASE WHEN 1 THEN TIME '571:0:0' ELSE 2 END AS SIGNED) FROM t0) t0 (c0);\n\nAlthough they are equivalent, the first query returns 0 rows, while the global aggregate on the second query returns 1. The number of rows of the first should be the same as the sum result. TIME '571:0:0' converted as int gives 5710000, so the between predicate is true for 2030666 and the query should return 1 row instead of 0.\n\nThe compilation parameters are the same as issue 108148:\n\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\n\nHow to repeat:\nRun the queries above."
+  },
+  {
+    "anchor": "c530560",
+    "text": "Hello Pedro Ferreira,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+  },
+  {
+    "anchor": "c531632",
+    "text": "Hello,\n\nI'm a beginner contributor and I'm trying to fix this bug. So feel free to correct me if I'm wrong.\nI first tried to look for the error, I think it comes either from CASE or from BETWEEN.\nSo I found the corresponding class in sql/item.cc for CASE and sql/item_cmpfunc.cc for BETWEEN.\n\nHowever, I wonder if the error really comes from there, and if these class are really those which manage CASE and BETWEEN.\nDoes anyone have an idea where the error could be coming from and guide me on the guidelines to follow to solve it please?\n\nI am of course in version 8.0.32, I followed all the information of the report.\n\nThank you in advance for your answers."
+  },
+  {
+    "anchor": "c531693",
+    "text": "These classes indeed implement the CASE and BETWEEN clauses.\nHowever, the bug case also contains other operations, like an aggregation,\na derived table definition, and several implicit type conversions,\nso it is quite hard to give a advice for where to start debugging.\n\nYou might try to isolate individual functions to see if the problem occurs with\nor without those functions."
+  },
+  {
+    "anchor": "c531694",
+    "text": "Hello,\n\nThank you for your answer, I will try to find the problem as best as I can.\nI'm listening if other people have found the bug or have an idea I'm still interested."
+  },
+  {
+    "anchor": "c532078",
+    "text": "Good morning,\n\nUnfortunately, I did not manage to solve this bug, I allow myself to ask for help and share my tests with you.\n\nSo I checked the CASE (Item_case_expr) and BETWEEN (Item_func_between) codes but I didn't find any problem. SUM (item_sum.cc) works fine. So I only had to test the aggregations, AS SIGNED (Item_typecast_signed) has several ASSERTs so the conversion must be correct.\n\nI am a taker for any type of answers, if I was wrong on a part, a code that does not correspond to his request or if you have suggestions or resolutions.\n\nThank you in advance for your help."
+  }
+]

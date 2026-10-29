@@ -1,0 +1,85 @@
+{
+  "report_id": "115794",
+  "title": "wrong plan may occur when EXISTS-subselect displays its correlated cache item",
+  "source_sha256": "217bb7c0a1aadf9c66a19369853bf9706cbebe61bfdc634e1f53facb3a2019c0",
+  "source_anchors": [
+    "cmain",
+    "f33579",
+    "c546117"
+  ],
+  "target_versions": [
+    "8.0.32",
+    "8.0.33",
+    "8.0.34",
+    "8.0.35"
+  ],
+  "status": "prepared_static",
+  "execution_status": "not_executed",
+  "scripts": [
+    {
+      "path": "reproducer.sql",
+      "role": "reproducer",
+      "sha256": "8f29c51de89a67be72233a9a3114662a39b6152eff61e95a07c45745c0094221"
+    },
+    {
+      "path": "cleanup.sql",
+      "role": "cleanup",
+      "sha256": "48a8aebc706e08aaa6f766dced863bc748cb8b3c8ade5c9301f69d2bc26fcab4"
+    }
+  ],
+  "checks": {
+    "schema": {
+      "status": "complete",
+      "detail": "t1(s1 INT,id INT)，t2(id INT,a INT)，t0(c0 INT)。"
+    },
+    "data": {
+      "status": "not_needed",
+      "detail": "无须数据；三个空表已是原计划用例。"
+    },
+    "sequence": {
+      "status": "complete",
+      "detail": "按 reproducer.sql 原序在同一 mysql 客户端会话执行；保留每条语句输出、错误和 warnings。若含预期错误，后续回放使用 --force 并分别记录失败阶段；正常错误不作为崩溃。"
+    },
+    "oracle": {
+      "status": "complete",
+      "detail": "TREE中在t2侧执行的相关缓存不应仍显示尚不可用t1.id；源声明运行时缓存会刷新，因此只判计划文字显示，不声称wrong_result。"
+    },
+    "cleanup": {
+      "status": "complete",
+      "detail": "先按 cleanup.sql 清理本例对象，再关闭专用会话；runner 销毁独立 schema。涉及实例条件时按 execution_conditions 复位或销毁一次性实例。"
+    }
+  },
+  "oracle": {
+    "kind": "plan_diff",
+    "expected": "TREE中在t2侧执行的相关缓存不应仍显示尚不可用t1.id；源声明运行时缓存会刷新，因此只判计划文字显示，不声称wrong_result。",
+    "failure": "在明确输入与会话配置下违反上述结果或关系才列候选异常；未知语义保留待判。",
+    "limitations": "仅静态准备；未执行数据库，尚未验证 Bug 是否存在。历史验证或修复评论不能替代本次目标版本证据。"
+  },
+  "requirements": [
+    "全新隔离 schema/专用客户端会话；本轮不执行",
+    "EXPLAIN TREE"
+  ],
+  "transformations": [
+    "正文复现段SQL保留；附件patch不参与脚本。"
+  ],
+  "blockers": [],
+  "version_notes": {
+    "8.0.32": "目标8.0支持同等式替换和计划输出，待探索。 本轮未实测。",
+    "8.0.33": "目标8.0支持同等式替换和计划输出，待探索。 本轮未实测。",
+    "8.0.34": "目标8.0支持同等式替换和计划输出，待探索。 本轮未实测。",
+    "8.0.35": "目标8.0支持同等式替换和计划输出，待探索。 本轮未实测。"
+  },
+  "source_reading": "核对 cmain, f33579, c546117 的 SQL、数据、执行步骤和语义/验证说明；所有历史原文仍保存在 inputs。",
+  "preparation_assessment": {
+    "sql_completeness": "complete",
+    "oracle_sufficiency": "sufficient",
+    "runtime_verification": "not_executed"
+  },
+  "execution_conditions": [],
+  "uncertainties": [],
+  "safety_review": {
+    "required": false,
+    "reasons": [],
+    "restriction": null
+  }
+}

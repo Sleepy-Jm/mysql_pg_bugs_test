@@ -1,0 +1,26 @@
+{
+  "report_id": "112346",
+  "title": "MEMBER_OF with multi-valued index on JSON not used in 99% of situations.",
+  "task_ids": [
+    "mysql-112346-8.0.34"
+  ],
+  "target_versions": [
+    "8.0.34"
+  ],
+  "source_path": "<USER_HOME>\\Desktop\\Fuzzingtest\\postgresql_commit_static_discovery_10_v2\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\bundle\\materials\\sources\\3933c1b2ad88_bug_112346.html",
+  "source_sha256": "3933c1b2ad88bd96f8c4929e3bd67f1582c650ba1f6a3cd2c6e87165db066f29",
+  "comments": [
+    {
+      "anchor": "cmain",
+      "text": "Description:\nWhen using a MEMBER OF (or JSON_CONTAINS etc.) with a multi-valued index on JSON, it's not used in most situations.\nIt is only used when used in a WHERE directly with a raw, pre-determined value.\nNot used in a value taken from a query, from current table, from a JOIN, or even a simple RAND().\n\nThis makes multi-value indexes only effective in the documentation examples. Not in the real world.\n\nHow to repeat:\nCREATE TABLE if not exists customers(id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, name varchar(64), zips JSON);\n\nALTER TABLE customers  ADD INDEX ix_zips1( (CAST(zips AS UNSIGNED ARRAY)) );\nALTER TABLE customers  ADD INDEX ix_zips2( (CAST(zips->'$' AS UNSIGNED ARRAY)) );\nALTER TABLE customers  ADD INDEX ix_zips3( (CAST(zips->'$[*]' AS UNSIGNED ARRAY)) );\n\n/* INSERT LOTS OF RANOM DATA, with `zips` as an array of numbers */\n\nEXPLAIN SELECT * from customers WHERE 12345 MEMBER OF (zips); --> The only situation when the index is used\nEXPLAIN SELECT * from customers WHERE floor(rand() * 10000 + 10000) MEMBER OF (zips); --> NOT using index\nEXPLAIN SELECT customers.*,c2.zips FROM customers\ninner join customers c2 on customers.id MEMBER OF (c2.zips); --> NOT using index\n\nAny other example that comes to mind."
+    },
+    {
+      "anchor": "c536115",
+      "text": "Hello  Daniel,\n\nThank you for the report and feedback.\nCould you please provide subset of the data(logical dump of the table involved and preferably taken using mysqldump etc. ) to reproduce the issue? Thank you.\n\nIf the data you need to attach is more than 50MB, you should create a compressed archive of the data, split it to 50MB chunks, and upload each of them as a separate attachment. More details on how to upload are provided in the \"Files\" section of this bug page. Thank you.\n\nregards,\nUmesh"
+    },
+    {
+      "anchor": "c536876",
+      "text": "Hello Daniel,\n\nThank you for the report and feedback.\n\nregards,\nUmesh"
+    }
+  ]
+}
