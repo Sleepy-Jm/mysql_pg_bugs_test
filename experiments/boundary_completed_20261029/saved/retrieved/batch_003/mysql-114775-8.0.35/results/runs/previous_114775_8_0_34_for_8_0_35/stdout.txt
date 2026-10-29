@@ -1,0 +1,105 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+create table main (id varchar(10))
+--------------
+
+--------------
+insert into main values ('a')
+--------------
+
+--------------
+insert into main values ('b')
+--------------
+
+--------------
+create table dummy (id varchar(10))
+--------------
+
+--------------
+insert into dummy values ('c')
+--------------
+
+--------------
+insert into dummy values ('d')
+--------------
+
+--------------
+create table seq  (id varchar(10))
+--------------
+
+--------------
+insert into seq values ('e')
+--------------
+
+--------------
+insert into seq values ('f')
+--------------
+
+--------------
+select 'main' tab, id from main union all
+select 'dummy' tab, id from dummy union all
+select 'seq' tab, id from seq
+--------------
+
+tab	id
+main	a
+main	b
+dummy	c
+dummy	d
+seq	e
+seq	f
+--------------
+select main_id
+     , max_val
+	 , dummy_ID
+  from (
+        select main.Id  as main_id
+             , (
+                select id
+                  from seq
+                 where seq.id = main.id
+                ) as max_val 
+             , dummy.ID as dummy_ID
+          from main
+          left outer join (select 'c' as ID
+                              from dummy
+							) dummy
+               on dummy.ID = main.id 
+  where main.Id in ('a','b')
+    ) test
+WHERE dummy_ID = 'c'
+--------------
+
+main_id	max_val	dummy_ID
+a	NULL	NULL
+b	NULL	NULL
+--------------
+SELECT * FROM main ORDER BY id
+--------------
+
+id
+a
+b
+--------------
+SELECT * FROM dummy ORDER BY id
+--------------
+
+id
+c
+d
+--------------
+SELECT * FROM seq ORDER BY id
+--------------
+
+id
+e
+f

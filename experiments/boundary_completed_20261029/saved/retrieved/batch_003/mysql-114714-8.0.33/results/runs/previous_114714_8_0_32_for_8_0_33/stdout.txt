@@ -1,0 +1,58 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE t1 (a INT, b INT)
+--------------
+
+--------------
+INSERT INTO t1 VALUES (4, 40), (1, 10), (2, 20), (2, 20), (3, 30)
+--------------
+
+--------------
+CREATE TABLE t2 SELECT DISTINCT a FROM t1
+--------------
+
+--------------
+ANALYZE TABLE t1, t2
+--------------
+
+Table	Op	Msg_type	Msg_text
+replay_fd6971aaf60fb9c2576dd783.t1	analyze	status	OK
+replay_fd6971aaf60fb9c2576dd783.t2	analyze	status	OK
+--------------
+EXPLAIN FORMAT=TREE SELECT (SELECT t2.a FROM t2 WHERE t2.a = t1.a) aa, b, COUNT(b) FROM t1 GROUP BY aa, b ORDER BY -aa, -b
+--------------
+
+EXPLAIN
+-> Sort: -(aa), -(t1.b)
+    -> Table scan on <temporary>
+        -> Aggregate using temporary table
+            -> Table scan on t1  (cost=0.75 rows=5)
+-> Select #2 (subquery in projection; dependent)
+    -> Filter: (t2.a = t1.a)  (cost=0.35 rows=1)
+        -> Table scan on t2  (cost=0.35 rows=4)
+-> Select #2 (subquery in projection; dependent)
+    -> Filter: (t2.a = t1.a)  (cost=0.35 rows=1)
+        -> Table scan on t2  (cost=0.35 rows=4)
+
+Note (Code 1276): Field or reference 'replay_fd6971aaf60fb9c2576dd783.t1.a' of SELECT #2 was resolved in SELECT #1
+--------------
+SELECT COUNT(*) AS t1_rows FROM t1
+--------------
+
+t1_rows
+5
+--------------
+SELECT COUNT(*) AS t2_rows FROM t2
+--------------
+
+t2_rows
+4

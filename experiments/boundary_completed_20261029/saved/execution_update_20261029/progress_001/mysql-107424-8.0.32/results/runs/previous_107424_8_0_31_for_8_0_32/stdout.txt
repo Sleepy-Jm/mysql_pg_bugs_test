@@ -1,0 +1,46 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE t1(g1 GEOMETRY NOT NULL SRID 4326)
+--------------
+
+--------------
+INSERT INTO t1 VALUES(ST_GeomFromText('point(-6.124932923690693 23.43701608651873)',4326))
+--------------
+
+--------------
+INSERT INTO t1 VALUES(ST_GeomFromText('point(-6.124932923690693 23.43701608651874)',4326))
+--------------
+
+--------------
+SELECT ST_AsText(g1) FROM t1 WHERE ST_Intersects(ST_GeomFromText('point(-6.124932923690693 23.43701608651873)',4326),g1)
+--------------
+
+ST_AsText(g1)
+POINT(-6.124932923690693 23.43701608651873)
+POINT(-6.124932923690693 23.43701608651874)
+--------------
+CREATE SPATIAL INDEX spidx ON t1(g1)
+--------------
+
+--------------
+SELECT ST_AsText(g1) FROM t1 WHERE ST_Intersects(ST_GeomFromText('point(-6.124932923690693 23.43701608651873)',4326),g1)
+--------------
+
+ST_AsText(g1)
+POINT(-6.124932923690693 23.43701608651873)
+--------------
+SELECT ST_AsText(g1), ST_SRID(g1) FROM t1 ORDER BY ST_AsText(g1)
+--------------
+
+ST_AsText(g1)	ST_SRID(g1)
+POINT(-6.124932923690693 23.43701608651873)	4326
+POINT(-6.124932923690693 23.43701608651874)	4326

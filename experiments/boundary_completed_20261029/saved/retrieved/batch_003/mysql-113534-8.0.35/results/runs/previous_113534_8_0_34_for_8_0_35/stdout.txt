@@ -1,0 +1,108 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE `testa` (
+  `id` bigint NOT NULL,
+  `company_id` bigint DEFAULT NULL,
+  `batch_no` bigint DEFAULT NULL,
+  `picker` json DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_picker_query` (`company_id`,(cast(json_extract(`picker`,_utf8mb4'$[*].userName') as char(64) array)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3
+--------------
+
+Warning (Code 1287): 'utf8mb3' is deprecated and will be removed in a future release. Please use utf8mb4 instead
+--------------
+CREATE TABLE `testb` (
+  `id` bigint NOT NULL,
+  `company_id` bigint DEFAULT NULL,
+  `current_order_batch_no` bigint DEFAULT NULL,
+  `history_order_batch_no` json DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx01_testb` (`company_id`,`current_order_batch_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3
+--------------
+
+Warning (Code 1287): 'utf8mb3' is deprecated and will be removed in a future release. Please use utf8mb4 instead
+--------------
+insert into testa values(1,48005,100,NULL)
+--------------
+
+--------------
+insert into testa values(2,48005,101,'[]')
+--------------
+
+--------------
+insert into testa values(3,48005,102,'[{"userId": "123456", "userName": "xiaoxu"}]')
+--------------
+
+--------------
+insert into testb values(1,48005,101,NULL)
+--------------
+
+--------------
+insert into testb values(2,48005,101,NULL)
+--------------
+
+--------------
+insert into testb values(3,48005,102,'[123]')
+--------------
+
+--------------
+insert into testb values(4,48005,102,'[124]')
+--------------
+
+--------------
+select /*+ JOIN_PREFIX(ord, bat) */bat.id                     as batchPkId,        bat.batch_no,        ord.id,ord.history_order_batch_no as orderLevelHistoryBatchNo   from testa bat  inner join testb ord     on ord.current_order_batch_no = bat.batch_no  where bat.company_id = 48005 and ord.company_id=48005 and  bat.batch_no = 101
+--------------
+
+batchPkId	batch_no	id	orderLevelHistoryBatchNo
+2	101	1	NULL
+--------------
+select bat.id                     as batchPkId,        bat.batch_no,        ord.id,ord.history_order_batch_no as orderLevelHistoryBatchNo   from testa bat  inner join testb ord     on ord.current_order_batch_no = bat.batch_no  where bat.company_id = 48005 and ord.company_id=48005 and  bat.batch_no = 101
+--------------
+
+batchPkId	batch_no	id	orderLevelHistoryBatchNo
+2	101	1	NULL
+2	101	2	NULL
+--------------
+SELECT * FROM testa FORCE INDEX(PRIMARY) ORDER BY id
+--------------
+
+id	company_id	batch_no	picker
+1	48005	100	NULL
+2	48005	101	[]
+3	48005	102	[{"userId": "123456", "userName": "xiaoxu"}]
+--------------
+SELECT * FROM testb FORCE INDEX(PRIMARY) ORDER BY id
+--------------
+
+id	company_id	current_order_batch_no	history_order_batch_no
+1	48005	101	NULL
+2	48005	101	NULL
+3	48005	102	[123]
+4	48005	102	[124]
+--------------
+EXPLAIN SELECT /*+ JOIN_PREFIX(ord, bat) */ bat.id AS batchPkId,bat.batch_no,ord.id,ord.history_order_batch_no AS orderLevelHistoryBatchNo FROM testa bat INNER JOIN testb ord ON ord.current_order_batch_no=bat.batch_no WHERE bat.company_id=48005 AND ord.company_id=48005 AND bat.batch_no=101
+--------------
+
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	ord	NULL	ref	idx01_testb	idx01_testb	18	const,const	2	100.00	NULL
+1	SIMPLE	bat	NULL	ref	idx_picker_query	idx_picker_query	9	const	3	33.33	Using where
+Note (Code 1003): /* select#1 */ select /*+ JOIN_PREFIX(@`select#1` `ord`,`bat`) */ `replay_7d24125c45a622ec064841d1`.`bat`.`id` AS `batchPkId`,`replay_7d24125c45a622ec064841d1`.`bat`.`batch_no` AS `batch_no`,`replay_7d24125c45a622ec064841d1`.`ord`.`id` AS `id`,`replay_7d24125c45a622ec064841d1`.`ord`.`history_order_batch_no` AS `orderLevelHistoryBatchNo` from `replay_7d24125c45a622ec064841d1`.`testa` `bat` join `replay_7d24125c45a622ec064841d1`.`testb` `ord` where ((`replay_7d24125c45a622ec064841d1`.`ord`.`current_order_batch_no` = 101) and (`replay_7d24125c45a622ec064841d1`.`bat`.`batch_no` = 101) and (`replay_7d24125c45a622ec064841d1`.`ord`.`company_id` = 48005) and (`replay_7d24125c45a622ec064841d1`.`bat`.`company_id` = 48005))
+--------------
+EXPLAIN SELECT bat.id AS batchPkId,bat.batch_no,ord.id,ord.history_order_batch_no AS orderLevelHistoryBatchNo FROM testa bat INNER JOIN testb ord ON ord.current_order_batch_no=bat.batch_no WHERE bat.company_id=48005 AND ord.company_id=48005 AND bat.batch_no=101
+--------------
+
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	bat	NULL	ref	idx_picker_query	idx_picker_query	9	const	3	33.33	Using where
+1	SIMPLE	ord	NULL	ref	idx01_testb	idx01_testb	18	const,const	2	100.00	NULL
+Note (Code 1003): /* select#1 */ select `replay_7d24125c45a622ec064841d1`.`bat`.`id` AS `batchPkId`,`replay_7d24125c45a622ec064841d1`.`bat`.`batch_no` AS `batch_no`,`replay_7d24125c45a622ec064841d1`.`ord`.`id` AS `id`,`replay_7d24125c45a622ec064841d1`.`ord`.`history_order_batch_no` AS `orderLevelHistoryBatchNo` from `replay_7d24125c45a622ec064841d1`.`testa` `bat` join `replay_7d24125c45a622ec064841d1`.`testb` `ord` where ((`replay_7d24125c45a622ec064841d1`.`bat`.`batch_no` = 101) and (`replay_7d24125c45a622ec064841d1`.`ord`.`current_order_batch_no` = 101) and (`replay_7d24125c45a622ec064841d1`.`ord`.`company_id` = 48005) and (`replay_7d24125c45a622ec064841d1`.`bat`.`company_id` = 48005))

@@ -1,0 +1,126 @@
+{
+  "task_id": "mysql-110984-8.0.33",
+  "report_id": "110984",
+  "target_version": "8.0.33",
+  "previous_version": "8.0.32",
+  "title": "Subqueries with 'limit 1' cause concat strings to report errors",
+  "source_review_complete": true,
+  "ready_for_previous_replay": true,
+  "source_sql_sha256": "ae50e8c09aaecd2f4953e3bf9c9d6983eeb1820dbf20c1390521524320f72bac",
+  "sql_path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\version_boundary_20261029\\v33\\cases\\110984\\source.sql",
+  "postcheck_path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\version_boundary_20261029\\v33\\cases\\110984\\postcheck.sql",
+  "postcheck_sha256": "eee6fd24b4fca66ec25a5dc47d18571b319a651cefa739c6e345cd97654e35ce",
+  "target_record_path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\version_boundary_20261029\\v33\\cases\\110984\\target_record.json",
+  "target_record_origin": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\records.jsonl",
+  "target_evidence": {
+    "stdout_file": {
+      "path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\runs\\target_110984_8_0_33_r1\\stdout.txt",
+      "sha256": "ea2cfa0281ecb9ed6f9a5e54f29108613c8e0ee7b9ad6a164054c4cf85d9cca8",
+      "copied_file": "target_stdout.txt"
+    },
+    "stderr_file": {
+      "path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\runs\\target_110984_8_0_33_r1\\stderr.txt",
+      "sha256": "af62db521327cf4c399dd3cc891875dc77bb68101d2e85d61ec2a9e16fc50160",
+      "copied_file": "target_stderr.txt"
+    },
+    "server_log_file": {
+      "path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\runs\\target_110984_8_0_33_r1\\server.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copied_file": "target_server.log"
+    },
+    "environment_file": {
+      "path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\environment-8.0.33.json",
+      "sha256": "926aa1607221c71337bf0a6ffa8c36bb6e7854ba87e817b0e951788e9522a6d2",
+      "copied_file": "target_environment-8.0.33.json"
+    },
+    "executed_sql_file": {
+      "path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\runs\\target_110984_8_0_33_r1\\executed.sql",
+      "sha256": "bf8a303715ccd52737cf503d0f19c96b1d67fab1ada8eb52e8dbd54259d512b2",
+      "copied_file": "target_executed.sql"
+    }
+  },
+  "oracle": {
+    "normal": "有无LIMIT1两次CONCAT均返回yyy-xxx。",
+    "reported": "无LIMIT查询返回yyy-xxx；LIMIT1查询报1267/HY000 Illegal mix of collations for concat。",
+    "prerequisites": "会话utf8mb4_0900_ai_ci，表列gbk_bin，唯一数据xxx；无LIMIT控制必须成功。",
+    "expected_errors": [
+      {
+        "code": 1267,
+        "sqlstate": "HY000",
+        "stage": "second SELECT CONCAT with LIMIT1",
+        "message_contains": [
+          "Illegal mix of collations",
+          "concat"
+        ]
+      }
+    ],
+    "boundary_review_note": "Both CONCAT forms must return yyy-xxx under established utf8mb4 connection / gbk_bin column. Exact 1267 collation error occurs only with LIMIT 1; generic charset setup errors are unknown."
+  },
+  "mysql_force": true,
+  "expected_errors": [
+    {
+      "code": 1267,
+      "sqlstate": "HY000",
+      "stage": "second SELECT CONCAT with LIMIT1",
+      "message_contains": [
+        "Illegal mix of collations",
+        "concat"
+      ]
+    }
+  ],
+  "historical_classification": "needs_previous_replay",
+  "historical_evidence_path": null,
+  "additional_prior_same_source_records": 0,
+  "gaps": [],
+  "comparison_contract": {
+    "must_match": [
+      "source SQL byte hash",
+      "postcheck byte hash or explicit historical validation SQL",
+      "release build class",
+      "session sql_mode/charset/collation/timezone",
+      "engines and required optimizer settings",
+      "fresh isolated data and same row controls"
+    ],
+    "normal_required": "Oracle-defined correct result and all source/control statements complete; previous-version syntax/unsupported-feature errors are unknown, never normal.",
+    "not_claimed": [
+      "new independent bug",
+      "introducing commit",
+      "original downstream build equivalence"
+    ]
+  },
+  "manual_review_state": "complete_source_oracle_target_evidence_review",
+  "ready": true,
+  "sql_sha256": "ae50e8c09aaecd2f4953e3bf9c9d6983eeb1820dbf20c1390521524320f72bac",
+  "boundary_status": "unknown",
+  "manual_review_note": "Both CONCAT forms must return yyy-xxx under established utf8mb4 connection / gbk_bin column. Exact 1267 collation error occurs only with LIMIT 1; generic charset setup errors are unknown.",
+  "evidence": {
+    "target": {
+      "stdout_file": {
+        "path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\runs\\target_110984_8_0_33_r1\\stdout.txt",
+        "sha256": "ea2cfa0281ecb9ed6f9a5e54f29108613c8e0ee7b9ad6a164054c4cf85d9cca8",
+        "copied_file": "target_stdout.txt"
+      },
+      "stderr_file": {
+        "path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\runs\\target_110984_8_0_33_r1\\stderr.txt",
+        "sha256": "af62db521327cf4c399dd3cc891875dc77bb68101d2e85d61ec2a9e16fc50160",
+        "copied_file": "target_stderr.txt"
+      },
+      "server_log_file": {
+        "path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\runs\\target_110984_8_0_33_r1\\server.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "copied_file": "target_server.log"
+      },
+      "environment_file": {
+        "path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\environment-8.0.33.json",
+        "sha256": "926aa1607221c71337bf0a6ffa8c36bb6e7854ba87e817b0e951788e9522a6d2",
+        "copied_file": "target_environment-8.0.33.json"
+      },
+      "executed_sql_file": {
+        "path": "<ORIGINAL_PROJECT>\\experiments\\mysql_bug_screening_20261028_completion\\official_pending230_20261029\\wave_1\\b003_8_0_33\\results\\runs\\target_110984_8_0_33_r1\\executed.sql",
+        "sha256": "bf8a303715ccd52737cf503d0f19c96b1d67fab1ada8eb52e8dbd54259d512b2",
+        "copied_file": "target_executed.sql"
+      }
+    },
+    "historical_boundary_path": null
+  }
+}

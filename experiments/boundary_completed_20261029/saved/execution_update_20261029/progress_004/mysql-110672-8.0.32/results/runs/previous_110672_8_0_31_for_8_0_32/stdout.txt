@@ -1,0 +1,72 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE LATIN1_TABLE (
+  COLUMN1 varchar(32) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+--------------
+
+--------------
+INSERT INTO LATIN1_TABLE (COLUMN1) VALUES (NULL)
+--------------
+
+--------------
+INSERT INTO LATIN1_TABLE (COLUMN1) VALUES ('NOTNULL')
+--------------
+
+--------------
+SELECT QUOTE(COLUMN1) FROM LATIN1_TABLE
+--------------
+
+QUOTE(COLUMN1)
+NULL
+'NOTNULL'
+--------------
+CREATE TABLE UTF16_TABLE (
+  COLUMN1 varchar(32) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf16
+--------------
+
+--------------
+INSERT INTO UTF16_TABLE (COLUMN1) VALUES (NULL)
+--------------
+
+--------------
+INSERT INTO UTF16_TABLE (COLUMN1) VALUES ('NOTNULL')
+--------------
+
+--------------
+SELECT QUOTE(COLUMN1) FROM UTF16_TABLE
+--------------
+
+QUOTE(COLUMN1)
+乕䱌
+'NOTNULL'
+--------------
+SELECT HEX(QUOTE(COLUMN1)),CHARSET(QUOTE(COLUMN1)),QUOTE(COLUMN1) IS NULL FROM UTF16_TABLE
+--------------
+
+HEX(QUOTE(COLUMN1))	CHARSET(QUOTE(COLUMN1))	QUOTE(COLUMN1) IS NULL
+4E554C4C	utf16	0
+0027004E004F0054004E0055004C004C0027	utf16	0
+--------------
+SELECT HEX(QUOTE(COLUMN1)) AS quoted_hex,CHARSET(QUOTE(COLUMN1)) AS result_charset,QUOTE(COLUMN1) IS NULL AS is_sql_null FROM LATIN1_TABLE
+--------------
+
+quoted_hex	result_charset	is_sql_null
+4E554C4C	latin1	0
+274E4F544E554C4C27	latin1	0
+--------------
+SELECT COUNT(*) AS loaded_rows,SUM(COLUMN1 IS NULL) AS null_rows FROM UTF16_TABLE
+--------------
+
+loaded_rows	null_rows
+2	1

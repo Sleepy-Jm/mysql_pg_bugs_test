@@ -2,7 +2,7 @@ from pathlib import Path
 import json,hashlib,collections
 r=Path(__file__).resolve().parents[1]
 def load(p):return json.loads((r/p).read_text(encoding='utf8'))
-x=load('cases/report_version_items.json');y=load('cases/version_boundary_items.json')
+x=load('cases/report_version_items.json');y=load('experiments/baseline_20261029/boundary_items.json')
 assert len(x)==len({a['task_id'] for a in x})==895
 assert sum(bool(a['executed']) for a in x)==125
 assert sum(a['current_category']=='reproduced' for a in x)==106

@@ -1,0 +1,61 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE `t` (
+  `a` int(11) DEFAULT NULL,
+  `b` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+--------------
+
+Warning (Code 1681): Integer display width is deprecated and will be removed in a future release.
+Warning (Code 3719): 'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
+--------------
+insert into t values(1,'my_test　'),(2,'my_test')
+--------------
+
+--------------
+SELECT HEX(b),b FROM t
+--------------
+
+HEX(b)	b
+6D795F74657374E38080	my_test　
+6D795F74657374	my_test
+--------------
+SELECT b FROM t WHERE b='my_test'
+--------------
+
+b
+my_test　
+my_test
+--------------
+set internal_tmp_mem_storage_engine = TempTable
+--------------
+
+--------------
+select b,count(*) from t group by b
+--------------
+
+b	count(*)
+my_test　	1
+my_test	1
+--------------
+SELECT HEX(b) AS stored_hex FROM t ORDER BY a
+--------------
+
+stored_hex
+6D795F74657374E38080
+6D795F74657374
+--------------
+SELECT @@session.internal_tmp_mem_storage_engine
+--------------
+
+@@session.internal_tmp_mem_storage_engine
+TempTable

@@ -1,0 +1,21 @@
+{
+  "normal": "CREATE TABLE t0(c1 NUMERIC CHECK(true))成功，SHOW CREATE TABLE含恒真CHECK，当前库t0存在。",
+  "reported": "CREATE对不引用其他列的true报Column check constraint ... references other column，随后SHOW的1146仅为依赖错误。",
+  "prerequisites": "fresh schema无t0；检查CREATE具体错误文本和阶段，不能用后续1146替代目标错误。",
+  "expected_errors": [
+    {
+      "code": null,
+      "stage": "CREATE TABLE t0",
+      "message_contains": [
+        "Column check constraint",
+        "references other column"
+      ]
+    },
+    {
+      "code": 1146,
+      "stage": "SHOW CREATE TABLE t0 after failed CREATE",
+      "dependent_only": true
+    }
+  ],
+  "boundary_review_note": "Constant TRUE column CHECK must create successfully. Exact 3813 at CREATE is report anomaly; following SHOW 1146 is dependent consequence only."
+}

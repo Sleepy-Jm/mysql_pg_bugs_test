@@ -1,0 +1,84 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+SET @old_sql_mode=@@SESSION.sql_mode
+--------------
+
+--------------
+SET @old_optimizer_switch=@@SESSION.optimizer_switch
+--------------
+
+--------------
+SET SESSION sql_mode=CONCAT_WS(',',NULLIF(@@SESSION.sql_mode,''),'ONLY_FULL_GROUP_BY')
+--------------
+
+--------------
+CREATE TABLE t1(a INT,b INT,c INT)
+--------------
+
+--------------
+CREATE TABLE t2(a INT)
+--------------
+
+--------------
+INSERT INTO t1 VALUES(1,1,1),(2,1,1)
+--------------
+
+--------------
+INSERT INTO t2 VALUES(1),(2),(1)
+--------------
+
+--------------
+SET SESSION optimizer_switch='subquery_to_derived=off'
+--------------
+
+--------------
+SELECT b,(SELECT COUNT(t.a) FROM t2 AS t WHERE t.a=t1.a) AS c FROM t1
+--------------
+
+b	c
+1	2
+1	1
+--------------
+SELECT b,(SELECT COUNT(t.a) FROM t2 AS t WHERE t.a=t1.a) AS c FROM t1 GROUP BY b
+--------------
+
+--------------
+SET SESSION optimizer_switch='subquery_to_derived=on'
+--------------
+
+--------------
+SELECT b,(SELECT COUNT(t.a) FROM t2 AS t WHERE t.a=t1.a) AS c FROM t1 GROUP BY b
+--------------
+
+b	c
+1	2
+--------------
+SELECT * FROM t1 ORDER BY a
+--------------
+
+a	b	c
+1	1	1
+2	1	1
+--------------
+SELECT * FROM t2 ORDER BY a
+--------------
+
+a
+1
+1
+2
+--------------
+SELECT @@sql_mode,@@optimizer_switch
+--------------
+
+@@sql_mode	@@optimizer_switch
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=off,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on,use_invisible_indexes=off,skip_scan=on,hash_join=on,subquery_to_derived=on,prefer_ordering_index=on,hypergraph_optimizer=off,derived_condition_pushdown=on

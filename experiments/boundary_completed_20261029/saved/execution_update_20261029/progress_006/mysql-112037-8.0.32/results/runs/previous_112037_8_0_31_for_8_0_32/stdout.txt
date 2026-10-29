@@ -1,0 +1,67 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+SET @old_optimizer_switch=@@SESSION.optimizer_switch
+--------------
+
+--------------
+CREATE TABLE t1(a INT)
+--------------
+
+--------------
+INSERT INTO t1 VALUES (1),(2),(3),(4)
+--------------
+
+--------------
+ANALYZE TABLE t1
+--------------
+
+Table	Op	Msg_type	Msg_text
+replay_493c2fa088eb934d4f3da03c.t1	analyze	status	OK
+--------------
+SET optimizer_switch='subquery_to_derived=on'
+--------------
+
+--------------
+EXPLAIN analyze SELECT a + (SELECT SUM(a) FROM (SELECT a FROM t1 GROUP BY a) t2 ) FROM t1
+--------------
+
+EXPLAIN
+-> Left hash join (no condition)  (cost=12.48 rows=4) (actual time=0.029..0.036 rows=4 loops=1)
+    -> Table scan on t1  (cost=0.65 rows=4) (actual time=0.008..0.013 rows=4 loops=1)
+    -> Hash
+        -> Table scan on derived_1_2  (cost=9.56..9.56 rows=1) (actual time=0.001..0.001 rows=1 loops=1)
+            -> Materialize  (cost=7.05..7.05 rows=1) (never executed)
+                -> Aggregate: sum(t2.a)  (cost=6.95..6.95 rows=1) (never executed)
+                    -> Table scan on t2  (cost=4.64..6.55 rows=4) (never executed)
+                        -> Materialize  (cost=4.00..4.00 rows=4) (never executed)
+                            -> Table scan on <temporary>  (cost=1.69..3.60 rows=4) (never executed)
+                                -> Temporary table with deduplication  (cost=1.05..1.05 rows=4) (never executed)
+                                    -> Table scan on t1  (cost=0.65 rows=4) (never executed)
+
+--------------
+SELECT a+(SELECT SUM(a) FROM (SELECT a FROM t1 GROUP BY a) t2) AS result_value FROM t1 ORDER BY a
+--------------
+
+result_value
+11
+12
+13
+14
+--------------
+SELECT a FROM t1 ORDER BY a
+--------------
+
+a
+1
+2
+3
+4

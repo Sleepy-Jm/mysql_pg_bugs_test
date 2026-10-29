@@ -1,0 +1,68 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE FRIENDSHIP (
+  USER1_ID INTEGER, 
+  USER2_ID INTEGER,
+  PRIMARY KEY (USER1_ID, USER2_ID)
+)
+--------------
+
+--------------
+INSERT INTO FRIENDSHIP VALUES (1, 0)
+--------------
+
+--------------
+CREATE TABLE LIKES (
+  USER_ID INTEGER, 
+  PAGE_ID INTEGER,
+  PRIMARY KEY (USER_ID, PAGE_ID)
+)
+--------------
+
+--------------
+INSERT INTO LIKES VALUES (2, 0)
+--------------
+
+--------------
+SELECT * FROM (SELECT B.USER_ID, B.PAGE_ID FROM FRIENDSHIP A LEFT JOIN LIKES B 
+ON (A.USER2_ID=B.USER_ID OR A.USER1_ID=B.USER_ID) 
+WHERE (A.USER1_ID=1 OR A.USER2_ID=1) ) TMP 
+WHERE PAGE_ID NOT IN ( SELECT DISTINCT(PAGE_ID) FROM LIKES WHERE USER_ID=1)
+--------------
+
+USER_ID	PAGE_ID
+NULL	NULL
+--------------
+SELECT * FROM (
+SELECT * FROM (SELECT B.USER_ID, B.PAGE_ID FROM FRIENDSHIP A LEFT JOIN LIKES B 
+ON (A.USER2_ID=B.USER_ID OR A.USER1_ID=B.USER_ID) 
+WHERE (A.USER1_ID=1 OR A.USER2_ID=1) ) TMP 
+WHERE PAGE_ID NOT IN ( SELECT DISTINCT(PAGE_ID) FROM LIKES WHERE USER_ID=1)
+) AS T
+--------------
+
+--------------
+SELECT USER1_ID,USER2_ID FROM FRIENDSHIP
+--------------
+
+USER1_ID	USER2_ID
+1	0
+--------------
+SELECT USER_ID,PAGE_ID FROM LIKES
+--------------
+
+USER_ID	PAGE_ID
+2	0
+--------------
+SELECT PAGE_ID FROM LIKES WHERE USER_ID=1
+--------------
+

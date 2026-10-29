@@ -1,0 +1,69 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+create table t1 (vkey int, pkey int)
+--------------
+
+--------------
+insert into t1 values (3, 13000)
+--------------
+
+--------------
+insert into t1 values (5, 15000)
+--------------
+
+--------------
+insert into t1 values (28, 38000)
+--------------
+
+--------------
+select  
+  count(*) as c_1
+from 
+  t1 as ref_0
+where (REPEAT(REPEAT(case when (null <= ref_0.vkey) then (null) else (case when false then ('o#W4O') else ('o#W4O') end) end, ref_0.vkey), ref_0.pkey)) >= 'i'
+--------------
+
+c_1
+2
+Warning (Code 1301): Result of repeat() was larger than max_allowed_packet (67108864) - truncated
+--------------
+SHOW WARNINGS
+--------------
+
+Level	Code	Message
+Warning	1301	Result of repeat() was larger than max_allowed_packet (67108864) - truncated
+--------------
+select  
+  count(*) as c_1
+from 
+  t1 as ref_0
+where (REPEAT(REPEAT(case when (null <= ref_0.vkey) then (null) else ('o#W4O') end, ref_0.vkey), ref_0.pkey)) >= 'i'
+--------------
+
+c_1
+3
+--------------
+SHOW WARNINGS
+--------------
+
+--------------
+SELECT @@max_allowed_packet AS packet_limit
+--------------
+
+packet_limit
+67108864
+--------------
+SELECT COUNT(*) AS loaded_rows,MAX(5*vkey*pkey) AS maximum_generated_bytes FROM t1
+--------------
+
+loaded_rows	maximum_generated_bytes
+3	5320000

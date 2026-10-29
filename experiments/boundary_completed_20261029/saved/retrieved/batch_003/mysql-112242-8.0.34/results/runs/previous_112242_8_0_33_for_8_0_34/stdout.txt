@@ -1,0 +1,63 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+SET @old_optimizer_switch=@@SESSION.optimizer_switch
+--------------
+
+--------------
+CREATE TABLE t0(c0 INT)
+--------------
+
+--------------
+INSERT INTO t0(c0) VALUES(1)
+--------------
+
+--------------
+CREATE INDEX i0 USING HASH ON t0(c0) INVISIBLE
+--------------
+
+Note (Code 3502): This storage engine does not support the HASH index algorithm, storage engine default was used instead.
+--------------
+SET SESSION optimizer_switch = 'use_invisible_indexes=off'
+--------------
+
+--------------
+SELECT t0.c0 FROM t0 WHERE COALESCE(0.6) IN (t0.c0)
+--------------
+
+--------------
+SET SESSION optimizer_switch = 'use_invisible_indexes=on'
+--------------
+
+--------------
+SELECT t0.c0 FROM t0 WHERE COALESCE(0.6) IN (t0.c0)
+--------------
+
+c0
+1
+--------------
+SELECT c0 FROM t0
+--------------
+
+c0
+1
+--------------
+SELECT INDEX_NAME,INDEX_TYPE,IS_VISIBLE FROM information_schema.statistics WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='t0'
+--------------
+
+INDEX_NAME	INDEX_TYPE	IS_VISIBLE
+i0	BTREE	NO
+--------------
+SELECT @@optimizer_switch
+--------------
+
+@@optimizer_switch
+index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=off,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on,use_invisible_indexes=on,skip_scan=on,hash_join=on,subquery_to_derived=off,prefer_ordering_index=on,hypergraph_optimizer=off,derived_condition_pushdown=on

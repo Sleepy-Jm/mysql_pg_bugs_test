@@ -1,0 +1,57 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE t(id INT,c1 VARCHAR(10) COLLATE utf8mb4_bin) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+--------------
+
+--------------
+INSERT INTO t VALUES(1,'abc'),(2,'abc ')
+--------------
+
+--------------
+SET character_set_connection=utf8mb3
+--------------
+
+Warning (Code 1287): 'utf8mb3' is deprecated and will be removed in a future release. Please use utf8mb4 instead
+--------------
+SELECT * FROM t WHERE c1='abc' AND c1='abc '
+--------------
+
+id	c1
+1	abc
+2	abc 
+--------------
+SET character_set_connection=utf8mb4
+--------------
+
+--------------
+SELECT * FROM t WHERE c1='abc' AND c1='abc '
+--------------
+
+--------------
+SELECT id,HEX(c1) AS stored_hex FROM t ORDER BY id
+--------------
+
+id	stored_hex
+1	616263
+2	61626320
+--------------
+SELECT COLLATION_NAME,PAD_ATTRIBUTE FROM information_schema.COLLATIONS WHERE COLLATION_NAME='utf8mb4_bin'
+--------------
+
+COLLATION_NAME	PAD_ATTRIBUTE
+utf8mb4_bin	PAD SPACE
+--------------
+SELECT @@character_set_connection,@@collation_connection
+--------------
+
+@@character_set_connection	@@collation_connection
+utf8mb4	utf8mb4_0900_ai_ci

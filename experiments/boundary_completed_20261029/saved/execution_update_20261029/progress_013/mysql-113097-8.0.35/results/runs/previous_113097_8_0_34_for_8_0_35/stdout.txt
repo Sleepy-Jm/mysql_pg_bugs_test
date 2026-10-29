@@ -1,0 +1,74 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+SET @case_optimizer=@@session.optimizer_switch
+--------------
+
+--------------
+CREATE TABLE temp (createdAt datetime, timezone varchar(64))
+--------------
+
+--------------
+INSERT INTO temp VALUES ('2022-02-15 16:47:12', null)
+--------------
+
+--------------
+SELECT
+  *
+FROM
+  (
+    SELECT
+      coalesce(timezone, '+00:00') tz,
+      convert_tz(createdAt, '+00:00', (select tz)) ca,
+      if(createdAt, if((select 1) = 1, 1, 1), 1) random
+    FROM temp
+  ) aux
+   WHERE ca = '2022-02-15 16:47:12'
+--------------
+
+--------------
+SET SESSION optimizer_switch='derived_condition_pushdown=off'
+--------------
+
+--------------
+SELECT
+  *
+FROM
+  (
+    SELECT
+      coalesce(timezone, '+00:00') tz,
+      convert_tz(createdAt, '+00:00', (select tz)) ca,
+      if(createdAt, if((select 1) = 1, 1, 1), 1) random
+    FROM temp
+  ) aux
+   WHERE ca = '2022-02-15 16:47:12'
+--------------
+
+tz	ca	random
++00:00	2022-02-15 16:47:12	1
+--------------
+SELECT createdAt,timezone FROM temp
+--------------
+
+createdAt	timezone
+2022-02-15 16:47:12	NULL
+--------------
+SELECT CONVERT_TZ('2022-02-15 16:47:12','+00:00','+00:00') AS fixed_offset_control
+--------------
+
+fixed_offset_control
+2022-02-15 16:47:12
+--------------
+SELECT @case_optimizer
+--------------
+
+@case_optimizer
+index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=off,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on,use_invisible_indexes=off,skip_scan=on,hash_join=on,subquery_to_derived=off,prefer_ordering_index=on,hypergraph_optimizer=off,derived_condition_pushdown=on

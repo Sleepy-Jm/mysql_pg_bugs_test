@@ -1,0 +1,54 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE ta(id BIGINT,PRIMARY KEY(id))
+--------------
+
+--------------
+INSERT INTO ta(id) VALUES(1801425248110076165)
+--------------
+
+--------------
+CREATE TABLE tb(value VARCHAR(50))
+--------------
+
+--------------
+INSERT INTO tb(value) VALUES("1801425248110076222")
+--------------
+
+--------------
+SELECT value FROM tb WHERE value IN(SELECT id FROM ta)
+--------------
+
+--------------
+SELECT value FROM tb WHERE value IN(SELECT /*+no_index(ta)*/ id FROM ta)
+--------------
+
+value
+1801425248110076222
+--------------
+SELECT id FROM ta
+--------------
+
+id
+1801425248110076165
+--------------
+SELECT value,HEX(value) AS stored_hex FROM tb
+--------------
+
+value	stored_hex
+1801425248110076222	31383031343235323438313130303736323232
+--------------
+SELECT @@session.sql_mode
+--------------
+
+@@session.sql_mode
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION

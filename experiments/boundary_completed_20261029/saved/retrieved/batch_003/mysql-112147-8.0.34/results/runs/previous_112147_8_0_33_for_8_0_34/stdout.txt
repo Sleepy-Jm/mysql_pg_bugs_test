@@ -1,0 +1,46 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE t(a INT,j JSON,INDEX kj((CAST(j AS DATE ARRAY))))
+--------------
+
+--------------
+INSERT INTO t VALUES(1,JSON_ARRAY(CAST("2010-10-10" AS DATE),CAST("2010-10-10" AS DATE)))
+--------------
+
+--------------
+SELECT * FROM t USE INDEX(kj) WHERE "2010-10-10" MEMBER OF(j)
+--------------
+
+a	j
+1	["2010-10-10", "2010-10-10"]
+--------------
+SELECT * FROM t IGNORE INDEX(kj) WHERE "2010-10-10" MEMBER OF(j)
+--------------
+
+--------------
+SELECT * FROM t IGNORE INDEX(kj) WHERE DATE'2010-10-10' MEMBER OF(j)
+--------------
+
+a	j
+1	["2010-10-10", "2010-10-10"]
+--------------
+SELECT a,CAST(j AS CHAR) AS stored_json,JSON_TYPE(JSON_EXTRACT(j,'$[0]')) AS element_type FROM t
+--------------
+
+a	stored_json	element_type
+1	["2010-10-10", "2010-10-10"]	DATE
+--------------
+SELECT @@session.sql_mode
+--------------
+
+@@session.sql_mode
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION

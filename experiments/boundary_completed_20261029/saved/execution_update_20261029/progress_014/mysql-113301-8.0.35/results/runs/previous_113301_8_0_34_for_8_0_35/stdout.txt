@@ -1,0 +1,94 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE test_time(id_col int,`time_6` time(6) DEFAULT '01:01:01.000000', `time_0` time)
+--------------
+
+--------------
+insert into test_time(id_col,time_6,time_0) values
+(31,'07:59:59.000000', '07:59:59'),
+(32,'07:59:59.000000', '07:59:59'),
+(51,'00:00:00.000000', '00:00:00'),
+(52,'00:00:00.000000', '00:00:00'),
+(71,'06:06:06.000000', '06:06:06'),
+(72,'06:06:06.000000', '06:06:06')
+--------------
+
+--------------
+prepare stmt from "SELECT id_col,time_6,time_0 FROM test_time WHERE test_time.time_6 IN (?, '06:06:06.000000','00:00:00');"
+--------------
+
+--------------
+set @time_val='07:59:59'
+--------------
+
+--------------
+execute stmt USING @time_val
+--------------
+
+id_col	time_6	time_0
+31	07:59:59.000000	07:59:59
+32	07:59:59.000000	07:59:59
+--------------
+SELECT id_col,time_6,time_0 FROM test_time WHERE time_6 IN ('07:59:59','06:06:06.000000','00:00:00')
+--------------
+
+id_col	time_6	time_0
+31	07:59:59.000000	07:59:59
+32	07:59:59.000000	07:59:59
+51	00:00:00.000000	00:00:00
+52	00:00:00.000000	00:00:00
+71	06:06:06.000000	06:06:06
+72	06:06:06.000000	06:06:06
+--------------
+DEALLOCATE PREPARE stmt
+--------------
+
+--------------
+PREPARE stmt0 FROM "SELECT id_col,time_6,time_0 FROM test_time WHERE time_0 IN (?, '06:06:06.000000','00:00:00');"
+--------------
+
+--------------
+EXECUTE stmt0 USING @time_val
+--------------
+
+--------------
+SELECT id_col,time_6,time_0 FROM test_time WHERE time_0 IN ('07:59:59','06:06:06.000000','00:00:00')
+--------------
+
+id_col	time_6	time_0
+31	07:59:59.000000	07:59:59
+32	07:59:59.000000	07:59:59
+51	00:00:00.000000	00:00:00
+52	00:00:00.000000	00:00:00
+71	06:06:06.000000	06:06:06
+72	06:06:06.000000	06:06:06
+--------------
+DEALLOCATE PREPARE stmt0
+--------------
+
+--------------
+SELECT id_col,time_6,time_0 FROM test_time ORDER BY id_col
+--------------
+
+id_col	time_6	time_0
+31	07:59:59.000000	07:59:59
+32	07:59:59.000000	07:59:59
+51	00:00:00.000000	00:00:00
+52	00:00:00.000000	00:00:00
+71	06:06:06.000000	06:06:06
+72	06:06:06.000000	06:06:06
+--------------
+SELECT @@sql_mode
+--------------
+
+@@sql_mode
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION

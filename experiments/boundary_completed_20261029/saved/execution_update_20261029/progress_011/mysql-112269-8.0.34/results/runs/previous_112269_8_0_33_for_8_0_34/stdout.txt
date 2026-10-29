@@ -1,0 +1,53 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE t0(c0 DECIMAL UNIQUE)
+--------------
+
+--------------
+CREATE TABLE t2(c0 FLOAT, c1 TEXT)
+--------------
+
+--------------
+CREATE INDEX i0 ON t2(c1(1))
+--------------
+
+--------------
+INSERT INTO t0 VALUES(1)
+--------------
+
+--------------
+INSERT INTO t2 VALUES(NULL, '1j')
+--------------
+
+--------------
+SELECT * FROM t0, t2 WHERE t2.c1 = t0.c0
+--------------
+
+c0	c0	c1
+1	NULL	1j
+--------------
+SELECT /*+ JOIN_ORDER(t2, t0)*/ * FROM t0, t2 WHERE t2.c1 = t0.c0
+--------------
+
+Warning (Code 1366): Incorrect decimal value: '1j' for column 'c0' at row 1
+--------------
+SELECT * FROM t0
+--------------
+
+c0
+1
+--------------
+SELECT * FROM t2
+--------------
+
+c0	c1
+NULL	1j

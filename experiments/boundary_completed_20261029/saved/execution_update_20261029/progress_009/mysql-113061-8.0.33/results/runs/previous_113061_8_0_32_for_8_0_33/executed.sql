@@ -1,0 +1,36 @@
+USE `replay_be3d4246b670f413e13fd77c`;
+SET time_zone="+00:00";
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset;
+-- MySQL report #113061; source anchors: cmain
+-- Prepared offline; NOT EXECUTED. Run only in a disposable isolated environment.
+CREATE TABLE `t1` (
+  `a` int(11) NOT NULL AUTO_INCREMENT,
+  `b` varchar(40) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
+  `c` varchar(40) DEFAULT NULL,
+  PRIMARY KEY (`a`),
+  KEY `idx_b_l` (`b`),
+  KEY `idx_c_l` (`c`)
+);
+
+insert into t1(b,c) values ('6RXmcRyA48c0yvZ2I' ,'6RXmcRyA48c0yvZ2I');
+insert into t1(b,c) values ('G6UHU26b8dkvwpYiM' ,'G6UHU26b8dkvwpYiM');
+insert into t1(b,c) values ('0XS2E55maqch' ,'0XS2E55maqch');
+insert into t1(b,c) values ('0qwCMwobKYOcmLyfRXlagA8ukENJv' ,'0qwCMwobKYOcmLyfRXlagA8ukENJv');
+insert into t1(b,c) values ('3avxIDL4YPrZVHie4rOiPrK8ZIJwEPqZaioHK' ,'3avxIDL4YPrZVHie4rOiPrK8ZIJwEPqZaioHK');
+insert into t1(b,c) values ('5DHC2QScT6P6lXgRtHajXOfztB7ddjYH1LLUC3' ,'5DHC2QScT6P6lXgRtHajXOfztB7ddjYH1LLUC3');
+insert into t1(b,c) values ('5pdGQ2NTM3c2uRgCg9NspSE' ,'5pdGQ2NTM3c2uRgCg9NspSE');
+insert into t1(b,c) values ('6Bk06GVtwZaKqg01' ,'6Bk06GVtwZaKqg01');
+insert into t1(b,c) values ('6VFO4xJPwvxGzReYzVj6dwTSIechnSSCyz9iY' ,'6VFO4xJPwvxGzReYzVj6dwTSIechnSSCyz9iY');
+insert into t1(b,c) values ('6hLBs3Rnd5elLLVv1ip3A2U6G1dkIApKDkiCy' ,'6hLBs3Rnd5elLLVv1ip3A2U6G1dkIApKDkiCy');
+
+
+select avg(distinct b) from t1 force index(primary);
+select avg(distinct b) from t1;
+select sum(distinct b) from t1 force index(primary);
+select sum(distinct b) from t1;
+SELECT DISTINCT b,b+0 FROM t1;
+
+-- Read-only evidence after the unchanged source SQL, same session.
+SELECT COUNT(*) AS loaded_rows FROM t1;
+EXPLAIN SELECT AVG(DISTINCT b) FROM t1 FORCE INDEX(PRIMARY);
+EXPLAIN SELECT AVG(DISTINCT b) FROM t1;

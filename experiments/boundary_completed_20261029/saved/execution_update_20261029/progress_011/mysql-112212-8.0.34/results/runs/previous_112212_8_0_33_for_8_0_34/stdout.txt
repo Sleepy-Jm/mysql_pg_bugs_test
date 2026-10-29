@@ -1,0 +1,104 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+SET @old_optimizer_switch=@@SESSION.optimizer_switch
+--------------
+
+--------------
+SET SESSION optimizer_switch='subquery_to_derived=off'
+--------------
+
+--------------
+CREATE TABLE type1(c1 bit(8), c2 json, c3 int, c4 json)
+--------------
+
+--------------
+INSERT INTO type1 VALUES(b'1010', '{"key1": "value1", "key2": "value2"}', 1, '["key1"]')
+--------------
+
+--------------
+INSERT INTO type1 VALUES(b'1011', '{"key1": "value1", "key2": "value2"}', 2, '["key2", "key22"]')
+--------------
+
+--------------
+INSERT INTO type1 VALUES(b'1111', '{"key3": "value3", "key3": "value3"}', 3, '{"key3": 3}')
+--------------
+
+--------------
+INSERT INTO type1 VALUES(null, null, null, '["key4"]')
+--------------
+
+--------------
+CREATE TABLE type2(c1 bit(8), c2 json, c3 int, c4 varchar(20))
+--------------
+
+--------------
+INSERT INTO type2 VALUES(b'1010', '{"key1": "value1", "key2": "value2"}', 1, "key1")
+--------------
+
+--------------
+INSERT INTO type2 VALUES(b'1100', '{"key2": "value2", "key2": "value2"}', 2, "key2")
+--------------
+
+--------------
+INSERT INTO type2 VALUES(b'1100', '{"key2": "value2", "key2": "value2"}', 2, "key22")
+--------------
+
+--------------
+INSERT INTO type2 VALUES(b'1111', '{"key3": "value3", "key3": "value3"}', 3, "key3")
+--------------
+
+--------------
+INSERT INTO type2 VALUES(null, null, null, "key4")
+--------------
+
+--------------
+SELECT BIN(c1), c3 FROM type1 where c2 = (select var_pop(c2) from type2 where type2.c1 = type1.c1)
+--------------
+
+Warning (Code 3156): Invalid JSON value for CAST to DOUBLE from column c2 at row 1
+Warning (Code 3156): Invalid JSON value for CAST to DOUBLE from column c2 at row 1
+--------------
+set @@optimizer_switch='subquery_to_derived=on'
+--------------
+
+--------------
+SELECT BIN(c1), c3 FROM type1 where c2 = (select var_pop(c2) from type2 where type2.c1 = type1.c1)
+--------------
+
+BIN(c1)	c3
+1010	1
+1111	3
+Warning (Code 3156): Invalid JSON value for CAST to DOUBLE from column c2 at row 1
+Warning (Code 3156): Invalid JSON value for CAST to DOUBLE from column c2 at row 1
+Warning (Code 3156): Invalid JSON value for CAST to DOUBLE from column c2 at row 1
+Warning (Code 3156): Invalid JSON value for CAST to DOUBLE from column c2 at row 1
+Warning (Code 3156): Invalid JSON value for CAST to DOUBLE from column c2 at row 1
+Warning (Code 3156): Invalid JSON value for CAST to DOUBLE from column c2 at row 1
+Warning (Code 3156): Invalid JSON value for CAST to DOUBLE from column c2 at row 1
+--------------
+SELECT COUNT(*) AS type1_rows FROM type1
+--------------
+
+type1_rows
+4
+--------------
+SELECT COUNT(*) AS type2_rows FROM type2
+--------------
+
+type2_rows
+5
+--------------
+SELECT @@optimizer_switch
+--------------
+
+@@optimizer_switch
+index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=off,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on,use_invisible_indexes=off,skip_scan=on,hash_join=on,subquery_to_derived=on,prefer_ordering_index=on,hypergraph_optimizer=off,derived_condition_pushdown=on

@@ -1,0 +1,76 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+SET @old_optimizer_switch=@@SESSION.optimizer_switch
+--------------
+
+--------------
+SET SESSION optimizer_switch='subquery_to_derived=off'
+--------------
+
+--------------
+create table t_doc (id int, doc JSON )
+--------------
+
+--------------
+insert into t_doc values
+  (1, '{"match11": "eleven", "match12": "element", "notMatch": "elven" }' ),
+  (2, '{"match21": "eleven", "match22": "element", "notMatch": "elven" }' ),
+  (3, '{"match31": "tw%elve", "match32": "tw%ilight", "notMatch": "twitter" }' )
+--------------
+
+--------------
+create table t_search_string (id int, search_string varchar(20) )
+--------------
+
+--------------
+insert into t_search_string values
+  (1, 'ele%' ),
+  (2, 'ele%' ),
+  (3, 'tw|%%' )
+--------------
+
+--------------
+select t.id, json_search( doc, 'all', (select search_string from t_search_string s where s.id = t.id), '|' )
+from t_doc t order by id
+--------------
+
+id	json_search( doc, 'all', (select search_string from t_search_string s where s.id = t.id), '|' )
+1	["$.match11", "$.match12"]
+2	["$.match21", "$.match22"]
+3	["$.match31", "$.match32"]
+--------------
+SET SESSION optimizer_switch='subquery_to_derived=on'
+--------------
+
+--------------
+select t.id, json_search( doc, 'all', (select search_string from t_search_string s where s.id = t.id), '|' ) from t_doc t order by id
+--------------
+
+id	json_search( doc, 'all', (select search_string from t_search_string s where s.id = t.id), '|' )
+1	NULL
+1	NULL
+2	NULL
+2	NULL
+3	NULL
+3	NULL
+--------------
+SELECT COUNT(*) AS doc_rows FROM t_doc
+--------------
+
+doc_rows
+3
+--------------
+SELECT COUNT(*) AS search_rows,COUNT(DISTINCT id) AS unique_ids FROM t_search_string
+--------------
+
+search_rows	unique_ids
+3	3

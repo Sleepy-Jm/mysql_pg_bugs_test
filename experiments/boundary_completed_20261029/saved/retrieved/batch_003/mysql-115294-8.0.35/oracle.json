@@ -1,0 +1,20 @@
+{
+  "normal": "等值、全扫、范围、IN四类实际取行均使P_S table/index读取计数增长；不要求计数等于结果行数",
+  "reported": "等值/全扫计数增长，PRIMARY range及IN真实返回3/2行但P_S读取计数增量为0",
+  "prerequisites": [
+    "全新隔离 schema；固定并记录 SQL mode、字符集、引擎、实际版本",
+    "仪表开启且独占测试表",
+    "记录增量而非比较累积绝对数",
+    "保留重报115298关系",
+    "P_S表IO仪表及消费者预先启用、独占表；不能将未启用或估计行数当计数缺陷",
+    "performance_schema ON and wait/io/table/sql/handler already ENABLED=YES; do not change global instrumentation; control counters must increase"
+  ],
+  "expected_errors": [],
+  "kind": "metadata_difference",
+  "source_oracle": {
+    "kind": "metadata_difference",
+    "expected": "独占表上确有取行的四类查询应使对应PS读取计数增加；range/IN不可完全不计",
+    "failure": "等值/全扫计数增长但range/IN增量为0",
+    "limitations": "仅静态准备；未确认目标版本行为。正常 SQL 错误、能力缺失及环境不满足不能计作已复现。"
+  }
+}

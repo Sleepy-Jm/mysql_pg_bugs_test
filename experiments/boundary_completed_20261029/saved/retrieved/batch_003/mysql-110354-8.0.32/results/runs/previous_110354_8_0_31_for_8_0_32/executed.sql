@@ -1,0 +1,40 @@
+USE `replay_a3dc35f2baf57d2ce9a41927`;
+SET time_zone="+00:00";
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset;
+-- Report #110354; source anchors: cmain, f32102
+-- Static preparation only; not executed. See case.json before any future isolated run.
+SET @case_old_mode=@@session.sql_mode, @case_old_tz=@@session.time_zone;
+SET SESSION sql_mode='';
+SET SESSION time_zone='+08:00';
+# prepare table and data
+CREATE TABLE tt(a timestamp, b time, KEY b_idx(b), KEY a_b_idx(a,b));
+INSERT INTO tt VALUES('2020-12-01 10:00:00', '02:59:59.000000');
+INSERT INTO tt VALUES('2020-11-01 10:00:00', '03:59:59.000000');
+INSERT INTO tt VALUES('2020-10-01 10:00:00', '04:59:59.000000');
+INSERT INTO tt VALUES('2020-09-01 10:00:00', '05:59:59.000000');
+INSERT INTO tt VALUES('2020-08-01 10:00:00', '06:59:59.000000');
+INSERT INTO tt VALUES('2020-07-01 10:00:00', '07:59:59.000000');
+INSERT INTO tt VALUES('2020-05-06 10:00:00', '08:59:59.000000');
+INSERT INTO tt VALUES('2020-04-04 10:00:00', '20:59:59.000000');
+INSERT INTO tt VALUES('2020-03-02 10:00:00', '09:09:59.000000');
+INSERT INTO tt VALUES('2020-02-03 10:00:00', '10:59:59.000000');
+INSERT INTO tt VALUES('2020-01-01 10:00:00', '23:23:59.000000');
+INSERT INTO tt VALUES('2020-01-01 10:00:00', '01:59:59.000000');
+INSERT INTO tt VALUES('2020-01-01 00:00:01', '12:00:00.000000');
+INSERT INTO tt VALUES('2008-10-02 12:20:00', NULL);
+INSERT INTO tt VALUES('1999-09-02 12:20:00', NULL);
+INSERT INTO tt VALUES('1998-09-02 12:20:00', NULL);
+INSERT INTO tt VALUES('1997-09-02 12:20:00', NULL);
+INSERT INTO tt VALUES('1995-09-02 12:20:00', NULL);
+INSERT INTO tt VALUES('1992-03-04 12:20:00', NULL);
+INSERT INTO tt VALUES('1970-01-01 08:00:01', '24:59:59.000000');
+INSERT INTO tt VALUES('0000-00-00 00:00:00', '00:00:00.000000');
+
+# return 6 rows 
+SELECT * FROM tt FORCE INDEX(b_idx) WHERE b NOT BETWEEN '06:59:59.000000' AND NULL;
+# return 15 rows
+SELECT * FROM tt FORCE INDEX(a_b_idx) WHERE b NOT BETWEEN '06:59:59.000000' AND NULL;
+SELECT * FROM tt IGNORE INDEX(b_idx,a_b_idx) WHERE b NOT BETWEEN '06:59:59.000000' AND NULL;
+
+-- Read-only evidence after the unchanged source SQL, same session.
+SELECT COUNT(*) AS loaded_rows,COUNT(b) AS nonnull_b,SUM(b<'06:59:59') AS lower_rows,@@session.sql_mode AS actual_mode,@@session.time_zone AS actual_tz FROM tt;

@@ -1,0 +1,59 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+DROP TABLE IF EXISTS `test`
+--------------
+
+Note (Code 1051): Unknown table 'replay_286ff1a123b099905db15602.test'
+--------------
+CREATE TABLE `test` (
+  `time_col` time(6) DEFAULT NULL,
+  `mediumint_col` mediumint DEFAULT NULL,
+  KEY `ndx_mediumint_col` (`mediumint_col` DESC),
+  KEY `ndx_time_col` (`time_col` DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+--------------
+
+Warning (Code 3719): 'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
+--------------
+INSERT INTO `test` VALUES (NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,NULL),(NULL,NULL),(NULL,NULL),(NULL,NULL),(NULL,NULL),('23:23:59.000000',-8388608),('23:23:59.000000',-8388608),('23:23:59.000000',-8388608),('23:23:59.000000',-8388608),('23:23:59.000000',-8388608),('20:59:59.000000',-8388608),('20:59:59.000000',-8388608),('20:59:59.000000',-8388608),('20:59:59.000000',-8388608),('20:59:59.000000',-8388608),('08:59:59.000000',-8388608),('08:59:59.000000',-8388608),('08:59:59.000000',-8388608),('08:59:59.000000',-8388608),('08:59:59.000000',-8388608),('10:59:59.000000',-8388608),('10:59:59.000000',-8388608),('10:59:59.000000',-8388608),('10:59:59.000000',-8388608),('10:59:59.000000',-8388608),('07:59:59.000000',-8388608),('07:59:59.000000',-8388608),('07:59:59.000000',-8388608),('07:59:59.000000',-8388608),('07:59:59.000000',-8388608),('01:59:59.000000',-8388608),('01:59:59.000000',-8388608),('01:59:59.000000',-8388608),('01:59:59.000000',-8388608),('01:59:59.000000',-8388608),('06:59:59.000000',-8388608),('06:59:59.000000',-8388608),('06:59:59.000000',-8388608),('06:59:59.000000',-8388608),('06:59:59.000000',-8388608),('03:59:59.000000',-8388608),('03:59:59.000000',-8388608),('03:59:59.000000',-8388608),('03:59:59.000000',-8388608),('03:59:59.000000',-8388608),('09:09:59.000000',-8388608),('09:09:59.000000',-8388608),('09:09:59.000000',-8388608),('09:09:59.000000',-8388608),('09:09:59.000000',-8388608),('05:59:59.000000',-8388608),('05:59:59.000000',-8388608),('05:59:59.000000',-8388608),('05:59:59.000000',-8388608),('05:59:59.000000',-8388608),('04:59:59.000000',-8388608),('04:59:59.000000',-8388608),('04:59:59.000000',-8388608),('04:59:59.000000',-8388608),('04:59:59.000000',-8388608),('02:59:59.000000',-8388608),('02:59:59.000000',-8388608),('02:59:59.000000',-8388608),('02:59:59.000000',-8388608),('02:59:59.000000',-8388608),(NULL,1),(NULL,1),(NULL,1),(NULL,1),(NULL,1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1),('12:00:00.000000',1)
+--------------
+
+--------------
+SELECT time_col, mediumint_col
+FROM test
+WHERE time_col IS NOT UNKNOWN
+	AND time_col NOT BETWEEN '06:59:59.000000' AND NULL
+	OR time_col < '10:59:59.000000'
+GROUP BY 1, 2
+ORDER BY 1, 2
+--------------
+
+time_col	mediumint_col
+01:59:59.000000	-8388608
+02:59:59.000000	-8388608
+03:59:59.000000	-8388608
+04:59:59.000000	-8388608
+05:59:59.000000	-8388608
+06:59:59.000000	-8388608
+07:59:59.000000	-8388608
+08:59:59.000000	-8388608
+09:09:59.000000	-8388608
+10:59:59.000000	-8388608
+12:00:00.000000	1
+20:59:59.000000	-8388608
+23:23:59.000000	-8388608
+--------------
+SELECT COUNT(*) AS loaded_rows,COUNT(time_col) AS nonnull_time_rows FROM test
+--------------
+
+loaded_rows	nonnull_time_rows
+103	73

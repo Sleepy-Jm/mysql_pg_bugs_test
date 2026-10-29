@@ -1,0 +1,41 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE t1(a INTEGER,b INTEGER,PRIMARY KEY(a))
+--------------
+
+--------------
+CREATE TABLE t2(a INTEGER,b INTEGER,PRIMARY KEY(a,b))
+--------------
+
+--------------
+INSERT INTO t1 VALUES(1,1),(2,2)
+--------------
+
+--------------
+INSERT INTO t2 VALUES(2,1),(2,2),(2,3),(2,4)
+--------------
+
+--------------
+ANALYZE TABLE t1,t2
+--------------
+
+Table	Op	Msg_type	Msg_text
+replay_51f2adafc4f3aa0bba4a4a0c.t1	analyze	status	OK
+replay_51f2adafc4f3aa0bba4a4a0c.t2	analyze	status	OK
+--------------
+EXPLAIN FORMAT=TREE SELECT t1.b FROM t1 JOIN t2 WHERE t1.a=t2.a AND t2.a=2 AND t2.b>=t1.b AND t2.b<=t1.b+2
+--------------
+
+EXPLAIN
+-> Filter: ((t2.a = 2) and (t2.b >= '2') and (t2.b <= <cache>(('2' + 2))))  (cost=0.861 rows=3)
+    -> Covering index range scan on t2 using PRIMARY over (a = 2 AND 2 <= b)  (cost=0.861 rows=3)
+

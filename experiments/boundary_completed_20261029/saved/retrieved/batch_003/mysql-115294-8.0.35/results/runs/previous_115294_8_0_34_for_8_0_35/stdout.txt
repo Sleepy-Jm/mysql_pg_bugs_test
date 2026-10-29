@@ -1,0 +1,207 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE `t` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `col1` int DEFAULT NULL,
+  `col2` varchar(20) DEFAULT NULL,
+  `partition_key` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`,`partition_key`),
+  KEY `idx_col2` (`col2`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+/*!50100 PARTITION BY RANGE (to_days(`partition_key`))
+(PARTITION p20240528 VALUES LESS THAN (739400) ENGINE = InnoDB,
+ PARTITION p20240529 VALUES LESS THAN (739401) ENGINE = InnoDB,
+ PARTITION p20240530 VALUES LESS THAN (739402) ENGINE = InnoDB,
+ PARTITION p20240531 VALUES LESS THAN (739403) ENGINE = InnoDB,
+ PARTITION p20240601 VALUES LESS THAN (739404) ENGINE = InnoDB,
+ PARTITION p20240602 VALUES LESS THAN (739405) ENGINE = InnoDB,
+ PARTITION p20240603 VALUES LESS THAN (739406) ENGINE = InnoDB,
+ PARTITION p20240604 VALUES LESS THAN (739407) ENGINE = InnoDB,
+ PARTITION p20240605 VALUES LESS THAN (739408) ENGINE = InnoDB,
+ PARTITION p20240606 VALUES LESS THAN (739409) ENGINE = InnoDB,
+ PARTITION p20240607 VALUES LESS THAN (739410) ENGINE = InnoDB,
+ PARTITION p20240608 VALUES LESS THAN (739411) ENGINE = InnoDB,
+ PARTITION p20240609 VALUES LESS THAN (739412) ENGINE = InnoDB,
+ PARTITION p20240610 VALUES LESS THAN (739413) ENGINE = InnoDB,
+ PARTITION p20240611 VALUES LESS THAN (739414) ENGINE = InnoDB,
+ PARTITION p20240612 VALUES LESS THAN (739415) ENGINE = InnoDB,
+ PARTITION p20240613 VALUES LESS THAN (739416) ENGINE = InnoDB,
+ PARTITION p20240614 VALUES LESS THAN (739417) ENGINE = InnoDB,
+ PARTITION p20240615 VALUES LESS THAN (739418) ENGINE = InnoDB,
+ PARTITION p20240616 VALUES LESS THAN (739419) ENGINE = InnoDB,
+ PARTITION p20240617 VALUES LESS THAN (739420) ENGINE = InnoDB,
+ PARTITION p20240618 VALUES LESS THAN (739421) ENGINE = InnoDB,
+ PARTITION pMax VALUES LESS THAN MAXVALUE ENGINE = InnoDB) */
+--------------
+
+--------------
+INSERT INTO t VALUES(NULL,1,'abc','2024-06-12'),(NULL,2,'abc','2024-06-12'),(NULL,3,'abc','2024-06-12'),(NULL,1,'bcd','2024-06-11'),(NULL,2,'bcd','2024-06-11'),(NULL,2,'bcd','2024-06-10')
+--------------
+
+--------------
+SELECT NAME,ENABLED,TIMED FROM performance_schema.setup_instruments WHERE NAME='wait/io/table/sql/handler'
+--------------
+
+NAME	ENABLED	TIMED
+wait/io/table/sql/handler	YES	YES
+--------------
+SELECT OBJECT_SCHEMA,OBJECT_NAME,COUNT_STAR,COUNT_READ,COUNT_FETCH FROM performance_schema.table_io_waits_summary_by_table WHERE OBJECT_SCHEMA=DATABASE() AND OBJECT_NAME='t'
+--------------
+
+OBJECT_SCHEMA	OBJECT_NAME	COUNT_STAR	COUNT_READ	COUNT_FETCH
+replay_73b99a542773366205f04ae0	t	6	0	0
+--------------
+SELECT OBJECT_SCHEMA,OBJECT_NAME,INDEX_NAME,COUNT_STAR,COUNT_READ,COUNT_FETCH FROM performance_schema.table_io_waits_summary_by_index_usage WHERE OBJECT_SCHEMA=DATABASE() AND OBJECT_NAME='t'
+--------------
+
+OBJECT_SCHEMA	OBJECT_NAME	INDEX_NAME	COUNT_STAR	COUNT_READ	COUNT_FETCH
+replay_73b99a542773366205f04ae0	t	PRIMARY	0	0	0
+replay_73b99a542773366205f04ae0	t	idx_col2	0	0	0
+replay_73b99a542773366205f04ae0	t	NULL	6	0	0
+--------------
+EXPLAIN SELECT * FROM t WHERE id=1
+--------------
+
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	t	p20240528,p20240529,p20240530,p20240531,p20240601,p20240602,p20240603,p20240604,p20240605,p20240606,p20240607,p20240608,p20240609,p20240610,p20240611,p20240612,p20240613,p20240614,p20240615,p20240616,p20240617,p20240618,pMax	ref	PRIMARY	PRIMARY	8	const	1	100.00	NULL
+Note (Code 1003): /* select#1 */ select `replay_73b99a542773366205f04ae0`.`t`.`id` AS `id`,`replay_73b99a542773366205f04ae0`.`t`.`col1` AS `col1`,`replay_73b99a542773366205f04ae0`.`t`.`col2` AS `col2`,`replay_73b99a542773366205f04ae0`.`t`.`partition_key` AS `partition_key` from `replay_73b99a542773366205f04ae0`.`t` where (`replay_73b99a542773366205f04ae0`.`t`.`id` = 1)
+--------------
+SELECT * FROM t WHERE id=1
+--------------
+
+id	col1	col2	partition_key
+1	1	abc	2024-06-12 00:00:00
+--------------
+SELECT OBJECT_SCHEMA,OBJECT_NAME,COUNT_STAR,COUNT_READ,COUNT_FETCH FROM performance_schema.table_io_waits_summary_by_table WHERE OBJECT_SCHEMA=DATABASE() AND OBJECT_NAME='t'
+--------------
+
+OBJECT_SCHEMA	OBJECT_NAME	COUNT_STAR	COUNT_READ	COUNT_FETCH
+replay_73b99a542773366205f04ae0	t	8	2	2
+--------------
+SELECT OBJECT_SCHEMA,OBJECT_NAME,INDEX_NAME,COUNT_STAR,COUNT_READ,COUNT_FETCH FROM performance_schema.table_io_waits_summary_by_index_usage WHERE OBJECT_SCHEMA=DATABASE() AND OBJECT_NAME='t'
+--------------
+
+OBJECT_SCHEMA	OBJECT_NAME	INDEX_NAME	COUNT_STAR	COUNT_READ	COUNT_FETCH
+replay_73b99a542773366205f04ae0	t	PRIMARY	2	2	2
+replay_73b99a542773366205f04ae0	t	idx_col2	0	0	0
+replay_73b99a542773366205f04ae0	t	NULL	6	0	0
+--------------
+EXPLAIN SELECT * FROM t
+--------------
+
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	t	p20240528,p20240529,p20240530,p20240531,p20240601,p20240602,p20240603,p20240604,p20240605,p20240606,p20240607,p20240608,p20240609,p20240610,p20240611,p20240612,p20240613,p20240614,p20240615,p20240616,p20240617,p20240618,pMax	ALL	NULL	NULL	NULL	NULL	6	100.00	NULL
+Note (Code 1003): /* select#1 */ select `replay_73b99a542773366205f04ae0`.`t`.`id` AS `id`,`replay_73b99a542773366205f04ae0`.`t`.`col1` AS `col1`,`replay_73b99a542773366205f04ae0`.`t`.`col2` AS `col2`,`replay_73b99a542773366205f04ae0`.`t`.`partition_key` AS `partition_key` from `replay_73b99a542773366205f04ae0`.`t`
+--------------
+SELECT * FROM t
+--------------
+
+id	col1	col2	partition_key
+6	2	bcd	2024-06-10 00:00:00
+4	1	bcd	2024-06-11 00:00:00
+5	2	bcd	2024-06-11 00:00:00
+1	1	abc	2024-06-12 00:00:00
+2	2	abc	2024-06-12 00:00:00
+3	3	abc	2024-06-12 00:00:00
+--------------
+SELECT OBJECT_SCHEMA,OBJECT_NAME,COUNT_STAR,COUNT_READ,COUNT_FETCH FROM performance_schema.table_io_waits_summary_by_table WHERE OBJECT_SCHEMA=DATABASE() AND OBJECT_NAME='t'
+--------------
+
+OBJECT_SCHEMA	OBJECT_NAME	COUNT_STAR	COUNT_READ	COUNT_FETCH
+replay_73b99a542773366205f04ae0	t	14	8	8
+--------------
+SELECT OBJECT_SCHEMA,OBJECT_NAME,INDEX_NAME,COUNT_STAR,COUNT_READ,COUNT_FETCH FROM performance_schema.table_io_waits_summary_by_index_usage WHERE OBJECT_SCHEMA=DATABASE() AND OBJECT_NAME='t'
+--------------
+
+OBJECT_SCHEMA	OBJECT_NAME	INDEX_NAME	COUNT_STAR	COUNT_READ	COUNT_FETCH
+replay_73b99a542773366205f04ae0	t	PRIMARY	2	2	2
+replay_73b99a542773366205f04ae0	t	idx_col2	0	0	0
+replay_73b99a542773366205f04ae0	t	NULL	12	6	6
+--------------
+EXPLAIN SELECT * FROM t WHERE id<=3
+--------------
+
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	t	p20240528,p20240529,p20240530,p20240531,p20240601,p20240602,p20240603,p20240604,p20240605,p20240606,p20240607,p20240608,p20240609,p20240610,p20240611,p20240612,p20240613,p20240614,p20240615,p20240616,p20240617,p20240618,pMax	range	PRIMARY	PRIMARY	8	NULL	3	100.00	Using where
+Note (Code 1003): /* select#1 */ select `replay_73b99a542773366205f04ae0`.`t`.`id` AS `id`,`replay_73b99a542773366205f04ae0`.`t`.`col1` AS `col1`,`replay_73b99a542773366205f04ae0`.`t`.`col2` AS `col2`,`replay_73b99a542773366205f04ae0`.`t`.`partition_key` AS `partition_key` from `replay_73b99a542773366205f04ae0`.`t` where (`replay_73b99a542773366205f04ae0`.`t`.`id` <= 3)
+--------------
+SELECT * FROM t WHERE id<=3
+--------------
+
+id	col1	col2	partition_key
+1	1	abc	2024-06-12 00:00:00
+2	2	abc	2024-06-12 00:00:00
+3	3	abc	2024-06-12 00:00:00
+--------------
+SELECT OBJECT_SCHEMA,OBJECT_NAME,COUNT_STAR,COUNT_READ,COUNT_FETCH FROM performance_schema.table_io_waits_summary_by_table WHERE OBJECT_SCHEMA=DATABASE() AND OBJECT_NAME='t'
+--------------
+
+OBJECT_SCHEMA	OBJECT_NAME	COUNT_STAR	COUNT_READ	COUNT_FETCH
+replay_73b99a542773366205f04ae0	t	14	8	8
+--------------
+SELECT OBJECT_SCHEMA,OBJECT_NAME,INDEX_NAME,COUNT_STAR,COUNT_READ,COUNT_FETCH FROM performance_schema.table_io_waits_summary_by_index_usage WHERE OBJECT_SCHEMA=DATABASE() AND OBJECT_NAME='t'
+--------------
+
+OBJECT_SCHEMA	OBJECT_NAME	INDEX_NAME	COUNT_STAR	COUNT_READ	COUNT_FETCH
+replay_73b99a542773366205f04ae0	t	PRIMARY	2	2	2
+replay_73b99a542773366205f04ae0	t	idx_col2	0	0	0
+replay_73b99a542773366205f04ae0	t	NULL	12	6	6
+--------------
+EXPLAIN SELECT * FROM t WHERE id IN(1,2)
+--------------
+
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	t	p20240528,p20240529,p20240530,p20240531,p20240601,p20240602,p20240603,p20240604,p20240605,p20240606,p20240607,p20240608,p20240609,p20240610,p20240611,p20240612,p20240613,p20240614,p20240615,p20240616,p20240617,p20240618,pMax	range	PRIMARY	PRIMARY	8	NULL	2	100.00	Using where
+Note (Code 1003): /* select#1 */ select `replay_73b99a542773366205f04ae0`.`t`.`id` AS `id`,`replay_73b99a542773366205f04ae0`.`t`.`col1` AS `col1`,`replay_73b99a542773366205f04ae0`.`t`.`col2` AS `col2`,`replay_73b99a542773366205f04ae0`.`t`.`partition_key` AS `partition_key` from `replay_73b99a542773366205f04ae0`.`t` where (`replay_73b99a542773366205f04ae0`.`t`.`id` in (1,2))
+--------------
+SELECT * FROM t WHERE id IN(1,2)
+--------------
+
+id	col1	col2	partition_key
+1	1	abc	2024-06-12 00:00:00
+2	2	abc	2024-06-12 00:00:00
+--------------
+SELECT OBJECT_SCHEMA,OBJECT_NAME,COUNT_STAR,COUNT_READ,COUNT_FETCH FROM performance_schema.table_io_waits_summary_by_table WHERE OBJECT_SCHEMA=DATABASE() AND OBJECT_NAME='t'
+--------------
+
+OBJECT_SCHEMA	OBJECT_NAME	COUNT_STAR	COUNT_READ	COUNT_FETCH
+replay_73b99a542773366205f04ae0	t	14	8	8
+--------------
+SELECT OBJECT_SCHEMA,OBJECT_NAME,INDEX_NAME,COUNT_STAR,COUNT_READ,COUNT_FETCH FROM performance_schema.table_io_waits_summary_by_index_usage WHERE OBJECT_SCHEMA=DATABASE() AND OBJECT_NAME='t'
+--------------
+
+OBJECT_SCHEMA	OBJECT_NAME	INDEX_NAME	COUNT_STAR	COUNT_READ	COUNT_FETCH
+replay_73b99a542773366205f04ae0	t	PRIMARY	2	2	2
+replay_73b99a542773366205f04ae0	t	idx_col2	0	0	0
+replay_73b99a542773366205f04ae0	t	NULL	12	6	6
+--------------
+SELECT @@performance_schema
+--------------
+
+@@performance_schema
+1
+--------------
+SELECT NAME,ENABLED FROM performance_schema.setup_consumers WHERE NAME IN('global_instrumentation','thread_instrumentation')
+--------------
+
+NAME	ENABLED
+global_instrumentation	YES
+thread_instrumentation	YES
+--------------
+SELECT OBJECT_TYPE,OBJECT_SCHEMA,OBJECT_NAME,ENABLED,TIMED FROM performance_schema.setup_objects WHERE OBJECT_TYPE='TABLE'
+--------------
+
+OBJECT_TYPE	OBJECT_SCHEMA	OBJECT_NAME	ENABLED	TIMED
+TABLE	mysql	%	NO	NO
+TABLE	performance_schema	%	NO	NO
+TABLE	information_schema	%	NO	NO
+TABLE	%	%	YES	YES

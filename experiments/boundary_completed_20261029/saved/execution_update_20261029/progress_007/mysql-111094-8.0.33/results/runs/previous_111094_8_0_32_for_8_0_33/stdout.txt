@@ -1,0 +1,48 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+CREATE TABLE order_test (
+	id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	val varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs NOT NULL,
+	PRIMARY KEY (id),
+	KEY val(val)
+)
+--------------
+
+--------------
+INSERT INTO order_test (val) VALUES ('Wä'), ('E')
+--------------
+
+--------------
+SELECT *, val = 'wä', val = 'Wä', val = 'E'
+FROM order_test
+ORDER BY val = 'wä' DESC, val = 'Wä' DESC, val = 'E' DESC
+--------------
+
+id	val	val = 'wä'	val = 'Wä'	val = 'E'
+2	E	0	0	1
+1	Wä	0	1	0
+--------------
+SELECT *, val = 'ka', val = 'Wä', val = 'E'
+FROM order_test
+ORDER BY val = 'ka' DESC, val = 'Wä' DESC, val = 'E' DESC
+--------------
+
+id	val	val = 'ka'	val = 'Wä'	val = 'E'
+1	Wä	0	1	0
+2	E	0	0	1
+--------------
+SELECT id,HEX(val) AS value_hex,COLLATION(val) AS coll FROM order_test ORDER BY id
+--------------
+
+id	value_hex	coll
+1	57C3A4	utf8mb4_0900_as_cs
+2	45	utf8mb4_0900_as_cs

@@ -1,0 +1,42 @@
+--------------
+SET time_zone="+00:00"
+--------------
+
+--------------
+SELECT @@sql_mode AS __preflight_sql_mode,@@character_set_client AS __preflight_charset_client,@@character_set_connection AS __preflight_charset_connection,@@collation_connection AS __preflight_collation,@@time_zone AS __preflight_time_zone,@@div_precision_increment AS __preflight_div_precision,@@auto_increment_increment AS __preflight_autoincrement,@@auto_increment_offset AS __preflight_offset
+--------------
+
+__preflight_sql_mode	__preflight_charset_client	__preflight_charset_connection	__preflight_collation	__preflight_time_zone	__preflight_div_precision	__preflight_autoincrement	__preflight_offset
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION	utf8mb4	utf8mb4	utf8mb4_0900_ai_ci	+00:00	4	1	1
+--------------
+create table t(a int, d json, index iad(a, (cast(d->'$.b' as signed array))))
+--------------
+
+--------------
+insert into t value(1,'{"b":[]}'), (2,'{"b":[]}')
+--------------
+
+--------------
+select * from t use index (iad) where a = 1
+--------------
+
+--------------
+select * from t ignore index (iad) where a = 1
+--------------
+
+a	d
+1	{"b": []}
+--------------
+SELECT a,CAST(d AS CHAR) AS stored_json FROM t IGNORE INDEX(iad) ORDER BY a
+--------------
+
+a	stored_json
+1	{"b": []}
+2	{"b": []}
+--------------
+EXPLAIN SELECT * FROM t USE INDEX(iad) WHERE a=1
+--------------
+
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	t	NULL	ref	iad	iad	5	const	1	100.00	NULL
+Note (Code 1003): /* select#1 */ select `replay_726b1937ed41c30fd601f36f`.`t`.`a` AS `a`,`replay_726b1937ed41c30fd601f36f`.`t`.`d` AS `d` from `replay_726b1937ed41c30fd601f36f`.`t` USE INDEX (`iad`) where (`replay_726b1937ed41c30fd601f36f`.`t`.`a` = 1)
