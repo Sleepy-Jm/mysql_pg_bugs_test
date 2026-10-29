@@ -1,0 +1,7 @@
+CREATE TABLE t1 (Name VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci);
+CREATE TABLE t2 (Name VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci);
+INSERT INTO t1(Name) VALUES ('valueテスト');
+INSERT INTO t2(Name) VALUES ('テストvalue');
+SELECT Name FROM (SELECT Name FROM t1 UNION SELECT Name FROM t2) derived WHERE Name LIKE '%テスト%';
+SHOW WARNINGS;
+SELECT Name FROM (SELECT Name FROM t1 UNION SELECT Name FROM t2) derived WHERE Name LIKE '%value%';

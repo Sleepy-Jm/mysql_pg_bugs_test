@@ -1,0 +1,20 @@
+-- MySQL report #115380; source: cmain, c544466
+-- Static preparation only. NOT EXECUTED. Read case.json; use a fresh isolated case schema.
+create table t15( id int ,  cc int ,m varchar(8) COLLATE utf8mb4_bin DEFAULT NULL, t text, PRIMARY key(id) ,key(cc), key(m) )  PARTITION BY RANGE  COLUMNS(id) (PARTITION p202008 VALUES LESS THAN (5) ENGINE = InnoDB,
+ PARTITION p202009 VALUES LESS THAN (10) ENGINE = InnoDB,
+ PARTITION p202012 VALUES LESS THAN (100) ENGINE = InnoDB) ;
+ 
+create table t2( id int  PRIMARY key , cc int  );
+insert into t2 values ( 1 , 2);
+insert into t2  values (0, 2 );
+
+INSERT INTO `t15` VALUES (4,1,'123','abcdef'),
+                         (5,1,'123','abcdef'),
+                         (8,2,'122','abcdef'),
+                         (9,2,'122','abcdef');
+
+
+SELECT DISTINCT a.id FROM t15 a,t2 b WHERE b.id<>a.id AND a.cc=1 AND a.m='123';
+EXPLAIN UPDATE t15 a,t2 b SET a.t='test' WHERE b.id<>a.id AND a.cc=1 AND a.m='123';
+UPDATE t15 a,t2 b SET a.t='test' WHERE b.id<>a.id AND a.cc=1 AND a.m='123';
+SELECT id,t FROM t15 ORDER BY id;
