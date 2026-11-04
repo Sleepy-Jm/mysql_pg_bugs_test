@@ -19,6 +19,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import commit_context
 
 ROOT = Path(__file__).resolve().parents[2]
 PROMPTS = ROOT / "Prompts" / "mysql_commit"
@@ -28,6 +29,10 @@ ANALYSIS_SHAPE = {
     "parent_revision": "copy material.parent_revision",
     "commit_status": "introduce|fix|unknown",
     "commit_status_reason": "classification basis in supplied material, or why unknown",
+    "material_status": "sufficient|partial|insufficient",
+    "missing_materials": [{"request_id": "context_1", "kind": "definition|callers|source_range|unknown",
+        "revision": "before|after|both", "path": None, "symbol": "needed_function_or_null",
+        "start_line": None, "end_line": None, "needed": "missing source context", "reason": "why needed for a candidate"}],
     "changes": [{"change_id": "change_1", "change_type": "unknown", "module": "unknown",
         "locations": [{"path": "sql/file.cc", "functions": ["unknown"]}],
         "applicability": "sql|not_sql|unknown", "reason": "explain",
@@ -94,8 +99,8 @@ def git(repo, *args):
 
 
 def prepare(repo, revision, spec_path, output, parent=None):
-    """Read explicit production paths in a local Git repository; no checkout."""
-    spec = read(spec_path)
+    """Discover production changes or use explicit ranges; no checkout."""
+    spec = read(spec_path) if spec_path else {"version": "unknown", "commit_role": "unknown"}
     revision = git(repo, "rev-parse", "--verify", revision + "^{commit}").strip()
     parents = git(repo, "show", "-s", "--format=%P", revision).split()
     if parent:
@@ -106,7 +111,10 @@ def prepare(repo, revision, spec_path, output, parent=None):
     require(parent in parents, "Selected parent is not a direct parent")
     require(spec.get("commit_role") in {"introduce", "fix", "other", "unknown"}, "commit_role required")
     require(nonempty(spec.get("version")), "version required; unknown is allowed")
-    require(isinstance(spec.get("sources"), list) and spec["sources"], "Explicit source allowlist required")
+    metadata, automatic_sources = commit_context.discover(repo, revision, parent)
+    automatic = "sources" not in spec
+    entries = automatic_sources if automatic else spec["sources"]
+    require(isinstance(entries, list) and entries, "No production sources selected or discovered")
     sources, selected = [], []
 
     def add(kind, path, rev, start, content):
@@ -115,7 +123,11 @@ def prepare(repo, revision, spec_path, output, parent=None):
                             content_sha256=hashlib.sha256(content.encode()).hexdigest()))
 
     add("message", "COMMIT_MESSAGE", revision, 1, git(repo, "show", "-s", "--format=%B", revision))
-    for entry in spec["sources"]:
+    for original_entry in entries:
+        entry = dict(original_entry)
+        hint = next((e for e in automatic_sources if e["path"] == entry["path"]), None)
+        if not entry.get("functions") or entry["functions"] == ["unknown"]:
+            entry["functions"] = hint["functions"] if hint else ["unknown"]
         path = entry["path"]
         p = PurePosixPath(path)
         require(not p.is_absolute() and ".." not in p.parts and not path.startswith("-") and "\\" not in path,
@@ -141,8 +153,9 @@ def prepare(repo, revision, spec_path, output, parent=None):
     require(any(s["kind"] == "production_diff" for s in sources), "No selected production change")
     material = dict(schema_version=1, workflow="commit_analysis_v1", repository=str(Path(repo).resolve()),
         target_revision=revision, parent_revision=parent, version=spec["version"], commit_role=spec["commit_role"],
-        selection=selected, sources=sources, prepared_at=now(), spec_sha256=file_hash(spec_path),
-        input_boundary="message + selected production diff + explicit before/after/helper ranges")
+        selection=selected, sources=sources, prepared_at=now(), spec_sha256=file_hash(spec_path) if spec_path else None,
+        commit_metadata=metadata, context_selection="automatic_changed_regions" if automatic else "explicit_source_ranges",
+        input_boundary="message + selected production diff + before/after/helper ranges")
     write(output, material)
     return material
 
@@ -181,6 +194,7 @@ def validate_analysis(value, material):
     require(value.get("commit_status") in {"introduce", "fix", "unknown"},
             "commit_status must be introduce, fix, or unknown")
     require(nonempty(value.get("commit_status_reason")), "commit_status_reason required")
+    commit_context.validate_requests(value)
     for field in ("version", "target_revision", "parent_revision"):
         require(value.get(field) == material[field], f"Analysis identity mismatch: {field}")
     require(value["changes"] or value["unknowns"], "Explain an empty analysis")
@@ -276,6 +290,7 @@ def initialize(material_path, run, run_id, contracts_path=None, model="deepseek-
     for stage in ("stage1", "stage2"):
         (run / f"{stage}.txt").write_bytes((PROMPTS / f"{stage}.txt").read_bytes())
     (run / "pipeline_source.py").write_bytes(Path(__file__).read_bytes())
+    (run / "context_source.py").write_bytes(Path(commit_context.__file__).read_bytes())
     try:
         code_commit = git(ROOT, "rev-parse", "HEAD").strip()
         code_dirty = bool(git(ROOT, "status", "--porcelain"))
@@ -287,7 +302,7 @@ def initialize(material_path, run, run_id, contracts_path=None, model="deepseek-
                     "response_format": {"type": "json_object"}},
         code_commit=code_commit, code_dirty=code_dirty, python=sys.version, platform=platform.platform(), command=sys.argv,
         feedback_policy="immediately_previous_round_verified_hits_else_default",
-        files={p: file_hash(run / p) for p in ("material.json", "contracts.json", "stage1.txt", "stage2.txt", "pipeline_source.py")},
+        files={p: file_hash(run / p) for p in ("material.json", "contracts.json", "stage1.txt", "stage2.txt", "pipeline_source.py", "context_source.py")},
         database_execution="external_only", mutator_status="not_assessed"))
     return step(run)
 
@@ -300,6 +315,7 @@ def load_run(run):
     for path, expected in manifest["files"].items():
         require(file_hash(run / path) == expected, f"Frozen input changed: {path}")
     require(file_hash(__file__) == manifest["files"]["pipeline_source.py"], "Pipeline code changed; start a new run")
+    require(file_hash(commit_context.__file__) == manifest["files"]["context_source.py"], "Context code changed; start a new run")
     return run, manifest, read(run / "material.json"), read(run / "contracts.json")
 
 
@@ -383,6 +399,9 @@ def step(run, execute=False, client=None):
     else:
         analysis = checked_artifact(stage1, "analysis.json")
         validate_analysis(analysis, material)
+        if analysis["material_status"] == "insufficient":
+            return {"status": "awaiting_source_material", "candidate_generation": "not_run",
+                    "missing_materials": analysis["missing_materials"], "database_executed": False}
         if not any(ch["conditions"] for ch in analysis["changes"] if ch["applicability"] != "not_sql"):
             skipped = {"status": "no_applicable_conditions", "candidate_generation": "not_run",
                        "reason": "No SQL-mappable conditions; preserve unknown/not_sql analysis", "database_executed": False}
@@ -443,6 +462,7 @@ def step(run, execute=False, client=None):
         value = json.loads(choice["message"]["content"])
         if number is None:
             validate_analysis(value, material)
+            result.update(material_status=value["material_status"], missing_materials=value["missing_materials"])
         else:
             if isinstance(value, dict) and isinstance(value.get("candidates"), list):
                 result["received_count"] = len(value["candidates"])
@@ -459,6 +479,27 @@ def step(run, execute=False, client=None):
     result["finished_at"] = now()
     write(folder / "result.json", result)
     return result
+
+
+def supplement_run(run, repo, output):
+    run, manifest, material, _ = load_run(run)
+    analysis = checked_artifact(run / "analysis", "analysis.json")
+    validate_analysis(analysis, material)
+    require(analysis["missing_materials"], "No missing source materials requested")
+    for revision in (material["parent_revision"], material["target_revision"]):
+        require(git(repo, "rev-parse", "--verify", revision + "^{commit}").strip() == revision,
+                "Source repository does not contain the frozen commit")
+    enriched = commit_context.supplement(repo, material, analysis)
+    enriched["supplementation"].update(parent_run_id=manifest["run_id"],
+        parent_material_sha256=file_hash(run / "material.json"),
+        analysis_sha256=file_hash(run / "analysis" / "analysis.json"), collected_at=now())
+    validate_material(enriched)
+    write(output, enriched)
+    return {"status": "source_supplement_saved", "output": str(output),
+            "new_source_count": len(enriched["supplementation"]["new_source_ids"]),
+            "outcomes": enriched["supplementation"]["outcomes"],
+            "next_step": "Initialize a new run with the enriched material and reanalyze stage 1",
+            "model_called": False, "database_executed": False}
 
 
 def reference_file(base, reference):
@@ -614,7 +655,7 @@ def main(argv=None):
     p.add_argument("--repository", required=True, type=Path)
     p.add_argument("--commit", required=True)
     p.add_argument("--parent")
-    p.add_argument("--spec", required=True, type=Path)
+    p.add_argument("--spec", type=Path, help="Optional version/role and explicit source selection; omit for automatic extraction")
     p.add_argument("--output", required=True, type=Path)
     p = sub.add_parser("init")
     p.add_argument("--material", required=True, type=Path)
@@ -631,6 +672,10 @@ def main(argv=None):
     p = sub.add_parser("step")
     p.add_argument("--run", required=True, type=Path)
     p.add_argument("--execute-model", action="store_true")
+    p = sub.add_parser("supplement", help="Read requested source from frozen revisions; write new material for reanalysis")
+    p.add_argument("--run", required=True, type=Path)
+    p.add_argument("--repository", required=True, type=Path)
+    p.add_argument("--output", required=True, type=Path)
     p = sub.add_parser("feedback")
     p.add_argument("--run", required=True, type=Path)
     p.add_argument("--round", required=True, type=int)
@@ -647,6 +692,8 @@ def main(argv=None):
         result = probe_models(args.output, args.model)
     elif args.action == "step":
         result = step(args.run, args.execute_model)
+    elif args.action == "supplement":
+        result = supplement_run(args.run, args.repository, args.output)
     elif args.action == "feedback":
         result = record_feedback(args.run, args.round, args.input)
     else:

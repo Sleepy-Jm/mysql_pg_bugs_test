@@ -23,6 +23,7 @@ def fixture_material():
 def fixture_analysis():
     return dict(version="unknown", target_revision="a" * 40, parent_revision="b" * 40,
         commit_status="unknown", commit_status_reason="Synthetic comparison change does not establish defect introduction or repair",
+        material_status="sufficient", missing_materials=[],
         changes=[dict(change_id="comparison", change_type="comparison_boundary", module="synthetic",
         locations=[dict(path="sql/synthetic.cc", functions=["synthetic"])], applicability="sql",
         reason="Synthetic condition for offline control flow testing, not a MySQL claim",
@@ -223,6 +224,18 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result["status"], "no_applicable_conditions")
         self.assertEqual(client.calls, [])
         self.assertEqual(cp.report(self.run)["requested_total"], 0)
+
+    def test_insufficient_material_waits_for_source_not_sql_generation(self):
+        analysis = fixture_analysis()
+        analysis.update(material_status="insufficient", missing_materials=[dict(
+            request_id="caller", kind="callers", revision="both", path=None, symbol="synthetic",
+            needed="SQL entry caller", reason="Cannot map condition to SQL")])
+        cp.step(self.run, True, FakeClient(analysis))
+        client = FakeClient({})
+        result = cp.step(self.run, True, client)
+        self.assertEqual(result["status"], "awaiting_source_material")
+        self.assertEqual(client.calls, [])
+        self.assertFalse((self.run / "rounds").exists())
 
     def test_explicit_model_probe_is_discovery_not_generation(self):
         client = FakeClient({})

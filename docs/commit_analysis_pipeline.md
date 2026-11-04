@@ -10,10 +10,26 @@
 ## 输入和两个阶段
 
 prepare 从指定的本地 MySQL Git 仓库读取精确 commit、直接父提交、message、
-显式白名单生产文件的完整 diff，以及所选 before/after/helper 源码行段。
+生产文件的完整 diff，以及 before/after/helper 源码行段。不传 --spec 时自动选择
+本次修改的 C/C++、头文件和语法文件，排除测试等目录；--spec 可保留显式范围选择，
+也可只给 version/commit_role 而省略 sources，继续使用自动选择。
 merge commit 必须显式选择直接父提交。不自动 checkout、联网或收集测试答案。
 辅助函数也需显式列入白名单；新增/删除文件不存在的一侧留空即可。
 diff 的引用行号是保存的 diff 文本行号；before/after 是原源码行号，两者不可混用。
+
+commit_metadata 会自动提供四类信息：
+
+| 信息 | 提取方式与边界 |
+|---|---|
+| 修改位置 | Git 文件状态和零上下文 diff 的 before/after 行号、行数；属于直接证据 |
+| 相关函数 | 根据修改位置定位常见 C/C++ 函数定义；注明 lexical_candidate，不能当成编译器 AST 绑定 |
+| 数据库模块 | 根据 MySQL 源码路径给出 module hint，例如 InnoDB、优化器、窗口执行；标为 heuristic |
+| 改动类型 | 自动记录文件新增/删除/修改，以及条件、返回表达式、调用/签名、常量等语法提示；语义类型留给 LLM 结合证据判断 |
+
+自动源码上下文以修改区域和包围函数为主，每个片段最多 240 行；超限会记录截断，
+保留修改位置附近内容。宏、模板、operator、复杂构造函数等不能可靠定位时保留 unknown。
+这不是完整调用图；不凭路径或词法匹配证明执行语义。纯测试/文档提交没有允许的生产
+源码时，prepare 明确报无生产源码，不生成虚构的 SQL 材料。
 
 configs/commit_pipeline_sources.example.json 是待填写的输入示例。版本和提交角色
 由筛选材料提供，不从文件日期推测，证据不足时填 unknown。函数名同样可填 unknown。
@@ -32,6 +48,41 @@ facts 和 source_supported 条件必须引用 supplied source_id、闭区间行�
 hypothesis/unknown 可无引用，但不得改称源码事实。程序核查引用文本，不自动证明
 自然语言解释正确；semantic_accuracy 始终为 not_evaluated，仍需源码语义审查。
 not_sql 或没有可映射条件的分析单独保存，第二阶段记未运行，不强制凑 SQL。
+
+## 材料不足与源码补充
+
+第一阶段必填 material_status：sufficient / partial / insufficient。
+sufficient 指足以构造有用的候选，不是已经证明触发；此时 missing_materials 为空。
+partial 或 insufficient 时必须给出 missing_materials，包含 request_id、needed、reason、
+kind、revision，以及可定位的 path/symbol 或 start_line/end_line：
+
+- definition：补函数/辅助函数定义，symbol 必填，path 可选。
+- callers：查找调用位置及包围函数，symbol 必填；结果只是词法调用候选。
+- source_range：按路径和闭区间行号补源码。
+- unknown：目前不能用源码定位的配置、运行条件或其他缺口，保留 unresolved。
+
+revision 只能是 before、after、both，对应原冻结父提交和目标提交，不能写 HEAD、
+后续版本或任意修复 SHA。补充不读取已知复现、回归测试、旧实验答案。
+insufficient 时 step 返回 awaiting_source_material，不发起第二阶段生成。
+partial 仍允许生成带未知项的假设候选，但可以先执行补充以减少缺口。
+
+从已完成第一阶段的 run 自动读取请求并补源码（不调用模型、不执行数据库）：
+
+    python -X utf8 -B src/mysql_bugs_test/commit_pipeline.py supplement --run local/RUN_ID --repository MYSQL_SOURCE_REPO --output local/enriched_material.json
+
+程序从原 revision 搜索所需定义/调用位置并读取实际源码，逐项记录命中位置、
+source_id、哈希、缺口及来源请求。每次补充最多 1600 行、12 个新片段，每片段最多
+400 行；超限、多个候选、源码不存在或符号无法解析均保留说明。已提供的范围不重复
+添加。supplied_for_reanalysis 仅表示提供了可供重读的源码，不等于问题已解决。
+
+使用新材料建立新 run，再执行第一阶段；补充不改写旧输入、需求或响应：
+
+    python -X utf8 -B src/mysql_bugs_test/commit_pipeline.py init --material local/enriched_material.json --run local/RUN_ID_context2 --run-id RUN_ID_context2
+    python -X utf8 -B src/mysql_bugs_test/commit_pipeline.py step --run local/RUN_ID_context2 --execute-model
+
+若有检测器契约，init 时重新传入原契约文件。新材料保存 parent_run_id、原材料哈希、
+分析输出哈希、补充请求和新增片段。是否充分由重新分析决定；没有新源码或仍有缺口时
+如实保留，不循环调用模型来凑出“充分”。没有具体待补充 run 时，不声称已经补过真实案例。
 
 第二阶段只收到分析、版本、输出结构和上一轮合格样例，不拼接原始源码或 diff。
 交接视图保留证据定位，去掉 evidence.quote；第一阶段原件不修改。
@@ -63,13 +114,15 @@ API、格式或引用校验失败会保存 attempt/request/raw response（若取
 
 ## 使用顺序
 
-以下命令在本仓库根目录执行。先填写 spec，并选定已有的 MySQL 源码仓库和 SHA。
+以下命令在本仓库根目录执行。选定已有的 MySQL 源码仓库和 SHA；spec 可选。
 示例中的 MYSQL_SOURCE_REPO、TARGET_SHA、RUN_ID 需要换成真实值。Windows 如 python
 不可用，请改用已安装解释器的绝对路径。
 
 1. 只准备输入，不调用模型：
 
-    python -X utf8 -B src/mysql_bugs_test/commit_pipeline.py prepare --repository MYSQL_SOURCE_REPO --commit TARGET_SHA --spec local/sources.json --output local/material.json
+    python -X utf8 -B src/mysql_bugs_test/commit_pipeline.py prepare --repository MYSQL_SOURCE_REPO --commit TARGET_SHA --output local/material.json
+
+   若需提供版本/角色或指定源码范围，再加 --spec local/sources.json。
 
 2. 创建新 run 并保存第一阶段请求预览（默认不联网）：
 
@@ -195,7 +248,7 @@ usage、请求与响应哈希。returned model 不同或缺失时不接受，不
 
 ~~~text
 local/RUN_ID/
-  manifest.json, material.json, contracts.json, pipeline_source.py, stage1.txt, stage2.txt
+  manifest.json, material.json, contracts.json, pipeline_source.py, context_source.py, stage1.txt, stage2.txt
   analysis/request.json, selection.json, attempt.json, models.json, response.json, result.json, analysis.json
   rounds/01..10/
     request.json, selection.json, attempt.json, models.json, response.json, result.json
@@ -203,7 +256,7 @@ local/RUN_ID/
 ~~~
 
 尚未取得的输出不存在；不是用空成功文件占位。init 不复用现有目录。
-运行代码以实际 Git commit、dirty 状态和完整入口脚本快照/哈希共同标识。
+运行代码以实际 Git commit、dirty 状态和入口脚本、源码上下文模块的快照/哈希共同标识。
 提示词、材料与契约冻结。执行代码发生变化需新 run，不在旧 run 内改变含义。
 
 ## 验收顺序和当前边界
