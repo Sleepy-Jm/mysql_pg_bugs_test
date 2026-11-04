@@ -2,7 +2,7 @@ Target
 MySQL revision fac72fe1704c542ba476ef065dee03d2c1da83ae, sql/sql_optimizer.cc:3198-3199: the INTERSECT/EXCEPT materialized-table branch that selects JT_ALL. This is a source-derived candidate, not an executed reproduction.
 
 Source-required conditions
-The current JOIN_TAB is neither JT_CONST nor JT_SYSTEM (line 3188). Its TABLE reports is_intersect() or is_except() (line 3198). The branch assigns JT_ALL (line 3199).
+The analysis stage extracted the following conditions from sql/sql_optimizer.cc at the target revision: the current JOIN_TAB is neither JT_CONST nor JT_SYSTEM (line 3188); its TABLE reports is_intersect() or is_except() (line 3198); the branch assigns JT_ALL (line 3199).
 
 Candidate construction
 Join a derived table containing INTERSECT ALL with a small outer table on an integer key. Give the left input three copies of 1 and one copy of 2, the right input two copies of 1 and one copy of 3, and the outer table two copies of 1 and one copy of 2. This exposes duplicate multiplicities. The equality join is a candidate for presenting the materialized table as a join input; it does not guarantee a particular optimizer plan. INTERSECT ALL is the concrete demonstration; EXCEPT and DISTINCT are optional separate variants.
@@ -14,4 +14,4 @@ Coverage observation
 On the specified revision, use a breakpoint or instrumentation at sql/sql_optimizer.cc:3198-3199 and identify the derived TABLE for this query. Record its set-operation flags, incoming JOIN_TAB type, and the JT_ALL assignment. EXPLAIN alone is only a plan clue.
 
 Uncertainty
-The local excerpt does not establish the full SQL-to-TABLE construction path. If the query does not reach the target, inspect materialization and join-planning callers before revising the candidate. Coverage and correct output are separate observations.
+The analysis stage has not established the full SQL-to-TABLE construction path. If the query does not reach the target, return this question to the analysis stage for materialization and join-planning caller inspection before revising the candidate. Coverage and correct output are separate observations.

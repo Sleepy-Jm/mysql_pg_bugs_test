@@ -2,7 +2,7 @@ Target
 MySQL revision cb98e45d2fb75f67c2e65cbf8862d512e98ccce8, sql/range_optimizer/partition_pruning.cc, prune_partitions. Observe the lock-state-dependent bitmap arguments passed to get_mm_tree. These are authored source-derived requirements; no SQL execution is claimed.
 
 Source-required conditions
-The pruning condition must exist, read_partitions must remain nonempty, and create_partition_index_description must succeed. Reach the const_only assignment and the later get_mm_tree call. With is_query_tables_locked()==false, const_only is true and prev_tables/read_tables are both zero; the locked state gives INNER_TABLE_BIT as a contrast. See the supplied source excerpt at lines 270-325.
+The analysis stage extracted the following conditions from sql/range_optimizer/partition_pruning.cc:270-325 at the target revision. The pruning condition must exist, read_partitions must remain nonempty, and create_partition_index_description must succeed. Reach the const_only assignment and the later get_mm_tree call. With is_query_tables_locked()==false, const_only is true and prev_tables/read_tables are both zero; the locked state gives INNER_TABLE_BIT as a contrast.
 
 Candidate construction
 Use an ordinary InnoDB RANGE-partitioned table and a small auxiliary table. Choose integer keys on both sides of partition boundaries, with a predicate comparing the partition key to a scalar SELECT MAX(k) from the auxiliary table. Execute the query in a single-session transaction without concurrent writes. Include a constant-predicate control. A read-dependent expression is a candidate for exercising early pruning; this is not proof that it is evaluated while tables are unlocked. Temporary tables are unsuitable for the partitioned table. Use unique ordinary-table names in a disposable schema.
@@ -14,4 +14,4 @@ Coverage observation
 Record the identity of the partitioned table, is_query_tables_locked(), const_only, prev_tables, read_tables, and the get_mm_tree call at the target revision. Record whether and when the scalar expression is evaluated. EXPLAIN partitions can supplement, but cannot prove, the lock state.
 
 Uncertainty
-The supplied excerpt does not show the caller timing or the helper's constant-expression rules. The scalar subquery may not reach the desired early-evaluation path. If coverage is missing, inspect these callers/helpers and revise the requirement rather than asserting that the SQL guarantees coverage. Compare a parent build only under equivalent inputs; a result difference alone is not a bug verdict.
+The analysis stage has not established the caller timing or the helper's constant-expression rules. The scalar subquery may not reach the desired early-evaluation path. If coverage is missing, return these questions to the analysis stage for caller/helper inspection and requirement revision. Compare a parent build only under equivalent inputs; a result difference alone is not a bug verdict.
