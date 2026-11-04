@@ -9,6 +9,7 @@
 | 窗口帧状态 | `74c7ccfa27f4`：9/9 | `c296cddb93ff`：4/9 | 三轮稳定错误结果 |
 
 - [详细实测报告](runtime/final_report.txt)：错误行、对照条件和判定范围。
+- [源码差异与 SQL 触发机制](source_mechanisms.md)：逐组关联实际提示词、SQL 和运行证据，区分实测已验证、源码事实、源码推导与待验证环节。
 - [逐项比较](runtime/comparison.json) / [150 次观测 CSV](runtime/case_results.csv)。
 - [端到端对应关系](lineage.json)：六个阶段输入输出、源码提交、case_id、每轮运行文件及 SHA256。
 - [导出来源与原件/脱敏件哈希](export_manifest.json)：包含未入库日志的路径标识、哈希和排除原因。

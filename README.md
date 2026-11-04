@@ -8,6 +8,8 @@
 
 提示词链与每轮运行的文件、提交和哈希见 [lineage.json](experiments/prompt_pipeline_20261104/lineage.json)，错误行见 [详细报告](experiments/prompt_pipeline_20261104/runtime/final_report.txt)。本次入库仅整理已有运行证据，没有重跑数据库。
 
+[源码差异与 SQL 触发机制说明](experiments/prompt_pipeline_20261104/source_mechanisms.md) 解释三组 src2req 关键条件如何落实为测试，逐项区分源码推导和已验证结论，并列出尚需插桩确认的环节。
+
 ## 保存的结果
 
 完整候选内容与 SQL 已整理到 [候选项与 SQL 内容目录](docs/candidate_catalog_20261029/README.md)：包含 895 项候选总表、125 项目标版本已执行候选的 bug 编号与 SQL、106 项复现 SQL、15 项前版正常/目标异常 SQL，均提供 Markdown、CSV、JSON 和独立 SQL 文件。目录保留执行失败、未知及 SQL 输入变体，并可从保存证据离线重新生成。检查结果见 [目录整理验证](docs/catalog_validation_20261029.json)。
