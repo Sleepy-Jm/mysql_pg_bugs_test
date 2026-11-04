@@ -1,0 +1,44 @@
+Target: intersect_join
+Target observation: JOIN::get_best_combination: select JT_ALL for an INTERSECT/EXCEPT materialized TABLE
+Revision: fac72fe1704c542ba476ef065dee03d2c1da83ae
+Parent revision: 5d02c10206d5d41b1b7d0558b15acf0955d26ed5
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/sql_optimizer.cc
+Blob: 91f067c12f7e26c565814b5f07d4f8ace68b475b
+Source: https://github.com/mysql/mysql-server/blob/fac72fe1704c542ba476ef065dee03d2c1da83ae/sql/sql_optimizer.cc
+```cpp
+3180:     const uint target =
+3181:         (remaining_sjm_inner--) > 0 ? inner_target++ : outer_target++;
+3182:     JOIN_TAB *const tab = pos->table;
+3183:
+3184:     best_ref[target] = tab;
+3185:     tab->set_idx(target);
+3186:     tab->set_position(pos);
+3187:     TABLE *const table = tab->table();
+3188:     if (tab->type() != JT_CONST && tab->type() != JT_SYSTEM) {
+3189:       if (pos->sj_strategy == SJ_OPT_LOOSE_SCAN && tab->range_scan() &&
+3190:           used_index(tab->range_scan()) != pos->loosescan_key) {
+3191:         /*
+3192:           We must use the duplicate-eliminating index, so this QUICK is not
+3193:           an option.
+3194:         */
+3195:         ::destroy(tab->range_scan());
+3196:         tab->set_range_scan(nullptr);
+3197:       }
+3198:       if (table->is_intersect() || table->is_except()) {
+3199:         tab->set_type(JT_ALL);  // INTERSECT, EXCEPT can't use ref access yet
+3200:       } else if (!pos->key) {
+3201:         if (tab->range_scan())
+3202:           tab->set_type(calc_join_type(tab->range_scan()));
+3203:         else
+3204:           tab->set_type(JT_ALL);
+3205:       } else {
+3206:         // REF or RANGE, clarify later when prefix tables are set for JOIN_TABs
+3207:         tab->set_type(JT_REF);
+3208:       }
+3209:     }
+3210:     assert(tab->type() != JT_UNKNOWN);
+```

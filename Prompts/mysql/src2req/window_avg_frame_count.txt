@@ -1,0 +1,328 @@
+### Example task
+Describe the high-level MySQL test requirements that can reach the specified source target. Focus on the SQL, data, configuration, and operation sequence needed by a test generator. Distinguish source-required conditions from candidate constructions and unresolved reachability. Do not merely explain the implementation or repeat the patch.
+
+# Target and source code
+Target: intersect_join
+Target observation: JOIN::get_best_combination: select JT_ALL for an INTERSECT/EXCEPT materialized TABLE
+Revision: fac72fe1704c542ba476ef065dee03d2c1da83ae
+Parent revision: 5d02c10206d5d41b1b7d0558b15acf0955d26ed5
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/sql_optimizer.cc
+Blob: 91f067c12f7e26c565814b5f07d4f8ace68b475b
+Source: https://github.com/mysql/mysql-server/blob/fac72fe1704c542ba476ef065dee03d2c1da83ae/sql/sql_optimizer.cc
+```cpp
+3180:     const uint target =
+3181:         (remaining_sjm_inner--) > 0 ? inner_target++ : outer_target++;
+3182:     JOIN_TAB *const tab = pos->table;
+3183:
+3184:     best_ref[target] = tab;
+3185:     tab->set_idx(target);
+3186:     tab->set_position(pos);
+3187:     TABLE *const table = tab->table();
+3188:     if (tab->type() != JT_CONST && tab->type() != JT_SYSTEM) {
+3189:       if (pos->sj_strategy == SJ_OPT_LOOSE_SCAN && tab->range_scan() &&
+3190:           used_index(tab->range_scan()) != pos->loosescan_key) {
+3191:         /*
+3192:           We must use the duplicate-eliminating index, so this QUICK is not
+3193:           an option.
+3194:         */
+3195:         ::destroy(tab->range_scan());
+3196:         tab->set_range_scan(nullptr);
+3197:       }
+3198:       if (table->is_intersect() || table->is_except()) {
+3199:         tab->set_type(JT_ALL);  // INTERSECT, EXCEPT can't use ref access yet
+3200:       } else if (!pos->key) {
+3201:         if (tab->range_scan())
+3202:           tab->set_type(calc_join_type(tab->range_scan()));
+3203:         else
+3204:           tab->set_type(JT_ALL);
+3205:       } else {
+3206:         // REF or RANGE, clarify later when prefix tables are set for JOIN_TABs
+3207:         tab->set_type(JT_REF);
+3208:       }
+3209:     }
+3210:     assert(tab->type() != JT_UNKNOWN);
+```
+
+# Description
+Target
+MySQL revision fac72fe1704c542ba476ef065dee03d2c1da83ae, sql/sql_optimizer.cc:3198-3199: the INTERSECT/EXCEPT materialized-table branch that selects JT_ALL. This is a source-derived candidate, not an executed reproduction.
+
+Source-required conditions
+The current JOIN_TAB is neither JT_CONST nor JT_SYSTEM (line 3188). Its TABLE reports is_intersect() or is_except() (line 3198). The branch assigns JT_ALL (line 3199).
+
+Candidate construction
+Join a derived table containing INTERSECT ALL with a small outer table on an integer key. Give the left input three copies of 1 and one copy of 2, the right input two copies of 1 and one copy of 3, and the outer table two copies of 1 and one copy of 2. This exposes duplicate multiplicities. The equality join is a candidate for presenting the materialized table as a join input; it does not guarantee a particular optimizer plan. INTERSECT ALL is the concrete demonstration; EXCEPT and DISTINCT are optional separate variants.
+
+Correctness oracle
+For each key k, INTERSECT ALL has min(left_count(k), right_count(k)) rows. An equality join multiplies that by outer_count(k). The stated data therefore produces exactly four rows containing 1. Derive this from the inserted data, not from the other server version's output.
+
+Coverage observation
+On the specified revision, use a breakpoint or instrumentation at sql/sql_optimizer.cc:3198-3199 and identify the derived TABLE for this query. Record its set-operation flags, incoming JOIN_TAB type, and the JT_ALL assignment. EXPLAIN alone is only a plan clue.
+
+Uncertainty
+The local excerpt does not establish the full SQL-to-TABLE construction path. If the query does not reach the target, inspect materialization and join-planning callers before revising the candidate. Coverage and correct output are separate observations.
+
+### Current task
+Describe the high-level MySQL test requirements for the following target, following the example's format. Cite the supplied revision, file, and line numbers for source conditions. Keep coverage evidence separate from a correctness oracle. If the local excerpt does not establish a SQL-to-branch mapping, identify the missing caller/helper evidence. Do not invent configuration switches or claim execution. Output only the description for the current task, using: Target; Source-required conditions; Candidate construction; Correctness oracle; Coverage observation; Uncertainty.
+
+# Target and source code
+Target: window_avg_frame_count
+Target observation: Item_sum_avg::val_real / val_decimal: compute divisor from m_count - m_frame_null_count
+Revision: b6cb5560cc46eac38af15b0a9f3a9852038aaea4
+Parent revision: a8c5586d60f2c8d3d01829fc8e513ca2b1697721
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/item_sum.cc
+Blob: eb119a940e891fce72a8a9149f3bcef4f41eb889
+Source: https://github.com/mysql/mysql-server/blob/b6cb5560cc46eac38af15b0a9f3a9852038aaea4/sql/item_sum.cc
+```cpp
+2249:   DBUG_TRACE;
+2250:   Field *field;
+2251:   if (group) {
+2252:     /*
+2253:       We must store both value and counter in the temporary table in one field.
+2254:       The easiest way is to do this is to store both value in a string
+2255:       and unpack on access.
+2256:     */
+2257:     field = new (*THR_MALLOC) Field_string(
+2258:         ((hybrid_type == DECIMAL_RESULT) ? dec_bin_size : sizeof(double)) +
+2259:             sizeof(longlong),
+2260:         false, item_name.ptr(), &my_charset_bin);
+2261:   } else if (hybrid_type == DECIMAL_RESULT)
+2262:     field = Field_new_decimal::create_from_item(this);
+2263:   else
+2264:     field = new (*THR_MALLOC) Field_double(
+2265:         max_length, is_nullable(), item_name.ptr(), decimals, false, true);
+2266:   if (field) field->init(table);
+2267:   return field;
+2268: }
+2269:
+2270: void Item_sum_avg::clear() { Item_sum_sum::clear(); }
+2271:
+2272: bool Item_sum_avg::add() {
+2273:   assert(!m_is_window_function);
+2274:   if (Item_sum_sum::add()) return true;
+2275:   if (!aggr->arg_is_null(true)) m_count++;
+2276:   return false;
+2277: }
+2278:
+2279: double Item_sum_avg::val_real() {
+2280:   assert(fixed == 1);
+2281:   if (m_is_window_function) {
+2282:     if (wf_common_init()) return 0.0;
+2283:
+2284:     double sum = Item_sum_sum::val_real();
+2285:
+2286:     if (m_window->is_last_row_in_frame()) {
+2287:       const int64 divisor = m_count - m_frame_null_count;
+2288:       if (divisor > 0) sum = sum / ulonglong2double(divisor);
+2289:     }
+2290:     m_avg = sum;  // save
+2291:     return sum;
+2292:   } else {
+2293:     if (aggr) aggr->endup();
+2294:     if (!m_count) {
+2295:       null_value = true;
+2296:       return 0.0;
+2297:     }
+2298:     return Item_sum_sum::val_real() / ulonglong2double(m_count);
+2299:   }
+2300: }
+2301:
+2302: my_decimal *Item_sum_avg::val_decimal(my_decimal *val) {
+2303:   DBUG_TRACE;
+2304:   my_decimal sum_buff, cnt;
+2305:   const my_decimal *sum_dec;
+2306:   assert(fixed == 1);
+2307:
+2308:   if (m_is_window_function) {
+2309:     if (hybrid_type != DECIMAL_RESULT) {
+2310:       my_decimal *result = val_decimal_from_real(val);
+2311:       return result;
+2312:     }
+2313:
+2314:     if (wf_common_init()) {
+2315:       return error_decimal(val);
+2316:     }
+2317:
+2318:     /*
+2319:       dec_buff[0]:   the current value
+2320:       dec_buff[1]:   holds sum so far
+2321:     */
+2322:     my_decimal *argd = args[0]->val_decimal(&dec_buffs[0]);
+2323:
+2324:     if (!args[0]->null_value) {
+2325:       my_decimal tmp;
+2326:       if (m_window->do_inverse()) {
+2327:         assert(m_count > 0 && m_count > m_frame_null_count);
+2328:         my_decimal_sub(E_DEC_FATAL_ERROR, &tmp, &dec_buffs[1], argd);
+2329:         tmp.swap(dec_buffs[1]);
+2330:         m_count--;
+2331:       } else {
+2332:         my_decimal_add(E_DEC_FATAL_ERROR, &tmp, &dec_buffs[1], argd);
+2333:         tmp.swap(dec_buffs[1]);
+2334:         m_count++;
+2335:       }
+2336:     } else {
+2337:       if (m_window->do_inverse()) {
+2338:         assert(m_count >= m_frame_null_count && m_frame_null_count > 0);
+2339:         m_frame_null_count--;
+2340:         m_count--;
+2341:         // else no need to inverse if we only saw nulls
+2342:       } else {
+2343:         m_frame_null_count++;
+2344:         m_count++;
+2345:       }
+2346:     }
+2347:
+2348:     const int64 divisor = m_count - m_frame_null_count;
+2349:
+2350:     if (m_window->is_last_row_in_frame() && divisor > 0) {
+2351:       int2my_decimal(E_DEC_FATAL_ERROR, divisor, false, &cnt);
+2352:       my_decimal_div(E_DEC_FATAL_ERROR, &dec_buffs[0], &dec_buffs[1], &cnt,
+2353:                      prec_increment);
+2354:       val->swap(dec_buffs[0]);
+2355:     } else
+2356:       my_decimal2decimal(&dec_buffs[1], val);
+2357:
+2358:     null_value = (m_count == m_frame_null_count);
+2359:     my_decimal tmp(*val);
+2360:     m_avg_dec.swap(tmp);  // save result
+2361:     return val;
+2362:   } else {
+2363:     if (aggr) aggr->endup();
+2364:     if (!m_count) {
+2365:       null_value = true;
+2366:       return nullptr;
+2367:     }
+2368:
+2369:     /*
+2370:      For non-DECIMAL hybrid_type the division will be done in
+2371:      Item_sum_avg::val_real().
+2372:      */
+2373:     if (hybrid_type != DECIMAL_RESULT) {
+2374:       my_decimal *result = val_decimal_from_real(val);
+2375:       return result;
+2376:     }
+2377:
+2378:     sum_dec = dec_buffs + curr_dec_buff;
+2379:     int2my_decimal(E_DEC_FATAL_ERROR, m_count, false, &cnt);
+2380:     my_decimal_div(E_DEC_FATAL_ERROR, val, sum_dec, &cnt, prec_increment);
+2381:     return val;
+2382:   }
+2383: }
+2384:
+2385: String *Item_sum_avg::val_str(String *str) {
+2386:   if (aggr) aggr->endup();
+2387:   if (hybrid_type == DECIMAL_RESULT) return val_string_from_decimal(str);
+```
+
+# Code: sql/window.h
+Blob: e6586d794b4f108ff358aa81e992f92c153ec0a0
+Source: https://github.com/mysql/mysql-server/blob/b6cb5560cc46eac38af15b0a9f3a9852038aaea4/sql/window.h
+```cpp
+443:
+444:   /**
+445:     Execution state: used iff m_needs_peerset. Holds the rowno
+446:     for the last row in this peer set.
+447:   */
+448:   int64 m_last_rowno_in_peerset;
+449:
+450:   /**
+451:     Execution state: used iff m_needs_last_peer_in_frame. True if a row
+452:     leaving the frame is the last row in the peer set within the frame.
+453:   */
+454:   int64 m_is_last_row_in_peerset_within_frame;
+455:
+456:   /**
+457:     Execution state: the current row number in the current partition.
+458:     Set in check_partition_boundary. Used while reading input rows, in contrast
+459:     to m_rowno_in_partition, which is used when processing buffered rows.
+460:     Cf. check_partition_boundary.
+461:   */
+462:   int64 m_part_row_number;
+463:
+464:   /**
+465:     Execution state: the current row starts a new partition.
+466:     Set in check_partition_boundary.
+467:   */
+468:   bool m_partition_border;
+469:
+470:   /**
+471:     Execution state: The number, in the current partition, of the last output
+472:     row, i.e. the row number of the last row hitherto evaluated and output to
+473:     the next phase.
+474:   */
+475:   int64 m_last_row_output;
+476:
+477:   /**
+478:     Execution state: The number of the row being visited for its contribution
+479:     to a window function, relative to the start of the partition. Note that
+480:     this will often be different from the current row for which we are
+481:     processing the window function, readying it for output. That is given by
+482:     \c m_rowno_in_partition, q.v. Contrast also with \c m_rowno_in_frame
+483:     which is frame relative.
+484:   */
+485:   int64 m_rowno_being_visited;
+486:
+487:   /**
+488:     Execution state: the row number of the row we are looking at for evaluating
+489:     its contribution to some window function(s).  It is relative to start of
+490:     the frame and 1-based. It is typically set after fetching a row from the
+491:     frame buffer using \c bring_back_frame_row and before calling
+492:     \c copy_funcs.  Cf. also \c m_is_last_row_in_frame.
+493:   */
+494:   int64 m_rowno_in_frame;
+495:
+496:   /**
+497:     Execution state: The row number of the current row being readied for
+498:     output within the partition. 1-based.
+499:     In \c process_buffered_windowing_record this is known as \c current_row.
+500:   */
+501:   int64 m_rowno_in_partition;
+502:
+503:   /**
+504:    Execution state: for optimizable aggregates, cf. m_row_optimizable and
+505:    m_range_optimizable, we need to keep track of when we have computed the
+506:    first aggregate, since aggregates for rows 2..N are computed in an optimized
+507:    way by inverse aggregation of the row moving out of the frame.
+508:    */
+509:   bool m_aggregates_primed;
+510:
+511:   /*------------------------------------------------------------------------
+512:    *
+513:    * RANGE boundary frame state variables.
+514:    *
+515:    *------------------------------------------------------------------------*/
+516:  public:
+517:   /*
+518:     For RANGE bounds, we need to be able to check if a given row is
+519:     before the lower bound, or after the upper bound, as we don't know
+520:     ahead of time how many rows to skip (unlike for ROW bounds).
+521:     Often, the lower and upper bounds are the same, as they are
+522:     inclusive.
+523:
+524:     We solve this by having an array of comparators of the type
+525:
+526:        value ⋛ <cache>(ref_value)
+527:
+528:     where ⋛ is a three-way comparator, and <cache>(ref_value) is an
+529:     Item_cache where we can store the value of the reference row
+530:     before we invoke the comparison. For instance, if we have a
+531:     row bound such as
+532:
+533:         ... OVER (ORDER BY a,b) FROM t1
+534:
+535:      we will have an array with the two comparators
+536:
+537:         t1.a ⋛ <cache>(a)
+538:         t1.b ⋛ <cache>(b)
+```
+
+# Description

@@ -1,0 +1,167 @@
+### Example task
+Describe the high-level MySQL test requirements that can reach the specified source target. Focus on the SQL, data, configuration, and operation sequence needed by a test generator. Distinguish source-required conditions from candidate constructions and unresolved reachability. Do not merely explain the implementation or repeat the patch.
+
+# Target and source code
+Target: intersect_join
+Target observation: JOIN::get_best_combination: select JT_ALL for an INTERSECT/EXCEPT materialized TABLE
+Revision: fac72fe1704c542ba476ef065dee03d2c1da83ae
+Parent revision: 5d02c10206d5d41b1b7d0558b15acf0955d26ed5
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/sql_optimizer.cc
+Blob: 91f067c12f7e26c565814b5f07d4f8ace68b475b
+Source: https://github.com/mysql/mysql-server/blob/fac72fe1704c542ba476ef065dee03d2c1da83ae/sql/sql_optimizer.cc
+```cpp
+3180:     const uint target =
+3181:         (remaining_sjm_inner--) > 0 ? inner_target++ : outer_target++;
+3182:     JOIN_TAB *const tab = pos->table;
+3183:
+3184:     best_ref[target] = tab;
+3185:     tab->set_idx(target);
+3186:     tab->set_position(pos);
+3187:     TABLE *const table = tab->table();
+3188:     if (tab->type() != JT_CONST && tab->type() != JT_SYSTEM) {
+3189:       if (pos->sj_strategy == SJ_OPT_LOOSE_SCAN && tab->range_scan() &&
+3190:           used_index(tab->range_scan()) != pos->loosescan_key) {
+3191:         /*
+3192:           We must use the duplicate-eliminating index, so this QUICK is not
+3193:           an option.
+3194:         */
+3195:         ::destroy(tab->range_scan());
+3196:         tab->set_range_scan(nullptr);
+3197:       }
+3198:       if (table->is_intersect() || table->is_except()) {
+3199:         tab->set_type(JT_ALL);  // INTERSECT, EXCEPT can't use ref access yet
+3200:       } else if (!pos->key) {
+3201:         if (tab->range_scan())
+3202:           tab->set_type(calc_join_type(tab->range_scan()));
+3203:         else
+3204:           tab->set_type(JT_ALL);
+3205:       } else {
+3206:         // REF or RANGE, clarify later when prefix tables are set for JOIN_TABs
+3207:         tab->set_type(JT_REF);
+3208:       }
+3209:     }
+3210:     assert(tab->type() != JT_UNKNOWN);
+```
+
+# Description
+Target
+MySQL revision fac72fe1704c542ba476ef065dee03d2c1da83ae, sql/sql_optimizer.cc:3198-3199: the INTERSECT/EXCEPT materialized-table branch that selects JT_ALL. This is a source-derived candidate, not an executed reproduction.
+
+Source-required conditions
+The current JOIN_TAB is neither JT_CONST nor JT_SYSTEM (line 3188). Its TABLE reports is_intersect() or is_except() (line 3198). The branch assigns JT_ALL (line 3199).
+
+Candidate construction
+Join a derived table containing INTERSECT ALL with a small outer table on an integer key. Give the left input three copies of 1 and one copy of 2, the right input two copies of 1 and one copy of 3, and the outer table two copies of 1 and one copy of 2. This exposes duplicate multiplicities. The equality join is a candidate for presenting the materialized table as a join input; it does not guarantee a particular optimizer plan. INTERSECT ALL is the concrete demonstration; EXCEPT and DISTINCT are optional separate variants.
+
+Correctness oracle
+For each key k, INTERSECT ALL has min(left_count(k), right_count(k)) rows. An equality join multiplies that by outer_count(k). The stated data therefore produces exactly four rows containing 1. Derive this from the inserted data, not from the other server version's output.
+
+Coverage observation
+On the specified revision, use a breakpoint or instrumentation at sql/sql_optimizer.cc:3198-3199 and identify the derived TABLE for this query. Record its set-operation flags, incoming JOIN_TAB type, and the JT_ALL assignment. EXPLAIN alone is only a plan clue.
+
+Uncertainty
+The local excerpt does not establish the full SQL-to-TABLE construction path. If the query does not reach the target, inspect materialization and join-planning callers before revising the candidate. Coverage and correct output are separate observations.
+
+### Current task
+Describe the high-level MySQL test requirements for the following target, following the example's format. Cite the supplied revision, file, and line numbers for source conditions. Keep coverage evidence separate from a correctness oracle. If the local excerpt does not establish a SQL-to-branch mapping, identify the missing caller/helper evidence. Do not invent configuration switches or claim execution. Output only the description for the current task, using: Target; Source-required conditions; Candidate construction; Correctness oracle; Coverage observation; Uncertainty.
+
+# Target and source code
+Target: partition_pruning_lock_state
+Target observation: prune_partitions: compute const_only, prev_tables and read_tables before get_mm_tree
+Revision: cb98e45d2fb75f67c2e65cbf8862d512e98ccce8
+Parent revision: 3c8e94aee55751e76e1ba53ef6cbb00d6468ca2d
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/range_optimizer/partition_pruning.cc
+Blob: a79ab65f5a51098241796b510b270f261722a383
+Source: https://github.com/mysql/mysql-server/blob/cb98e45d2fb75f67c2e65cbf8862d512e98ccce8/sql/range_optimizer/partition_pruning.cc
+```cpp
+270:
+271:   if (!pprune_cond) {
+272:     mark_all_partitions_as_used(part_info);
+273:     return false;
+274:   }
+275:
+276:   /* No need to continue pruning if there is no more partitions to prune! */
+277:   if (bitmap_is_clear_all(&part_info->lock_partitions))
+278:     bitmap_clear_all(&part_info->read_partitions);
+279:   if (bitmap_is_clear_all(&part_info->read_partitions)) {
+280:     table->all_partitions_pruned_away = true;
+281:     return false;
+282:   }
+283:
+284:   PART_PRUNE_PARAM prune_param;
+285:   MEM_ROOT alloc(key_memory_partitions_prune_exec,
+286:                  thd->variables.range_alloc_block_size);
+287:   RANGE_OPT_PARAM *range_par = &prune_param.range_param;
+288:   my_bitmap_map *old_sets[2];
+289:
+290:   prune_param.part_info = part_info;
+291:   alloc.set_max_capacity(thd->variables.range_optimizer_max_mem_size);
+292:   alloc.set_error_for_capacity_exceeded(true);
+293:   thd->push_internal_handler(&range_par->error_handler);
+294:   range_par->return_mem_root =
+295:       &alloc;  // We never use the generated AccessPaths, if any.
+296:   range_par->temp_mem_root = &alloc;
+297:
+298:   if (create_partition_index_description(&prune_param)) {
+299:     mark_all_partitions_as_used(part_info);
+300:     thd->pop_internal_handler();
+301:     return false;
+302:   }
+303:
+304:   dbug_tmp_use_all_columns(table, old_sets, table->read_set, table->write_set);
+305:   range_par->table = table;
+306:   range_par->query_block = query_block;
+307:   /* range_par->cond doesn't need initialization */
+308:   const bool const_only = !thd->lex->is_query_tables_locked();
+309:   const table_map prev_tables = const_only ? 0 : INNER_TABLE_BIT;
+310:   const table_map read_tables = const_only ? 0 : INNER_TABLE_BIT;
+311:   const table_map current_table = table->pos_in_table_list->map();
+312:
+313:   range_par->keys = 1;  // one index
+314:   range_par->using_real_indexes = false;
+315:   unsigned real_keynr = 0;
+316:   range_par->real_keynr = &real_keynr;
+317:
+318:   bitmap_clear_all(&part_info->read_partitions);
+319:
+320:   prune_param.key = prune_param.range_param.key_parts;
+321:   SEL_TREE *tree;
+322:   int res;
+323:
+324:   tree = get_mm_tree(thd, range_par, prev_tables, read_tables, current_table,
+325:                      /*remove_jump_scans=*/false, pprune_cond);
+326:   if (!tree) goto all_used;
+327:
+328:   if (tree->type == SEL_TREE::IMPOSSIBLE) {
+329:     /* Cannot improve the pruning any further. */
+330:     part_info->is_pruning_completed = true;
+331:     goto end;
+332:   }
+333:
+334:   if (tree->type != SEL_TREE::KEY) goto all_used;
+335:
+336:   if (tree->merges.is_empty()) {
+337:     /* Range analysis has produced a single list of intervals. */
+338:     prune_param.arg_stack_end = prune_param.arg_stack;
+339:     prune_param.cur_part_fields = 0;
+340:     prune_param.cur_subpart_fields = 0;
+341:
+342:     prune_param.cur_min_key = prune_param.min_key;
+343:     prune_param.cur_max_key = prune_param.max_key;
+344:     prune_param.cur_min_flag = prune_param.cur_max_flag = 0;
+345:
+346:     init_all_partitions_iterator(part_info, &prune_param.part_iter);
+347:     if (!tree->keys[0] ||
+348:         (-1 == (res = find_used_partitions(thd, &prune_param, tree->keys[0]))))
+349:       goto all_used;
+```
+
+# Description

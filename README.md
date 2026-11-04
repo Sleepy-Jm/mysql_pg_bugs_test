@@ -29,6 +29,7 @@
 
 ## 目录
 
+- [Prompts](Prompts/README.md)：WhiteFox 风格的 MySQL `src2req` / `req2test` 提示词、完整 one-shot 示例和离线生成方式。
 - src/mysql_bugs_test：可复用回放、SQL 输出解析与 oracle 模块。
 - scripts：离线检查入口。
 - tests：迁移的 runner、oracle 和相邻版本契约测试。
