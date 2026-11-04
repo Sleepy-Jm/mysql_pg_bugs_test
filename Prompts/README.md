@@ -1,5 +1,7 @@
 # WhiteFox 风格的 MySQL 两阶段提示词
 
+已完成的三组生成与实测另见 [端到端实验索引](../experiments/prompt_pipeline_20261104/README.md)：逐组链接实际两阶段输入输出、SQL、预期值及目标/父提交的三轮执行证据。该归档保留当时模板快照；下述两个示例目标及离线生成清单保持各自范围。
+
 本目录按 WhiteFox 的 `Prompts/{compiler}/src2req/{name}.txt` 与 `req2test/{name}.txt` 组织，将目标改为 MySQL 源码路径。每份提示词都先提供 **完整示例任务、示例输入、示例答案**，然后提出 **当前任务、当前输入、待续写的答案标记**。
 
 参考：[WhiteFox 仓库](https://github.com/ise-uiuc/WhiteFox)、[源码分析模板](https://github.com/ise-uiuc/WhiteFox/blob/main/template-torch/starcoder-src2nl-pattern.txt)、[测试生成模板](https://github.com/ise-uiuc/WhiteFox/blob/main/template-torch/starcoder-nl2test-oneshot-pattern.txt)。这里重新编写 MySQL 提示词和示例，沿用其 one-shot 结构与按目标实例化的方法。

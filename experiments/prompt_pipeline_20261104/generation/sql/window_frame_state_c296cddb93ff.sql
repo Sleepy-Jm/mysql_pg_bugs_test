@@ -1,0 +1,107 @@
+-- Target: c296cddb93ffc631f9b43d3b1ff769604e7469d7.
+-- Source coverage is tied to this SHA; later releases may contain fixes.
+SELECT VERSION() AS server_version, DATABASE() AS test_schema,
+       @@SESSION.windowing_use_high_precision AS initial_high_precision;
+SET @wf_c296_precision = @@SESSION.windowing_use_high_precision;
+CREATE TEMPORARY TABLE wf_c296_values (
+  g INT, id INT, v_dec DECIMAL(12,2), v_real DOUBLE, PRIMARY KEY (g,id)
+);
+INSERT INTO wf_c296_values VALUES
+ (1,1,10,10),
+ (1,2,20,20),
+ (1,3,30,30),
+ (1,4,40,40),
+ (2,1,NULL,NULL),
+ (2,2,20,20),
+ (2,3,NULL,NULL),
+ (2,4,60,60),
+ (3,1,NULL,NULL),
+ (3,2,NULL,NULL),
+ (4,1,7,7);
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN01_DEC_FORWARD
+SELECT 'WIN01_DEC_FORWARD' AS case_id;
+SELECT g,id,CAST(AVG(v_dec) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN02_REAL_FORWARD_INVERSE
+SELECT 'WIN02_REAL_FORWARD_INVERSE' AS case_id;
+SELECT g,id,CAST(AVG(v_real) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = ON;
+
+-- CASE WIN03_REAL_FORWARD_PRECISE
+SELECT 'WIN03_REAL_FORWARD_PRECISE' AS case_id;
+SELECT g,id,CAST(AVG(v_real) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN04_DEC_CURRENT
+SELECT 'WIN04_DEC_CURRENT' AS case_id;
+SELECT g,id,CAST(AVG(v_dec) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN05_REAL_CURRENT
+SELECT 'WIN05_REAL_CURRENT' AS case_id;
+SELECT g,id,CAST(AVG(v_real) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN06_DEC_BOUNDED
+SELECT 'WIN06_DEC_BOUNDED' AS case_id;
+SELECT g,id,CAST(AVG(v_dec) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN07_REAL_BOUNDED
+SELECT 'WIN07_REAL_BOUNDED' AS case_id;
+SELECT g,id,CAST(AVG(v_real) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN08_DEC_CUMULATIVE_CONTROL
+SELECT 'WIN08_DEC_CUMULATIVE_CONTROL' AS case_id;
+SELECT g,id,CAST(AVG(v_dec) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN09_VALUE_FUNCTIONS
+SELECT 'WIN09_VALUE_FUNCTIONS' AS case_id;
+SELECT g,id,CAST(AVG(v_dec) OVER w AS DECIMAL(20,6)) AS avg_v,
+       FIRST_VALUE(v_dec) OVER w AS first_v,
+       LAST_VALUE(v_dec) OVER w AS last_v,
+       NTH_VALUE(v_dec,2) OVER w AS second_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+DROP TEMPORARY TABLE wf_c296_values;
+SET SESSION windowing_use_high_precision = @wf_c296_precision;

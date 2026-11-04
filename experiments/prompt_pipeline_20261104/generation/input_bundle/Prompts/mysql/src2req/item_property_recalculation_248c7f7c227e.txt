@@ -1,0 +1,389 @@
+### Example task
+Describe the high-level MySQL test requirements that can reach the specified source target. Focus on the SQL, data, configuration, and operation sequence needed by a test generator. Distinguish source-required conditions from candidate constructions and unresolved reachability. Do not merely explain the implementation or repeat the patch.
+
+# Target and source code
+Target: intersect_join
+Target observation: JOIN::get_best_combination: select JT_ALL for an INTERSECT/EXCEPT materialized TABLE
+Revision: fac72fe1704c542ba476ef065dee03d2c1da83ae
+Parent revision: 5d02c10206d5d41b1b7d0558b15acf0955d26ed5
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/sql_optimizer.cc
+Blob: 91f067c12f7e26c565814b5f07d4f8ace68b475b
+Source: https://github.com/mysql/mysql-server/blob/fac72fe1704c542ba476ef065dee03d2c1da83ae/sql/sql_optimizer.cc
+```cpp
+3180:     const uint target =
+3181:         (remaining_sjm_inner--) > 0 ? inner_target++ : outer_target++;
+3182:     JOIN_TAB *const tab = pos->table;
+3183:
+3184:     best_ref[target] = tab;
+3185:     tab->set_idx(target);
+3186:     tab->set_position(pos);
+3187:     TABLE *const table = tab->table();
+3188:     if (tab->type() != JT_CONST && tab->type() != JT_SYSTEM) {
+3189:       if (pos->sj_strategy == SJ_OPT_LOOSE_SCAN && tab->range_scan() &&
+3190:           used_index(tab->range_scan()) != pos->loosescan_key) {
+3191:         /*
+3192:           We must use the duplicate-eliminating index, so this QUICK is not
+3193:           an option.
+3194:         */
+3195:         ::destroy(tab->range_scan());
+3196:         tab->set_range_scan(nullptr);
+3197:       }
+3198:       if (table->is_intersect() || table->is_except()) {
+3199:         tab->set_type(JT_ALL);  // INTERSECT, EXCEPT can't use ref access yet
+3200:       } else if (!pos->key) {
+3201:         if (tab->range_scan())
+3202:           tab->set_type(calc_join_type(tab->range_scan()));
+3203:         else
+3204:           tab->set_type(JT_ALL);
+3205:       } else {
+3206:         // REF or RANGE, clarify later when prefix tables are set for JOIN_TABs
+3207:         tab->set_type(JT_REF);
+3208:       }
+3209:     }
+3210:     assert(tab->type() != JT_UNKNOWN);
+```
+
+# Description
+Target
+MySQL revision fac72fe1704c542ba476ef065dee03d2c1da83ae, sql/sql_optimizer.cc:3198-3199: the INTERSECT/EXCEPT materialized-table branch that selects JT_ALL. This is a source-derived candidate, not an executed reproduction.
+
+Source-required conditions
+The current JOIN_TAB is neither JT_CONST nor JT_SYSTEM (line 3188). Its TABLE reports is_intersect() or is_except() (line 3198). The branch assigns JT_ALL (line 3199).
+
+Candidate construction
+Join a derived table containing INTERSECT ALL with a small outer table on an integer key. Give the left input three copies of 1 and one copy of 2, the right input two copies of 1 and one copy of 3, and the outer table two copies of 1 and one copy of 2. This exposes duplicate multiplicities. The equality join is a candidate for presenting the materialized table as a join input; it does not guarantee a particular optimizer plan. INTERSECT ALL is the concrete demonstration; EXCEPT and DISTINCT are optional separate variants.
+
+Correctness oracle
+For each key k, INTERSECT ALL has min(left_count(k), right_count(k)) rows. An equality join multiplies that by outer_count(k). The stated data therefore produces exactly four rows containing 1. Derive this from the inserted data, not from the other server version's output.
+
+Coverage observation
+On the specified revision, use a breakpoint or instrumentation at sql/sql_optimizer.cc:3198-3199 and identify the derived TABLE for this query. Record its set-operation flags, incoming JOIN_TAB type, and the JT_ALL assignment. EXPLAIN alone is only a plan clue.
+
+Uncertainty
+The local excerpt does not establish the full SQL-to-TABLE construction path. If the query does not reach the target, inspect materialization and join-planning callers before revising the candidate. Coverage and correct output are separate observations.
+
+### Current task
+Describe the high-level MySQL test requirements for the following target, following the example's format. Cite the supplied revision, file, and line numbers for source conditions. Keep coverage evidence separate from a correctness oracle. If the local excerpt does not establish a SQL-to-branch mapping, identify the missing caller/helper evidence. Do not invent configuration switches or claim execution. Output only the description for the current task, using: Target; Source-required conditions; Candidate construction; Correctness oracle; Coverage observation; Uncertainty.
+
+# Target and source code
+Target: item_property_recalculation_248c7f7c227e
+Target observation: Accumulated Item property recalculation across ordinary arguments, references and IN-subquery wrappers, and its use by window materialization
+Revision: 248c7f7c227e76f3422378ca3b9e10d141dcfc86
+Parent revision: 15980860ac2639f41dfbda2f7fffb7aeeab32921
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/item_func.cc
+Blob: 31b9dfba5f1fc85c2383f49175759daad498d990
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item_func.cc
+```cpp
+708: void Item_func::update_used_tables() {
+709:   used_tables_cache = get_initial_pseudo_tables();
+710:   not_null_tables_cache = 0;
+711:   m_accum_properties = 0;
+712: 
+713:   for (uint i = 0; i < arg_count; i++) {
+714:     args[i]->update_used_tables();
+715:     used_tables_cache |= args[i]->used_tables();
+716:     if (null_on_null) not_null_tables_cache |= args[i]->not_null_tables();
+717:     add_accum_properties(args[i]);
+718:   }
+719: }
+```
+```cpp
+8410: void Item_func_sp::update_used_tables() {
+8411:   Item_func::update_used_tables();
+8412: 
+8413:   /* This is reset by Item_func::update_used_tables(). */
+8414:   set_stored_program();
+8415: }
+```
+
+# Code: sql/item.h
+Blob: 314cef5c0d21116ee66b303ed55fb3eb6ef115b2
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item.h
+```cpp
+3179:  protected:
+3180:   /// Set accumulated properties for an Item
+3181:   void set_accum_properties(const Item *item) {
+3182:     m_accum_properties = item->m_accum_properties;
+3183:   }
+3184: 
+3185:   /// Add more accumulated properties to an Item
+3186:   void add_accum_properties(const Item *item) {
+3187:     m_accum_properties |= item->m_accum_properties;
+3188:   }
+3189: 
+3190:   /// Set the "has subquery" property
+3191:   void set_subquery() { m_accum_properties |= PROP_SUBQUERY; }
+3192: 
+3193:   /// Set the "has stored program" property
+3194:   void set_stored_program() { m_accum_properties |= PROP_STORED_PROGRAM; }
+3195: 
+3196:  public:
+3197:   /// @return true if this item or any of its descendants contains a subquery.
+3198:   bool has_subquery() const { return m_accum_properties & PROP_SUBQUERY; }
+3199: 
+3200:   /// @return true if this item or any of its descendants refers a stored func.
+3201:   bool has_stored_program() const {
+3202:     return m_accum_properties & PROP_STORED_PROGRAM;
+3203:   }
+3204: 
+3205:   /// @return true if this item or any of its descendants is an aggregated func.
+3206:   bool has_aggregation() const { return m_accum_properties & PROP_AGGREGATION; }
+3207: 
+3208:   /// Set the "has aggregation" property
+3209:   void set_aggregation() { m_accum_properties |= PROP_AGGREGATION; }
+3210: 
+3211:   /// Reset the "has aggregation" property
+3212:   void reset_aggregation() { m_accum_properties &= ~PROP_AGGREGATION; }
+3213: 
+3214:   /// @return true if this item or any of its descendants is a window func.
+3215:   bool has_wf() const { return m_accum_properties & PROP_WINDOW_FUNCTION; }
+3216: 
+3217:   /// Set the "has window function" property
+3218:   void set_wf() { m_accum_properties |= PROP_WINDOW_FUNCTION; }
+```
+```cpp
+3443:  protected:
+3444:   /**
+3445:     Set of properties that are calculated by accumulation from underlying items.
+3446:     Computed by constructors and fix_fields() and updated by
+3447:     update_used_tables(). The properties are accumulated up to the root of the
+3448:     current item tree, except they are not accumulated across subqueries and
+3449:     functions.
+3450:   */
+3451:   static constexpr uint8 PROP_SUBQUERY = 0x01;
+3452:   static constexpr uint8 PROP_STORED_PROGRAM = 0x02;
+3453:   static constexpr uint8 PROP_AGGREGATION = 0x04;
+3454:   static constexpr uint8 PROP_WINDOW_FUNCTION = 0x08;
+3455:   /**
+3456:     Set if the item or one or more of the underlying items contains a
+3457:     ROLLUP expression. The rolled up expression itself is not so marked.
+3458:   */
+3459:   static constexpr uint8 PROP_ROLLUP_EXPR = 0x10;
+3460:   /**
+3461:     Set if the item or one or more of the underlying items is a GROUPING
+3462:     function.
+3463:   */
+3464:   static constexpr uint8 PROP_GROUPING_FUNC = 0x20;
+3465:   uint8 m_accum_properties;
+```
+```cpp
+5738:   Item *get_tmp_table_item(THD *thd) override;
+5739:   table_map used_tables() const override {
+5740:     if (depended_from != nullptr) return OUTER_REF_TABLE_BIT;
+5741:     const table_map map = ref_item()->used_tables();
+5742:     if (map != 0) return map;
+5743:     // rollup constant: ensure it is non-constant by returning RAND_TABLE_BIT
+5744:     if (has_rollup_expr()) return RAND_TABLE_BIT;
+5745:     return 0;
+5746:   }
+5747:   void update_used_tables() override {
+5748:     if (depended_from == nullptr) ref_item()->update_used_tables();
+5749:     /*
+5750:       Reset all flags except rollup, since we do not mark the rollup expression
+5751:       itself.
+5752:     */
+5753:     m_accum_properties &= PROP_ROLLUP_EXPR;
+5754:     add_accum_properties(ref_item());
+5755:   }
+```
+
+# Code: sql/item_cmpfunc.h
+Blob: 2630dac95545351e0a578c4ee70f728e7604a1bd
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item_cmpfunc.h
+```cpp
+472: /*
+473:   Item_in_optimizer(Item_in_subselect(...))
+474: 
+475:   Item_in_optimizer is used to wrap an instance of Item_in_subselect. This
+476:   class does the following:
+477:    - Evaluate the left expression and store it in Item_cache_* object (to
+478:      avoid re-evaluating it many times during subquery execution)
+479:    - Shortcut the evaluation of "NULL IN (...)" to NULL in the cases where we
+480:      don't care if the result is NULL or FALSE.
+481: 
+482:    args[0] keeps a reference to the Item_in_subselect object.
+483: 
+484:   NOTE
+485:     It is not quite clear why the above listed functionality should be
+486:     placed into a separate class called 'Item_in_optimizer'.
+487: */
+488: 
+489: class Item_in_optimizer final : public Item_bool_func {
+490:  private:
+491:   Item_cache *cache{nullptr};
+492:   /**
+493:     Stores the value of "NULL IN (SELECT ...)" for uncorrelated subqueries:
+494:       UNKNOWN - "NULL in (SELECT ...)" has not yet been evaluated
+495:       FALSE   - result is FALSE
+496:       TRUE    - result is NULL
+497:   */
+498:   int result_for_null_param{UNKNOWN};
+499: 
+500:  public:
+501:   Item_in_optimizer(Item_in_subselect *item)
+502:       : Item_bool_func(pointer_cast<Item *>(item)) {
+503:     set_subquery();
+504:   }
+```
+
+# Code: sql/item_cmpfunc.cc
+Blob: 57c367f4470d918ab9f3ed89899c6cb9b150a44f
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item_cmpfunc.cc
+```cpp
+2138: bool Item_in_optimizer::fix_left(THD *thd, Item **) {
+2139:   Item *left = down_cast<Item_in_subselect *>(args[0])->left_expr;
+2140:   /*
+2141:     Because get_cache() depends on type of left arg, if this arg is a PS param
+2142:     we must decide of its type now. We cannot wait until we know the type of
+2143:     the subquery's SELECT list.
+2144:     @todo: This may actually be changed later, INSPECT.
+2145:   */
+2146:   if (left->propagate_type(thd, MYSQL_TYPE_VARCHAR)) return true;
+2147: 
+2148:   assert(cache == nullptr);
+2149:   cache = Item_cache::get_cache(left);
+2150:   if (cache == nullptr) return true;
+2151: 
+2152:   cache->setup(left);
+2153:   used_tables_cache = left->used_tables();
+```
+```cpp
+2173:   not_null_tables_cache = left->not_null_tables();
+2174:   add_accum_properties(left);
+2175:   if (const_item()) cache->store(left);
+2176: 
+2177:   return false;
+2178: }
+2179: 
+2180: bool Item_in_optimizer::fix_fields(THD *thd, Item **) {
+2181:   assert(!fixed);
+2182:   Item_in_subselect *subqpred = down_cast<Item_in_subselect *>(args[0]);
+2183: 
+2184:   if (!subqpred->fixed && subqpred->fix_fields(thd, nullptr)) return true;
+2185:   if (subqpred->left_expr->cols() != subqpred->unit_cols()) {
+2186:     assert(false);
+2187:     my_error(ER_OPERAND_COLUMNS, MYF(0), subqpred->left_expr->cols());
+2188:     return true;
+2189:   }
+2190:   if (subqpred->is_nullable()) set_nullable(true);
+2191:   add_accum_properties(subqpred);
+2192:   used_tables_cache |= subqpred->used_tables();
+2193:   not_null_tables_cache |= subqpred->not_null_tables();
+```
+```cpp
+2410: void Item_in_optimizer::update_used_tables() {
+2411:   Item_func::update_used_tables();
+2412: 
+2413:   // See explanation for this logic in Item_in_optimizer::fix_fields
+2414:   Item_in_subselect *subqpred = down_cast<Item_in_subselect *>(args[0]);
+2415:   if (subqpred->abort_on_null && subqpred->value_transform == BOOL_IS_TRUE) {
+2416:   } else {
+2417:     not_null_tables_cache &= subqpred->left_expr->not_null_tables();
+2418:   }
+2419: }
+```
+
+# Code: sql/item_subselect.cc
+Blob: b27476a5311102df1d1f622d6b09a465be1b6551
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item_subselect.cc
+```cpp
+2537: void Item_in_subselect::update_used_tables() {
+2538:   Item_subselect::update_used_tables();
+2539:   left_expr->update_used_tables();
+2540:   used_tables_cache |= left_expr->used_tables();
+2541: }
+```
+
+# Code: sql/sql_select.cc
+Blob: b04854d625d68959c1d0a19e09e9ccbfff692f7e
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/sql_select.cc
+```cpp
+4106:   // Don't include temporary fields that originally came from
+4107:   // a window function (or an expression containing a window function).
+4108:   // Window functions are not relevant to store in the framebuffer,
+4109:   // and in fact, trying to restore them would often overwrite
+4110:   // good data we shouldn't.
+4111:   //
+4112:   // Not that the regular filtering in create_tmp_table() cannot do this
+4113:   // for us, as it only sees the Item_field, not where it came from.
+4114:   mem_root_deque<Item *> fb_fields(window_output_fields);
+4115:   for (size_t i = 0; i < fb_fields.size(); ++i) {
+4116:     Item *orig_item = source_fields[i];
+4117:     if (orig_item->has_wf()) {
+4118:       fb_fields[i] = nullptr;
+4119:     }
+4120:   }
+4121:   fb_fields.erase(std::remove(fb_fields.begin(), fb_fields.end(), nullptr),
+4122:                   fb_fields.end());
+4123:   count_field_types(&query_block, par, fb_fields, false, false);
+4124: 
+4125:   TABLE *table =
+4126:       create_tmp_table(thd, par, fb_fields, nullptr, false, false,
+4127:                        query_block.active_options(), HA_POS_ERROR, "");
+4128:   if (table == nullptr) return true;
+4129: 
+4130:   window->set_frame_buffer_param(par);
+4131:   window->set_frame_buffer(table);
+4132: 
+4133:   // For window function expressions we are to evaluate after
+4134:   // framebuffering, we need to replace their arguments to point to the
+4135:   // output table instead of the input table (we could probably also have
+4136:   // used the framebuffer if we wanted). E.g., if our input is t1 and our
+4137:   // output is <temporary>, we need to rewrite 1 + SUM(t1.x) OVER w into
+4138:   // 1 + SUM(<temporary>.x) OVER w.
+4139:   for (Func_ptr &ptr : *mapping_from_source_to_window_output) {
+4140:     if (ptr.func()->has_wf()) {
+4141:       ReplaceMaterializedItems(thd, ptr.func(),
+4142:                                *mapping_from_source_to_window_output,
+4143:                                /*need_exact_match=*/false);
+4144:     }
+4145:   }
+4146:   return false;
+4147: }
+```
+```cpp
+4654:       const uint widx = REF_SLICE_WIN_1 + wno;
+4655: 
+4656:       QEP_TAB *tab = &qep_tab[curr_tmp_table];
+4657:       mem_root_deque<Item *> *orig_fields = curr_fields;
+4658:       {
+4659:         Opt_trace_object trace_this_tbl(trace);
+4660:         trace_this_tbl
+4661:             .add("adding_tmp_table_in_plan_at_position", curr_tmp_table)
+4662:             .add_alnum("cause", "output_for_window_functions")
+4663:             .add("with_buffer", m_windows[wno]->needs_buffering());
+4664: 
+4665:         if (create_intermediate_table(tab, *curr_fields, dummy, false))
+4666:           return true;
+4667: 
+4668:         if (alloc_ref_item_slice(thd, widx)) return true;
+4669: 
+4670:         if (change_to_use_tmp_fields(curr_fields, thd, ref_items[widx],
+4671:                                      &tmp_fields[widx],
+4672:                                      query_block->m_added_non_hidden_fields))
+4673:           return true;
+4674: 
+4675:         curr_fields = &tmp_fields[widx];
+4676:         set_ref_item_slice(widx);
+4677:         tab->ref_item_slice = widx;
+4678:         setup_tmptable_write_func(tab, &trace_this_tbl);
+4679:       }
+4680: 
+4681:       if (m_windows[wno]->needs_buffering()) {
+4682:         if (CreateFramebufferTable(
+4683:                 thd, tmp_table_param, *query_block, *orig_fields, *curr_fields,
+4684:                 tab->tmp_table_param->items_to_copy, m_windows[wno])) {
+4685:           return true;
+4686:         }
+4687:       }
+```
+
+# Description

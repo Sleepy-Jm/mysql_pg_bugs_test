@@ -1,0 +1,88 @@
+### Example task
+Generate a self-contained MySQL SQL test and its inputs from the requirements below. Include setup, deterministic queries, independently derived expected results, and cleanup. Explain how to observe the source target separately from checking SQL results.
+
+# Description of requirements
+Target
+MySQL revision fac72fe1704c542ba476ef065dee03d2c1da83ae, sql/sql_optimizer.cc:3198-3199: the INTERSECT/EXCEPT materialized-table branch that selects JT_ALL. This is a source-derived candidate, not an executed reproduction.
+
+Source-required conditions
+The current JOIN_TAB is neither JT_CONST nor JT_SYSTEM (line 3188). Its TABLE reports is_intersect() or is_except() (line 3198). The branch assigns JT_ALL (line 3199).
+
+Candidate construction
+Join a derived table containing INTERSECT ALL with a small outer table on an integer key. Give the left input three copies of 1 and one copy of 2, the right input two copies of 1 and one copy of 3, and the outer table two copies of 1 and one copy of 2. This exposes duplicate multiplicities. The equality join is a candidate for presenting the materialized table as a join input; it does not guarantee a particular optimizer plan. INTERSECT ALL is the concrete demonstration; EXCEPT and DISTINCT are optional separate variants.
+
+Correctness oracle
+For each key k, INTERSECT ALL has min(left_count(k), right_count(k)) rows. An equality join multiplies that by outer_count(k). The stated data therefore produces exactly four rows containing 1. Derive this from the inserted data, not from the other server version's output.
+
+Coverage observation
+On the specified revision, use a breakpoint or instrumentation at sql/sql_optimizer.cc:3198-3199 and identify the derived TABLE for this query. Record its set-operation flags, incoming JOIN_TAB type, and the JT_ALL assignment. EXPLAIN alone is only a plan clue.
+
+Uncertainty
+The local excerpt does not establish the full SQL-to-TABLE construction path. If the query does not reach the target, inspect materialization and join-planning callers before revising the candidate. Coverage and correct output are separate observations.
+
+# Test
+Prerequisites
+Use a disposable, already selected schema on a MySQL build supporting INTERSECT ALL. The source coverage target is revision fac72fe1704c542ba476ef065dee03d2c1da83ae; do not infer that every release has identical source locations. Use a fresh session with no existing objects named wf_demo_a, wf_demo_b, or wf_demo_c.
+
+SQL
+```sql
+CREATE TEMPORARY TABLE wf_demo_a (k INT NOT NULL);
+CREATE TEMPORARY TABLE wf_demo_b (k INT NOT NULL);
+CREATE TEMPORARY TABLE wf_demo_c (k INT NOT NULL);
+INSERT INTO wf_demo_a VALUES (1), (1), (1), (2);
+INSERT INTO wf_demo_b VALUES (1), (1), (3);
+INSERT INTO wf_demo_c VALUES (1), (1), (2);
+
+SELECT d.k
+FROM (
+  SELECT k FROM wf_demo_a
+  INTERSECT ALL
+  SELECT k FROM wf_demo_b
+) AS d
+JOIN wf_demo_c AS c ON d.k = c.k
+ORDER BY d.k;
+
+DROP TEMPORARY TABLE wf_demo_c;
+DROP TEMPORARY TABLE wf_demo_b;
+DROP TEMPORARY TABLE wf_demo_a;
+```
+
+Expected results and oracle
+The SELECT returns four rows, each with k=1. The intersection contains min(3,2)=2 copies of 1 and no other keys; joining the two outer copies produces 2*2=4 rows. Compare row multiplicities, not just distinct values. If setup or the SELECT fails, retain that failure separately; close the session to release remaining temporary tables.
+
+Coverage observation
+Observe sql/sql_optimizer.cc:3198-3199 at the specified revision. Identify d's materialized TABLE, verify its is_intersect() flag and nonconstant JOIN_TAB, and record the JT_ALL assignment. The expected result does not itself prove this branch was reached.
+
+Execution status
+Authored one-shot demonstration; SQL and branch coverage have not been executed or measured.
+
+### Current task
+Generate a new MySQL test that satisfies the following requirements. Follow the example's format, but use the current target's operations and data. Supply complete SQL without placeholders, expected rows with a derivation, cleanup, and a separate coverage observation plan. Use an already selected disposable test schema; use temporary tables when compatible with the target, otherwise use uniquely named ordinary tables and clean up only objects created by the test. Specify session ordering if multiple connections are required. If an essential precondition is unresolved, state it instead of claiming guaranteed coverage. Do not execute the test or describe generated SQL as a reproduced bug. Output only: Prerequisites; SQL; Expected results and oracle; Coverage observation; Execution status.
+
+# Description of requirements
+Target
+Revision 248c7f7c227e76f3422378ca3b9e10d141dcfc86; parent 15980860ac2639f41dfbda2f7fffb7aeeab32921. Test two separate candidate mechanisms: accumulated window properties across expression reuse/materialization, and properties of a window expression used as the left operand of IN (SELECT ...). Do not assume they represent the same defect.
+
+Source-required conditions
+The analysis stage extracted these conditions from the target-revision source:
+1. Item_func::update_used_tables resets m_accum_properties to zero and recomputes it from ordinary arguments (sql/item_func.cc:708-719). An expression with a window-function descendant supplies an observable PROP_WINDOW_FUNCTION; constant arithmetic alone does not.
+2. Item_ref::update_used_tables preserves PROP_ROLLUP_EXPR, then incorporates its referred Item's properties (sql/item.h:5747-5755). Trace the reference identity and actual call; a SQL alias is only a candidate way to introduce a reference, not proof that this override is used.
+3. For buffered windows, CreateFramebufferTable uses orig_item->has_wf() to exclude window-derived output fields from the framebuffer and uses has_wf() again for replacement of materialized arguments (sql/sql_select.cc:4106-4144). The caller checks needs_buffering (4681-4687).
+4. Item_in_optimizer wraps Item_in_subselect as args[0] (sql/item_cmpfunc.h:472-504). fix_left accumulates left_expr properties (sql/item_cmpfunc.cc:2173-2175), while update_used_tables calls the generic reset/reaccumulation (2410-2419). Item_in_subselect::update_used_tables explicitly updates the left expression and its used-table bits (sql/item_subselect.cc:2537-2541). This excerpt does not itself prove how the inherited base preserves every accumulated flag; inspect that missing base code before asserting a lost flag.
+5. The property bits include subquery, stored program, aggregation, window, rollup and grouping (sql/item.h:3443-3465). This SQL batch targets window properties and IN wrapping; it does not claim coverage of stored-function restoration or all other bits.
+
+Candidate construction
+Case family A: make one small temporary table with (g,id,v), unique ordering within each partition, integer values and NULLs. Select an arithmetic wrapper around SUM(v) OVER (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING), together with ROW_NUMBER over descending id. The two orders and buffered SUM are candidates for intermediate-table/reference processing. Use a prepared statement with a bound numeric offset: execute twice with the same data/offset, then again with a changed offset, and compare with an ordinary direct query. Do not deallocate/reprepare between repeats. Select order by g,id. Repeated execution is a reuse candidate; a trace must show which Item objects and update calls actually recur.
+Case family B: in the SELECT list, put the wrapped SUM window expression directly on the left of IN (SELECT k FROM a separate small lookup table). Also return the wrapped value and order by g,id. Keep the expression in the same query block as the window; moving it to an outer derived-table field would weaken the intended property-propagation target. Use a nonempty lookup table containing both a matching integer and NULL. Capture repeated prepared executions and a direct-query control separately. An IN predicate in the projection avoids intentionally filtering away UNKNOWN. Record whether an Item_in_optimizer was actually selected; textual IN syntax alone is insufficient.
+
+Correctness oracle
+For the first partition, use v=[10,NULL,30,40] ordered by id=[1,2,3,4]. CURRENT ROW through 1 FOLLOWING gives SUM=[10,30,70,40]. Adding offset 1 yields [11,31,71,41]; offset 11 yields [21,41,81,51]. Descending row numbers in ascending output order are [4,3,2,1]. A second partition with two NULL values yields NULL wrapped sums and descending row numbers [2,1]. Repeated identical executions must yield the same ordered rows.
+For family B, with lookup values [11,71,NULL], left values [11,31,71,41,NULL,NULL] produce IN results [1,NULL,1,NULL,NULL,NULL]. Unmatched non-NULL values yield UNKNOWN because the lookup contains NULL; they must not be judged as zero. After removing the lookup NULL, the same left values yield [1,0,1,0,NULL,NULL]. These truth tables and frame sums are independent semantic expectations, not outputs copied from another server version.
+
+Coverage observation
+At sql/item_func.cc:708-717 record Item identity, accumulated properties before reset and after accumulation, argument identities and their property bits. At Item_ref::update_used_tables record referred objects and retained/added flags. For family A, correlate those identities with CreateFramebufferTable orig_item->has_wf() decisions and materialized-item replacement across executions. For family B, capture the Item_in_optimizer wrapper, Item_in_subselect and left_expr property masks during fix_left, fix_fields and update_used_tables. Keep each family's execution/coverage result separate.
+
+Uncertainty
+The supplied snippets do not provide every optimizer caller, base Item_subselect implementation, prepared-statement lifetime transition or window-expression placement rule. SQL validity, wrapper selection, actual repeated calls and object reuse require runtime checks on the target build. A SQL error is not automatically a wrong-result finding. If the desired wrapper/property path is absent, return its trace and missing base/caller questions to source analysis. The generated batch does not test stored programs, ROLLUP or every affected property. These requirements were generated by this assistant from the src2req prompt, without executing SQL.
+
+# Test

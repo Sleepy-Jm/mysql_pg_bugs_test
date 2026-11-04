@@ -1,0 +1,98 @@
+Prerequisites
+Use a target-revision MySQL build with window functions and SQL prepared statements, a fresh session, and a selected disposable schema. No existing wf_248_* temporary table or prepared statement may share these names. Execute the entire file in one connection; the question mark is a real bound prepared-statement parameter, supplied by each EXECUTE USING. Do not split PREPARE/EXECUTE into separate connections. Temporary tables and prepared statements disappear when the session closes after an error. The IN expression is a SQL candidate whose acceptance and chosen internal wrapper still need verification on the target server.
+
+SQL
+```sql
+-- Target: 248c7f7c227e76f3422378ca3b9e10d141dcfc86.
+-- Fresh session, selected disposable schema, unique temporary-table/statement names.
+SELECT VERSION() AS server_version, DATABASE() AS test_schema;
+CREATE TEMPORARY TABLE wf_248_values (g INT, id INT, v INT, PRIMARY KEY (g,id));
+CREATE TEMPORARY TABLE wf_248_lookup (k INT);
+INSERT INTO wf_248_values VALUES
+ (1,1,10),(1,2,NULL),(1,3,30),(1,4,40),(2,1,NULL),(2,2,NULL);
+INSERT INTO wf_248_lookup VALUES (11),(71),(NULL);
+
+PREPARE wf_248_a FROM 'SELECT g, id, ? + SUM(v) OVER w AS wrapped,
+       ROW_NUMBER() OVER (PARTITION BY g ORDER BY id DESC) AS rn_rev
+FROM wf_248_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)
+ORDER BY g,id';
+
+SET @wf_248_offset = 1;
+
+-- CASE PROP_A1_PREPARED
+SELECT 'PROP_A1_PREPARED' AS case_id;
+EXECUTE wf_248_a USING @wf_248_offset;
+
+SET @wf_248_offset = 1;
+
+-- CASE PROP_A2_REPEAT
+SELECT 'PROP_A2_REPEAT' AS case_id;
+EXECUTE wf_248_a USING @wf_248_offset;
+
+SET @wf_248_offset = 11;
+
+-- CASE PROP_A3_OFFSET
+SELECT 'PROP_A3_OFFSET' AS case_id;
+EXECUTE wf_248_a USING @wf_248_offset;
+
+-- CASE PROP_A4_DIRECT
+SELECT 'PROP_A4_DIRECT' AS case_id;
+SELECT g, id, 11 + SUM(v) OVER w AS wrapped,
+       ROW_NUMBER() OVER (PARTITION BY g ORDER BY id DESC) AS rn_rev
+FROM wf_248_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)
+ORDER BY g,id;
+
+DEALLOCATE PREPARE wf_248_a;
+
+PREPARE wf_248_b FROM 'SELECT g, id, 1 + SUM(v) OVER w AS wrapped,
+       (1 + SUM(v) OVER w) IN (SELECT k FROM wf_248_lookup) AS in_result
+FROM wf_248_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)
+ORDER BY g,id';
+
+-- CASE PROP_B1_PREPARED
+SELECT 'PROP_B1_PREPARED' AS case_id;
+EXECUTE wf_248_b;
+
+-- CASE PROP_B2_REPEAT
+SELECT 'PROP_B2_REPEAT' AS case_id;
+EXECUTE wf_248_b;
+
+-- CASE PROP_B3_DIRECT
+SELECT 'PROP_B3_DIRECT' AS case_id;
+SELECT g, id, 1 + SUM(v) OVER w AS wrapped,
+       (1 + SUM(v) OVER w) IN (SELECT k FROM wf_248_lookup) AS in_result
+FROM wf_248_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)
+ORDER BY g,id;
+
+DELETE FROM wf_248_lookup WHERE k IS NULL;
+
+-- CASE PROP_B4_NO_NULL
+SELECT 'PROP_B4_NO_NULL' AS case_id;
+EXECUTE wf_248_b;
+
+DEALLOCATE PREPARE wf_248_b;
+DROP TEMPORARY TABLE wf_248_lookup;
+DROP TEMPORARY TABLE wf_248_values;
+```
+
+Expected results and oracle
+Family A's two-row frames yield SUM 10,30,70,40 for group 1 and NULL,NULL for group 2; add the supplied offset only to non-NULL sums. Descending row numbers are 4,3,2,1 and 2,1. A1 and A2 repeat the identical prepared object and parameter. A3 changes the offset without reprepare; A4 checks the corresponding direct form. Family B starts with lookup [11,71,NULL]: unmatched 31 and 41 yield NULL, not 0. After deleting the lookup NULL, they yield 0. A NULL left operand yields NULL against the remaining nonempty lookup. All expectations are independently computed; repeated/direct query agreement alone is not sufficient.
+
+PROP_A1_PREPARED: columns=['g', 'id', 'wrapped', 'rn_rev']; expected=[[1, 1, 11, 4], [1, 2, 31, 3], [1, 3, 71, 2], [1, 4, 41, 1], [2, 1, null, 2], [2, 2, null, 1]]
+PROP_A2_REPEAT: columns=['g', 'id', 'wrapped', 'rn_rev']; expected=[[1, 1, 11, 4], [1, 2, 31, 3], [1, 3, 71, 2], [1, 4, 41, 1], [2, 1, null, 2], [2, 2, null, 1]]
+PROP_A3_OFFSET: columns=['g', 'id', 'wrapped', 'rn_rev']; expected=[[1, 1, 21, 4], [1, 2, 41, 3], [1, 3, 81, 2], [1, 4, 51, 1], [2, 1, null, 2], [2, 2, null, 1]]
+PROP_A4_DIRECT: columns=['g', 'id', 'wrapped', 'rn_rev']; expected=[[1, 1, 21, 4], [1, 2, 41, 3], [1, 3, 81, 2], [1, 4, 51, 1], [2, 1, null, 2], [2, 2, null, 1]]
+PROP_B1_PREPARED: columns=['g', 'id', 'wrapped', 'in_result']; expected=[[1, 1, 11, 1], [1, 2, 31, null], [1, 3, 71, 1], [1, 4, 41, null], [2, 1, null, null], [2, 2, null, null]]
+PROP_B2_REPEAT: columns=['g', 'id', 'wrapped', 'in_result']; expected=[[1, 1, 11, 1], [1, 2, 31, null], [1, 3, 71, 1], [1, 4, 41, null], [2, 1, null, null], [2, 2, null, null]]
+PROP_B3_DIRECT: columns=['g', 'id', 'wrapped', 'in_result']; expected=[[1, 1, 11, 1], [1, 2, 31, null], [1, 3, 71, 1], [1, 4, 41, null], [2, 1, null, null], [2, 2, null, null]]
+PROP_B4_NO_NULL: columns=['g', 'id', 'wrapped', 'in_result']; expected=[[1, 1, 11, 1], [1, 2, 31, 0], [1, 3, 71, 1], [1, 4, 41, 0], [2, 1, null, null], [2, 2, null, null]]
+
+Coverage observation
+Keep family A and B results separate. Record masks/Item identities before and after Item_func::update_used_tables (sql/item_func.cc:708-719), and referenced identities at sql/item.h:5747-5755. In A, correlate PROP_WINDOW_FUNCTION and has_wf() with sql/sql_select.cc:4115-4119 and 4139-4143 across executions. In B, verify Item_in_optimizer actually wraps Item_in_subselect; record left_expr flags at sql/item_cmpfunc.cc:2173-2175 and after 2410-2419 / sql/item_subselect.cc:2537-2541. An IN keyword or a repeated EXECUTE does not establish those paths. Stored-program and rollup branches are outside this batch.
+
+Execution status
+Generated by the current assistant from the saved req2test prompt and its new src2req requirements. No database was connected, SQL executed, or source coverage measured. Expected rows are semantic calculations, not observed results. Retain SQL errors/crashes/missing results as separate observations; do not silently treat them as correct or as confirmed bugs.

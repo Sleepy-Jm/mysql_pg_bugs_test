@@ -1,0 +1,90 @@
+### Example task
+Generate a self-contained MySQL SQL test and its inputs from the requirements below. Include setup, deterministic queries, independently derived expected results, and cleanup. Explain how to observe the source target separately from checking SQL results.
+
+# Description of requirements
+Target
+MySQL revision fac72fe1704c542ba476ef065dee03d2c1da83ae, sql/sql_optimizer.cc:3198-3199: the INTERSECT/EXCEPT materialized-table branch that selects JT_ALL. This is a source-derived candidate, not an executed reproduction.
+
+Source-required conditions
+The current JOIN_TAB is neither JT_CONST nor JT_SYSTEM (line 3188). Its TABLE reports is_intersect() or is_except() (line 3198). The branch assigns JT_ALL (line 3199).
+
+Candidate construction
+Join a derived table containing INTERSECT ALL with a small outer table on an integer key. Give the left input three copies of 1 and one copy of 2, the right input two copies of 1 and one copy of 3, and the outer table two copies of 1 and one copy of 2. This exposes duplicate multiplicities. The equality join is a candidate for presenting the materialized table as a join input; it does not guarantee a particular optimizer plan. INTERSECT ALL is the concrete demonstration; EXCEPT and DISTINCT are optional separate variants.
+
+Correctness oracle
+For each key k, INTERSECT ALL has min(left_count(k), right_count(k)) rows. An equality join multiplies that by outer_count(k). The stated data therefore produces exactly four rows containing 1. Derive this from the inserted data, not from the other server version's output.
+
+Coverage observation
+On the specified revision, use a breakpoint or instrumentation at sql/sql_optimizer.cc:3198-3199 and identify the derived TABLE for this query. Record its set-operation flags, incoming JOIN_TAB type, and the JT_ALL assignment. EXPLAIN alone is only a plan clue.
+
+Uncertainty
+The local excerpt does not establish the full SQL-to-TABLE construction path. If the query does not reach the target, inspect materialization and join-planning callers before revising the candidate. Coverage and correct output are separate observations.
+
+# Test
+Prerequisites
+Use a disposable, already selected schema on a MySQL build supporting INTERSECT ALL. The source coverage target is revision fac72fe1704c542ba476ef065dee03d2c1da83ae; do not infer that every release has identical source locations. Use a fresh session with no existing objects named wf_demo_a, wf_demo_b, or wf_demo_c.
+
+SQL
+```sql
+CREATE TEMPORARY TABLE wf_demo_a (k INT NOT NULL);
+CREATE TEMPORARY TABLE wf_demo_b (k INT NOT NULL);
+CREATE TEMPORARY TABLE wf_demo_c (k INT NOT NULL);
+INSERT INTO wf_demo_a VALUES (1), (1), (1), (2);
+INSERT INTO wf_demo_b VALUES (1), (1), (3);
+INSERT INTO wf_demo_c VALUES (1), (1), (2);
+
+SELECT d.k
+FROM (
+  SELECT k FROM wf_demo_a
+  INTERSECT ALL
+  SELECT k FROM wf_demo_b
+) AS d
+JOIN wf_demo_c AS c ON d.k = c.k
+ORDER BY d.k;
+
+DROP TEMPORARY TABLE wf_demo_c;
+DROP TEMPORARY TABLE wf_demo_b;
+DROP TEMPORARY TABLE wf_demo_a;
+```
+
+Expected results and oracle
+The SELECT returns four rows, each with k=1. The intersection contains min(3,2)=2 copies of 1 and no other keys; joining the two outer copies produces 2*2=4 rows. Compare row multiplicities, not just distinct values. If setup or the SELECT fails, retain that failure separately; close the session to release remaining temporary tables.
+
+Coverage observation
+Observe sql/sql_optimizer.cc:3198-3199 at the specified revision. Identify d's materialized TABLE, verify its is_intersect() flag and nonconstant JOIN_TAB, and record the JT_ALL assignment. The expected result does not itself prove this branch was reached.
+
+Execution status
+Authored one-shot demonstration; SQL and branch coverage have not been executed or measured.
+
+### Current task
+Generate a new MySQL test that satisfies the following requirements. Follow the example's format, but use the current target's operations and data. Supply complete SQL without placeholders, expected rows with a derivation, cleanup, and a separate coverage observation plan. Use an already selected disposable test schema; use temporary tables when compatible with the target, otherwise use uniquely named ordinary tables and clean up only objects created by the test. Specify session ordering if multiple connections are required. If an essential precondition is unresolved, state it instead of claiming guaranteed coverage. Do not execute the test or describe generated SQL as a reproduced bug. Output only: Prerequisites; SQL; Expected results and oracle; Coverage observation; Execution status.
+
+# Description of requirements
+Target
+Revision c296cddb93ffc631f9b43d3b1ff769604e7469d7; parent 74c7ccfa27f482576412300e5f92fd3dbeb54cfa. Observe optimized ROWS-frame state assignments and the buffered AVG denominator that consumes rowno_in_frame. This revision uses rowno_in_frame for buffered averages; do not substitute the later m_count-only implementation from another prompt's example target.
+
+Source-required conditions
+The analysis stage extracted these constraints from the source in this prompt:
+1. AVG must be a window function, not an ordinary grouped aggregate, and reach its final-row calculation after initialization. The buffered REAL denominator is rowno_in_frame()-m_frame_null_count (sql/item_sum.cc:2279-2293); DECIMAL uses the same buffered expression at 2350-2357. Positive divisor and is_last_row_in_frame gate division.
+2. ROWS UNBOUNDED PRECEDING through CURRENT ROW is explicitly a nonbuffered case (sql/item_sum.cc:410-421). Use other ROWS frames for the buffered target and reserve that frame as a control.
+3. The optimized-row strategy requires row_optimizable and aggregates_primed (sql/iterators/window_iterators.cc:683-699,1092). Moving-frame REAL aggregation additionally requires windowing_use_high_precision=false to permit inversion; the excerpt does not impose that gate on DECIMAL (sql/item_sum.cc:1913-1931).
+4. The subtraction branch requires remove_previous_first_row: lower_limit>1 and lower_limit-1<=last_rowno_in_cache (window_iterators.cc:1098-1107). With no new last row, it sets inverse=true, sets rowno_in_frame to current_row-lower_limit+1, temporarily marks a nonempty frame's final row, and calls the framing functions (1145-1164).
+5. A lower border of 1 FOLLOWING gives lower_limit=current_row+1 (789-812). Thus the displayed assignment can produce rowno_in_frame=0 even when a remaining forward frame is nonempty. This is an algebraic observation about a conditional branch; all runtime guards still need confirmation. With an unbounded-following upper border, new_last_row is false according to 1100-1102.
+6. FIRST_VALUE, LAST_VALUE and NTH_VALUE have additional setters/copy calls (1167-1209). A bounded moving frame can use the add-new-last-row setter upper-lower_limit+1 (1214-1225). Their reachability should be observed separately.
+
+Candidate construction
+Use a small temporary table with (g,id,v_dec,v_real), a unique (g,id) key, DECIMAL and DOUBLE columns holding identical small exactly representable input values. Include a normal partition [10,20,30,40], a mixed-NULL partition [NULL,20,NULL,60], an all-NULL partition [NULL,NULL], and a single-row partition [7]. Order every window by id and the result by g,id.
+Primary frame: ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING. It combines a moving lower bound, a fixed upper end, shrinking positive frames and an empty final frame. Run DECIMAL AVG independently, then DOUBLE AVG with windowing_use_high_precision OFF and ON. Save and restore this session variable. OFF is the intended REAL inversion candidate; ON is a numerical/strategy control, not a known-correct oracle.
+Secondary frames: ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING, and ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING. Run both numeric types with high precision OFF; they exercise a different lower position and bounded add/remove opportunities. Add a nonbuffered cumulative AVG control. Add a separate forward-frame query combining DECIMAL AVG, FIRST_VALUE, LAST_VALUE and NTH_VALUE(v_dec,2) over one named window to explore the extra state setters. Keep it separate from the primary AVG-only query so added functions do not define primary coverage.
+
+Correctness oracle
+For each output row, enumerate the frame's rows in its partition and average only non-NULL values. Empty frames and all-NULL frames return NULL. In [10,20,30,40], the forward-to-end means are [30,35,40,NULL]; current-to-end means are [25,30,35,40]; one-preceding/one-following means are [15,20,30,35]. In [NULL,20,NULL,60], forward-to-end means are [40,60,60,NULL]. Include remaining frames/partitions by the same enumeration, not by asking another window AVG query for the answer.
+Choose an explicit six-decimal output cast for stable presentation. Quantize mathematical rational means to six decimals for DECIMAL comparison; permit at most 0.000001 absolute difference in the cast DOUBLE output. NULL must match exactly. FIRST_VALUE/LAST_VALUE use actual first/last frame rows, including NULLs; NTH_VALUE uses the second frame row and returns NULL if absent. These functions do not skip NULLs in this test. A positive-row-count all-NULL frame differs from an empty frame even though both AVG results are NULL.
+
+Coverage observation
+Record the window identity, partition/output-row identity, row_optimizable, aggregates_primed, needs_buffering, lower_limit, upper, last_rowno_in_cache, remove_previous_first_row, new_last_row, rows_in_frame and inverse state. At window_iterators.cc:1152 and 1190 capture the assigned rowno_in_frame, and correlate with the AVG call's m_count, m_frame_null_count, divisor and is_last_row_in_frame. Record whether division occurred or was skipped. Trace 1174,1207,1220 separately for auxiliary value functions and bounded frames. An empty final row alone is not evidence that the positive-divisor branch was tested.
+
+Uncertainty
+The snippets omit initial priming, all frame-limit calculations, executor scheduling and some null-result handling. The SQL shapes are candidates for the guarded branches; source algebra is not a runtime reproduction. High-precision ON/OFF equality cannot replace the independent frame oracle. Later release builds may already contain subsequent fixes; bind attribution to the given target and parent commits. This is this assistant's src2req output; SQL execution and measured source coverage have not occurred.
+
+# Test

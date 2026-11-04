@@ -1,0 +1,114 @@
+MySQL 三组生成 SQL：目标提交与父提交实测报告
+日期：2026-11-04；状态：已完成。
+
+结论
+三组均在目标提交上稳定复现错误结果，对应父提交全部符合原预期。
+每个版本重复三次，共六个精确提交、18 次整份脚本运行、150 次检查点观测。
+三轮中，错误检查点及其实际行内容均一致。没有 SQL ERROR、超时、服务器崩溃或 OOM。
+原 SQL 与原 expected JSON 的字节及 SHA256 保持不变，没有用历史复现脚本替换本次生成结果。
+
+                          父提交每轮     目标提交每轮     能否复现
+派生表条件下推/字符集      8/8 正确       7/8 正确         能，1 个检查点错误
+Item 属性重算             8/8 正确       6/8 正确         能，2 个检查点错误
+窗口帧状态                9/9 正确       4/9 正确         能，5 个检查点错误
+
+合计父提交 75/75 次正确；目标提交 51/75 次正确、24/75 次错误。
+8 个不同检查点失败，不代表发现 8 个独立缺陷。这是对当前三份 SQL 的回归复现结果。
+
+一、派生表条件下推/字符集
+目标：4d2da251cb536340d19438cc0039bb2846f9a634
+父提交：e248166db3c95b4fc998ca14cff914f1fdafbe7b
+两个版本报告的版本字符串均为 8.0.32-tr；精确身份由构建提交和二进制哈希区分。
+
+唯一失败检查点：DCP01_ON，三次均重现。
+条件：会话 utf8mb4_bin；派生表表达式 CONCAT(s, 'é') 使用无显式字符集前缀的字面量；
+derived_condition_pushdown=on。外层条件筛选 tag=_utf8mb4'aé'。
+按插入数据，id=1、4 的 s 都是 'a'，应得到如下两行：
+  id   tag_hex   char_len   byte_len
+  1    61C3A9    2          3
+  4    61C3A9    2          3
+父提交返回上述两行；目标提交返回空集，没有 SQL 错误。
+
+对照：DCP01_OFF 正确；显式 _utf8mb4'é' 的 DCP02_OFF/ON 均正确；
+中文字面量 DCP03_OFF/ON、带单引号字面量 DCP04_OFF/ON 均正确。
+本份 SQL 将差异限定在隐式字面量与条件下推同时启用的情况。
+没有做内部字符串克隆/重新解析的运行时插桩，不能仅据此报告具体内部字符集状态。
+空结果集的 mysql XML 不包含列名，比较器额外记录 columns=[]；异常结论依赖缺失两行，
+不把该记录解释为 SQL 输出列结构改变。
+
+二、Item 属性重算
+目标：248c7f7c227e76f3422378ca3b9e10d141dcfc86
+父提交：15980860ac2639f41dfbda2f7fffb7aeeab32921
+两个版本均为 8.0.33；复用了经完整提交、无补丁状态和三项二进制哈希核对的构建缓存。
+
+失败检查点：PROP_B2_REPEAT、PROP_B4_NO_NULL，三次均重现。
+同一个预处理查询同时选择 1 + SUM(v) OVER w 以及该表达式 IN (SELECT k ...) 的结果；
+窗口为 ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING。
+错误出现在重复 EXECUTE 后的 wrapped 列，而不是 in_result 列：
+  g,id    原预期/父提交 wrapped    目标实际 wrapped
+  1,1     11                       NULL
+  1,2     31                       11
+  1,3     71                       21
+  1,4     41                       41
+  2,1     NULL                     111
+  2,2     NULL                     81
+上述两个失败检查点的错误列相同，每次各有五个错误单元格。
+PROP_B2_REPEAT 的 in_result 为 [1,NULL,1,NULL,NULL,NULL]，符合预期。
+删除 lookup 中 NULL 后，PROP_B4_NO_NULL 的 in_result 为 [1,0,1,0,NULL,NULL]，也符合预期。
+PROP_B1_PREPARED 首次执行、PROP_B3_DIRECT 直接查询都正确。
+另一类候选 PROP_A1_PREPARED、PROP_A2_REPEAT、PROP_A3_OFFSET、PROP_A4_DIRECT 均正确，
+因此不能声称已复现这一组提示词提出的所有候选机制。
+
+三、窗口帧状态
+目标：c296cddb93ffc631f9b43d3b1ff769604e7469d7
+父提交：74c7ccfa27f482576412300e5f92fd3dbeb54cfa
+两个版本均为 8.0.32，分别从精确提交构建。
+
+以下五个检查点在目标提交上三次均出现 AVG 错误：
+  检查点                         行(g,id)   预期 avg_v    目标实际 avg_v
+  WIN01_DEC_FORWARD              (1,2)      35.000000     70.000000
+  WIN02_REAL_FORWARD_INVERSE     (1,2)      35.000000     70.000000
+  WIN04_DEC_CURRENT              (1,2)      30.000000     90.000000
+                                 (1,3)      35.000000     70.000000
+                                 (2,2)      40.000000     80.000000
+  WIN05_REAL_CURRENT             (1,2)      30.000000     90.000000
+                                 (1,3)      35.000000     70.000000
+                                 (2,2)      40.000000     80.000000
+  WIN09_VALUE_FUNCTIONS          (1,2)      35.000000     70.000000
+
+可直接复核的算术依据：
+第一分区按 id 排序的值为 [10,20,30,40]。
+1 FOLLOWING 至 UNBOUNDED FOLLOWING 在 id=2 包含 [30,40]，AVG=(30+40)/2=35。
+CURRENT ROW 至 UNBOUNDED FOLLOWING 在 id=2 包含 [20,30,40]，AVG=90/3=30；
+id=3 包含 [30,40]，AVG=70/2=35。
+第二分区为 [NULL,20,NULL,60]，CURRENT ROW 起在 id=2 的非 NULL 值为 [20,60]，AVG=40。
+这些差异远大于 DOUBLE 比较允许的 0.000001，不能解释为浮点尾差。
+
+通过的对照：WIN03_REAL_FORWARD_PRECISE（DOUBLE 且 high_precision=ON）；
+WIN06_DEC_BOUNDED、WIN07_REAL_BOUNDED（1 PRECEDING 至 1 FOLLOWING）；
+WIN08_DEC_CUMULATIVE_CONTROL（UNBOUNDED PRECEDING 至 CURRENT ROW）。
+WIN09 中只有 avg_v 不符合预期，FIRST_VALUE、LAST_VALUE、NTH_VALUE 的结果均正确。
+本份 SQL 复现的是 AVG 错误，不能称为复现了 FIRST_VALUE 本身的错误。
+
+四、执行和验证边界
+独立远程实验目录：/EXPERIMENT_ROOT/mysql-three-prompts-20261104-a
+环境：Linux x86_64，同一固定 Docker builder 镜像，Release / WITH_DEBUG=OFF。
+每个版本新容器、新 datadir；每轮新连接、新 schema；三轮在同一版本的同一服务器进程运行。
+原 SQL 整份在一次连接中执行，保留 PREPARE/EXECUTE 的连接状态。
+镜像、提交、编译选项、二进制哈希及完整命令位于 results/builds/ 和各 result.json。
+本次创建的六个测试容器已停止并移除；原实验服务和历史数据没有修改。
+
+原 SQL/预期哈希、18 份 stdout/stderr 哈希及全部 150 次结果比较已在本地重新验证。
+没有源码覆盖插桩，也未运行 Debug 构建；结果说明这些父/子边界上存在可重复行为差异，
+不能代替属性位、对象身份、源码分支覆盖或 Debug 断言的验证。
+本报告未提交到 GitHub；远程 datadir 和源码构建树未复制进报告目录。
+
+五、证据入口
+comparison.json：跨版本比较、每轮状态和完整错误行。
+case_results.csv：150 次检查点观测的明细。
+results/<目标名>/<parent 或 target>/result.json：运行元数据、实际行、预期行、差异。
+同目录 trial-{1,2,3}.stdout.xml 与 .stderr.txt：客户端原始输出和错误流。
+results/builds/：六个提交的构建/缓存身份。
+logs/：构建、初始化和工作流日志。
+audit.json / SHA256SUMS.txt：最终证据完整性核对与文件校验和。
+README.txt：执行方法及本地复核命令。

@@ -1,0 +1,92 @@
+### Example task
+Generate a self-contained MySQL SQL test and its inputs from the requirements below. Include setup, deterministic queries, independently derived expected results, and cleanup. Explain how to observe the source target separately from checking SQL results.
+
+# Description of requirements
+Target
+MySQL revision fac72fe1704c542ba476ef065dee03d2c1da83ae, sql/sql_optimizer.cc:3198-3199: the INTERSECT/EXCEPT materialized-table branch that selects JT_ALL. This is a source-derived candidate, not an executed reproduction.
+
+Source-required conditions
+The current JOIN_TAB is neither JT_CONST nor JT_SYSTEM (line 3188). Its TABLE reports is_intersect() or is_except() (line 3198). The branch assigns JT_ALL (line 3199).
+
+Candidate construction
+Join a derived table containing INTERSECT ALL with a small outer table on an integer key. Give the left input three copies of 1 and one copy of 2, the right input two copies of 1 and one copy of 3, and the outer table two copies of 1 and one copy of 2. This exposes duplicate multiplicities. The equality join is a candidate for presenting the materialized table as a join input; it does not guarantee a particular optimizer plan. INTERSECT ALL is the concrete demonstration; EXCEPT and DISTINCT are optional separate variants.
+
+Correctness oracle
+For each key k, INTERSECT ALL has min(left_count(k), right_count(k)) rows. An equality join multiplies that by outer_count(k). The stated data therefore produces exactly four rows containing 1. Derive this from the inserted data, not from the other server version's output.
+
+Coverage observation
+On the specified revision, use a breakpoint or instrumentation at sql/sql_optimizer.cc:3198-3199 and identify the derived TABLE for this query. Record its set-operation flags, incoming JOIN_TAB type, and the JT_ALL assignment. EXPLAIN alone is only a plan clue.
+
+Uncertainty
+The local excerpt does not establish the full SQL-to-TABLE construction path. If the query does not reach the target, inspect materialization and join-planning callers before revising the candidate. Coverage and correct output are separate observations.
+
+# Test
+Prerequisites
+Use a disposable, already selected schema on a MySQL build supporting INTERSECT ALL. The source coverage target is revision fac72fe1704c542ba476ef065dee03d2c1da83ae; do not infer that every release has identical source locations. Use a fresh session with no existing objects named wf_demo_a, wf_demo_b, or wf_demo_c.
+
+SQL
+```sql
+CREATE TEMPORARY TABLE wf_demo_a (k INT NOT NULL);
+CREATE TEMPORARY TABLE wf_demo_b (k INT NOT NULL);
+CREATE TEMPORARY TABLE wf_demo_c (k INT NOT NULL);
+INSERT INTO wf_demo_a VALUES (1), (1), (1), (2);
+INSERT INTO wf_demo_b VALUES (1), (1), (3);
+INSERT INTO wf_demo_c VALUES (1), (1), (2);
+
+SELECT d.k
+FROM (
+  SELECT k FROM wf_demo_a
+  INTERSECT ALL
+  SELECT k FROM wf_demo_b
+) AS d
+JOIN wf_demo_c AS c ON d.k = c.k
+ORDER BY d.k;
+
+DROP TEMPORARY TABLE wf_demo_c;
+DROP TEMPORARY TABLE wf_demo_b;
+DROP TEMPORARY TABLE wf_demo_a;
+```
+
+Expected results and oracle
+The SELECT returns four rows, each with k=1. The intersection contains min(3,2)=2 copies of 1 and no other keys; joining the two outer copies produces 2*2=4 rows. Compare row multiplicities, not just distinct values. If setup or the SELECT fails, retain that failure separately; close the session to release remaining temporary tables.
+
+Coverage observation
+Observe sql/sql_optimizer.cc:3198-3199 at the specified revision. Identify d's materialized TABLE, verify its is_intersect() flag and nonconstant JOIN_TAB, and record the JT_ALL assignment. The expected result does not itself prove this branch was reached.
+
+Execution status
+Authored one-shot demonstration; SQL and branch coverage have not been executed or measured.
+
+### Current task
+Generate a new MySQL test that satisfies the following requirements. Follow the example's format, but use the current target's operations and data. Supply complete SQL without placeholders, expected rows with a derivation, cleanup, and a separate coverage observation plan. Use an already selected disposable test schema; use temporary tables when compatible with the target, otherwise use uniquely named ordinary tables and clean up only objects created by the test. Specify session ordering if multiple connections are required. If an essential precondition is unresolved, state it instead of claiming guaranteed coverage. Do not execute the test or describe generated SQL as a reproduced bug. Output only: Prerequisites; SQL; Expected results and oracle; Coverage observation; Execution status.
+
+# Description of requirements
+Target
+derived_condition_charset_4d2da251cb53
+Revision: 4d2da251cb536340d19438cc0039bb2846f9a634
+Parent revision: e248166db3c95b4fc998ca14cff914f1fdafbe7b
+Exercise expression cloning for a materialized derived table, including string serialization with QT_TO_ARGUMENT_CHARSET and reparsing. Check that this optimization preserves SQL results and valid character data.
+
+Source-required conditions
+- At this revision, sql/sql_derived.cc:550-575 constructs a default StringBuffer<1024>, prints an Item with QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET, and initializes a parser from those bytes; lines 617-635 parse the result. Query_block::clone_expression invokes this path at lines 734-745.
+- include/sql_string.h:629-639 shows the default StringBuffer charset and the explicit-charset constructor. sql/item.cc:3426-3479 distinguishes literals with and without introducers; in the QT_TO_ARGUMENT_CHARSET branch, the latter use the destination buffer's charset.
+- sql/item.cc:1042-1056 shows that replacement of a derived-table field can clone its projected expression. Put relevant string literals inside that expression, not only in an unrelated outer WHERE clause.
+- sql/sql_derived.cc:976-985 requires pushdown to be enabled, no LIMIT in the derived query expression, no inner side of an outer join, no recursive or multiply referenced CTE, and no SET_VAR hint assignments for this eligibility check. These are local gates, not a complete proof of SQL reachability.
+
+Candidate construction
+- Use a disposable schema and small UTF-8 tables with explicitly chosen utf8mb4 character sets and collations. Record the server version and session character_set_client, character_set_connection, character_set_results, collation_connection, sql_mode and optimizer_switch. Save changed session settings and restore them.
+- Start with SET NAMES utf8mb4 and ASCII-only identifiers. Build a UNION ALL derived table whose branches project a string expression such as CONCAT(a text column, a non-ASCII literal), then filter the projected alias in the outer query. Include positive matches, negative matches and duplicate rows so the expected multiset is nontrivial. Avoid LIMIT and other listed eligibility blockers.
+- Use multibyte input such as '山', '河' and 'é', with no charset introducer in the primary candidate. Generate a separate equivalent explicit _utf8mb4 literal variant, and an ASCII-only control. Keep collation and coercion rules explicit; do not assume visually similar strings compare byte-for-byte.
+- Compare derived_condition_pushdown=on and off with all other settings and data identical. Save and restore the original optimizer_switch. A second candidate may use GROUP BY to preserve a derived-table boundary if the UNION candidate does not reach cloning; report this as a separate construction.
+- Add quoted non-ASCII aliases only as a separate variation so identifier handling does not obscure the literal-conversion candidate. Do not assume every Unicode-related report is reproduced by one SQL statement.
+- Prefer temporary tables where compatible; avoid referencing the same temporary table multiple times in a statement if the server rejects that construction. Distinct temporary tables or uniquely named ordinary tables are acceptable.
+
+Correctness oracle
+Derive the exact ordered result rows and duplicate multiplicities by applying the string expression and outer predicate to the inserted rows under the specified collation. The optimization on/off comparison is supplementary, not the sole oracle. A valid query should not gain a syntax or character-conversion error through internal expression cloning. Record unexpected errors and warnings separately from wrong rows. Do not treat an anticipated error message as an established outcome.
+
+Coverage observation
+Use a debug build or temporary instrumentation at sql/sql_derived.cc:550, 564-572 and 617, with the caller stack, original Item, destination charset, literal charset, print flags and serialized bytes recorded. Observe the matching Item_string::print branch at sql/item.cc:3464-3472. Optimizer trace and EXPLAIN can suggest materialization/pushdown but cannot establish that this particular literal was serialized by the target branch.
+
+Uncertainty
+These excerpts do not include every pushdown eligibility check, expression replacement walker, conversion helper or parser charset decision. Confirm the candidate's caller chain and actual encoded bytes before claiming coverage. Requirements are authored source-guided seeds, not a model run or an executed reproducer. Generate complete SQL and independently derived expected results; leave execution and branch coverage explicitly unmeasured.
+
+# Test

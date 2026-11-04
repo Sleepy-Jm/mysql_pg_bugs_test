@@ -1,0 +1,74 @@
+-- Target: 248c7f7c227e76f3422378ca3b9e10d141dcfc86.
+-- Fresh session, selected disposable schema, unique temporary-table/statement names.
+SELECT VERSION() AS server_version, DATABASE() AS test_schema;
+CREATE TEMPORARY TABLE wf_248_values (g INT, id INT, v INT, PRIMARY KEY (g,id));
+CREATE TEMPORARY TABLE wf_248_lookup (k INT);
+INSERT INTO wf_248_values VALUES
+ (1,1,10),(1,2,NULL),(1,3,30),(1,4,40),(2,1,NULL),(2,2,NULL);
+INSERT INTO wf_248_lookup VALUES (11),(71),(NULL);
+
+PREPARE wf_248_a FROM 'SELECT g, id, ? + SUM(v) OVER w AS wrapped,
+       ROW_NUMBER() OVER (PARTITION BY g ORDER BY id DESC) AS rn_rev
+FROM wf_248_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)
+ORDER BY g,id';
+
+SET @wf_248_offset = 1;
+
+-- CASE PROP_A1_PREPARED
+SELECT 'PROP_A1_PREPARED' AS case_id;
+EXECUTE wf_248_a USING @wf_248_offset;
+
+SET @wf_248_offset = 1;
+
+-- CASE PROP_A2_REPEAT
+SELECT 'PROP_A2_REPEAT' AS case_id;
+EXECUTE wf_248_a USING @wf_248_offset;
+
+SET @wf_248_offset = 11;
+
+-- CASE PROP_A3_OFFSET
+SELECT 'PROP_A3_OFFSET' AS case_id;
+EXECUTE wf_248_a USING @wf_248_offset;
+
+-- CASE PROP_A4_DIRECT
+SELECT 'PROP_A4_DIRECT' AS case_id;
+SELECT g, id, 11 + SUM(v) OVER w AS wrapped,
+       ROW_NUMBER() OVER (PARTITION BY g ORDER BY id DESC) AS rn_rev
+FROM wf_248_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)
+ORDER BY g,id;
+
+DEALLOCATE PREPARE wf_248_a;
+
+PREPARE wf_248_b FROM 'SELECT g, id, 1 + SUM(v) OVER w AS wrapped,
+       (1 + SUM(v) OVER w) IN (SELECT k FROM wf_248_lookup) AS in_result
+FROM wf_248_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)
+ORDER BY g,id';
+
+-- CASE PROP_B1_PREPARED
+SELECT 'PROP_B1_PREPARED' AS case_id;
+EXECUTE wf_248_b;
+
+-- CASE PROP_B2_REPEAT
+SELECT 'PROP_B2_REPEAT' AS case_id;
+EXECUTE wf_248_b;
+
+-- CASE PROP_B3_DIRECT
+SELECT 'PROP_B3_DIRECT' AS case_id;
+SELECT g, id, 1 + SUM(v) OVER w AS wrapped,
+       (1 + SUM(v) OVER w) IN (SELECT k FROM wf_248_lookup) AS in_result
+FROM wf_248_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)
+ORDER BY g,id;
+
+DELETE FROM wf_248_lookup WHERE k IS NULL;
+
+-- CASE PROP_B4_NO_NULL
+SELECT 'PROP_B4_NO_NULL' AS case_id;
+EXECUTE wf_248_b;
+
+DEALLOCATE PREPARE wf_248_b;
+DROP TEMPORARY TABLE wf_248_lookup;
+DROP TEMPORARY TABLE wf_248_values;

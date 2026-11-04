@@ -1,0 +1,150 @@
+Prerequisites
+Use a MySQL build supporting derived_condition_pushdown, utf8mb4 and utf8mb4_bin; bind source coverage to the target SHA, not an assumed release label. Use a fresh session and an already selected disposable schema with CREATE/DROP privileges. The ordinary table wf_4d2_text must not exist. Read this file as UTF-8; it contains real é and 中 literals. The script saves/restores its optimizer and connection-character-set settings on normal completion. If it aborts, retain diagnostics, close the session and drop only this run's table after confirming it was created by this run.
+
+SQL
+```sql
+-- UTF-8 file. Run in a fresh session with a selected disposable schema.
+-- Target: 4d2da251cb536340d19438cc0039bb2846f9a634.
+-- wf_4d2_text must not already exist. No pre-test DROP of unknown objects.
+SELECT VERSION() AS server_version, DATABASE() AS test_schema,
+       @@SESSION.optimizer_switch AS initial_optimizer_switch;
+SET @wf_4d2_optimizer = @@SESSION.optimizer_switch;
+SET @wf_4d2_client = @@SESSION.character_set_client;
+SET @wf_4d2_results = @@SESSION.character_set_results;
+SET @wf_4d2_collation = @@SESSION.collation_connection;
+SET NAMES utf8mb4 COLLATE utf8mb4_bin;
+CREATE TABLE wf_4d2_text (
+  id INT PRIMARY KEY,
+  s VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
+) ENGINE=InnoDB;
+INSERT INTO wf_4d2_text VALUES (1,'a'),(2,'b'),(3,''),(4,'a'),(5,NULL);
+
+SET SESSION optimizer_switch = 'derived_condition_pushdown=off';
+
+-- CASE DCP01_OFF
+SELECT 'DCP01_OFF' AS case_id;
+SELECT d.id, HEX(d.tag) AS tag_hex,
+       CHAR_LENGTH(d.tag) AS char_len, OCTET_LENGTH(d.tag) AS byte_len
+FROM (
+  SELECT DISTINCT id, CONCAT(s, 'é') AS tag
+  FROM wf_4d2_text
+) AS d
+WHERE d.tag = _utf8mb4'aé' COLLATE utf8mb4_bin
+ORDER BY d.id;
+
+SET SESSION optimizer_switch = 'derived_condition_pushdown=on';
+
+-- CASE DCP01_ON
+SELECT 'DCP01_ON' AS case_id;
+SELECT d.id, HEX(d.tag) AS tag_hex,
+       CHAR_LENGTH(d.tag) AS char_len, OCTET_LENGTH(d.tag) AS byte_len
+FROM (
+  SELECT DISTINCT id, CONCAT(s, 'é') AS tag
+  FROM wf_4d2_text
+) AS d
+WHERE d.tag = _utf8mb4'aé' COLLATE utf8mb4_bin
+ORDER BY d.id;
+
+SET SESSION optimizer_switch = 'derived_condition_pushdown=off';
+
+-- CASE DCP02_OFF
+SELECT 'DCP02_OFF' AS case_id;
+SELECT d.id, HEX(d.tag) AS tag_hex,
+       CHAR_LENGTH(d.tag) AS char_len, OCTET_LENGTH(d.tag) AS byte_len
+FROM (
+  SELECT DISTINCT id, CONCAT(s, _utf8mb4'é') AS tag
+  FROM wf_4d2_text
+) AS d
+WHERE d.tag = _utf8mb4'aé' COLLATE utf8mb4_bin
+ORDER BY d.id;
+
+SET SESSION optimizer_switch = 'derived_condition_pushdown=on';
+
+-- CASE DCP02_ON
+SELECT 'DCP02_ON' AS case_id;
+SELECT d.id, HEX(d.tag) AS tag_hex,
+       CHAR_LENGTH(d.tag) AS char_len, OCTET_LENGTH(d.tag) AS byte_len
+FROM (
+  SELECT DISTINCT id, CONCAT(s, _utf8mb4'é') AS tag
+  FROM wf_4d2_text
+) AS d
+WHERE d.tag = _utf8mb4'aé' COLLATE utf8mb4_bin
+ORDER BY d.id;
+
+SET SESSION optimizer_switch = 'derived_condition_pushdown=off';
+
+-- CASE DCP03_OFF
+SELECT 'DCP03_OFF' AS case_id;
+SELECT d.id, HEX(d.tag) AS tag_hex,
+       CHAR_LENGTH(d.tag) AS char_len, OCTET_LENGTH(d.tag) AS byte_len
+FROM (
+  SELECT DISTINCT id, CONCAT(s, _utf8mb4'中') AS tag
+  FROM wf_4d2_text
+) AS d
+WHERE d.tag = _utf8mb4'a中' COLLATE utf8mb4_bin
+ORDER BY d.id;
+
+SET SESSION optimizer_switch = 'derived_condition_pushdown=on';
+
+-- CASE DCP03_ON
+SELECT 'DCP03_ON' AS case_id;
+SELECT d.id, HEX(d.tag) AS tag_hex,
+       CHAR_LENGTH(d.tag) AS char_len, OCTET_LENGTH(d.tag) AS byte_len
+FROM (
+  SELECT DISTINCT id, CONCAT(s, _utf8mb4'中') AS tag
+  FROM wf_4d2_text
+) AS d
+WHERE d.tag = _utf8mb4'a中' COLLATE utf8mb4_bin
+ORDER BY d.id;
+
+SET SESSION optimizer_switch = 'derived_condition_pushdown=off';
+
+-- CASE DCP04_OFF
+SELECT 'DCP04_OFF' AS case_id;
+SELECT d.id, HEX(d.tag) AS tag_hex,
+       CHAR_LENGTH(d.tag) AS char_len, OCTET_LENGTH(d.tag) AS byte_len
+FROM (
+  SELECT DISTINCT id, CONCAT(s, _utf8mb4'O''Reilly') AS tag
+  FROM wf_4d2_text
+) AS d
+WHERE d.tag = _utf8mb4'aO''Reilly' COLLATE utf8mb4_bin
+ORDER BY d.id;
+
+SET SESSION optimizer_switch = 'derived_condition_pushdown=on';
+
+-- CASE DCP04_ON
+SELECT 'DCP04_ON' AS case_id;
+SELECT d.id, HEX(d.tag) AS tag_hex,
+       CHAR_LENGTH(d.tag) AS char_len, OCTET_LENGTH(d.tag) AS byte_len
+FROM (
+  SELECT DISTINCT id, CONCAT(s, _utf8mb4'O''Reilly') AS tag
+  FROM wf_4d2_text
+) AS d
+WHERE d.tag = _utf8mb4'aO''Reilly' COLLATE utf8mb4_bin
+ORDER BY d.id;
+
+-- Cleanup and session restoration after all data results.
+DROP TABLE wf_4d2_text;
+SET SESSION optimizer_switch = @wf_4d2_optimizer;
+SET SESSION character_set_client = @wf_4d2_client;
+SET SESSION character_set_results = @wf_4d2_results;
+SET SESSION collation_connection = @wf_4d2_collation;
+```
+
+Expected results and oracle
+Each suffix matches exactly ids 1 and 4, whose input s is 'a'. DISTINCT includes id, so these two rows remain distinct. Compute UTF-8 bytes directly from 'a'+suffix: 61C3A9; 61E4B8AD; or 614F275265696C6C79. Character/byte lengths are 2/3, 2/4, or 9/9. NULL fails equality. Each OFF and ON result must match the independently specified rows, not merely match one another.
+
+DCP01_OFF: columns=['id', 'tag_hex', 'char_len', 'byte_len']; expected=[[1, "61C3A9", 2, 3], [4, "61C3A9", 2, 3]]
+DCP01_ON: columns=['id', 'tag_hex', 'char_len', 'byte_len']; expected=[[1, "61C3A9", 2, 3], [4, "61C3A9", 2, 3]]
+DCP02_OFF: columns=['id', 'tag_hex', 'char_len', 'byte_len']; expected=[[1, "61C3A9", 2, 3], [4, "61C3A9", 2, 3]]
+DCP02_ON: columns=['id', 'tag_hex', 'char_len', 'byte_len']; expected=[[1, "61C3A9", 2, 3], [4, "61C3A9", 2, 3]]
+DCP03_OFF: columns=['id', 'tag_hex', 'char_len', 'byte_len']; expected=[[1, "61E4B8AD", 2, 4], [4, "61E4B8AD", 2, 4]]
+DCP03_ON: columns=['id', 'tag_hex', 'char_len', 'byte_len']; expected=[[1, "61E4B8AD", 2, 4], [4, "61E4B8AD", 2, 4]]
+DCP04_OFF: columns=['id', 'tag_hex', 'char_len', 'byte_len']; expected=[[1, "614F275265696C6C79", 9, 9], [4, "614F275265696C6C79", 9, 9]]
+DCP04_ON: columns=['id', 'tag_hex', 'char_len', 'byte_len']; expected=[[1, "614F275265696C6C79", 9, 9], [4, "614F275265696C6C79", 9, 9]]
+
+Coverage observation
+For each ON case, identify the materialized derived table and trace sql/item.cc:1051-1055 to sql/sql_derived.cc:734-744 and parse_expression:550-575,617-635. Record Item_string::print at sql/item.cc:3433-3472: introducer decision, literal collation, QT_TO_ARGUMENT_CHARSET, destination StringBuffer charset, serialized bytes and reparse result. Inspect that the implicit and explicit cases take their intended branches. OFF is a path control; it is not a correctness authority. No runtime path is asserted by this generated response.
+
+Execution status
+Generated by the current assistant from the saved req2test prompt and its new src2req requirements. No database was connected, SQL executed, or source coverage measured. Expected rows are semantic calculations, not observed results. Retain SQL errors/crashes/missing results as separate observations; do not silently treat them as correct or as confirmed bugs.

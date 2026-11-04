@@ -1,0 +1,180 @@
+Target: derived_condition_charset_4d2da251cb53
+Target observation: Expression serialization and reparsing while cloning a derived-table expression during condition pushdown
+Revision: 4d2da251cb536340d19438cc0039bb2846f9a634
+Parent revision: e248166db3c95b4fc998ca14cff914f1fdafbe7b
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/sql_derived.cc
+Blob: 85e57e802b720146f09d6a1086e8653e2f1c1258
+Source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/sql/sql_derived.cc
+```cpp
+550: static Item *parse_expression(THD *thd, Item *item, Query_block *query_block) {
+551:   // Set up for parsing item
+552:   LEX *const old_lex = thd->lex;
+553:   LEX *new_lex = new (thd->mem_root) st_lex_local;
+554: 
+555:   thd->lex = new_lex;
+556:   if (lex_start(thd)) {
+557:     thd->lex = old_lex;
+558:     return nullptr;  // OOM
+559:   }
+560:   // Take care not to print the variable index for stored procedure variables.
+561:   // Also do not write a cloned stored procedure variable to query logs.
+562:   thd->lex->reparse_derived_table_condition = true;
+563:   // Get the printout of the expression
+564:   StringBuffer<1024> str;
+565:   // For printing parameters we need to specify the flag QT_NO_DATA_EXPANSION
+566:   // because for a case when statement gets reprepared during execution, we
+567:   // still need Item_param::print() to print the '?' rather than the actual data
+568:   // specified for the parameter.
+569:   // The flag QT_TO_ARGUMENT_CHARSET is required for printing character string
+570:   // literals with correct character set introducer.
+571:   item->print(thd, &str,
+572:               enum_query_type(QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET));
+573:   str.append('\0');
+574: 
+575:   Derived_expr_parser_state parser_state;
+```
+```cpp
+617:   // Get a newly created item from parser
+618:   bool result = parse_sql(thd, &parser_state, nullptr);
+619: 
+620:   thd->lex->reparse_derived_table_condition = false;
+621:   // Delete the vector contents:
+622:   std::vector<uint>().swap(thd->lex->reparse_derived_table_params_at);
+623:   // thd->lex is now in a MEM_ROOT, so we need to delete:
+624:   delete thd->lex->sroutines.release();
+625: 
+626:   // lex_end() would try to destroy sphead if set. So we reset it.
+627:   thd->lex->set_sp_current_parsing_ctx(nullptr);
+628:   thd->lex->sphead = nullptr;
+629:   // End of parsing.
+630:   lex_end(thd->lex);
+631:   thd->lex = old_lex;
+632:   thd->parsing_system_view = parsing_system_view_saved;
+633:   if (result) return nullptr;
+634: 
+635:   return parser_state.result;
+```
+```cpp
+734: Item *Query_block::clone_expression(THD *thd, Item *item) {
+735:   Item *cloned_item = parse_expression(thd, item, this);
+736:   if (cloned_item == nullptr) return nullptr;
+737:   if (item->item_name.is_set())
+738:     cloned_item->item_name.set(item->item_name.ptr(), item->item_name.length());
+739: 
+740:   // Collect details like table reference, field etc from the fields in the
+741:   // original expression. Assign it to the corresponding field in the cloned
+742:   // expression.
+743:   if (copy_field_info(thd, item, cloned_item)) return nullptr;
+744:   return resolve_expression(thd, cloned_item, this);
+745: }
+```
+```cpp
+976: bool TABLE_LIST::can_push_condition_to_derived(THD *thd) {
+977:   Query_expression const *unit = derived_query_expression();
+978:   return hint_table_state(thd, this, DERIVED_CONDITION_PUSHDOWN_HINT_ENUM,
+979:                           OPTIMIZER_SWITCH_DERIVED_CONDITION_PUSHDOWN) &&  // 1
+980:          !unit->has_any_limit() &&                                         // 2
+981:          !is_inner_table_of_outer_join() &&                                // 3
+982:          !(common_table_expr() &&
+983:            (common_table_expr()->references.size() >= 2 ||
+984:             common_table_expr()->recursive)) &&   // 4
+985:          (thd->lex->set_var_list.elements == 0);  // 5
+```
+
+# Code: sql/item.cc
+Blob: c23b13dc01f3bb968af124595e991115caac6c49
+Source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/sql/item.cc
+```cpp
+1042: Item *Item_field::replace_with_derived_expr(uchar *arg) {
+1043:   Condition_pushdown::Derived_table_info *dti =
+1044:       pointer_cast<Condition_pushdown::Derived_table_info *>(arg);
+1045: 
+1046:   // This column's table reference should be same as the derived table from
+1047:   // where the replacement is retrieved. If not, it is presumed that the
+1048:   // column has already been replaced with derived table expression (Maybe
+1049:   // there was an earlier reference to the same column in the condition that
+1050:   // is being pushed down). There is no need to do anything in such a case.
+1051:   TABLE_LIST *derived_table = dti->m_derived_table;
+1052:   if (derived_table != table_ref) return this;
+1053:   Query_block *query_block = dti->m_derived_query_block;
+1054:   return query_block->clone_expression(
+1055:       current_thd, query_block->get_derived_expr(field->field_index()));
+1056: }
+```
+```cpp
+3426: void Item_string::print(const THD *, String *str,
+3427:                         enum_query_type query_type) const {
+3428:   if (query_type & QT_NORMALIZED_FORMAT) {
+3429:     str->append("?");
+3430:     return;
+3431:   }
+3432: 
+3433:   const bool print_introducer =
+3434:       (query_type & QT_FORCE_INTRODUCERS) ||
+3435:       (!(query_type & QT_WITHOUT_INTRODUCERS) && is_cs_specified());
+3436: 
+3437:   if (print_introducer) {
+3438:     str->append('_');
+3439:     str->append(collation.collation->csname);
+3440:   }
+3441: 
+3442:   str->append('\'');
+3443: 
+3444:   if (query_type & QT_TO_SYSTEM_CHARSET) {
+3445:     if (print_introducer) {
+3446:       /*
+3447:         Because we wrote an introducer, we must print str_value in its
+3448:         charset, and the resulting bytes must not be changed until they
+3449:         reach the end client.
+3450:         But the caller is asking for system_charset_info, and may later
+3451:         convert into character_set_results. That means two conversions: we
+3452:         must ensure that they don't change our printed bytes.
+3453:         So we print str_value in the least common denominator of the three
+3454:         charsets involved: ASCII. Non-ASCII characters are printed as \xFF
+3455:         sequences (which is ASCII too). This way, our bytes will not be
+3456:         changed.
+3457:       */
+3458:       ErrConvString tmp(str_value.ptr(), str_value.length(), &my_charset_bin);
+3459:       str->append(tmp.ptr());
+3460:     } else {
+3461:       // Convert to system charset.
+3462:       convert_and_print(&str_value, str, system_charset_info);
+3463:     }
+3464:   } else if (query_type & QT_TO_ARGUMENT_CHARSET) {
+3465:     if (print_introducer)
+3466:       convert_and_print(&str_value, str, collation.collation);
+3467:     else
+3468:       /*
+3469:         Convert the string literals to str->charset(),
+3470:         which is typically equal to charset_set_client.
+3471:       */
+3472:       convert_and_print(&str_value, str, str->charset());
+3473:   } else {
+3474:     // Caller wants a result in the charset of str_value.
+3475:     str_value.print(str);
+3476:   }
+3477: 
+3478:   str->append('\'');
+3479: }
+```
+
+# Code: include/sql_string.h
+Blob: 32d0e43d13248025d980d5acc875e4ed4ff633d3
+Source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/include/sql_string.h
+```cpp
+629: class StringBuffer : public String {
+630:   char buff[buff_sz];
+631: 
+632:  public:
+633:   StringBuffer() : String(buff, buff_sz, &my_charset_bin) { length(0); }
+634:   explicit StringBuffer(const CHARSET_INFO *cs) : String(buff, buff_sz, cs) {
+635:     length(0);
+636:   }
+637:   StringBuffer(const char *str, size_t length, const CHARSET_INFO *cs)
+638:       : String(buff, buff_sz, cs) {
+639:     set(str, length, cs);
+```
