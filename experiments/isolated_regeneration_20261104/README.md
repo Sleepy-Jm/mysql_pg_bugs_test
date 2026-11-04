@@ -1,4 +1,4 @@
-# 三目标隔离生成与补充执行（2026-11-04）
+# 三目标隔离生成实验结论（2026-11-04）
 
 保存完整的“提示词/源码 → src2req 需求 → req2test → SQL/预期 → 对应提交运行结果”关系，并保留未生成、未复现和 oracle 暂缓判定的结果。与[上一轮实验](../prompt_pipeline_20261104/README.md)分开；不能沿用上一轮的8/8、8/8、9/9分母。
 
@@ -12,24 +12,20 @@
 
 窗口共生成8个用例，其中 WF_UNBOUNDED 在运行前已标记精度 oracle_hold，因此分母为7，不是8；其实际输出完整保留。两组可执行脚本×两个提交×三轮=12次完整脚本，72次用例观测，其中57 pass、9 mismatch、6 hold。三轮结果一致。
 
-## 用户要求补齐未执行项后的结果
+## 更正：排除历史知识补写结果
 
-这一步使用历史案例知识，属于**有答案知识的补充执行**，不覆盖上述首次实验，也不提高隔离生成成功数。字符集补齐C1–C3主候选，Item补齐IN C2/C4相关测试；可选存储函数及 FIRST/LAST/NTH 扩展未选择。
+本次实验结论仅采用上表的原始 A/B 输出：窗口组成功复现，Item 组已生成子集未复现，字符集组未生成 SQL。只统计12次原始脚本运行。不能写成三组独立生成均成功，也不能用补写后的通过数替换首次结果。
 
-| SQL 组 | 父提交通过数（每轮） | 目标提交通过数（每轮） | 复现的异常 |
-|---|---:|---:|---|
-| 字符集 `4d2da251cb53`（补充） | 6/6 | 5/6 | 开启下推后，无前缀非 ASCII 候选应返回两行却返回空集 |
-| Item 属性 `248c7f7c227e`（补充） | 6/6 | 3/6 | 重复执行时 wrapped 应为 `[8,17,29,18,4,NULL]`，实际 `[NULL,3,10,24,47,39]` |
-| 窗口帧 `c296cddb93ff`（沿用原始实测） | 7/7 | 4/7 | AVG 应为408却返回680；NULL/低精度用例应为420却返回1260或630 |
+协调者此前将“完成未执行项”扩大为参考历史成功案例补写 SQL，偏离了本次检验模型无答案提示生成能力的目的。此前合并展示原始窗口结果与补写的字符集/Item结果的表格已撤下。补写数据仅作为[排除记录](supplemental/README.md)保留，不参与本次结果、成功率、需求有效性或模型能力结论；未删除或改写原始证据。
 
-补充另执行12次完整脚本、72次用例观测，60 pass、12 mismatch。窗口没有为这张合并展示表重复执行。所有已运行脚本正常退出，无SQL错误/超时/OOM；容器均结束并移除。错误用例数不等于独立缺陷数。
+机器可读的纳入/排除边界见 [conclusions.json](conclusions.json)。
 
 ## 导航与对应关系
 
 - [详细源码机制与关键条件](source_mechanisms.md)：按每组分别链接提示词、需求、SQL、预期和实测；区分源码事实、推导、已验证结果、未观测内部状态。
 - [lineage.json](lineage.json)：三个目标的完整 SHA、直接父 SHA、各阶段输入/输出路径、原件/导出哈希、运行 trial 路径及补充入口。
 - [原始运行报告](runtime/REPORT.md)、[机器可读汇总](runtime/results/summary.json)、[跨提交逐行对比](runtime/revision_comparison.json)。
-- [补充运行报告](supplemental/REPORT.md)、[机器可读汇总](supplemental/results/summary.json)、[知识来源](supplemental/provenance.json)。
+- [已排除的补写审计记录](supplemental/README.md)：历史运行报告仅作溯源，不作为本次实验结果。
 - [A 总启动提示词](generation/stage1_src2req/START_src2req.txt)、[B 总启动提示词](generation/stage2_req2test/START_req2test.txt)。每组目录包含局部启动提示词、异目标完整示例、白名单、输入和 attempt_001 输出；实际提示词由启动文本加其允许读取的文件组成，不把未展开启动文本误称为完整单一 prompt。
 - [第一阶段审查](review/stage1_review.md)、[第二阶段审查](review/stage2_review.md)、[冻结清单](review/stage2_outputs_frozen.json)、[执行后哈希复核](runtime/frozen_integrity_check.json)。审查文档保留当时的“尚未执行”时间状态，以本目录的运行报告为后续事实。
 - [精确生产源码 diff](source_analysis/manifest.json)：仅后验分析可读，不是 A/B 输入。
