@@ -4,6 +4,8 @@
 
 ## 提示词生成与提交级实测
 
+[成功案例样例库](examples/mysql/source_guided_reproductions/README.md) 提供三对完整 src2req/req2test 示范、使用方法及原 SQL/实测链接，供后续开发参考。[答案污染审查](experiments/prompt_pipeline_20261104/contamination_review.md) 记录共享上下文、窗口 AVG 相关实现的事前暴露及种子需求的证据边界；这批案例不作为无污染盲测或独立评测集。
+
 [三组完整实验索引](experiments/prompt_pipeline_20261104/README.md) 保留源码提示词、实际分析输出、重新填充的测试提示词、完整测试响应、SQL、预期结果和实测报告之间的对应关系。三组在目标提交及其父提交上各运行三轮，共 18 次脚本运行、150 次检查点观测：父提交全部正确，目标提交分别有 1/8、2/8、5/9 个检查点稳定出现错误结果，无 SQL ERROR、超时或崩溃。失败检查点数不是独立缺陷数，未测量源码分支覆盖。
 
 提示词链与每轮运行的文件、提交和哈希见 [lineage.json](experiments/prompt_pipeline_20261104/lineage.json)，错误行见 [详细报告](experiments/prompt_pipeline_20261104/runtime/final_report.txt)。本次入库仅整理已有运行证据，没有重跑数据库。

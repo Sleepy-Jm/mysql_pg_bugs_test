@@ -1,0 +1,164 @@
+### Example task
+Generate a complete MySQL test from the analysis-stage requirements. Use: Prerequisites; SQL; Expected results and oracle; Coverage observation; Execution status.
+
+# Description of requirements
+Target
+Revision c296cddb93ffc631f9b43d3b1ff769604e7469d7; parent 74c7ccfa27f482576412300e5f92fd3dbeb54cfa. Observe optimized ROWS-frame state assignments and the buffered AVG denominator that consumes rowno_in_frame. This revision uses rowno_in_frame for buffered averages; do not substitute the later m_count-only implementation from another prompt's example target.
+
+Source-required conditions
+The analysis stage extracted these constraints from the source in this prompt:
+1. AVG must be a window function, not an ordinary grouped aggregate, and reach its final-row calculation after initialization. The buffered REAL denominator is rowno_in_frame()-m_frame_null_count (sql/item_sum.cc:2279-2293); DECIMAL uses the same buffered expression at 2350-2357. Positive divisor and is_last_row_in_frame gate division.
+2. ROWS UNBOUNDED PRECEDING through CURRENT ROW is explicitly a nonbuffered case (sql/item_sum.cc:410-421). Use other ROWS frames for the buffered target and reserve that frame as a control.
+3. The optimized-row strategy requires row_optimizable and aggregates_primed (sql/iterators/window_iterators.cc:683-699,1092). Moving-frame REAL aggregation additionally requires windowing_use_high_precision=false to permit inversion; the excerpt does not impose that gate on DECIMAL (sql/item_sum.cc:1913-1931).
+4. The subtraction branch requires remove_previous_first_row: lower_limit>1 and lower_limit-1<=last_rowno_in_cache (window_iterators.cc:1098-1107). With no new last row, it sets inverse=true, sets rowno_in_frame to current_row-lower_limit+1, temporarily marks a nonempty frame's final row, and calls the framing functions (1145-1164).
+5. A lower border of 1 FOLLOWING gives lower_limit=current_row+1 (789-812). Thus the displayed assignment can produce rowno_in_frame=0 even when a remaining forward frame is nonempty. This is an algebraic observation about a conditional branch; all runtime guards still need confirmation. With an unbounded-following upper border, new_last_row is false according to 1100-1102.
+6. FIRST_VALUE, LAST_VALUE and NTH_VALUE have additional setters/copy calls (1167-1209). A bounded moving frame can use the add-new-last-row setter upper-lower_limit+1 (1214-1225). Their reachability should be observed separately.
+
+Candidate construction
+Use a small temporary table with (g,id,v_dec,v_real), a unique (g,id) key, DECIMAL and DOUBLE columns holding identical small exactly representable input values. Include a normal partition [10,20,30,40], a mixed-NULL partition [NULL,20,NULL,60], an all-NULL partition [NULL,NULL], and a single-row partition [7]. Order every window by id and the result by g,id.
+Primary frame: ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING. It combines a moving lower bound, a fixed upper end, shrinking positive frames and an empty final frame. Run DECIMAL AVG independently, then DOUBLE AVG with windowing_use_high_precision OFF and ON. Save and restore this session variable. OFF is the intended REAL inversion candidate; ON is a numerical/strategy control, not a known-correct oracle.
+Secondary frames: ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING, and ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING. Run both numeric types with high precision OFF; they exercise a different lower position and bounded add/remove opportunities. Add a nonbuffered cumulative AVG control. Add a separate forward-frame query combining DECIMAL AVG, FIRST_VALUE, LAST_VALUE and NTH_VALUE(v_dec,2) over one named window to explore the extra state setters. Keep it separate from the primary AVG-only query so added functions do not define primary coverage.
+
+Correctness oracle
+For each output row, enumerate the frame's rows in its partition and average only non-NULL values. Empty frames and all-NULL frames return NULL. In [10,20,30,40], the forward-to-end means are [30,35,40,NULL]; current-to-end means are [25,30,35,40]; one-preceding/one-following means are [15,20,30,35]. In [NULL,20,NULL,60], forward-to-end means are [40,60,60,NULL]. Include remaining frames/partitions by the same enumeration, not by asking another window AVG query for the answer.
+Choose an explicit six-decimal output cast for stable presentation. Quantize mathematical rational means to six decimals for DECIMAL comparison; permit at most 0.000001 absolute difference in the cast DOUBLE output. NULL must match exactly. FIRST_VALUE/LAST_VALUE use actual first/last frame rows, including NULLs; NTH_VALUE uses the second frame row and returns NULL if absent. These functions do not skip NULLs in this test. A positive-row-count all-NULL frame differs from an empty frame even though both AVG results are NULL.
+
+Coverage observation
+Record the window identity, partition/output-row identity, row_optimizable, aggregates_primed, needs_buffering, lower_limit, upper, last_rowno_in_cache, remove_previous_first_row, new_last_row, rows_in_frame and inverse state. At window_iterators.cc:1152 and 1190 capture the assigned rowno_in_frame, and correlate with the AVG call's m_count, m_frame_null_count, divisor and is_last_row_in_frame. Record whether division occurred or was skipped. Trace 1174,1207,1220 separately for auxiliary value functions and bounded frames. An empty final row alone is not evidence that the positive-divisor branch was tested.
+
+Uncertainty
+The snippets omit initial priming, all frame-limit calculations, executor scheduling and some null-result handling. The SQL shapes are candidates for the guarded branches; source algebra is not a runtime reproduction. High-precision ON/OFF equality cannot replace the independent frame oracle. Later release builds may already contain subsequent fixes; bind attribution to the given target and parent commits. This is this assistant's src2req output; SQL execution and measured source coverage have not occurred.
+
+# Test
+Prerequisites
+Use a MySQL build supporting the named window syntax, window AVG/FIRST_VALUE/LAST_VALUE/NTH_VALUE and windowing_use_high_precision. Bind coverage to c296cddb93ffc631f9b43d3b1ff769604e7469d7 and the saved parent if attribution is later attempted. Use one fresh session and a selected disposable schema; wf_c296_values must not exist. All values are small exactly representable integer inputs; decimal and real columns contain the same values. The script restores the precision setting on normal completion; close the session on an abort after saving diagnostics.
+
+SQL
+```sql
+-- Target: c296cddb93ffc631f9b43d3b1ff769604e7469d7.
+-- Source coverage is tied to this SHA; later releases may contain fixes.
+SELECT VERSION() AS server_version, DATABASE() AS test_schema,
+       @@SESSION.windowing_use_high_precision AS initial_high_precision;
+SET @wf_c296_precision = @@SESSION.windowing_use_high_precision;
+CREATE TEMPORARY TABLE wf_c296_values (
+  g INT, id INT, v_dec DECIMAL(12,2), v_real DOUBLE, PRIMARY KEY (g,id)
+);
+INSERT INTO wf_c296_values VALUES
+ (1,1,10,10),
+ (1,2,20,20),
+ (1,3,30,30),
+ (1,4,40,40),
+ (2,1,NULL,NULL),
+ (2,2,20,20),
+ (2,3,NULL,NULL),
+ (2,4,60,60),
+ (3,1,NULL,NULL),
+ (3,2,NULL,NULL),
+ (4,1,7,7);
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN01_DEC_FORWARD
+SELECT 'WIN01_DEC_FORWARD' AS case_id;
+SELECT g,id,CAST(AVG(v_dec) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN02_REAL_FORWARD_INVERSE
+SELECT 'WIN02_REAL_FORWARD_INVERSE' AS case_id;
+SELECT g,id,CAST(AVG(v_real) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = ON;
+
+-- CASE WIN03_REAL_FORWARD_PRECISE
+SELECT 'WIN03_REAL_FORWARD_PRECISE' AS case_id;
+SELECT g,id,CAST(AVG(v_real) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN04_DEC_CURRENT
+SELECT 'WIN04_DEC_CURRENT' AS case_id;
+SELECT g,id,CAST(AVG(v_dec) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN05_REAL_CURRENT
+SELECT 'WIN05_REAL_CURRENT' AS case_id;
+SELECT g,id,CAST(AVG(v_real) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN06_DEC_BOUNDED
+SELECT 'WIN06_DEC_BOUNDED' AS case_id;
+SELECT g,id,CAST(AVG(v_dec) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN07_REAL_BOUNDED
+SELECT 'WIN07_REAL_BOUNDED' AS case_id;
+SELECT g,id,CAST(AVG(v_real) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN08_DEC_CUMULATIVE_CONTROL
+SELECT 'WIN08_DEC_CUMULATIVE_CONTROL' AS case_id;
+SELECT g,id,CAST(AVG(v_dec) OVER w AS DECIMAL(20,6)) AS avg_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+ORDER BY g,id;
+
+SET SESSION windowing_use_high_precision = OFF;
+
+-- CASE WIN09_VALUE_FUNCTIONS
+SELECT 'WIN09_VALUE_FUNCTIONS' AS case_id;
+SELECT g,id,CAST(AVG(v_dec) OVER w AS DECIMAL(20,6)) AS avg_v,
+       FIRST_VALUE(v_dec) OVER w AS first_v,
+       LAST_VALUE(v_dec) OVER w AS last_v,
+       NTH_VALUE(v_dec,2) OVER w AS second_v
+FROM wf_c296_values
+WINDOW w AS (PARTITION BY g ORDER BY id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)
+ORDER BY g,id;
+
+DROP TEMPORARY TABLE wf_c296_values;
+SET SESSION windowing_use_high_precision = @wf_c296_precision;
+```
+
+Expected results and oracle
+Enumerate the frame for each (g,id), discard NULL only for AVG, and divide sum by the count of remaining values. Format AVG through the explicit DECIMAL(20,6) output cast. Decimal expected strings are exact six-place rounded semantic results; compare numeric values rather than textual trailing-zero formatting. For REAL only, permit absolute error <=0.000001 after the cast. All NULL positions must match exactly. FIRST/LAST/NTH use frame-row positions and retain NULLs. For group 1, forward means are 30,35,40,NULL; current means 25,30,35,40; bounded means 15,20,30,35. The all-NULL and singleton groups test different boundaries. The ON query and cumulative query are controls, not trusted-answer generators.
+
+WIN01_DEC_FORWARD: columns=['g', 'id', 'avg_v']; expected=[[1, 1, "30.000000"], [1, 2, "35.000000"], [1, 3, "40.000000"], [1, 4, null], [2, 1, "40.000000"], [2, 2, "60.000000"], [2, 3, "60.000000"], [2, 4, null], [3, 1, null], [3, 2, null], [4, 1, null]]
+WIN02_REAL_FORWARD_INVERSE: columns=['g', 'id', 'avg_v']; expected=[[1, 1, "30.000000"], [1, 2, "35.000000"], [1, 3, "40.000000"], [1, 4, null], [2, 1, "40.000000"], [2, 2, "60.000000"], [2, 3, "60.000000"], [2, 4, null], [3, 1, null], [3, 2, null], [4, 1, null]]
+WIN03_REAL_FORWARD_PRECISE: columns=['g', 'id', 'avg_v']; expected=[[1, 1, "30.000000"], [1, 2, "35.000000"], [1, 3, "40.000000"], [1, 4, null], [2, 1, "40.000000"], [2, 2, "60.000000"], [2, 3, "60.000000"], [2, 4, null], [3, 1, null], [3, 2, null], [4, 1, null]]
+WIN04_DEC_CURRENT: columns=['g', 'id', 'avg_v']; expected=[[1, 1, "25.000000"], [1, 2, "30.000000"], [1, 3, "35.000000"], [1, 4, "40.000000"], [2, 1, "40.000000"], [2, 2, "40.000000"], [2, 3, "60.000000"], [2, 4, "60.000000"], [3, 1, null], [3, 2, null], [4, 1, "7.000000"]]
+WIN05_REAL_CURRENT: columns=['g', 'id', 'avg_v']; expected=[[1, 1, "25.000000"], [1, 2, "30.000000"], [1, 3, "35.000000"], [1, 4, "40.000000"], [2, 1, "40.000000"], [2, 2, "40.000000"], [2, 3, "60.000000"], [2, 4, "60.000000"], [3, 1, null], [3, 2, null], [4, 1, "7.000000"]]
+WIN06_DEC_BOUNDED: columns=['g', 'id', 'avg_v']; expected=[[1, 1, "15.000000"], [1, 2, "20.000000"], [1, 3, "30.000000"], [1, 4, "35.000000"], [2, 1, "20.000000"], [2, 2, "20.000000"], [2, 3, "40.000000"], [2, 4, "60.000000"], [3, 1, null], [3, 2, null], [4, 1, "7.000000"]]
+WIN07_REAL_BOUNDED: columns=['g', 'id', 'avg_v']; expected=[[1, 1, "15.000000"], [1, 2, "20.000000"], [1, 3, "30.000000"], [1, 4, "35.000000"], [2, 1, "20.000000"], [2, 2, "20.000000"], [2, 3, "40.000000"], [2, 4, "60.000000"], [3, 1, null], [3, 2, null], [4, 1, "7.000000"]]
+WIN08_DEC_CUMULATIVE_CONTROL: columns=['g', 'id', 'avg_v']; expected=[[1, 1, "10.000000"], [1, 2, "15.000000"], [1, 3, "20.000000"], [1, 4, "25.000000"], [2, 1, null], [2, 2, "20.000000"], [2, 3, "20.000000"], [2, 4, "40.000000"], [3, 1, null], [3, 2, null], [4, 1, "7.000000"]]
+WIN09_VALUE_FUNCTIONS: columns=['g', 'id', 'avg_v', 'first_v', 'last_v', 'second_v']; expected=[[1, 1, "30.000000", 20, 40, 30], [1, 2, "35.000000", 30, 40, 40], [1, 3, "40.000000", 40, 40, null], [1, 4, null, null, null, null], [2, 1, "40.000000", 20, 60, null], [2, 2, "60.000000", null, 60, 60], [2, 3, "60.000000", 60, 60, null], [2, 4, null, null, null, null], [3, 1, null, null, null, null], [3, 2, null, null, null, null], [4, 1, null, null, null, null]]
+
+Coverage observation
+Observe optimized ROWS strategy and priming at sql/iterators/window_iterators.cc:1092, the removal/no-new-last-row guards at 1098-1107, inverse and position state at 1150-1156, and the AVG buffered divisors at sql/item_sum.cc:2286-2290,2350-2357. Correlate window/object/output-row identity, lower_limit, current_row, rows_in_frame, rowno_in_frame, m_count, m_frame_null_count and is_last_row_in_frame. Trace the additional 1174/1190/1207 setters in WIN09 and 1220 for bounded frames separately. WIN02 is the intended REAL inverse candidate; WIN03 enables high precision. The displayed source formula can assign zero with a 1 FOLLOWING lower border, but these scripts do not claim the runtime guards were reached.
+
+Execution status
+Generated by the current assistant from the saved req2test prompt and its new src2req requirements. No database was connected, SQL executed, or source coverage measured. Expected rows are semantic calculations, not observed results. Retain SQL errors/crashes/missing results as separate observations; do not silently treat them as correct or as confirmed bugs.

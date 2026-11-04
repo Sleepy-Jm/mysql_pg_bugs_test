@@ -1,0 +1,209 @@
+### Example task
+Describe the high-level MySQL test requirements from the supplied source. Use: Target; Source-required conditions; Candidate construction; Correctness oracle; Coverage observation; Uncertainty.
+
+# Target and source code
+Target: derived_condition_charset_4d2da251cb53
+Target observation: Expression serialization and reparsing while cloning a derived-table expression during condition pushdown
+Revision: 4d2da251cb536340d19438cc0039bb2846f9a634
+Parent revision: e248166db3c95b4fc998ca14cff914f1fdafbe7b
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/sql_derived.cc
+Blob: 85e57e802b720146f09d6a1086e8653e2f1c1258
+Source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/sql/sql_derived.cc
+```cpp
+550: static Item *parse_expression(THD *thd, Item *item, Query_block *query_block) {
+551:   // Set up for parsing item
+552:   LEX *const old_lex = thd->lex;
+553:   LEX *new_lex = new (thd->mem_root) st_lex_local;
+554: 
+555:   thd->lex = new_lex;
+556:   if (lex_start(thd)) {
+557:     thd->lex = old_lex;
+558:     return nullptr;  // OOM
+559:   }
+560:   // Take care not to print the variable index for stored procedure variables.
+561:   // Also do not write a cloned stored procedure variable to query logs.
+562:   thd->lex->reparse_derived_table_condition = true;
+563:   // Get the printout of the expression
+564:   StringBuffer<1024> str;
+565:   // For printing parameters we need to specify the flag QT_NO_DATA_EXPANSION
+566:   // because for a case when statement gets reprepared during execution, we
+567:   // still need Item_param::print() to print the '?' rather than the actual data
+568:   // specified for the parameter.
+569:   // The flag QT_TO_ARGUMENT_CHARSET is required for printing character string
+570:   // literals with correct character set introducer.
+571:   item->print(thd, &str,
+572:               enum_query_type(QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET));
+573:   str.append('\0');
+574: 
+575:   Derived_expr_parser_state parser_state;
+```
+```cpp
+617:   // Get a newly created item from parser
+618:   bool result = parse_sql(thd, &parser_state, nullptr);
+619: 
+620:   thd->lex->reparse_derived_table_condition = false;
+621:   // Delete the vector contents:
+622:   std::vector<uint>().swap(thd->lex->reparse_derived_table_params_at);
+623:   // thd->lex is now in a MEM_ROOT, so we need to delete:
+624:   delete thd->lex->sroutines.release();
+625: 
+626:   // lex_end() would try to destroy sphead if set. So we reset it.
+627:   thd->lex->set_sp_current_parsing_ctx(nullptr);
+628:   thd->lex->sphead = nullptr;
+629:   // End of parsing.
+630:   lex_end(thd->lex);
+631:   thd->lex = old_lex;
+632:   thd->parsing_system_view = parsing_system_view_saved;
+633:   if (result) return nullptr;
+634: 
+635:   return parser_state.result;
+```
+```cpp
+734: Item *Query_block::clone_expression(THD *thd, Item *item) {
+735:   Item *cloned_item = parse_expression(thd, item, this);
+736:   if (cloned_item == nullptr) return nullptr;
+737:   if (item->item_name.is_set())
+738:     cloned_item->item_name.set(item->item_name.ptr(), item->item_name.length());
+739: 
+740:   // Collect details like table reference, field etc from the fields in the
+741:   // original expression. Assign it to the corresponding field in the cloned
+742:   // expression.
+743:   if (copy_field_info(thd, item, cloned_item)) return nullptr;
+744:   return resolve_expression(thd, cloned_item, this);
+745: }
+```
+```cpp
+976: bool TABLE_LIST::can_push_condition_to_derived(THD *thd) {
+977:   Query_expression const *unit = derived_query_expression();
+978:   return hint_table_state(thd, this, DERIVED_CONDITION_PUSHDOWN_HINT_ENUM,
+979:                           OPTIMIZER_SWITCH_DERIVED_CONDITION_PUSHDOWN) &&  // 1
+980:          !unit->has_any_limit() &&                                         // 2
+981:          !is_inner_table_of_outer_join() &&                                // 3
+982:          !(common_table_expr() &&
+983:            (common_table_expr()->references.size() >= 2 ||
+984:             common_table_expr()->recursive)) &&   // 4
+985:          (thd->lex->set_var_list.elements == 0);  // 5
+```
+
+# Code: sql/item.cc
+Blob: c23b13dc01f3bb968af124595e991115caac6c49
+Source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/sql/item.cc
+```cpp
+1042: Item *Item_field::replace_with_derived_expr(uchar *arg) {
+1043:   Condition_pushdown::Derived_table_info *dti =
+1044:       pointer_cast<Condition_pushdown::Derived_table_info *>(arg);
+1045: 
+1046:   // This column's table reference should be same as the derived table from
+1047:   // where the replacement is retrieved. If not, it is presumed that the
+1048:   // column has already been replaced with derived table expression (Maybe
+1049:   // there was an earlier reference to the same column in the condition that
+1050:   // is being pushed down). There is no need to do anything in such a case.
+1051:   TABLE_LIST *derived_table = dti->m_derived_table;
+1052:   if (derived_table != table_ref) return this;
+1053:   Query_block *query_block = dti->m_derived_query_block;
+1054:   return query_block->clone_expression(
+1055:       current_thd, query_block->get_derived_expr(field->field_index()));
+1056: }
+```
+```cpp
+3426: void Item_string::print(const THD *, String *str,
+3427:                         enum_query_type query_type) const {
+3428:   if (query_type & QT_NORMALIZED_FORMAT) {
+3429:     str->append("?");
+3430:     return;
+3431:   }
+3432: 
+3433:   const bool print_introducer =
+3434:       (query_type & QT_FORCE_INTRODUCERS) ||
+3435:       (!(query_type & QT_WITHOUT_INTRODUCERS) && is_cs_specified());
+3436: 
+3437:   if (print_introducer) {
+3438:     str->append('_');
+3439:     str->append(collation.collation->csname);
+3440:   }
+3441: 
+3442:   str->append('\'');
+3443: 
+3444:   if (query_type & QT_TO_SYSTEM_CHARSET) {
+3445:     if (print_introducer) {
+3446:       /*
+3447:         Because we wrote an introducer, we must print str_value in its
+3448:         charset, and the resulting bytes must not be changed until they
+3449:         reach the end client.
+3450:         But the caller is asking for system_charset_info, and may later
+3451:         convert into character_set_results. That means two conversions: we
+3452:         must ensure that they don't change our printed bytes.
+3453:         So we print str_value in the least common denominator of the three
+3454:         charsets involved: ASCII. Non-ASCII characters are printed as \xFF
+3455:         sequences (which is ASCII too). This way, our bytes will not be
+3456:         changed.
+3457:       */
+3458:       ErrConvString tmp(str_value.ptr(), str_value.length(), &my_charset_bin);
+3459:       str->append(tmp.ptr());
+3460:     } else {
+3461:       // Convert to system charset.
+3462:       convert_and_print(&str_value, str, system_charset_info);
+3463:     }
+3464:   } else if (query_type & QT_TO_ARGUMENT_CHARSET) {
+3465:     if (print_introducer)
+3466:       convert_and_print(&str_value, str, collation.collation);
+3467:     else
+3468:       /*
+3469:         Convert the string literals to str->charset(),
+3470:         which is typically equal to charset_set_client.
+3471:       */
+3472:       convert_and_print(&str_value, str, str->charset());
+3473:   } else {
+3474:     // Caller wants a result in the charset of str_value.
+3475:     str_value.print(str);
+3476:   }
+3477: 
+3478:   str->append('\'');
+3479: }
+```
+
+# Code: include/sql_string.h
+Blob: 32d0e43d13248025d980d5acc875e4ed4ff633d3
+Source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/include/sql_string.h
+```cpp
+629: class StringBuffer : public String {
+630:   char buff[buff_sz];
+631: 
+632:  public:
+633:   StringBuffer() : String(buff, buff_sz, &my_charset_bin) { length(0); }
+634:   explicit StringBuffer(const CHARSET_INFO *cs) : String(buff, buff_sz, cs) {
+635:     length(0);
+636:   }
+637:   StringBuffer(const char *str, size_t length, const CHARSET_INFO *cs)
+638:       : String(buff, buff_sz, cs) {
+639:     set(str, length, cs);
+```
+
+# Description
+Target
+Revision 4d2da251cb536340d19438cc0039bb2846f9a634; parent e248166db3c95b4fc998ca14cff914f1fdafbe7b. Exercise cloning of a derived-table output expression during condition pushdown, including Item_string printing with QT_TO_ARGUMENT_CHARSET and subsequent reparsing. The observation chain is Item_field::replace_with_derived_expr (sql/item.cc:1042-1055), Query_block::clone_expression (sql/sql_derived.cc:734-744), and parse_expression (sql/sql_derived.cc:550-575,617-635).
+
+Source-required conditions
+The analysis stage extracted these local constraints from the supplied target-revision source:
+1. Condition pushdown must be enabled for the derived table. The local eligibility test rejects an inner LIMIT, the inner side of an outer join, multiply referenced or recursive CTEs, and the indicated set_var_list state (sql/sql_derived.cc:976-985). These are local necessary checks, not an exhaustive proof of eligibility.
+2. The Item_field being replaced must refer to the same derived table as the pushdown information; otherwise replacement returns early (sql/item.cc:1051-1055). The outer predicate should reference an output alias whose underlying expression contains a string literal.
+3. clone_expression must reach item->print and successful parse_sql rather than an error return. The print flags include QT_NO_DATA_EXPANSION and QT_TO_ARGUMENT_CHARSET (sql/sql_derived.cc:564-572,617-635).
+4. To exercise Item_string::print, retain a character-string literal in a nonconstant expression. Explicit character-set introducers and implicit literals select different print_introducer branches (sql/item.cc:3433-3439,3464-3472). A default-constructed StringBuffer uses my_charset_bin (include/sql_string.h:629-639); do not assume this particular buffer is initialized with character_set_client merely from the nearby generic comment.
+
+Candidate construction
+Use one small ordinary InnoDB table with an integer id and a utf8mb4_bin VARCHAR column. Populate two rows containing 'a', a 'b', an empty string, and NULL. Select DISTINCT id and CONCAT(s, literal) in a derived table; place the filtering predicate on the derived output alias. DISTINCT is a candidate way to keep the derived table materialized. Use no inner LIMIT, outer join, CTE, or user-variable assignment inside the query. Use an ordinary table so the experiment does not depend on additional temporary-table eligibility rules.
+Cover four literal constructions: unintroduced UTF-8 'é'; explicitly introduced _utf8mb4'é'; explicitly introduced _utf8mb4'中'; and a literal containing a quote, _utf8mb4'O''Reilly'. Keep the SQL file UTF-8 and the connection utf8mb4. The introducer identifies the bytes' character set; it does not convert incorrectly encoded file bytes. The UTF-8 tests need no non-UTF-8 file encoding.
+Use derived_condition_pushdown=off and =on on the same query/data as a control and a candidate target execution. Save and restore the session optimizer setting. Choose a row-dependent CONCAT rather than a constant-only expression, to reduce constant folding of the expression to be cloned. Select HEX(tag), CHAR_LENGTH(tag) and OCTET_LENGTH(tag) so encoding errors are visible without relying on terminal rendering.
+
+Correctness oracle
+Compute CONCAT, equality, UTF-8 bytes and lengths directly from the inserted characters. For a suffix 'é', rows whose s='a' must have tag='aé', HEX(tag)=61C3A9, character length 2 and byte length 3. For suffix '中', the corresponding values are 'a中', 61E4B8AD, 2 and 4. For suffix "O'Reilly", they are "aO'Reilly", 614F275265696C6C79, 9 and 9. Both duplicate 'a' source rows must remain because DISTINCT also includes their different ids. A NULL s produces a NULL CONCAT and does not pass equality. Both switch modes must independently satisfy these expected rows; agreement alone is insufficient.
+
+Coverage observation
+Record that the target derived table is materialized and its outer alias is pushed down. At the supplied revision, trace Item_field::replace_with_derived_expr to clone_expression and parse_expression. Capture the original expression, Item_string character set, is_cs_specified/print_introducer, print flags, output StringBuffer character set, serialized bytes, parse status and cloned expression. Associate the events with each query id. EXPLAIN or an on/off result difference cannot alone prove the exact printing branch.
+
+Uncertainty
+The snippets omit parts of the pushdown traversal, parse-state initialization, conversion helper and surrounding optimizer transformations. They do not guarantee that each SQL candidate reaches cloning or retains its literal through rewrites. A missed target requires analysis of those missing callers/helpers. A parse error may be a target symptom or a generation/configuration error and must be classified with diagnostics. Do not infer a specific server release containing the target commit from its SHA alone. These requirements were produced in this assistant turn from the src2req prompt; no database execution or measured coverage has occurred.

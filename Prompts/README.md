@@ -1,5 +1,7 @@
 # WhiteFox 风格的 MySQL 两阶段提示词
 
+后续实验可选用 [三对已验证案例的完整示范](../examples/mysql/source_guided_reproductions/README.md)，再追加独立目标的当前任务；这些案例限定为开发参考。请同时阅读 [答案污染审查](../experiments/prompt_pipeline_20261104/contamination_review.md)，避免将已暴露目标再次当作独立评测。
+
 已完成的三组生成与实测另见 [端到端实验索引](../experiments/prompt_pipeline_20261104/README.md)：逐组链接实际两阶段输入输出、SQL、预期值及目标/父提交的三轮执行证据。该归档保留当时模板快照；下述两个示例目标及离线生成清单保持各自范围。
 
 条件如何转化为触发 SQL、哪些结论已验证，见 [三组源码机制解释](../experiments/prompt_pipeline_20261104/source_mechanisms.md)。

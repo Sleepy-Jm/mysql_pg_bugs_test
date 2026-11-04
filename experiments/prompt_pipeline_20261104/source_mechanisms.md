@@ -245,6 +245,8 @@ AVG(v_dec) OVER (
 
 ## 4. 文档与原证据的关系
 
+后续审查见 [答案污染审查](contamination_review.md)：本批共享对话，并有窗口 AVG 相关实现的事前暴露，不能把成功复现等同于无污染的独立发现。[完整开发样例](../../examples/mysql/source_guided_reproductions/README.md) 关联本说明与原 SQL/实测材料，排除出独立评测集。
+
 实际分析答案是 `generation/stage1_src2req/`；实际第二阶段输入是 `generation/stage2_req2test/prompts/`。原输入包里的种子需求和旧 req2test 仅作来源快照，不代表本次采用的分析输出。上述条件编号均对应实际 src2req 输出中的 Source-required conditions，候选构造和 oracle 则另行标明。
 
 本次补读源码包括字符集转换函数、Item_subselect 基类更新函数等，属于运行后的解释材料。没有回写原 src2req、生成 SQL、预期 JSON 或实测文件，也不把这些后验阅读冒充生成时已提供的上下文。原文件哈希及脱敏映射以 [export_manifest.json](export_manifest.json) 为准。
