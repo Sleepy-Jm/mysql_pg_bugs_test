@@ -20,6 +20,12 @@ configs/commit_pipeline_sources.example.json 是待填写的输入示例。版�
 所有源码片段保存其 revision、路径、起始行和内容哈希。所选 commit 如果是修复提交，
 必须标 fix，不能将该运行解释为仅凭引入提交的盲生成。
 
+第一阶段输出增加顶层 commit_status，限定三类：introduce（引入）、fix（修复）、
+unknown（未知），并以 commit_status_reason 保存判断依据或未知原因。这里的引入/修复
+针对目标缺陷或异常行为，不能仅凭增加代码或功能判为引入。证据不足、冲突，或同一
+提交混合引入与修复而无法给出明确目标级判断时，标 unknown。输入 commit_role 保留为
+筛选来源记录；输出状态是分析判断，不代表缺陷已经实测确认。该标识随分析交给第二阶段。
+
 第一阶段 JSON 的 changes 按不同语义变化拆分，保存版本、父/目标 SHA、改动类型、
 模块、位置/函数、facts、affected_features、conditions 和 unknowns。
 facts 和 source_supported 条件必须引用 supplied source_id、闭区间行号及逐字 quote。

@@ -22,6 +22,7 @@ def fixture_material():
 
 def fixture_analysis():
     return dict(version="unknown", target_revision="a" * 40, parent_revision="b" * 40,
+        commit_status="unknown", commit_status_reason="Synthetic comparison change does not establish defect introduction or repair",
         changes=[dict(change_id="comparison", change_type="comparison_boundary", module="synthetic",
         locations=[dict(path="sql/synthetic.cc", functions=["synthetic"])], applicability="sql",
         reason="Synthetic condition for offline control flow testing, not a MySQL claim",
@@ -123,6 +124,22 @@ class PipelineTests(unittest.TestCase):
         value = fixture_analysis()
         value["changes"][0]["conditions"][0]["status"] = "source_supported"
         with self.assertRaisesRegex(ValueError, "citation"):
+            cp.validate_analysis(value, fixture_material())
+
+    def test_commit_status_requires_one_of_three_states_and_a_reason(self):
+        for status in ("introduce", "fix", "unknown"):
+            value = fixture_analysis()
+            value["commit_status"] = status
+            cp.validate_analysis(value, fixture_material())
+            self.assertEqual(cp.requirements_view(value)["commit_status"], status)
+        for status in (None, "other", "reproduced"):
+            value = fixture_analysis()
+            value["commit_status"] = status
+            with self.assertRaisesRegex(ValueError, "commit_status"):
+                cp.validate_analysis(value, fixture_material())
+        value = fixture_analysis()
+        value["commit_status_reason"] = " "
+        with self.assertRaisesRegex(ValueError, "commit_status_reason"):
             cp.validate_analysis(value, fixture_material())
 
     def test_stage2_receives_analysis_not_raw_sources(self):

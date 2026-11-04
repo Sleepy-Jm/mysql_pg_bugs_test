@@ -26,6 +26,8 @@ ROUNDS = BATCH_SIZE = 10
 ANALYSIS_SHAPE = {
     "version": "copy material.version", "target_revision": "copy material.target_revision",
     "parent_revision": "copy material.parent_revision",
+    "commit_status": "introduce|fix|unknown",
+    "commit_status_reason": "classification basis in supplied material, or why unknown",
     "changes": [{"change_id": "change_1", "change_type": "unknown", "module": "unknown",
         "locations": [{"path": "sql/file.cc", "functions": ["unknown"]}],
         "applicability": "sql|not_sql|unknown", "reason": "explain",
@@ -176,6 +178,9 @@ def validate_citations(evidence, material, required=False):
 def validate_analysis(value, material):
     require(isinstance(value, dict) and isinstance(value.get("changes"), list), "changes array required")
     require(isinstance(value.get("unknowns"), list), "unknowns array required")
+    require(value.get("commit_status") in {"introduce", "fix", "unknown"},
+            "commit_status must be introduce, fix, or unknown")
+    require(nonempty(value.get("commit_status_reason")), "commit_status_reason required")
     for field in ("version", "target_revision", "parent_revision"):
         require(value.get(field) == material[field], f"Analysis identity mismatch: {field}")
     require(value["changes"] or value["unknowns"], "Explain an empty analysis")
