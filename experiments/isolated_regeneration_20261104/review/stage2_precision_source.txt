@@ -1,0 +1,69 @@
+Coordinator review only; fetched after generation. Not provided to B.
+https://github.com/mysql/mysql-server/blob/c296cddb93ffc631f9b43d3b1ff769604e7469d7/sql/item_sum.cc
+bool Item_sum_avg::resolve_type(THD *thd) {
+  if (Item_sum_sum::resolve_type(thd)) return true;
+
+  set_nullable(true);
+  null_value = true;
+  prec_increment = thd->variables.div_precincrement;
+  if (hybrid_type == DECIMAL_RESULT) {
+    int precision = args[0]->decimal_precision() + prec_increment;
+    int scale =
+        min<uint>(args[0]->decimals + prec_increment, DECIMAL_MAX_SCALE);
+    set_data_type_decimal(precision, scale);
+    f_precision =
+        min(precision + DECIMAL_LONGLONG_DIGITS, DECIMAL_MAX_PRECISION);
+    f_scale = args[0]->decimals;
+    dec_bin_size = my_decimal_get_binary_size(f_precision, f_scale);
+  } else {
+    assert(hybrid_type == REAL_RESULT);
+    // If type has specified precision and scale, adjust according to increment:
+    if (decimals != DECIMAL_NOT_SPECIFIED) {
+      decimals = min<uint>(decimals + prec_increment, DECIMAL_NOT_SPECIFIED);
+      max_length = float_length(decimals);
+    }
+  }
+  return false;
+}
+
+Item *Item_sum_avg::copy_or_same(THD *thd) {
+  DBUG_TRACE;
+  Item *result =
+      m_is_window_function ? this : new (thd->mem_root) Item_sum_avg(thd, this);
+  return result;
+}
+
+Field *Item_sum_avg::create_tmp_field(bool group, TABLE *table) {
+  DBUG_TRACE;
+  Field *field;
+  if (group) {
+    /*
+      We must store both value and counter in the temporary table in one field.
+      The easiest way is to do this is to store both value in a string
+      and unpack on access.
+    */
+    field = new (*THR_MALLOC) Field_string(
+        ((hybrid_type == DECIMAL_RESULT) ? dec_bin_size : sizeof(double)) +
+            sizeof(longlong),
+        false, item_name.ptr(), &my_charset_bin);
+  } else if (hybrid_type == DECIMAL_RESULT)
+    field = Field_new_decimal::create_from_item(this);
+  else
+    field = new (*THR_MALLOC) Field_double(
+        max_length, is_nullable(), item_name.ptr(), decimals, false, true);
+  if (field) field->init(table);
+  return field;
+}
+
+void Item_sum_avg::clear() { Item_sum_sum::clear(); }
+
+bool Item_sum_avg::add() {
+  assert(!m_is_window_function);
+  if (Item_sum_sum::add()) return true;
+  if (!aggr->arg_is_null(true)) m_count++;
+  return false;
+}
+
+double Item_sum_avg::val_real() {
+  assert(fixed == 1);
+  if (m_is_win

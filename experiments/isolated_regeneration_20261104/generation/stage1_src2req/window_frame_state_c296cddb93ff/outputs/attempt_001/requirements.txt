@@ -1,0 +1,38 @@
+Target
+- 提交 c296cddb93ffc631f9b43d3b1ff769604e7469d7。sql/window.h:477-490,1299-1311；sql/item_sum.cc:410-426,1913-1933,2279-2365；sql/iterators/window_iterators.cc:683-699,789-820,1084-1107,1145-1226。
+- 观察缓冲的优化 ROWS 帧在移除旧行、没有新末行时的行位置状态及 AVG 消费，结果按逐行帧语义核验，不预断异常。已知目标 isolated_regeneration；来源人工选择用了既有目标知识，不计作未知发现。
+
+Source-required conditions
+- R1 sql/window.h:477-490,1299-1311：被访问行的分区位置与当前输出行不同；rowno_in_frame 定义为相对帧起点的 1 基位置，setter 直接赋值。不能把这些位置变量互换解释。
+- R2 sql/item_sum.cc:410-426：局部语义检查除 ROWS/无界前置/当前行这一组合外设置 needs_buffer；DISTINCT 窗口聚合在该检查报不支持。最终 Window 缓冲决策的汇总未提供。
+- R3 sql/iterators/window_iterators.cc:683-699,1084-1107：static、row、range 三策略至多一个为真；进入关注分支需 row_optimizable 且 aggregates_primed，并未进入 static 当前行非首行分支。remove_previous_first_row 要求 lower_limit>1 且 lower_limit-1<=last_rowno_in_cache；new_last_row 要求 upper_limit<=upper 且不是 unbounded_following；rows_in_frame=upper-lower_limit+1。
+- R4 sql/iterators/window_iterators.cc:789-820：当前行边界给 lower_limit=current_row，定值前置以 1 截断，定值后置计算 current_row+border 并处理溢出。该片段不提供 upper/upper_limit 的完整计算。
+- R5 sql/iterators/window_iterators.cc:1145-1165：在移除旧首行分支内恢复 lower_limit-1 行并设置 inverse；若 !new_last_row，设置 rowno_in_frame=current_row-lower_limit+1，rows_in_frame>0 时临时置 last 标志，调用 framing 函数后撤销标志，最后撤销 inverse。若有新末行，移除阶段不在这里做同样的最终标志设置。
+- R6 sql/iterators/window_iterators.cc:1214-1226：有新末行时恢复 upper 行，设置 rowno_in_frame=upper-lower_limit+1 和 last 标志，再调用 framing 并撤销 last。1167-1211 的 FIRST/LAST/NTH 路径也会改位置，但调用的是 one-row 类函数。
+- R7 sql/item_sum.cc:2279-2293,2304-2365：窗口 AVG 在缓冲时以 rowno_in_frame-m_frame_null_count 为除数来源，无缓冲时以 m_count-m_frame_null_count；最后帧行且正除数时完成除法。decimal 路径按 inverse 加减非 NULL 值或 NULL 计数，并以 m_count==m_frame_null_count 设置 null_value。被调 SUM/wf_common_init 等实现缺失。
+- R8 sql/item_sum.cc:1913-1933：REAL_RESULT 且移动起点为定值前置、定值后置或当前行时，row/range_optimizable 与 !windowing_use_high_precision 相与。该局部仅是优化资格限制，关闭精度选项不保证进入目标；AVG 是否经过这段须确认调用关系。
+
+Candidate construction
+- C1 对应 R1-R7。设计选择：一个含唯一顺序键的分区，约九行，非恒定、非零且可精确表示的小整数/定点值；投影 AVG，显式 ROWS 帧从定值前置到定值后置，例如前置两行、后置三行。不使用 DISTINCT。目标是先建立聚合状态，再在分区尾部出现帧起点继续移动、移除旧行而无新末行、帧仍非空的转换。这些是待观察的内部状态，不能仅从 SQL 文本认定成立。
+- C2 对应 R3-R7。固定数据，仅改变上边界为 CURRENT ROW、定值 FOLLOWING、UNBOUNDED FOLLOWING，逐项比较有新末行和无新末行路径；增加第二个短分区观察状态重置。关注倒数数行、最后一行、单行分区和帧宽大于分区的边界。短分区可能无法触发移除路径，应分类而非当作失败复现。
+- C3 对应 R7。先用全非 NULL 数据隔离帧位置，再逐个加入 NULL，包括离开帧的 NULL、保留帧的 NULL、全 NULL 帧和可合法构造的空帧。独立记录总帧行数、非 NULL 数量，不把 rowno_in_frame 当作无需核验的行计数。
+- C4 对应 R2,R3,R7,R8。主候选优先尝试精确数值类型，并实际核验 hybrid_type 与执行入口；REAL 类型另作分支，记录并分别设置精度选项，查询后恢复会话设置。是否允许 AVG 的 row 优化须插桩确认。无界前置至当前行作为无缓冲线索对照，不单独定义答案。
+- C5 对应 R1,R6。只有基线路径明确后，才分别加入共享同一窗口的 FIRST_VALUE、LAST_VALUE 或 NTH_VALUE，观察位置改写及函数分类；不是目标移除分支的源码必需条件。共享 Window 身份和兼容性待验证。
+- 会话顺序：固定相关设置，建可枚举数据，先单 AVG 基线，再单因素变体，恢复设置并清理。以上不构成完整 SQL，不保证完整可达性。
+
+Correctness oracle
+- 对每个分区按唯一排序键排列，当前行为 i，定值前置 p、后置 q 时，按语义取有效位置区间 [max(1,i-p),min(n,i+q)]；其他帧按声明边界独立列出。若下界超过上界则为空。
+- 从该区间的输入值计算非 NULL 个数 k 与精确和 s：k>0 时数学平均为 s/k，k=0 时 AVG 为 NULL。为目标数值类型单独明确最终精度、舍入及返回格式；REAL 采用预定合理容差并优先选二进制可精确表示的值，避免用末位误差推断状态问题。
+- 每行以稳定标识核验结果；如加 FIRST/LAST/NTH，则直接按帧成员及参数推导对应值，先明确 NULL 选项的版本语义。
+- 其他版本、精度开关对照或另一个 AVG/SUM 表达式只辅助定位，不能单独定义答案。不预测错误值。
+
+Coverage observation
+- 在优化 ROWS 分支记录策略、aggregates_primed、current_row、lower_limit、upper_limit、upper、last_rowno_in_cache、unbounded_following、remove_previous_first_row、new_last_row、rows_in_frame。
+- 记录恢复行对象和实际分区行号、inverse/last 标志、rowno_in_frame 的每次设置，特别区分无新末行的移除调用与有新末行的添加调用。
+- 在 AVG 消费点记录类型、needs_buffering、m_count、m_frame_null_count、除数和 last 标志；将其与独立枚举的帧成员/非 NULL 数相对照，不孤立假定某次中间状态等于最终计数。
+- EXPLAIN/trace 只能给窗口及缓冲计划线索，不能证明 primed、inverse 或特定 setter 执行；结果差异不能单独定位原因。源码仅支持局部路径。未执行、未插桩，覆盖未测量。
+
+Uncertainty
+- 缺少 upper 与 upper_limit 计算、初次聚合/分区重置、优化汇总、AVG/SUM 继承及调用路径、wf_common_init、copy_funcs 分类和恢复缓存行的完整实现。
+- 不能据局部 setter 与除数公式单独宣称错误：实际边界、调用次序、辅助状态及其他未见更新均是竞争性解释。须由后续允许的观测核验；本阶段不扩展源码范围。
+- 数值类型、精度和 NULL/空帧行为需与目标版本对齐。示例为 INTERSECT/EXCEPT 访问选择，未见与当前材料同一缺陷或实质相同触发；三组共享上下文，不宣称完全隔离。

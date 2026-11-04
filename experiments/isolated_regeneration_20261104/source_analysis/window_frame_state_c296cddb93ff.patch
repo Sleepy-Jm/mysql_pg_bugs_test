@@ -1,0 +1,186 @@
+diff --git a/sql/item_sum.cc b/sql/item_sum.cc
+index a5dd8f5213d..d90a92a5a47 100644
+--- a/sql/item_sum.cc
++++ b/sql/item_sum.cc
+@@ -2835,8 +2835,16 @@ bool Item_sum_hybrid::compute() {
+   */
+   if (m_want_first != m_nulls_first) {
+     // Cases (2) and (3): same structure as Item_first_last_value::compute
++
++    const bool visiting_first_in_frame =
++        (m_window->optimizable_row_aggregates() &&
++         m_window->rowno_being_visited() ==
++             m_window->first_rowno_in_rows_frame()) ||
++        !m_window->optimizable_row_aggregates();
++
+     if ((m_window->needs_buffering() &&
+-         (((m_window->rowno_in_frame() == 1 && m_want_first) ||
++         (((m_window->rowno_in_frame() == 1 && m_want_first &&
++            visiting_first_in_frame) ||
+            (m_window->is_last_row_in_frame() && !m_want_first)) ||
+           m_window->rowno_being_visited() == 0 /* No FROM; one const row */)) ||
+         (!m_window->needs_buffering() &&
+@@ -2902,8 +2910,11 @@ bool Item_sum_hybrid::compute() {
+         (!m_window->needs_buffering())) {
+       value->store_and_cache(args[0]);
+       null_value = value->null_value;
+-      const int64 frame_start =
+-          (m_window->rowno_being_visited() - m_window->rowno_in_frame() + 1);
++
++      const int64 frame_start = m_window->optimizable_row_aggregates()
++                                    ? m_window->first_rowno_in_rows_frame()
++                                    : (m_window->rowno_being_visited() -
++                                       m_window->rowno_in_frame() + 1);
+ 
+       if (!value->null_value &&
+           m_window->rowno_being_visited() > m_saved_last_value_at) {
+@@ -5147,7 +5158,6 @@ bool Item_first_last_value::compute() {
+   }
+   return null_value || current_thd->is_error();
+ }
+-
+ longlong Item_first_last_value::val_int() {
+   if (wf_common_init()) return 0;
+ 
+diff --git a/sql/iterators/window_iterators.cc b/sql/iterators/window_iterators.cc
+index 51860c3d8d9..51280850597 100644
+--- a/sql/iterators/window_iterators.cc
++++ b/sql/iterators/window_iterators.cc
+@@ -408,7 +408,7 @@ bool bring_back_frame_row(THD *thd, Window *w, int64 rowno,
+                        static_cast<int>(reason), fno));
+   assert(reason == Window_retrieve_cached_row_reason::MISC_POSITIONS ||
+          fno == 0);
+-
++  w->set_rowno_being_visited(rowno);
+   uchar *fb_rec = w->frame_buffer()->record[0];
+ 
+   assert(rowno != 0);
+@@ -521,8 +521,6 @@ bool process_wfs_needing_partition_cardinality(
+     THD *thd, Temp_table_param *param, const Window::st_nth &have_nth_value,
+     const Window::st_lead_lag &have_lead_lag, const int64 current_row,
+     Window *w, Window_retrieve_cached_row_reason current_row_reason) {
+-  w->set_rowno_being_visited(current_row);
+-
+   // Reset state for LEAD/LAG functions
+   if (!have_lead_lag.m_offsets.empty()) w->reset_lead_lag();
+ 
+@@ -996,7 +994,6 @@ bool process_buffered_windowing_record(THD *thd, Temp_table_param *param,
+       const int64 n = rowno - lower_limit + 1 - skipped;
+ 
+       w.set_rowno_in_frame(n);
+-      w.set_rowno_being_visited(rowno);
+ 
+       const Window_retrieve_cached_row_reason reason =
+           (n == 1 ? Window_retrieve_cached_row_reason::FIRST_IN_FRAME
+@@ -1103,7 +1100,8 @@ bool process_buffered_windowing_record(THD *thd, Temp_table_param *param,
+     const bool new_last_row =
+         (upper_limit <= upper &&
+          !unbounded_following /* all added when primed */);
+-    const int64 rn_in_frame = upper - lower_limit + 1;
++    const int64 rows_in_frame = upper - lower_limit + 1;
++    w.set_first_rowno_in_rows_frame(lower_limit);
+ 
+     /* possibly subtract: early in partition there may not be any */
+     if (remove_previous_first_row) {
+@@ -1151,8 +1149,8 @@ bool process_buffered_windowing_record(THD *thd, Temp_table_param *param,
+ 
+       w.set_inverse(true);
+       if (!new_last_row) {
+-        w.set_rowno_in_frame(rn_in_frame);
+-        if (rn_in_frame > 0)
++        w.set_rowno_in_frame(current_row - lower_limit + 1);
++        if (rows_in_frame > 0)
+           w.set_is_last_row_in_frame(true);  // do final comp., e.g. div in AVG
+ 
+         if (copy_funcs(param, thd, CFT_WF_FRAMING)) return true;
+@@ -1189,9 +1187,8 @@ bool process_buffered_windowing_record(THD *thd, Temp_table_param *param,
+               thd, &w, upper, Window_retrieve_cached_row_reason::LAST_IN_FRAME))
+         return true;
+ 
+-      w.set_rowno_in_frame(rn_in_frame);
+-
+-      if (rn_in_frame > 0) w.set_is_last_row_in_frame(true);
++      w.set_rowno_in_frame(current_row - lower_limit + 1);
++      if (rows_in_frame > 0) w.set_is_last_row_in_frame(true);
+ 
+       if (copy_funcs(param, thd, CFT_WF_USES_ONLY_ONE_ROW)) return true;
+ 
+@@ -1222,7 +1219,6 @@ bool process_buffered_windowing_record(THD *thd, Temp_table_param *param,
+ 
+       w.set_rowno_in_frame(upper - lower_limit + 1)
+           .set_is_last_row_in_frame(true);  // temporary states for next copy
+-      w.set_rowno_being_visited(upper);
+ 
+       if (copy_funcs(param, thd, CFT_WF_FRAMING)) return true;
+ 
+@@ -1339,7 +1335,6 @@ bool process_buffered_windowing_record(THD *thd, Temp_table_param *param,
+              last also until we find something better.
+           */
+           w.set_is_last_row_in_frame(true);
+-          w.set_rowno_being_visited(rowno);
+ 
+           if (copy_funcs(param, thd, CFT_WF_USES_ONLY_ONE_ROW)) return true;
+           w.set_is_last_row_in_frame(false);
+@@ -1354,7 +1349,6 @@ bool process_buffered_windowing_record(THD *thd, Temp_table_param *param,
+             w.set_rowno_in_frame(w.last_rowno_in_range_frame() -
+                                  w.first_rowno_in_range_frame() + 1)
+                 .set_is_last_row_in_frame(true);
+-            w.set_rowno_being_visited(w.last_rowno_in_range_frame());
+             if (copy_funcs(param, thd, CFT_WF_USES_ONLY_ONE_ROW)) return true;
+             w.set_is_last_row_in_frame(false);
+           }
+@@ -1403,7 +1397,6 @@ bool process_buffered_windowing_record(THD *thd, Temp_table_param *param,
+         }
+         w.set_rowno_in_frame(rowno_in_frame)
+             .set_is_last_row_in_frame(true);  // pessimistic assumption
+-        w.set_rowno_being_visited(rowno);
+ 
+         if (copy_funcs(param, thd, CFT_WF_FRAMING)) return true;
+ 
+diff --git a/sql/window.cc b/sql/window.cc
+index b69fe0a644d..59dbc665145 100644
+--- a/sql/window.cc
++++ b/sql/window.cc
+@@ -1408,6 +1408,7 @@ void Window::reset_execution_state(Reset_level level) {
+   m_aggregates_primed = false;
+   m_first_rowno_in_range_frame = 1;
+   m_last_rowno_in_range_frame = 0;
++  m_first_rowno_in_rows_frame = 1;
+   m_row_has_fields_in_out_table = 0;
+ }
+ 
+diff --git a/sql/window.h b/sql/window.h
+index 8f1992d9001..6e596de81b2 100644
+--- a/sql/window.h
++++ b/sql/window.h
+@@ -600,6 +600,12 @@ class Window {
+   */
+   int64 m_last_rowno_in_range_frame;
+ 
++  /**
++    Execution state. Only used for ROWS frame optimized MIN/MAX.
++    The (1-based) number in the partition of first row in the current frame.
++  */
++  int64 m_first_rowno_in_rows_frame;
++
+   /*------------------------------------------------------------------------
+    *
+    * Window function special behaviour toggles. These boolean flag influence
+@@ -1313,6 +1319,17 @@ class Window {
+   */
+   void set_rowno_in_partition(int64 rowno) { m_rowno_in_partition = rowno; }
+ 
++  /**
++    See #m_first_rowno_in_rows_frame
++  */
++  void set_first_rowno_in_rows_frame(int64 rowno) {
++    m_first_rowno_in_rows_frame = rowno;
++  }
++
++  int64 first_rowno_in_rows_frame() const {
++    return m_first_rowno_in_rows_frame;
++  }
++
+   /**
+     See #m_first_rowno_in_range_frame
+   */

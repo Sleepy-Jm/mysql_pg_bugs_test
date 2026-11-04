@@ -1,0 +1,30 @@
+Target
+- 提交 4d2da251cb536340d19438cc0039bb2846f9a634；sql/sql_derived.cc:550-575,617-635,734-745,976-985；sql/item.cc:1042-1056,3426-3479；include/sql_string.h:629-639。
+- 观察派生表条件下推中，列引用替换为派生表达式、打印后重解析是否保持字符串值、字符集含义及查询结果。不预断异常。本轮为 isolated_regeneration，人工以既有目标知识选择材料，不能计作未知缺陷发现。
+
+Source-required conditions
+- R1 sql/sql_derived.cc:976-985：局部资格函数要求下推开关/提示状态成立、派生查询无 LIMIT、不是外连接内侧、不是多引用或递归 CTE，且 set_var_list 为空。这只是该函数的条件，不证明一定进行下推或克隆。
+- R2 sql/item.cc:1042-1056：替换函数在 derived_table 与当前 Item_field.table_ref 相等时，以 field_index 获取派生表达式并调用 clone_expression；不等时返回原对象。完整调用链缺失。
+- R3 sql/sql_derived.cc:734-745,550-575,617-635：克隆经 parse_expression；打印标志含 QT_NO_DATA_EXPANSION 和 QT_TO_ARGUMENT_CHARSET；随后 parse_sql，失败返回空；成功后复制字段信息并解析表达式。两段解析代码之间有未提供部分。
+- R4 sql/item.cc:3428-3440,3464-3472：非 normalized 打印中，强制 introducer 或允许 introducer 且 is_cs_specified 时输出字符集名；argument-charset 分支有 introducer 时按表达式 collation 字符集转换，无 introducer 时按输出 String 的 charset 转换。不能从文字注释推断实际 client charset。
+- R5 include/sql_string.h:629-639 与 sql/sql_derived.cc:564：无参数 StringBuffer 使用 my_charset_bin 初始化；目标局部打印缓冲区采用无参数构造。后续是否修改缓冲区属性及解析端配置不能由遗漏部分断言。
+
+Candidate construction
+- C1 对应 R1-R5。源码必须条件：满足 R1，并确实令外层派生列引用进入 R2 和表达式中的字符串进入 R4。设计选择：单个非递归派生表，投影一个含非 ASCII 字符串的简单表达式，外层对该列作过滤；选择合法、可手工确定字符及字节编码的输入。为避免派生表合并，可尝试该版本支持的控制方法，但其可用性和效果属待验证假设，不自行认定。先配置会话字符集，再建立少量区分记录、执行观察查询，最后恢复设置；记录每个设置。
+- C2 对应 R3-R5。在 C1 结构稳定后分别设计显式字符集 introducer 与无 introducer 的字符串，分别测试字符集一致和不一致的会话配置。它们是分支对照，不保证仅改变一个内部属性，须核验 is_cs_specified 和实际字节。用 ASCII 数据作边界对照，用可表示的多字节字符作主要观察；不可表示字符另行分类，避免将预期转换行为误判。
+- C3 对应 R1-R3。以关闭下推或采用阻止下推条件作执行路径对照，其他输入保持一致。它只辅助定位，不定义正确结果。参数/重准备不是基础候选必须条件；材料仅支持记录打印标志的意图，不足以确定可达会话序列。
+- 不生成完整 SQL；字符集具体名称、合法语法和防合并方法交阶段 B 按目标版本验证。
+
+Correctness oracle
+- 独立固定每个输入字符串的字符序列、字节、声明字符集及有效转换，再按目标版本的字符集和排序规则语义计算派生表达式与外层谓词的真/假/未知，逐行列出应保留的行及重数。
+- 优先选择双方均可表示、等值含义明确的输入；若使用大小写/重音敏感比较须先明确定义规则。不能明确转换或比较语义时停止该候选的结果推导。
+- 打印/重解析前后的表达式应保持该语义。父版本、开关对照和其他表达式仅作辅助，不能单独充当答案。不预测错误输出。
+
+Coverage observation
+- 建议观测 R1 各门槛；R2 的 derived_table/table_ref 身份、field_index 与被取出的表达式关系；克隆前后对象及字段绑定；打印 query_type、StringBuffer.charset、is_cs_specified、collation、打印字节、解析端字符集和 parse_sql 结果。
+- 分别确认 R4 的有/无 introducer 路径。EXPLAIN 只能提供派生表保留及下推的计划线索，不能证明具体打印分支。结果差异不能单独证明目标覆盖；源码仅给局部条件。未执行、未插桩，覆盖未测量。
+
+Uncertainty
+- 缺少下推调用方、派生表达式选择、防合并决策、parse_expression 中间配置、convert_and_print、解析器字符集处理与排序规则实现。
+- 无法据此确认可用字符集、转换警告/错误、参数重准备流程或完整 SQL 可达性。竞争性解释包括未下推、未保留派生表、正常字符转换及比较规则差异。
+- 示例为 INTERSECT/EXCEPT 访问类型选择；本材料未显示同一缺陷或实质相同机制。三目标共享本轮上下文，不能声称完全隔离。

@@ -1,0 +1,279 @@
+你将顺序完成三组 req2test 任务。工作区只设置为 <USER_HOME>/Desktop/mysql_bug_test/stage2_req2test，不要打开公共父目录或其他阶段目录。下文依次给出三份完整启动指令，每组先读取其完整 INTERSECT 示例，再处理当前任务。仅允许各组白名单和列出的控制材料。不得读取旧实验答案、网络或其他对话。输出分别放入每组指定的 outputs/attempt_001，不合并、不覆盖。某组阻塞时记录原因并继续其他组，最后汇总三组状态。当前是已知目标的隔离上下文重复生成，不是未知缺陷盲测。
+阶段一完成后，协调者必须先完成需求交接；如果 requirements.txt 不存在或 handoff.ready 不是 true，请报告缺失，不读取阶段一目录代为补齐。
+
+===== derived_condition_charset_4d2da251cb53 =====
+本次明确属于 isolated_regeneration：重复生成已知三个目标，不计入未知缺陷发现率。不同目标在同一阶段共享本轮对话，不声称目标之间完全隔离。
+
+你负责本次 MySQL 源码引导实验的 req2test 阶段：根据已冻结的分析需求，生成完整 SQL 和独立推导的预期结果。
+
+这是独立于源码分析阶段的新对话。你不需要重新分析源码，也不能查找当前目标的已知答案。本阶段仅生成，不执行数据库，不预设目标必然有异常。
+
+【实验配置：启动前由协调者填写全部占位符】
+experiment_id：mysql_three_isolated_regeneration_20261104
+run_id：mysql_three_isolated_regeneration_20261104
+attempt_id：attempt_001
+target_id：derived_condition_charset_4d2da251cb53
+工作目录：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/derived_condition_charset_4d2da251cb53
+输出目录：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/derived_condition_charset_4d2da251cb53/outputs/attempt_001
+本提示词留档：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/derived_condition_charset_4d2da251cb53/req2test_start.txt
+白名单：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/derived_condition_charset_4d2da251cb53/allowlist.json
+
+【启动与读取边界】
+本提示词及上述白名单是明确允许的控制材料。先只读 allowlist.json；其他实验输入必须逐个来自其 read_files。路径须为无通配符的绝对路径，解析后位于本阶段工作目录内；不要跟随指向外部的链接。白名单与本提示词冲突时停止并报告，不能自行增加读取权限。
+
+按白名单核对 experiment_id、run_id、attempt_id、target_id、stage、workspace_root 和 write_root。全部占位符须已替换；输入须存在且 SHA256 匹配。缺文件、输入哈希 unknown、身份不一致或无法核验时，输出阻塞原因，停止正式生成，不寻找替代材料。白名单本身不包含自身哈希，其最终字节由协调者另行冻结。
+
+允许的实验输入只有：
+1. role=complete_example：一个完整 req2test 异目标示例。
+2. role=requirements：阶段 A 冻结后的 requirements.txt。
+3. role=handoff_manifest：最小阶段交接清单。
+交接清单必须为 ready=true、exposure_status=no_observed_violation、requirements_status=ready；核对需求 SHA256、路径和身份。否则阻塞，不继续 SQL 生成。no_observed_violation 只表示未观察到越界，不是绝对无污染证明。
+
+只写入已声明的本次输出目录，可读取自己在本次尝试中创建的输出进行核对；不得打开已有的其他尝试。不要递归扫描或检索工作区。系统/平台自动提供、无法由本提示词控制的额外上下文必须如实记录；本提示词不覆盖更高优先级指令。
+
+【防答案污染要求】
+1. 不访问网络、GitHub、Git 历史或其他对话，不读取当前目标源码、阶段 A 完整对话、source_evidence.md、种子需求、修复补丁、回归测试、旧 SQL、预期答案或运行报告。
+2. 需求中的源码路径、URL 和行号只是来源标识，不授权你打开对应文件。
+3. 完整示例用于学习 SQL 组织、数据设计、oracle 推导和证据表达；示例答案不是当前任务答案。
+4. 不根据目标 SHA、函数名或既有记忆搜索和补全已知复现步骤。
+5. 需求缺少关键语义或可执行前提时，将对应候选标记 blocked，列出需要分析阶段补充的问题，不自行查源码或猜造开关。补充需求须经协调者另建 attempt 交接，不覆盖当前输入。
+6. 若从允许材料中发现与示例目标存在相关修复或实质相同的触发机制，记录重合并停止独立评测尝试；不要为调查重合而查阅禁读材料。
+7. 需求若夹带原始源码块、当前目标历史 SQL/运行答案，或误读白名单外材料，记录暴露内容和时点，停止清洁尝试，不默默删除后继续。
+
+【执行顺序：先完整示例，再当前任务】
+第一步：核验输入后，完整读取 complete_example，包括需求和完整测试答案。
+第二步：读取并核对交接清单及当前 requirements.txt。
+第三步：按本次需求生成测试，不改写需求以适配自己的 SQL。
+
+【测试生成要求】
+Prerequisites
+- 写明版本/语法前提、会话设置、连接数和执行顺序。
+- 使用已选择的可丢弃 schema；对象名称保持独立。
+- 保存并在正常结束时恢复修改的会话设置。
+
+SQL
+- 给出完整 setup、INSERT、查询、必要的 PREPARE/重复执行、对照和 cleanup。
+- 不省略会话或状态依赖，不用占位 SQL。
+- 采用小型、可手工核算的数据和确定性输出顺序。
+- 每个检查点具有唯一 case_id，并映射到需求中的 C/R 编号。
+- 仅清理本测试创建的对象。
+
+Expected results and oracle
+- 逐项推导每个 case_id 的预期结果。
+- 正确处理重复行、NULL、排序、字符集和数值精度；涉及哪些就说明哪些。
+- 近似数值需声明容差及理由。
+- 从输入数据和 SQL 语义推导结果，不把父提交输出或另一条共享实现的查询当作唯一 oracle。
+- 不填写“目标版本预计返回的错误值”。
+
+Coverage observation
+- 将源码覆盖观察计划与结果正确性检查分开。
+- 只能依据需求转述观察计划；明确本阶段未确认实际分支可达。
+- 不声称 SQL 语法合法就意味着命中了目标路径。
+
+Execution status
+- database_executed=false
+- coverage_status=not_measured
+- reproduction_status=unknown
+- 如有静态检查，单独记录；不得将其称为数据库实测。
+
+【保存与冻结】
+在本次输出目录保存：
+- test.sql：完整可执行脚本。
+- expected.json：按 case_id 保存列名、预期行、顺序要求及适用容差，SQL NULL 用 JSON null。
+- oracle.md：独立计算过程。
+- requirement_mapping.json：case_id → C/R 编号及主候选/对照角色；另列 blocked 候选及原因。
+- stage2_response.txt：完整最终阶段回答。
+- generation_manifest.json：实验/run/attempt/目标身份、实际输入与输出路径及可计算的 SHA256、启动提示词哈希、已知生成配置/环境、实际命令、额外上下文、越界情况和未执行状态。
+
+允许在本次输出目录编写并运行只使用标准库的纯算术程序核算 oracle；不得调用数据库、下载依赖或读取其他实验资料。保留程序、命令与计算来源。解释器运行不等于许可扫描其安装目录。
+未知的模型配置等字段写 unknown，不虚构信息。缺输入哈希则按启动规则阻塞，不用 unknown 绕过。
+完整消息和工具日志由协调者保存；stage2_response.txt 不冒充完整对话日志。
+blocked 候选也必须保存原因，不能只保留可生成的成功候选；全部 blocked 时不伪造 test.sql 或 expected.json。
+清单不包含自身哈希，协调者在最终冻结清单中记录它。生成后停止修改本次输出；后续执行反馈和修正另记 attempt_id。
+不要修改原始输入、覆盖旧 attempt、提交仓库、连接数据库或宣称已复现异常。
+
+
+
+===== item_property_recalculation_248c7f7c227e =====
+本次明确属于 isolated_regeneration：重复生成已知三个目标，不计入未知缺陷发现率。不同目标在同一阶段共享本轮对话，不声称目标之间完全隔离。
+
+你负责本次 MySQL 源码引导实验的 req2test 阶段：根据已冻结的分析需求，生成完整 SQL 和独立推导的预期结果。
+
+这是独立于源码分析阶段的新对话。你不需要重新分析源码，也不能查找当前目标的已知答案。本阶段仅生成，不执行数据库，不预设目标必然有异常。
+
+【实验配置：启动前由协调者填写全部占位符】
+experiment_id：mysql_three_isolated_regeneration_20261104
+run_id：mysql_three_isolated_regeneration_20261104
+attempt_id：attempt_001
+target_id：item_property_recalculation_248c7f7c227e
+工作目录：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/item_property_recalculation_248c7f7c227e
+输出目录：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/item_property_recalculation_248c7f7c227e/outputs/attempt_001
+本提示词留档：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/item_property_recalculation_248c7f7c227e/req2test_start.txt
+白名单：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/item_property_recalculation_248c7f7c227e/allowlist.json
+
+【启动与读取边界】
+本提示词及上述白名单是明确允许的控制材料。先只读 allowlist.json；其他实验输入必须逐个来自其 read_files。路径须为无通配符的绝对路径，解析后位于本阶段工作目录内；不要跟随指向外部的链接。白名单与本提示词冲突时停止并报告，不能自行增加读取权限。
+
+按白名单核对 experiment_id、run_id、attempt_id、target_id、stage、workspace_root 和 write_root。全部占位符须已替换；输入须存在且 SHA256 匹配。缺文件、输入哈希 unknown、身份不一致或无法核验时，输出阻塞原因，停止正式生成，不寻找替代材料。白名单本身不包含自身哈希，其最终字节由协调者另行冻结。
+
+允许的实验输入只有：
+1. role=complete_example：一个完整 req2test 异目标示例。
+2. role=requirements：阶段 A 冻结后的 requirements.txt。
+3. role=handoff_manifest：最小阶段交接清单。
+交接清单必须为 ready=true、exposure_status=no_observed_violation、requirements_status=ready；核对需求 SHA256、路径和身份。否则阻塞，不继续 SQL 生成。no_observed_violation 只表示未观察到越界，不是绝对无污染证明。
+
+只写入已声明的本次输出目录，可读取自己在本次尝试中创建的输出进行核对；不得打开已有的其他尝试。不要递归扫描或检索工作区。系统/平台自动提供、无法由本提示词控制的额外上下文必须如实记录；本提示词不覆盖更高优先级指令。
+
+【防答案污染要求】
+1. 不访问网络、GitHub、Git 历史或其他对话，不读取当前目标源码、阶段 A 完整对话、source_evidence.md、种子需求、修复补丁、回归测试、旧 SQL、预期答案或运行报告。
+2. 需求中的源码路径、URL 和行号只是来源标识，不授权你打开对应文件。
+3. 完整示例用于学习 SQL 组织、数据设计、oracle 推导和证据表达；示例答案不是当前任务答案。
+4. 不根据目标 SHA、函数名或既有记忆搜索和补全已知复现步骤。
+5. 需求缺少关键语义或可执行前提时，将对应候选标记 blocked，列出需要分析阶段补充的问题，不自行查源码或猜造开关。补充需求须经协调者另建 attempt 交接，不覆盖当前输入。
+6. 若从允许材料中发现与示例目标存在相关修复或实质相同的触发机制，记录重合并停止独立评测尝试；不要为调查重合而查阅禁读材料。
+7. 需求若夹带原始源码块、当前目标历史 SQL/运行答案，或误读白名单外材料，记录暴露内容和时点，停止清洁尝试，不默默删除后继续。
+
+【执行顺序：先完整示例，再当前任务】
+第一步：核验输入后，完整读取 complete_example，包括需求和完整测试答案。
+第二步：读取并核对交接清单及当前 requirements.txt。
+第三步：按本次需求生成测试，不改写需求以适配自己的 SQL。
+
+【测试生成要求】
+Prerequisites
+- 写明版本/语法前提、会话设置、连接数和执行顺序。
+- 使用已选择的可丢弃 schema；对象名称保持独立。
+- 保存并在正常结束时恢复修改的会话设置。
+
+SQL
+- 给出完整 setup、INSERT、查询、必要的 PREPARE/重复执行、对照和 cleanup。
+- 不省略会话或状态依赖，不用占位 SQL。
+- 采用小型、可手工核算的数据和确定性输出顺序。
+- 每个检查点具有唯一 case_id，并映射到需求中的 C/R 编号。
+- 仅清理本测试创建的对象。
+
+Expected results and oracle
+- 逐项推导每个 case_id 的预期结果。
+- 正确处理重复行、NULL、排序、字符集和数值精度；涉及哪些就说明哪些。
+- 近似数值需声明容差及理由。
+- 从输入数据和 SQL 语义推导结果，不把父提交输出或另一条共享实现的查询当作唯一 oracle。
+- 不填写“目标版本预计返回的错误值”。
+
+Coverage observation
+- 将源码覆盖观察计划与结果正确性检查分开。
+- 只能依据需求转述观察计划；明确本阶段未确认实际分支可达。
+- 不声称 SQL 语法合法就意味着命中了目标路径。
+
+Execution status
+- database_executed=false
+- coverage_status=not_measured
+- reproduction_status=unknown
+- 如有静态检查，单独记录；不得将其称为数据库实测。
+
+【保存与冻结】
+在本次输出目录保存：
+- test.sql：完整可执行脚本。
+- expected.json：按 case_id 保存列名、预期行、顺序要求及适用容差，SQL NULL 用 JSON null。
+- oracle.md：独立计算过程。
+- requirement_mapping.json：case_id → C/R 编号及主候选/对照角色；另列 blocked 候选及原因。
+- stage2_response.txt：完整最终阶段回答。
+- generation_manifest.json：实验/run/attempt/目标身份、实际输入与输出路径及可计算的 SHA256、启动提示词哈希、已知生成配置/环境、实际命令、额外上下文、越界情况和未执行状态。
+
+允许在本次输出目录编写并运行只使用标准库的纯算术程序核算 oracle；不得调用数据库、下载依赖或读取其他实验资料。保留程序、命令与计算来源。解释器运行不等于许可扫描其安装目录。
+未知的模型配置等字段写 unknown，不虚构信息。缺输入哈希则按启动规则阻塞，不用 unknown 绕过。
+完整消息和工具日志由协调者保存；stage2_response.txt 不冒充完整对话日志。
+blocked 候选也必须保存原因，不能只保留可生成的成功候选；全部 blocked 时不伪造 test.sql 或 expected.json。
+清单不包含自身哈希，协调者在最终冻结清单中记录它。生成后停止修改本次输出；后续执行反馈和修正另记 attempt_id。
+不要修改原始输入、覆盖旧 attempt、提交仓库、连接数据库或宣称已复现异常。
+
+
+
+===== window_frame_state_c296cddb93ff =====
+本次明确属于 isolated_regeneration：重复生成已知三个目标，不计入未知缺陷发现率。不同目标在同一阶段共享本轮对话，不声称目标之间完全隔离。
+
+你负责本次 MySQL 源码引导实验的 req2test 阶段：根据已冻结的分析需求，生成完整 SQL 和独立推导的预期结果。
+
+这是独立于源码分析阶段的新对话。你不需要重新分析源码，也不能查找当前目标的已知答案。本阶段仅生成，不执行数据库，不预设目标必然有异常。
+
+【实验配置：启动前由协调者填写全部占位符】
+experiment_id：mysql_three_isolated_regeneration_20261104
+run_id：mysql_three_isolated_regeneration_20261104
+attempt_id：attempt_001
+target_id：window_frame_state_c296cddb93ff
+工作目录：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/window_frame_state_c296cddb93ff
+输出目录：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/window_frame_state_c296cddb93ff/outputs/attempt_001
+本提示词留档：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/window_frame_state_c296cddb93ff/req2test_start.txt
+白名单：<USER_HOME>/Desktop/mysql_bug_test/stage2_req2test/window_frame_state_c296cddb93ff/allowlist.json
+
+【启动与读取边界】
+本提示词及上述白名单是明确允许的控制材料。先只读 allowlist.json；其他实验输入必须逐个来自其 read_files。路径须为无通配符的绝对路径，解析后位于本阶段工作目录内；不要跟随指向外部的链接。白名单与本提示词冲突时停止并报告，不能自行增加读取权限。
+
+按白名单核对 experiment_id、run_id、attempt_id、target_id、stage、workspace_root 和 write_root。全部占位符须已替换；输入须存在且 SHA256 匹配。缺文件、输入哈希 unknown、身份不一致或无法核验时，输出阻塞原因，停止正式生成，不寻找替代材料。白名单本身不包含自身哈希，其最终字节由协调者另行冻结。
+
+允许的实验输入只有：
+1. role=complete_example：一个完整 req2test 异目标示例。
+2. role=requirements：阶段 A 冻结后的 requirements.txt。
+3. role=handoff_manifest：最小阶段交接清单。
+交接清单必须为 ready=true、exposure_status=no_observed_violation、requirements_status=ready；核对需求 SHA256、路径和身份。否则阻塞，不继续 SQL 生成。no_observed_violation 只表示未观察到越界，不是绝对无污染证明。
+
+只写入已声明的本次输出目录，可读取自己在本次尝试中创建的输出进行核对；不得打开已有的其他尝试。不要递归扫描或检索工作区。系统/平台自动提供、无法由本提示词控制的额外上下文必须如实记录；本提示词不覆盖更高优先级指令。
+
+【防答案污染要求】
+1. 不访问网络、GitHub、Git 历史或其他对话，不读取当前目标源码、阶段 A 完整对话、source_evidence.md、种子需求、修复补丁、回归测试、旧 SQL、预期答案或运行报告。
+2. 需求中的源码路径、URL 和行号只是来源标识，不授权你打开对应文件。
+3. 完整示例用于学习 SQL 组织、数据设计、oracle 推导和证据表达；示例答案不是当前任务答案。
+4. 不根据目标 SHA、函数名或既有记忆搜索和补全已知复现步骤。
+5. 需求缺少关键语义或可执行前提时，将对应候选标记 blocked，列出需要分析阶段补充的问题，不自行查源码或猜造开关。补充需求须经协调者另建 attempt 交接，不覆盖当前输入。
+6. 若从允许材料中发现与示例目标存在相关修复或实质相同的触发机制，记录重合并停止独立评测尝试；不要为调查重合而查阅禁读材料。
+7. 需求若夹带原始源码块、当前目标历史 SQL/运行答案，或误读白名单外材料，记录暴露内容和时点，停止清洁尝试，不默默删除后继续。
+
+【执行顺序：先完整示例，再当前任务】
+第一步：核验输入后，完整读取 complete_example，包括需求和完整测试答案。
+第二步：读取并核对交接清单及当前 requirements.txt。
+第三步：按本次需求生成测试，不改写需求以适配自己的 SQL。
+
+【测试生成要求】
+Prerequisites
+- 写明版本/语法前提、会话设置、连接数和执行顺序。
+- 使用已选择的可丢弃 schema；对象名称保持独立。
+- 保存并在正常结束时恢复修改的会话设置。
+
+SQL
+- 给出完整 setup、INSERT、查询、必要的 PREPARE/重复执行、对照和 cleanup。
+- 不省略会话或状态依赖，不用占位 SQL。
+- 采用小型、可手工核算的数据和确定性输出顺序。
+- 每个检查点具有唯一 case_id，并映射到需求中的 C/R 编号。
+- 仅清理本测试创建的对象。
+
+Expected results and oracle
+- 逐项推导每个 case_id 的预期结果。
+- 正确处理重复行、NULL、排序、字符集和数值精度；涉及哪些就说明哪些。
+- 近似数值需声明容差及理由。
+- 从输入数据和 SQL 语义推导结果，不把父提交输出或另一条共享实现的查询当作唯一 oracle。
+- 不填写“目标版本预计返回的错误值”。
+
+Coverage observation
+- 将源码覆盖观察计划与结果正确性检查分开。
+- 只能依据需求转述观察计划；明确本阶段未确认实际分支可达。
+- 不声称 SQL 语法合法就意味着命中了目标路径。
+
+Execution status
+- database_executed=false
+- coverage_status=not_measured
+- reproduction_status=unknown
+- 如有静态检查，单独记录；不得将其称为数据库实测。
+
+【保存与冻结】
+在本次输出目录保存：
+- test.sql：完整可执行脚本。
+- expected.json：按 case_id 保存列名、预期行、顺序要求及适用容差，SQL NULL 用 JSON null。
+- oracle.md：独立计算过程。
+- requirement_mapping.json：case_id → C/R 编号及主候选/对照角色；另列 blocked 候选及原因。
+- stage2_response.txt：完整最终阶段回答。
+- generation_manifest.json：实验/run/attempt/目标身份、实际输入与输出路径及可计算的 SHA256、启动提示词哈希、已知生成配置/环境、实际命令、额外上下文、越界情况和未执行状态。
+
+允许在本次输出目录编写并运行只使用标准库的纯算术程序核算 oracle；不得调用数据库、下载依赖或读取其他实验资料。保留程序、命令与计算来源。解释器运行不等于许可扫描其安装目录。
+未知的模型配置等字段写 unknown，不虚构信息。缺输入哈希则按启动规则阻塞，不用 unknown 绕过。
+完整消息和工具日志由协调者保存；stage2_response.txt 不冒充完整对话日志。
+blocked 候选也必须保存原因，不能只保留可生成的成功候选；全部 blocked 时不伪造 test.sql 或 expected.json。
+清单不包含自身哈希，协调者在最终冻结清单中记录它。生成后停止修改本次输出；后续执行反馈和修正另记 attempt_id。
+不要修改原始输入、覆盖旧 attempt、提交仓库、连接数据库或宣称已复现异常。

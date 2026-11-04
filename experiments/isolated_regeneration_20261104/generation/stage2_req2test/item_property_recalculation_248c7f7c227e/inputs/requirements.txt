@@ -1,0 +1,36 @@
+Target
+- 提交 248c7f7c227e76f3422378ca3b9e10d141dcfc86。位置：sql/item_func.cc:708-719,8410-8415；sql/item.h:3179-3218,3443-3465,5738-5755；sql/item_cmpfunc.h:472-504；sql/item_cmpfunc.cc:2138-2153,2173-2193,2410-2419；sql/item_subselect.cc:2537-2541；sql/sql_select.cc:4106-4147,4654-4687。
+- 观察表达式属性在重算、引用、IN 包装与窗口临时表处理中是否与实际表达式关系一致，并保持查询语义。不预断缺陷。已知目标 isolated_regeneration，来源选择用了既有知识，不计入未知发现。
+
+Source-required conditions
+- R1 sql/item_func.cc:708-719：普通函数 update_used_tables 清空累积属性，逐参数递归更新，合并 used_tables 和累积属性；null_on_null 决定 not_null 表集合合并。需要实际调用该函数，不能由 SQL 含普通函数即保证重算。
+- R2 sql/item.h:3181-3218,3443-3465：属性以位复制/或合并，has_wf 检查 PROP_WINDOW_FUNCTION；另有子查询、存储程序、聚合等位。注释描述当前树范围和不跨越子查询/函数的边界，不能把任意子查询内窗口属性视为外层必有。
+- R3 sql/item.h:5747-5755：引用的 depended_from 为空才递归更新被引对象；自身先仅保留 ROLLUP 位，再合并 ref_item 属性。非空分支仍合并，不能假定被引对象此时已刷新。
+- R4 sql/item_cmpfunc.h:472-504；sql/item_cmpfunc.cc:2138-2153,2173-2193,2410-2419：IN 优化包装 args[0] 引用 Item_in_subselect；构造置子查询位；fix_left 合并 left_expr 属性，fix_fields 合并子查询对象属性；update_used_tables 调普通函数重算，再按 abort_on_null/value_transform 调整 not_null 集合。
+- R5 sql/item_subselect.cc:2537-2541：IN 子查询重算调用未提供实现的 Item_subselect 基类，再重算 left_expr，合并其 used_tables。片段没有给出基类如何处理累积属性；不能从这一局部断定窗口属性丢失。
+- R6 sql/sql_select.cc:4654-4687：窗口计划建立中间表和引用切片、替换临时字段；needs_buffering 为真时调用 CreateFramebufferTable。4106-4127 根据 source_fields[i] 的 has_wf 筛除对应 fb_fields；4139-4143 根据映射对象 has_wf 决定参数重写。属性确实是两处局部决策输入；SQL 到这些节点的路径仍待确认。
+- R7 sql/item_func.cc:8410-8415：存储函数重算在普通函数重算后重新设置存储程序位。这是独立覆盖支线，不是窗口候选必须条件。
+
+Candidate construction
+- C1 对应 R1,R2,R6。设计选择：小型分区表，含唯一排序键和非恒定整数值；投影窗口聚合及其外层简单算术表达式。选含后续行的显式 ROWS 帧，尝试要求缓冲；使用两项不同窗口规格可作为后续扩展，使中间表/引用切片关系可观察。是否需要缓冲及是否重算是待验证假设，不能由帧文本或窗口数量单独证明。先建数据、执行基线，再逐项加入包装。
+- C2 对应 R1-R6。把同查询块中的窗口表达式或其简单算术包装作为 IN 子查询的 left_expr，并投影布尔结果；右侧用少量固定整数行。先确认该版本语法/解析允许及实际形成 Item_in_optimizer，不将子查询内部窗口与外层窗口混淆。保持 C1 的缓冲候选，逐次比较直接窗口值、普通包装值与 IN 结果。
+- C3 对应 R3,R6。在合法位置引用投影别名（例如排序位置），尝试形成 Item_ref；记录 ref_item 的确切来源、depended_from 和中间表替换前后关系。别名不能保证该对象类型。先测局部引用，外层相关引用仅在可证明合法及可达后另测；材料不足以强制后者。
+- C4 对应 R4,R5。IN 右侧依次使用有匹配、无匹配、含 NULL、空集合；left_expr 覆盖非 NULL 和窗口帧为空产生 NULL 的情况。投影表达式与谓词上下文分别设计，观察 abort_on_null/value_transform，不能假定它们只由位置唯一决定。
+- C5 对应 R7。可选确定性简单存储函数及外层包装，检查调用重算后的存储程序位；定义、调用、清理顺序记录清楚。无必要不把它与窗口/IN 全部堆叠。
+- 必须条件是内部对象关系、调用及分支门槛；以上 SQL 结构、数据及帧均是测试设计选择。不输出完整 SQL，不保证候选到达目标。
+
+Correctness oracle
+- 从固定输入逐分区按唯一键排序，为每行显式枚举 ROWS 帧成员，按聚合的 NULL/空帧语义算出窗口值，再独立计算外层算术。
+- 对非空 IN 集合逐个比较：存在真则真；无真但存在未知则未知；其余为假。空集合及 NULL left_expr 的结果须按目标版本语义明确处理；投影保留未知，过滤只保留真。记录每行稳定标识、值和结果重数。
+- 多窗口各自枚举，禁止因中间执行顺序推断语义。属性位检查属于实现一致性观察，不能替代结果语义。
+- 父提交、开关和直接窗口表达式可辅助定位，不能单独定义答案；不预测错误输出。
+
+Coverage observation
+- 记录各 update_used_tables 调用前后 m_accum_properties、参数树、left_expr、args[0]、ref_item、depended_from、used_tables 与 not_null 集合，分别区分构造/fix_fields 和后续重算。
+- 记录窗口 needs_buffering、orig_fields/source_fields 与 window_output_fields 的逐项对应、引用切片及 items_to_copy 映射；在两处 has_wf 消费点确认对象身份与过滤/重写动作。
+- EXPLAIN/trace 可给窗口临时表和缓冲线索，不能证明属性重算或映射正确；结果差异不能证明某个属性位原因。源码支持局部推导，未运行、未插桩，覆盖未测量。
+
+Uncertainty
+- 缺少重算调用方、Item_subselect 基类、窗口/聚合属性设置、IN 变换选择、Item_ref 生成和 needs_buffering 判定等代码。不能证明语法可接受、包装保留或确实在消费前发生重算。
+- 竞争性解释包括正常跨查询块边界、改写消除、常量折叠、不同 NULL 上下文与非缓冲路径；不从缺少某条语句断言缺陷。
+- INTERSECT 示例的访问类型机制与本节选未显示实质相同触发。三个目标共享聊天上下文，不宣称完全隔离；不得将另一目标内容作为本目标证据。

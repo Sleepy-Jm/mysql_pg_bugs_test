@@ -1,0 +1,46 @@
+diff --git a/sql/item_cmpfunc.cc b/sql/item_cmpfunc.cc
+index 002fbf27162..57c367f4470 100644
+--- a/sql/item_cmpfunc.cc
++++ b/sql/item_cmpfunc.cc
+@@ -5955,12 +5955,11 @@ longlong Item_cond_or::val_int() {
+ }
+ 
+ void Item_func_isnull::update_used_tables() {
++  args[0]->update_used_tables();
++  set_accum_properties(args[0]);
+   if (!args[0]->is_nullable()) {
+     used_tables_cache = 0;
+   } else {
+-    args[0]->update_used_tables();
+-    set_accum_properties(args[0]);
+-
+     used_tables_cache = args[0]->used_tables();
+     if (!const_item()) cache_used = false;
+   }
+diff --git a/sql/item_func.cc b/sql/item_func.cc
+index b9bc13b25a6..31b9dfba5f1 100644
+--- a/sql/item_func.cc
++++ b/sql/item_func.cc
+@@ -708,6 +708,7 @@ void Item_func::split_sum_func(THD *thd, Ref_item_array ref_item_array,
+ void Item_func::update_used_tables() {
+   used_tables_cache = get_initial_pseudo_tables();
+   not_null_tables_cache = 0;
++  m_accum_properties = 0;
+ 
+   for (uint i = 0; i < arg_count; i++) {
+     args[i]->update_used_tables();
+diff --git a/sql/item_func.h b/sql/item_func.h
+index 879110b723a..3518ebc2f49 100644
+--- a/sql/item_func.h
++++ b/sql/item_func.h
+@@ -1632,6 +1632,10 @@ class Item_rollup_group_item final : public Item_func {
+                ? (args[0]->used_tables() | RAND_TABLE_BIT)
+                : args[0]->used_tables();
+   }
++  void update_used_tables() override {
++    Item_func::update_used_tables();
++    set_rollup_expr();
++  }
+   Item_result result_type() const override { return args[0]->result_type(); }
+   bool resolve_type(THD *) override {
+     // needn't handle dynamic parameter as its const_item() is false.

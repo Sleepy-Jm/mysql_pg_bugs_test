@@ -1,0 +1,58 @@
+### Example task
+Generate a self-contained MySQL SQL test and its inputs from the requirements below. Include setup, deterministic queries, independently derived expected results, and cleanup. Explain how to observe the source target separately from checking SQL results.
+
+# Description of requirements
+Target
+MySQL revision fac72fe1704c542ba476ef065dee03d2c1da83ae, sql/sql_optimizer.cc:3198-3199: the INTERSECT/EXCEPT materialized-table branch that selects JT_ALL. This is a source-derived candidate, not an executed reproduction.
+
+Source-required conditions
+The current JOIN_TAB is neither JT_CONST nor JT_SYSTEM (line 3188). Its TABLE reports is_intersect() or is_except() (line 3198). The branch assigns JT_ALL (line 3199).
+
+Candidate construction
+Join a derived table containing INTERSECT ALL with a small outer table on an integer key. Give the left input three copies of 1 and one copy of 2, the right input two copies of 1 and one copy of 3, and the outer table two copies of 1 and one copy of 2. This exposes duplicate multiplicities. The equality join is a candidate for presenting the materialized table as a join input; it does not guarantee a particular optimizer plan. INTERSECT ALL is the concrete demonstration; EXCEPT and DISTINCT are optional separate variants.
+
+Correctness oracle
+For each key k, INTERSECT ALL has min(left_count(k), right_count(k)) rows. An equality join multiplies that by outer_count(k). The stated data therefore produces exactly four rows containing 1. Derive this from the inserted data, not from the other server version's output.
+
+Coverage observation
+On the specified revision, use a breakpoint or instrumentation at sql/sql_optimizer.cc:3198-3199 and identify the derived TABLE for this query. Record its set-operation flags, incoming JOIN_TAB type, and the JT_ALL assignment. EXPLAIN alone is only a plan clue.
+
+Uncertainty
+The local excerpt does not establish the full SQL-to-TABLE construction path. If the query does not reach the target, inspect materialization and join-planning callers before revising the candidate. Coverage and correct output are separate observations.
+
+# Test
+Prerequisites
+Use a disposable, already selected schema on a MySQL build supporting INTERSECT ALL. The source coverage target is revision fac72fe1704c542ba476ef065dee03d2c1da83ae; do not infer that every release has identical source locations. Use a fresh session with no existing objects named wf_demo_a, wf_demo_b, or wf_demo_c.
+
+SQL
+```sql
+CREATE TEMPORARY TABLE wf_demo_a (k INT NOT NULL);
+CREATE TEMPORARY TABLE wf_demo_b (k INT NOT NULL);
+CREATE TEMPORARY TABLE wf_demo_c (k INT NOT NULL);
+INSERT INTO wf_demo_a VALUES (1), (1), (1), (2);
+INSERT INTO wf_demo_b VALUES (1), (1), (3);
+INSERT INTO wf_demo_c VALUES (1), (1), (2);
+
+SELECT d.k
+FROM (
+  SELECT k FROM wf_demo_a
+  INTERSECT ALL
+  SELECT k FROM wf_demo_b
+) AS d
+JOIN wf_demo_c AS c ON d.k = c.k
+ORDER BY d.k;
+
+DROP TEMPORARY TABLE wf_demo_c;
+DROP TEMPORARY TABLE wf_demo_b;
+DROP TEMPORARY TABLE wf_demo_a;
+```
+
+Expected results and oracle
+The SELECT returns four rows, each with k=1. The intersection contains min(3,2)=2 copies of 1 and no other keys; joining the two outer copies produces 2*2=4 rows. Compare row multiplicities, not just distinct values. If setup or the SELECT fails, retain that failure separately; close the session to release remaining temporary tables.
+
+Coverage observation
+Observe sql/sql_optimizer.cc:3198-3199 at the specified revision. Identify d's materialized TABLE, verify its is_intersect() flag and nonconstant JOIN_TAB, and record the JT_ALL assignment. The expected result does not itself prove this branch was reached.
+
+Execution status
+Authored one-shot demonstration; SQL and branch coverage have not been executed or measured.
+
