@@ -3,8 +3,11 @@
 
 For each candidate, run the complete SQL against a mysqld built at the commit's
 parent revision and against a mysqld built at the target revision, both compiled
-identically (Debug + ENABLE_GCOV), then compare observable behavior. A candidate
-is selected as interesting ("hit") when the two sides differ observably:
+identically (Debug + ENABLE_GCOV), then compare observable behavior. Sessions run
+serially in the declared session_order; each session includes its configuration,
+setup, operations, and cleanup. Concurrent schedules and server-level configuration
+are unsupported and are recorded as not_run, never as no_difference. A candidate
+is selected as interesting when the two sides differ observably:
 
   * result_set_diff : both sides succeed but the result rows differ
                       (compared order-insensitively, since candidates may omit
@@ -47,7 +50,7 @@ WORK = Path("/work")
 
 # Frozen after the script is finalised; must equal the value frozen in the
 # pipeline contracts file passed to ``commit_pipeline init --contracts``.
-PRODUCER_SHA256 = "ec3340d66a66cc4f6f87776d551fd28d640e08d2ec60f313b9be930edf21d254"
+PRODUCER_SHA256 = "da1c83cab2c7b2081e661a259c3475f000890087c255fa3b02e69dfbf3ce9363"
 
 # Commit short label -> full 40-char target (child) revision, and its parent.
 FULL_REVISIONS = {
@@ -60,6 +63,7 @@ PARENT_REVISIONS = {
     "248c7f7c227e": "15980860ac2639f41dfbda2f7fffb7aeeab32921",
     "c296cddb93ff": "74c7ccfa27f482576412300e5f92fd3dbeb54cfa",
 }
+CONNECTION_ERROR = re.compile(r"(?m)^ERROR (?:1045|2002|2003|2006|2013) \(")
 
 
 def canonical(value):
@@ -111,24 +115,49 @@ def run(args, input_text=None, timeout=300):
                 "elapsed": round(time.monotonic() - started, 3)}
 
 
-def build_sql(candidate, db):
-    """Flatten a candidate's setup + operations into one mysql-client script.
+class UnsupportedCandidate(ValueError):
+    """The producer cannot faithfully execute this candidate's semantics."""
 
-    The database is dropped first so a candidate is isolated across rounds even
-    when candidate_ids repeat between rounds. Both sides run the same script, so
-    the differential is attributable to the commit, not to residual state.
-    """
-    statements = []
-    for item in list(candidate.get("setup", [])) + list(candidate.get("operations", [])):
-        text = (item.get("sql") or "").strip()
-        if not text:
-            continue
-        if not text.endswith(";"):
-            text += ";"
-        statements.append(text)
-    return ("DROP DATABASE IF EXISTS `%s`;\nCREATE DATABASE `%s`;\nUSE `%s`;\n"
-            "SET time_zone='+00:00';\n%s\n"
-            % (db, db, db, "\n".join(statements)))
+
+def build_session_sqls(candidate, db):
+    """Build one complete script per session in the declared serial order."""
+    if candidate.get("execution_mode", "serial") != "serial":
+        raise UnsupportedCandidate("concurrent session semantics are unsupported")
+    sessions = candidate.get("session_order")
+    if (not isinstance(sessions, list) or not sessions
+            or any(not isinstance(session, str) or not session for session in sessions)
+            or len(sessions) != len(set(sessions))):
+        raise ValueError("session_order must contain unique nonempty session IDs")
+
+    per_session = {session: [] for session in sessions}
+
+    def add(item, field):
+        if not isinstance(item, dict) or item.get("session") not in per_session:
+            raise ValueError("%s item references an undeclared session" % field)
+        sql = item.get("sql")
+        if not isinstance(sql, str) or not sql.strip():
+            raise ValueError("%s item requires SQL" % field)
+        sql = sql.strip()
+        if field == "configuration":
+            supported = re.match(
+                r"(?is)^\s*SET\s+(?:SESSION\b|@@SESSION\.|NAMES\b|CHARACTER\s+SET\b|TRANSACTION\b)", sql)
+            if not supported or ";" in sql.rstrip().rstrip(";"):
+                raise UnsupportedCandidate("only one session-scoped SET configuration statement is supported")
+        if not sql.endswith(";"):
+            sql += ";"
+        per_session[item["session"]].append(sql)
+
+    for item in candidate.get("configuration", []):
+        add(item, "configuration")
+    for field in ("setup", "operations", "cleanup"):
+        for item in candidate.get(field, []):
+            add(item, field)
+
+    scripts = {}
+    for session in sessions:
+        prelude = ["USE `%s`;" % db, "SET time_zone='+00:00';"]
+        scripts[session] = "\n".join(prelude + per_session[session]) + "\n"
+    return scripts
 
 
 def init_datadir(mysqld, base, datadir):
@@ -141,8 +170,8 @@ def init_datadir(mysqld, base, datadir):
                timeout=300)
 
 
-def run_side(rt_dir, datadir, revision, side, cid, sql_text, sql_timeout, mysqld_timeout, folder):
-    """Run the candidate once against one build; return a per-side result dict."""
+def run_side(rt_dir, datadir, revision, side, cid, db, session_sqls, sql_timeout, mysqld_timeout, folder):
+    """Run complete serial sessions in order against one build."""
     mysqld = rt_dir / "bin" / "mysqld"
     mysql = rt_dir / "bin" / "mysql"
     mysqladmin = rt_dir / "bin" / "mysqladmin"
@@ -191,29 +220,61 @@ def run_side(rt_dir, datadir, revision, side, cid, sql_text, sql_timeout, mysqld
                 "timed_out": False, "server_crashed": False,
                 "server_log_tail": tail(server_log)}
 
-    exec_result = run([str(mysql), "--socket=%s" % socket, "--user=root",
-                       "--default-character-set=utf8mb4", "--batch", "--raw"],
-                      input_text=sql_text, timeout=sql_timeout)
+    stdout_parts, stderr_parts = [], []
+    returncode, timed_out, connection_failed = 0, False, False
+    reset = run([str(mysql), "--socket=%s" % socket, "--user=root",
+                 "--default-character-set=utf8mb4", "--batch", "--raw"],
+                input_text="DROP DATABASE IF EXISTS `%s`; CREATE DATABASE `%s`;" % (db, db),
+                timeout=sql_timeout)
+    reset_error = bool(re.search(r"(?m)^ERROR [0-9]+ ", reset["stderr"]))
+    preparation_failed = (reset.get("transport_error", False) or reset["timed_out"]
+                          or reset["returncode"] != 0 or reset_error)
+    connection_failed = bool(reset.get("transport_error", False)
+                              or CONNECTION_ERROR.search(reset["stderr"]))
+    if preparation_failed:
+        returncode = 1
+        stderr_parts.append("database preparation\n" + reset["stderr"])
+    for session, sql_text in (() if preparation_failed else session_sqls.items()):
+        exec_result = run([str(mysql), "--socket=%s" % socket, "--user=root",
+                           "--default-character-set=utf8mb4", "--batch", "--raw", "--force"],
+                          input_text=sql_text, timeout=sql_timeout)
+        stdout_parts.append("-- session %s --\n%s" % (session, exec_result["stdout"]))
+        stderr_parts.append("-- session %s --\n%s" % (session, exec_result["stderr"]))
+        timed_out = timed_out or exec_result["timed_out"]
+        sql_error = bool(re.search(r"(?m)^ERROR [0-9]+ ", exec_result["stderr"]))
+        connection_failed = connection_failed or exec_result.get("transport_error", False) or bool(
+            CONNECTION_ERROR.search(exec_result["stderr"]))
+        if exec_result["returncode"] not in (0, None) or sql_error:
+            returncode = 1
+        if exec_result["timed_out"] or connection_failed:
+            break
 
     shutdown = run([str(mysqladmin), "--socket=%s" % socket, "--user=root",
                     "shutdown"], timeout=120)
     server_crashed = (shutdown["returncode"] != 0 and not Path(socket).exists())
+    cleanup_failed = shutdown["timed_out"] or (shutdown["returncode"] != 0 and not server_crashed)
 
     if start.poll() is None:
         try:
             start.wait(timeout=600)
         except subprocess.TimeoutExpired:
+            cleanup_failed = True
             start.kill()
             try:
                 start.wait(timeout=60)
             except subprocess.TimeoutExpired:
                 pass
+    if not cleanup_failed and start.returncode not in (0, None):
+        server_crashed = True
+    if server_crashed:
+        connection_failed = False
 
     return {"side": side, "revision": revision, "startup_failed": False,
-            "returncode": exec_result["returncode"],
-            "stdout": exec_result["stdout"], "stderr": exec_result["stderr"],
-            "timed_out": exec_result["timed_out"], "server_crashed": server_crashed,
-            "sql_elapsed": exec_result.get("elapsed")}
+            "connection_failed": connection_failed, "preparation_failed": preparation_failed,
+            "cleanup_failed": cleanup_failed,
+            "returncode": returncode,
+            "stdout": "".join(stdout_parts), "stderr": "".join(stderr_parts),
+            "timed_out": timed_out, "server_crashed": server_crashed}
 
 
 def tail(path, n=2000):
@@ -229,7 +290,13 @@ def sorted_lines(text):
 
 def classify_diff(parent, target):
     """Compare parent vs target results; return the diff classification."""
-    excluded = None
+    if parent.get("preparation_failed") or target.get("preparation_failed"):
+        side = "parent" if parent.get("preparation_failed") else "target"
+        if parent.get("preparation_failed") and target.get("preparation_failed"):
+            side = "both"
+        return {"version_diff_observed": False, "diff_types": ["database_preparation_failure"],
+                "excluded": "database_preparation_failure:%s" % side,
+                "row_order_differs": False}
     if parent["startup_failed"] or target["startup_failed"]:
         side = "parent" if parent["startup_failed"] else "target"
         if parent["startup_failed"] and target["startup_failed"]:
@@ -237,12 +304,26 @@ def classify_diff(parent, target):
         return {"version_diff_observed": False, "diff_types": ["startup_or_connection_failure"],
                 "excluded": "startup_failure:%s" % side,
                 "row_order_differs": False}
+    if parent.get("connection_failed") or target.get("connection_failed"):
+        side = "parent" if parent.get("connection_failed") else "target"
+        if parent.get("connection_failed") and target.get("connection_failed"):
+            side = "both"
+        return {"version_diff_observed": False, "diff_types": ["connection_failure"],
+                "excluded": "connection_failure:%s" % side,
+                "row_order_differs": False}
     if parent["timed_out"] or target["timed_out"]:
         side = "parent" if parent["timed_out"] else "target"
         if parent["timed_out"] and target["timed_out"]:
             side = "both"
         return {"version_diff_observed": False, "diff_types": ["timeout_pending"],
                 "excluded": "timeout:%s" % side,
+                "row_order_differs": False}
+    if parent.get("cleanup_failed") or target.get("cleanup_failed"):
+        side = "parent" if parent.get("cleanup_failed") else "target"
+        if parent.get("cleanup_failed") and target.get("cleanup_failed"):
+            side = "both"
+        return {"version_diff_observed": False, "diff_types": ["cleanup_pending"],
+                "excluded": "cleanup_pending:%s" % side,
                 "row_order_differs": False}
 
     p_ok = parent["returncode"] == 0 and not parent["server_crashed"]
@@ -329,8 +410,23 @@ def main(argv=None):
         folder.mkdir(parents=True, exist_ok=True)
         log("[round %d][%d/%d] candidate %s" % (args.round, index + 1, len(seeds), cid))
 
+        try:
+            session_sqls = build_session_sqls(seed, "cand_" + re.sub(r"[^A-Za-z0-9_]", "_", cid))
+        except UnsupportedCandidate as exc:
+            observations.append({
+                "candidate_id": cid,
+                "candidate_sha256": fingerprint,
+                "reason": str(exc),
+                "validity": "unknown",
+                "execution": {"status": "not_run"},
+            })
+            continue
+
         db = "cand_" + re.sub(r"[^A-Za-z0-9_]", "_", cid)
-        sql_text = build_sql(seed, db)
+        sql_text = ("-- database bootstrap runs before candidate sessions\n"
+                    "DROP DATABASE IF EXISTS `%s`;\nCREATE DATABASE `%s`;\n" % (db, db)
+                    + "".join("-- session %s --\n%s" % (session, script)
+                             for session, script in session_sqls.items()))
         sql_file = folder / "sql.sql"
         sql_file.write_text(sql_text, encoding="utf-8")
 
@@ -338,7 +434,7 @@ def main(argv=None):
         for side, (rt_dir, datadir) in sides.items():
             results[side] = run_side(rt_dir, datadir,
                                      parent_revision if side == "parent" else target_revision,
-                                     side, cid, sql_text, args.sql_timeout, args.mysqld_timeout, folder)
+                                     side, cid, db, session_sqls, args.sql_timeout, args.mysqld_timeout, folder)
 
         diff = classify_diff(results["parent"], results["target"])
 
@@ -353,8 +449,11 @@ def main(argv=None):
 
         version_diff = diff["version_diff_observed"]
         valid = (diff["excluded"] is None)
-        status = "completed" if (not results["parent"]["startup_failed"]
-                                 and not results["target"]["startup_failed"]) else "failed"
+        status = "completed" if all(not result["startup_failed"]
+                                     and not result.get("connection_failed")
+                                     and not result.get("preparation_failed")
+                                     and not result.get("cleanup_failed")
+                                     for result in results.values()) else "failed"
         reason = describe(results, diff, version_diff)
 
         env = {
@@ -367,6 +466,9 @@ def main(argv=None):
             "parent_revision": parent_revision,
             "actual_revision": target_revision,
             "isolated_database": db,
+            "execution_mode": seed.get("execution_mode", "serial"),
+            "session_order": seed["session_order"],
+            "configuration": seed["configuration"],
             "network": "none (socket only)",
         }
 
@@ -385,7 +487,7 @@ def main(argv=None):
             "parent_revision": parent_revision,
             "label": label,
             "environment": env,
-            "command": "mysql --batch --raw < sql.sql (run on parent and target builds)",
+            "command": "bootstrap database, then mysql --batch --raw --force once per session in session_order (both builds)",
             "sql_sha256": file_sha256(sql_file),
             "parent": summarize(results["parent"]),
             "target": summarize(results["target"]),
@@ -455,13 +557,20 @@ def mysqld_version(rt_dir):
 def summarize(res):
     return {"side": res["side"], "revision": res["revision"],
             "startup_failed": res["startup_failed"], "timed_out": res["timed_out"],
-            "server_crashed": res["server_crashed"], "returncode": res["returncode"],
+            "server_crashed": res["server_crashed"],
+            "cleanup_failed": res.get("cleanup_failed", False), "returncode": res["returncode"],
             "stdout_lines": len(res["stdout"].splitlines()),
             "stderr": res["stderr"].strip()[:4000]}
 
 
 def describe(results, diff, version_diff):
     if diff["excluded"]:
+        if diff["excluded"].startswith("database_preparation_failure"):
+            return "database preparation failure (%s); excluded from version-difference" % diff["excluded"]
+        if diff["excluded"].startswith("connection_failure"):
+            return "connection failure (%s); excluded from version-difference" % diff["excluded"]
+        if diff["excluded"].startswith("cleanup_pending"):
+            return "server cleanup incomplete (%s); pending review" % diff["excluded"]
         if diff["excluded"].startswith("startup_failure"):
             return "startup/connection failure (%s); excluded from version-difference" % diff["excluded"]
         return "timeout (%s); pending review, not a version difference" % diff["excluded"]

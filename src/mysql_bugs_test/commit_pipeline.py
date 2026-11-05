@@ -41,10 +41,10 @@ ANALYSIS_SHAPE = {
                         "description": "candidate condition", "evidence": []}],
         "unknowns": ["missing information"]}], "unknowns": []}
 CANDIDATE_SHAPE = {
-    "candidates": [{"candidate_id": "seed_1", "condition_ids": ["condition_1"],
+    "candidates": [{"candidate_id": "seed_1", "condition_ids": ["condition_1"], "execution_mode": "serial",
         "setup": [{"session": "s1", "sql": "complete SQL", "condition_ids": ["condition_1"]}],
         "operations": [{"session": "s1", "sql": "complete SQL", "condition_ids": ["condition_1"]}],
-        "cleanup": [], "configuration": [], "session_order": ["s1"],
+        "cleanup": [], "configuration": [{"session": "s1", "sql": "SET SESSION ..."}], "session_order": ["s1"],
         "expected_observations": [{"condition_id": "condition_1", "description": "event to measure"}],
         "proposed_oracle": {"description": "expected result", "derivation": "independent reasoning"},
         "capability_gaps": []}], "shortfall_reasons": []}
@@ -238,16 +238,26 @@ def validate_candidates(value, analysis):
             require(isinstance(seed.get(field), list), f"{field} array required")
         require(seed["operations"], "Target operation required")
         sessions = seed["session_order"]
-        require(sessions and all(nonempty(s) for s in sessions), "Sessions required")
+        require(sessions and all(nonempty(s) for s in sessions)
+                and len(sessions) == len(set(sessions)), "Unique ordered sessions required")
+        require(seed.get("execution_mode", "serial") in {"serial", "concurrent"},
+                "execution_mode must be serial or concurrent")
         for item in seed["setup"] + seed["operations"] + seed["cleanup"]:
-            require(item.get("session") in sessions and nonempty(item.get("sql")), "SQL/session missing")
+            require(isinstance(item, dict) and item.get("session") in sessions and nonempty(item.get("sql")), "SQL/session missing")
             require(isinstance(item.get("condition_ids"), list) and set(item["condition_ids"]) <= set(links), "Step condition link invalid")
+        for item in seed["configuration"]:
+            require(isinstance(item, dict) and item.get("session") in sessions and nonempty(item.get("sql")),
+                    "Only session-scoped SQL configuration is supported")
+            require(re.match(r"(?is)^\s*SET\s+(?:SESSION\b|@@SESSION\.|NAMES\b|CHARACTER\s+SET\b|TRANSACTION\b)", item["sql"])
+                    and ";" not in item["sql"].rstrip().rstrip(";"),
+                    "Configuration must be one supported session-scoped SET statement")
         for obs in seed["expected_observations"]:
             require(obs.get("condition_id") in links and nonempty(obs.get("description")), "Observation condition link invalid")
         require(seed["expected_observations"], "Expected target observation required")
         oracle = seed.get("proposed_oracle", {})
         require(nonempty(oracle.get("description")) and nonempty(oracle.get("derivation")), "Proposed oracle and derivation required")
-        body = digest({k: seed[k] for k in ("setup", "operations", "cleanup", "configuration", "session_order")})
+        body = digest({k: seed[k] for k in ("setup", "operations", "cleanup", "configuration", "session_order")}
+                      | {"execution_mode": seed.get("execution_mode", "serial")})
         require(body not in bodies, "Duplicate candidate test body")
         bodies.add(body)
     return seeds

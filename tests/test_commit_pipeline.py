@@ -34,7 +34,7 @@ def fixture_analysis():
 
 
 def fixture_candidates(count=1, offset=0):
-    return dict(candidates=[dict(candidate_id=f"seed_{i}", condition_ids=["rows"],
+    return dict(candidates=[dict(candidate_id=f"seed_{i}", condition_ids=["rows"], execution_mode="serial",
         setup=[dict(session="s1", sql=f"CREATE TABLE t{i}(a INT); INSERT INTO t{i} VALUES ({offset+i});", condition_ids=["rows"])],
         operations=[dict(session="s1", sql=f"SELECT a FROM t{i};", condition_ids=["rows"])],
         cleanup=[dict(session="s1", sql=f"DROP TABLE t{i};", condition_ids=[])],
@@ -180,6 +180,16 @@ class PipelineTests(unittest.TestCase):
         value = fixture_candidates(2)
         value["shortfall_reasons"] = []
         with self.assertRaisesRegex(ValueError, "shortfall"):
+            cp.validate_candidates(value, fixture_analysis())
+
+    def test_configuration_requires_supported_session_scoped_sql(self):
+        value = fixture_candidates(1)
+        value["candidates"][0]["configuration"] = [
+            dict(session="s1", sql="SET SESSION sql_mode = '';")]
+        cp.validate_candidates(value, fixture_analysis())
+        value["candidates"][0]["configuration"] = [
+            dict(session="s1", sql="SET GLOBAL sql_mode = '';")]
+        with self.assertRaisesRegex(ValueError, "session-scoped SET"):
             cp.validate_candidates(value, fixture_analysis())
 
     def test_unknown_links_over_budget_and_duplicate_rejected(self):

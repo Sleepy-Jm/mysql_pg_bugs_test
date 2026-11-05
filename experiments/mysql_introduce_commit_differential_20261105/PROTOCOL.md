@@ -4,6 +4,8 @@ Run five rounds of ten complete SQL candidates for each confirmed MySQL introduc
 
 Execute each candidate on the exact first parent and target revisions with equivalent data, configuration, and session order. Record result-set differences, success/error outcomes, SQLSTATE or error differences, and crashes separately. Compare result rows without relying on row order when SQL has no `ORDER BY`. Timeouts remain pending review. Startup and connection failures are inconclusive.
 
+The current producer supports serial sessions only: it applies one session's configuration and all of its setup, operations, and cleanup, then proceeds to the next session in `session_order`. Configuration is limited to a single session-scoped `SET` statement. Concurrent schedules and server-level configuration are unsupported; record these as capability gaps and do not count them as executed candidates.
+
 `differential_status` is one of `difference`, `no_difference`, `inconclusive`, or `not_run`. It selects candidates for study and is not an independent bug oracle. Preserve requests, model outputs, SQL, both-version environments and logs, verification attempts, and summaries. Keep each execution in a fresh run directory.
 
 | Case | Version | Parent | Target |

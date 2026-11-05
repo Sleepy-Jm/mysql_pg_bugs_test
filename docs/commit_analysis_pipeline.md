@@ -91,9 +91,11 @@ source_id、哈希、缺口及来源请求。每次补充最多 1600 行、12 �
 第二阶段只收到分析、版本、输出结构和上一轮合格样例，不拼接原始源码或 diff。
 交接视图保留证据定位，去掉 evidence.quote；第一阶段原件不修改。
 每个候选包含 condition_ids，以及独立的 setup / operations / cleanup 步骤数组；
-步骤包含 session、sql 和 condition_ids，数组顺序就是操作顺序。
-configuration 记录配置要求，session_order 标明会话安排；涉及跨阶段交错、同步、
-并发或工具不支持的结构须放入 capability_gaps，执行器不得自行扁平化。
+步骤包含 session、sql 和 condition_ids。version-differential producer 逐个按
+session_order 执行会话，并在每个会话内按 configuration、setup、operations、cleanup
+顺序执行，保留数组中的语句顺序。configuration 仅支持带 session 和 sql 的会话级 SQL。
+服务端配置、跨会话交错和并发语义目前不支持；必须写入 capability_gaps，不得伪装成
+已执行。concurrent execution_mode 会留下 not_run 记录，不形成差异反馈。
 expected_observations 描述要观测什么；proposed_oracle 是尚待独立校验的结果推导。
 字段检查成功不等于 SQL 可执行，SQL validity 由外部执行证据单独提供。
 
@@ -113,12 +115,12 @@ expected_observations 描述要观测什么；proposed_oracle 是尚待独立校
 proposed_oracle 从所设计 SQL/数据的语义独立推导，不能猜测历史 bug 输出；无法确定
 精确结果时说明未知项并提出带前提的检查，后续仍需独立验证。
 
-已验证样例仅是可选反馈，不是候选的唯一来源。第 r+1 轮的反馈样例仅使用第 r 轮
-被独立检测器证据判定为 hit 的样例，仍可结合原分析设计新候选。
-按原候选顺序全部选入（最多 10 个），记录 ID、候选哈希、来源轮和选择原因。
-第 r 轮无合格命中时回退默认提示，直接依据原分析和条件生成；即使更早轮次存在
-命中也不回收使用。反馈样例的变体须重新测量，不能继承已验证状态。
-oracle 异常候选不能代替目标 hit。没有观测的候选不会进入反馈。
+已验证样例仅是可选反馈，不是候选的唯一来源。对覆盖/语义 target detector，第 r+1 轮
+仅可使用第 r 轮被独立证据判为 hit 的候选。对 version_differential，第 r+1 轮仅可用
+第 r 轮两侧证据完整且判为 difference 的候选。两种模式都按原顺序选入并记录来源；
+没有合格样例时回退到原始分析，不回收更早轮次样例。变体须重新测量。
+oracle 异常候选不能替代相应 target 反馈；版本差异也不代表 bug。没有有效观测的候选
+不会进入反馈。
 生成不自动执行数据库；每轮需显式登记反馈（可以登记尚未执行），才可继续。
 不加入失败反馈自动修复；下一轮仍只使用紧邻上一轮经独立验证命中目标的样例。
 
@@ -180,10 +182,11 @@ API、格式或引用校验失败会保存 attempt/request/raw response（若取
 producer 哈希，直接使用会被拒绝。必须先审查实际观测程序、目标定义和 oracle，再填入
 其代码 SHA256、方法、依据和判定字段。代码哈希是身份追溯，不是检测器正确性的证明。
 
-target 方法仅允许 source_instrumentation、branch_coverage、semantic_event；
+target 方法允许 source_instrumentation、branch_coverage、semantic_event、version_differential；
 oracle 方法仅允许 independent_expected、metamorphic、sanitizer、assertion。
 eq 为同类型精确比较；gt 为数值阈值比较。oracle 谓词为真表示“异常候选”，不是正常。
-不支持将 model_judgment 或 version_difference 当作独立判据。
+version_differential 比较同一完整候选在父提交和目标提交上的可观察行为，用于候选筛选；
+它不是独立 bug oracle。model_judgment 不作为测量方法。
 检测器若不适用、前提不满足或观测不完整，不应提交负值冒充 miss/no_anomaly；
 省略相应测量，使其归类为 unobservable/unknown，并在 reason 说明缺口。
 对 gt 的计数器必须证明运行完整；未刷新计数不能当作零。
@@ -244,7 +247,10 @@ json.dumps(candidate, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
 
 这些检查验证“所声明观测的完整性和与判据的一致性”，不能证明外部生产者未伪造数据，
 也不能替代插桩/覆盖采集的正确性审查。不要把模型生成的 JSON 当测量封装传入。
-当前没有真实数据库测量生产者适配器；因此工程测试中的合成 hit 仅为控制流测试。
+MySQL 父/目标版本差异 producer 位于 src/mysql_bugs_test/version_diff_producer.py，
+并由 configs/commit_pipeline_version_diff_contracts_20261105.json 冻结身份。它支持
+串行会话及会话级 SQL 配置；不支持并发调度或服务端配置。合成 hit 测试仍只验证控制流，
+producer 的存在或哈希匹配本身不证明每次数据库观测完整或正确。
 Bug 状态始终为 not_adjudicated，independent_bug_count 为 null，之后仍需复现与根因复核。
 
 ## 模型身份和文件追溯
@@ -284,7 +290,8 @@ local/RUN_ID/
     python -X utf8 -B scripts/check_offline.py
     python -X utf8 -B scripts/audit_repository.py
 
-本流程没有启动数据库、确认目标分支、接入变异器或完成四组对照。mutator_status
-明确为 not_assessed。完成单案例验收之后，再核对变异器的 seed 导入、语法/数据/
+离线工程验收不启动数据库，也不证明一次具体实验已完成；每次 producer 输出必须结合
+对应 execution.json、两侧 SQL 输出和环境记录审计。mutator_status 明确为 not_assessed。
+完成单案例验收之后，再核对变异器的 seed 导入、语法/数据/
 会话/配置能力，保留 capability_gaps；不要将本候选 JSON 直接当作已兼容的 Squirrel 输入。
 旧 Codex 探索继续作为前期结果，本流程不会读取其 SQL 充当新生成或真实反馈。
