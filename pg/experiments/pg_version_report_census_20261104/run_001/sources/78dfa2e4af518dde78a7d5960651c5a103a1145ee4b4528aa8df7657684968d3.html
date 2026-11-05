@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17335: Duplicate result rows in Gather node when &quot;Suppress Append ... that have a single child&quot; applied</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17335-4dc92e1aea3a78af%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2021-12-13T14:45:36" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17335: Duplicate result rows in Gather node when &quot;Suppress Append ... that have a single child&quot; applied" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17335 Logged by: Yura Sokolov Email address: y.sokolov@postgrespro.ru PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17335: Duplicate result rows in Gather node when &quot;Suppress Append ... that have a single child&quot; applied</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>y(dot)sokolov(at)postgrespro(dot)ru</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17335: Duplicate result rows in Gather node when &quot;Suppress Append ... that have a single child&quot; applied</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-13 14:45:36</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17335-4dc92e1aea3a78af%40postgresql.org">17335-4dc92e1aea3a78af@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17335-4dc92e1aea3a78af%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17335-4dc92e1aea3a78af%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17335-4dc92e1aea3a78af%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17335-4dc92e1aea3a78af%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17335-4dc92e1aea3a78af%40postgresql.org" selected="selected">2021-12-13 14:45:36 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="6f6bf0d1f1bdc2785e5f0bba5846d580991ab1c3.camel%40postgrespro.ru">&nbsp;2021-12-17 06:00:26 from Yura Sokolov &lt;y(dot)sokolov(at)postgrespro(dot)ru&gt;</option>
+  <option value="0f58e3496cfa13c024dee2c645cacdb621864c8a.camel%40postgrespro.ru">&nbsp;&nbsp;2021-12-20 09:07:43 from Yura Sokolov &lt;y(dot)sokolov(at)postgrespro(dot)ru&gt;	&#x1f4ce;</option>
+  <option value="00ba780c33366b751359aa73a8342eee2750cbe1.camel%40postgrespro.ru">&nbsp;&nbsp;&nbsp;2021-12-30 11:20:49 from Yura Sokolov &lt;y(dot)sokolov(at)postgrespro(dot)ru&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17335<br>Logged by:          Yura Sokolov<br>Email address:      y(dot)sokolov(at)postgrespro(dot)ru<br>PostgreSQL version: 14.1<br>Operating system:   any<br>Description:        </p>
+
+<p>Our customer faced a query that returns duplicate rows if parallel execution<br>is enabled<br>(max_parallel_workers_per_gather &gt; 0) after 11-&gt;12 upgrade.</p>
+
+<p>Investigation shows bug were introduced in<br>8edd0e79460b414b1d971895312e549e95e12e4f<br>&quot;Suppress Append and MergeAppend plan nodes that have a single child.&quot; .<br>Bug is present in all versions since 12 beta, and it is reproduced in master<br>branch as well.</p>
+
+<p>Reproduction.<br><a href="https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75" rel="nofollow">https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75</a></p>
+
+<p>Dump contains definition of two tables (with 3 and 2 fields), index and data<br>dump<br>large enough to trigger parallel plan execution.<br>Also `analyze public.testi3, public.testi4` line is added.</p>
+
+<p><a href="https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75/raw/06a55e57bc6c460ea8800600b1b597c1ed216259/repro_dump.sql.zst" rel="nofollow">https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75/raw/06a55e57bc6c460ea8800600b1b597c1ed216259/repro_dump.sql.zst</a></p>
+
+<p>Query:</p>
+
+<p>    SELECT count(1)<br>    FROM (<br>      SELECT fk, id<br>      FROM testi3<br>      WHERE flagged<br>      UNION ALL<br>      SELECT fk, id<br>      from testi3<br>      WHERE false<br>    ) as t<br>    LEFT OUTER JOIN testi4<br>    USING (fk);</p>
+
+<p>When `set max_parallel_workers_per_gather = 0;` then it returns 44 which is<br>correct.<br>When `set max_parallel_workers_per_gather = 2;` then it returns 88 which is<br>wrong.</p>
+
+<p>Sometimes (for example, when you try to debug it) it returns 44 even<br>with max_parallel_workers_per_gather = 2.<br>It seems that it happens when worker returns first row fast enough so<br>&quot;Gather&quot; node doesn&#x27;t start to execute plan by itself.</p>
+
+<p>It is confirmed by `set parallel_leader_participation = false`, which forces<br>correct result.<br>`set enable_parallel_append = false` also forces correct result.</p>
+
+<p>Original plan included Gather Merge node and max_parallel_workers_per_gather<br>= 1 .<br>Reproduction code uses Gather instead and max_parallel_workers_per_gather =<br>2 just because it were easier to get bad plan.</p>
+
+<p>Plan before change 8edd0e79460b414b1d971895312e549e95e12e4f (returns correct<br>result)</p>
+
+<p> Finalize Aggregate  (cost=25003.16..25003.17 rows=1 width=8) (actual<br>time=435.473..435.473 rows=1 loops=1)                                       <br>    <br>   -&gt;  Gather  (cost=25003.05..25003.16 rows=1 width=8) (actual<br>time=434.646..456.889 rows=2 loops=1)                                       <br>          <br>         Workers Planned: 1                                               </p>
+
+<p>         Workers Launched: 1                                              </p>
+
+<p>         -&gt;  Partial Aggregate  (cost=24003.05..24003.06 rows=1 width=8)<br>(actual time=433.000..433.000 rows=1 loops=2)<br>               -&gt;  Parallel Hash Left Join  (cost=21701.47..24002.86 rows=74<br>width=0) (actual time=312.576..432.981 rows=22 loops=2)<br>                     Hash Cond: (&quot;*SELECT* 1&quot;.fk = testi4.fk)             </p>
+
+<p>                     -&gt;  Parallel Append  (cost=0.42..9.18 rows=24 width=4)<br>(actual time=0.021..0.112 rows=16 loops=2)<br>                           -&gt;  Subquery Scan on &quot;*SELECT* 1&quot; <br>(cost=0.42..9.11 rows=24 width=4) (actual time=0.041..0.216 rows=33 loops=1)<br>            <br>                                 -&gt;  Index Scan using testi3_ix on testi3 <br>(cost=0.42..8.87 rows=24 width=8) (actual time=0.039..0.207 rows=33<br>loops=1)<br>                                       Index Cond: (flagged = true)         <br>                                                                          <br>                     -&gt;  Parallel Hash  (cost=12084.91..12084.91 rows=586091<br>width=4) (actual time=305.473..305.473 rows=703309 loops=2)               <br>                           Buckets: 131072  Batches: 32  Memory Usage:<br>2784kB                                                                      <br>   <br>                           -&gt;  Parallel Seq Scan on testi4 <br>(cost=0.00..12084.91 rows=586091 width=4) (actual time=0.032..138.958<br>rows=703309 loops=2)</p>
+
+<p>Plan after that change (returns wrong result)</p>
+
+<p> Finalize Aggregate  (cost=25003.87..25003.88 rows=1 width=8) (actual<br>time=652.062..652.062 rows=1 loops=1)                                       <br>                                                                            <br>       <br>   -&gt;  Gather  (cost=25003.75..25003.86 rows=1 width=8) (actual<br>time=651.482..668.718 rows=2 loops=1)                                       <br>                                                                            <br>             <br>         Workers Planned: 1                              <br>         Workers Launched: 1                                                <br>                                      <br>         -&gt;  Partial Aggregate  (cost=24003.75..24003.76 rows=1 width=8)<br>(actual time=649.150..649.150 rows=1 loops=2)                               <br>                                                                            <br>    <br>               -&gt;  Parallel Hash Left Join  (cost=21701.47..24003.49<br>rows=106 width=0) (actual time=461.751..649.111 rows=44 loops=2)            <br>                                                                            <br>        <br>                     Hash Cond: (&quot;*SELECT* 1&quot;.fk = testi4.fk)               <br>                                      <br>                     -&gt;  Subquery Scan on &quot;*SELECT* 1&quot;  (cost=0.42..9.51<br>rows=36 width=4) (actual time=0.050..0.229 rows=33 loops=2)                 <br>                                                                            <br>    <br>                           -&gt;  Index Scan using testi3_ix on testi3 <br>(cost=0.42..9.15 rows=36 width=8) (actual time=0.048..0.214 rows=33 loops=2)<br>                                                                            <br>        <br>                                 Index Cond: (flagged = true)               <br>                                      <br>                     -&gt;  Parallel Hash  (cost=12084.91..12084.91 rows=586091<br>width=4) (actual time=444.931..444.931 rows=703309 loops=2)                 <br>                                                                            </p>
+
+<p>                           Buckets: 131072  Batches: 32  Memory Usage:<br>2784kB                                                                      <br>                                                                            <br>      <br>                           -&gt;  Parallel Seq Scan on testi4 <br>(cost=0.00..12084.91 rows=586091 width=4) (actual time=0.045..202.913<br>rows=703309 loops=2)</p>
+
+<p>------</p>
+
+<p>regards,<br>Yura</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/6f6bf0d1f1bdc2785e5f0bba5846d580991ab1c3.camel%40postgrespro.ru">Re: BUG #17335: Duplicate result rows in Gather node when &quot;Suppress
+ Append ... that have a single child&quot; applied</a> at 2021-12-17 06:00:26 from Yura Sokolov
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/20211213184856.eelri6hnipzxvrk6%40alap3.anarazel.de">Next Message</a></th>
+            <td>Andres Freund</td>
+            <td>2021-12-13 18:48:56</td>
+            <td><a href="/message-id/20211213184856.eelri6hnipzxvrk6%40alap3.anarazel.de">Re: BUG #17255: Server crashes in index_delete_sort_cmp() due to
+ race condition with vacuum</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAPpHfdtSiYg8S8-pTSoAUaG%2BtrviBtsR7y0NLXe96mWFNw1rbA%40mail.gmail.com">Previous Message</a></th>
+            <td>Alexander Korotkov</td>
+            <td>2021-12-13 14:28:39</td>
+            <td><a href="/message-id/CAPpHfdtSiYg8S8-pTSoAUaG%2BtrviBtsR7y0NLXe96mWFNw1rbA%40mail.gmail.com">Re: BUG #17300: Server crashes on deserializing text multirange</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

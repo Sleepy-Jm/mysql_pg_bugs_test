@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18767: Inconsistency in result of a Plpgsql GET DIAGNOSTICS PG_CONTEXT instruction.</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18767-e36a4af08c98f883%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-01-06T08:24:33" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18767: Inconsistency in result of a Plpgsql GET DIAGNOSTICS PG_CONTEXT instruction." />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="9886a772a486d4f4f5109ff348a99358">BUG #18767: Inconsistency in result of a Plpgsql GET DIAGNOSTICS PG_CONTEXT instruction.</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202501060824">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18767-e36a4af08c98f883@postgresql.org"></a>
+<a name="9886a772a486d4f4f5109ff348a99358"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>phb(dot)emaj(at)free(dot)fr</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18767: Inconsistency in result of a Plpgsql GET DIAGNOSTICS PG_CONTEXT instruction.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-06 08:24:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18767-e36a4af08c98f883%40postgresql.org">18767-e36a4af08c98f883@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18767-e36a4af08c98f883%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18767-e36a4af08c98f883%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18767-e36a4af08c98f883%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18767-e36a4af08c98f883%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18767<br>Logged by:          Philippe BEAUDOIN<br>Email address:      phb(dot)emaj(at)free(dot)fr<br>PostgreSQL version: 17.2<br>Operating system:   Linux<br>Description:        </p>
+
+<p>I use GET DIAGNOSTICS PG_CONTEXT in some sensitive plpgsql functions that<br>are declared SECURITY DEFINER in order to be sure that the caller belongs to<br>a list of known callers. The returned stack contains the list of called<br>functions, with their schema prefix and their parameters format.<br>But I discovered that when the schema holding these functions is created<br>while it is in the user&#x27;s search_path, the returned stack doesn&#x27;t contain<br>the schema prefix anymore for the caller functions.<br>Here is a small test case that reproduces the issue.</p>
+
+<p>A psql script :<br>select version();<br>drop schema if exists tst cascade;<br>create schema tst;<br>create function tst.caller1() returns text language plpgsql as <br>$$ BEGIN return tst.caller2(); END; $$;<br>create function tst.caller2() returns text language plpgsql as <br>$$ BEGIN return tst.called(); END; $$;<br>CREATE OR REPLACE FUNCTION tst.called()<br>RETURNS text LANGUAGE plpgsql<br>SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS<br>$$<br>  DECLARE<br>    v_stack                  TEXT;<br>  BEGIN<br>    GET DIAGNOSTICS v_stack = PG_CONTEXT;<br>    IF v_stack NOT LIKE &#x27;%tst.caller2()%&#x27; THEN<br>      RAISE WARNING &#x27;Beware: the calling function is not the expected<br>one!&#x27;;<br>    END IF;<br>    RETURN v_stack;<br>  END;<br>$$;<br>set search_path = tst;<br>show search_path;<br>select caller1() as stack_in_called;<br>reset search_path;<br>show search_path;<br>select tst.caller1() as stack_in_called;</p>
+
+<p>A simple shell script :<br>echo &quot;==========================================================&quot;<br>echo &quot;                    The standart run&quot;<br>echo &quot;==========================================================&quot;<br>psql  -a -f test_stack.sql<br>echo &quot;==========================================================&quot;<br>echo &quot;The issue: a search_path is set before creating structures&quot;<br>echo &quot;==========================================================&quot;<br>psql  -a -c &quot;SET search_path = tst;&quot; -f test_stack.sql</p>
+
+<p>And the output result :<br>==========================================================<br>                    The standart run<br>==========================================================<br>select version();<br>                                                version                     <br>                          <br>-------------------------------------------------------------------------------------------------------<br> PostgreSQL 17.2 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu<br>13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit<br>(1 row)</p>
+
+<p>drop schema if exists tst cascade;<br>psql:test_stack.sql:2: NOTICE:  drop cascades to 3 other objects<br>DETAIL:  drop cascades to function tst.caller1()<br>drop cascades to function tst.caller2()<br>drop cascades to function tst.called()<br>DROP SCHEMA<br>create schema tst;<br>CREATE SCHEMA<br>create function tst.caller1() returns text language plpgsql as <br>$$ BEGIN return tst.caller2(); END; $$;<br>CREATE FUNCTION<br>create function tst.caller2() returns text language plpgsql as <br>$$ BEGIN return tst.called(); END; $$;<br>CREATE FUNCTION<br>CREATE OR REPLACE FUNCTION tst.called()<br>RETURNS text LANGUAGE plpgsql<br>SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS<br>$$<br>  DECLARE<br>    v_stack                  TEXT;<br>  BEGIN<br>    GET DIAGNOSTICS v_stack = PG_CONTEXT;<br>    IF v_stack NOT LIKE &#x27;%tst.caller2()%&#x27; THEN<br>      RAISE WARNING &#x27;Beware: the calling function is not the expected<br>one!&#x27;;<br>    END IF;<br>    RETURN v_stack;<br>  END;<br>$$;<br>CREATE FUNCTION<br>set search_path = tst;<br>SET<br>show search_path;<br> search_path <br>-------------<br> tst<br>(1 row)</p>
+
+<p>select caller1() as stack_in_called;<br>                     stack_in_called                      <br>----------------------------------------------------------<br> PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+<br> PL/pgSQL function tst.caller2() line 1 at RETURN        +<br> PL/pgSQL function tst.caller1() line 1 at RETURN<br>(1 row)</p>
+
+<p>reset search_path;<br>RESET<br>show search_path;<br>   search_path   <br>-----------------<br> &quot;$user&quot;, public<br>(1 row)</p>
+
+<p>select tst.caller1() as stack_in_called;<br>                     stack_in_called                      <br>----------------------------------------------------------<br> PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+<br> PL/pgSQL function tst.caller2() line 1 at RETURN        +<br> PL/pgSQL function tst.caller1() line 1 at RETURN<br>(1 row)</p>
+
+<p>==========================================================<br>The issue: a search_path is set before creating structures<br>==========================================================<br>SET search_path = tst;<br>SET<br>select version();<br>                                                version                     <br>                          <br>-------------------------------------------------------------------------------------------------------<br> PostgreSQL 17.2 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu<br>13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit<br>(1 row)</p>
+
+<p>drop schema if exists tst cascade;<br>psql:test_stack.sql:2: NOTICE:  drop cascades to 3 other objects<br>DETAIL:  drop cascades to function caller1()<br>drop cascades to function caller2()<br>drop cascades to function called()<br>DROP SCHEMA<br>create schema tst;<br>CREATE SCHEMA<br>create function tst.caller1() returns text language plpgsql as <br>$$ BEGIN return tst.caller2(); END; $$;<br>CREATE FUNCTION<br>create function tst.caller2() returns text language plpgsql as <br>$$ BEGIN return tst.called(); END; $$;<br>CREATE FUNCTION<br>CREATE OR REPLACE FUNCTION tst.called()<br>RETURNS text LANGUAGE plpgsql<br>SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS<br>$$<br>  DECLARE<br>    v_stack                  TEXT;<br>  BEGIN<br>    GET DIAGNOSTICS v_stack = PG_CONTEXT;<br>    IF v_stack NOT LIKE &#x27;%tst.caller2()%&#x27; THEN<br>      RAISE WARNING &#x27;Beware: the calling function is not the expected<br>one!&#x27;;<br>    END IF;<br>    RETURN v_stack;<br>  END;<br>$$;<br>CREATE FUNCTION<br>set search_path = tst;<br>SET<br>show search_path;<br> search_path <br>-------------<br> tst<br>(1 row)</p>
+
+<p>select caller1() as stack_in_called;<br>psql:test_stack.sql:24: WARNING:  Beware: the calling function is not the<br>expected one!<br>                     stack_in_called                      <br>----------------------------------------------------------<br> PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+<br> PL/pgSQL function caller2() line 1 at RETURN            +<br> PL/pgSQL function caller1() line 1 at RETURN<br>(1 row)</p>
+
+<p>reset search_path;<br>RESET<br>show search_path;<br>   search_path   <br>-----------------<br> &quot;$user&quot;, public<br>(1 row)</p>
+
+<p>select tst.caller1() as stack_in_called;<br>psql:test_stack.sql:27: WARNING:  Beware: the calling function is not the<br>expected one!<br>                     stack_in_called                      <br>----------------------------------------------------------<br> PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+<br> PL/pgSQL function caller2() line 1 at RETURN            +<br> PL/pgSQL function caller1() line 1 at RETURN<br>(1 row)</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAFj8pRDHHcLFhaw+3-sdpg5g4tAe1726ghVV6Vfm+RkNm6=+LA@mail.gmail.com"></a>
+<a name="a60099963e3669949803529d89d993f0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>phb(dot)emaj(at)free(dot)fr, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18767: Inconsistency in result of a Plpgsql GET DIAGNOSTICS
+ PG_CONTEXT instruction.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-06 16:24:06</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAFj8pRDHHcLFhaw%2B3-sdpg5g4tAe1726ghVV6Vfm%2BRkNm6%3D%2BLA%40mail.gmail.com">CAFj8pRDHHcLFhaw+3-sdpg5g4tAe1726ghVV6Vfm+RkNm6=+LA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAFj8pRDHHcLFhaw%2B3-sdpg5g4tAe1726ghVV6Vfm%2BRkNm6%3D%2BLA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAFj8pRDHHcLFhaw%2B3-sdpg5g4tAe1726ghVV6Vfm%2BRkNm6%3D%2BLA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAFj8pRDHHcLFhaw%2B3-sdpg5g4tAe1726ghVV6Vfm%2BRkNm6%3D%2BLA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAFj8pRDHHcLFhaw%2B3-sdpg5g4tAe1726ghVV6Vfm%2BRkNm6%3D%2BLA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi</p>
+
+<p>It is not a bug. GET DIAGNOSTICS PG_CONTEXT returns error context</p>
+
+<p>Error context is generated by the function plpgsql_exec_error_callback.<br>This function uses estate-&gt;func-&gt;fn_signature string<br>and this string is generated by function format_procedure. This function<br>hides schema when function is visible from current search_path</p>
+
+<p>(2025-01-06 17:01:05) postgres=# create schema test;<br>CREATE SCHEMA<br>(2025-01-06 17:01:26) postgres=# create function public.fx(a int) returns<br>void as $$ begin end $$ language plpgsql;<br>CREATE FUNCTION<br>(2025-01-06 17:01:47) postgres=# create function test.fx(a int) returns<br>void as $$ begin end $$ language plpgsql;<br>CREATE FUNCTION</p>
+
+<p>(2025-01-06 17:02:16) postgres=# select &#x27;test.fx&#x27;::regproc;<br>┌─────────┐<br>│ regproc │<br>╞═════════╡<br>│ test.fx │<br>└─────────┘<br>(1 row)</p>
+
+<p>(2025-01-06 17:02:22) postgres=# select &#x27;test.fx&#x27;::regproc::regprocedure;<br>┌──────────────────┐<br>│   regprocedure   │<br>╞══════════════════╡<br>│ test.fx(integer) │<br>└──────────────────┘<br>(1 row)</p>
+
+<p>(2025-01-06 17:02:27) postgres=# select &#x27;public.fx&#x27;::regproc::regprocedure;<br>┌──────────────┐<br>│ regprocedure │<br>╞══════════════╡<br>│ fx(integer)  │<br>└──────────────┘<br>(1 row)</p>
+
+<p>This is mostly used for displaying functions in error messages.</p>
+
+<p>Unfortunately it is not possible to change it without a compatibility<br>break. This was designed more than 20 years ago.</p>
+
+<p>If you want to track function calls exactly you need own extension based on<br>pl debug api like <a href="https://github.com/EnterpriseDB/pldebugger" rel="nofollow">https://github.com/EnterpriseDB/pldebugger</a></p>
+
+<p>Regards</p>
+
+<p>Pavel<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="ba1819fb-1558-4c38-b7e5-6fe8f4b058f5@free.fr"></a>
+<a name="c1fc5e7019a79f2941b6980d5ae9ef26"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Philippe BEAUDOIN &lt;phb(dot)emaj(at)free(dot)fr&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18767: Inconsistency in result of a Plpgsql GET DIAGNOSTICS
+ PG_CONTEXT instruction.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-07 10:32:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/ba1819fb-1558-4c38-b7e5-6fe8f4b058f5%40free.fr">ba1819fb-1558-4c38-b7e5-6fe8f4b058f5@free.fr</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/ba1819fb-1558-4c38-b7e5-6fe8f4b058f5%40free.fr">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/ba1819fb-1558-4c38-b7e5-6fe8f4b058f5%40free.fr" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/ba1819fb-1558-4c38-b7e5-6fe8f4b058f5%40free.fr" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/ba1819fb-1558-4c38-b7e5-6fe8f4b058f5%40free.fr" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Thanks a lot Pavel and Tom for your reply.</p>
+
+<p>Le 06/01/2025 à 17:24, Pavel Stehule a écrit :<br>&gt; Hi<br>&gt;<br>&gt; It is not a bug. GET DIAGNOSTICS PG_CONTEXT returns error context<br>&gt;<br>&gt; Error context is generated by the function <br>&gt; plpgsql_exec_error_callback. This function uses <br>&gt; estate-&gt;func-&gt;fn_signature string<br>&gt; and this string is generated by function format_procedure. This <br>&gt; function hides schema when function is visible from current search_path<br>&gt;<br>&gt; (2025-01-06 17:01:05) postgres=# create schema test;<br>&gt; CREATE SCHEMA<br>&gt; (2025-01-06 17:01:26) postgres=# create function public.fx(a int) <br>&gt; returns void as $$ begin end $$ language plpgsql;<br>&gt; CREATE FUNCTION<br>&gt; (2025-01-06 17:01:47) postgres=# create function test.fx(a int) <br>&gt; returns void as $$ begin end $$ language plpgsql;<br>&gt; CREATE FUNCTION<br>&gt;<br>&gt; (2025-01-06 17:02:16) postgres=# select &#x27;test.fx&#x27;::regproc;<br>&gt; ┌─────────┐<br>&gt; │ regproc │<br>&gt; ╞═════════╡<br>&gt; │ test.fx │<br>&gt; └─────────┘<br>&gt; (1 row)<br>&gt;<br>&gt; (2025-01-06 17:02:22) postgres=# select &#x27;test.fx&#x27;::regproc::regprocedure;<br>&gt; ┌──────────────────┐<br>&gt; │   regprocedure   │<br>&gt; ╞══════════════════╡<br>&gt; │ test.fx(integer) │<br>&gt; └──────────────────┘<br>&gt; (1 row)<br>&gt;<br>&gt; (2025-01-06 17:02:27) postgres=# select <br>&gt; &#x27;public.fx&#x27;::regproc::regprocedure;<br>&gt; ┌──────────────┐<br>&gt; │ regprocedure │<br>&gt; ╞══════════════╡<br>&gt; │ fx(integer)  │<br>&gt; └──────────────┘<br>&gt; (1 row)<br>&gt;<br>&gt; This is mostly used for displaying functions in error messages.<br>&gt;<br>&gt; Unfortunately it is not possible to change it without a compatibility <br>&gt; break. This was designed more than 20 years ago.</p>
+
+<p>I aggree to not break the compatibility. All the more that there are <br>probably good security arguments for the current behaviour.</p>
+
+<p>But there is something not clear to me.</p>
+
+<p>All sub-function calls use the schema-qualified function names. When the <br>functions have been created with a search_path set to tst, I get :</p>
+
+<p>select &#x27;tst.caller1&#x27;::regproc::regprocedure;<br>  regprocedure<br>--------------<br>  caller1()<br>(1 row)</p>
+
+<p>select &#x27;tst.called&#x27;::regproc::regprocedure;<br>  regprocedure<br>--------------<br>  called()<br>(1 row)</p>
+
+<p>select &#x27;caller1&#x27;::regproc::regprocedure;<br>  regprocedure<br>--------------<br>  caller1()<br>(1 row)</p>
+
+<p>select &#x27;called&#x27;::regproc::regprocedure;<br>  regprocedure<br>--------------<br>  called()<br>(1 row)</p>
+
+<p>This totaly corresponds to the behaviour your explained : the tst schema <br>is into the path, so it is not returned.</p>
+
+<p>Then when the search_path is reset, I get :</p>
+
+<p>show search_path;<br>    search_path<br>-----------------<br>  &quot;$user&quot;, public<br>(1 row)</p>
+
+<p>select &#x27;tst.caller1&#x27;::regproc::regprocedure;</p>
+
+<p>  regprocedure<br>---------------<br>  tst.caller1()<br>(1 row)</p>
+
+<p>select &#x27;tst.called&#x27;::regproc::regprocedure;<br>  regprocedure<br>--------------<br>  tst.called()<br>(1 row)</p>
+
+<p>... which is also expected. But then (and keeping the same search_path), <br>the stack in the called() function looks like exactly as when the <br>search_path is set to tst:</p>
+
+<p>select tst.caller1() as stack_in_called;<br>psql:test_stack.sql:39: WARNING:  Beware: the calling function is not <br>the expected one!<br>                      stack_in_called<br>----------------------------------------------------------<br>  PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+<br>  PL/pgSQL function caller2() line 1 at RETURN            +<br>  PL/pgSQL function caller1() line 1 at RETURN<br>(1 row)</p>
+
+<p>To get all schema qualified function calls in the returned stack, the <br>functions must have been *created* without the schema in the path. So it <br>looks to me that what matter is the search_path sometimes at the <br>functions call times and sometimes at the functions creation time. That <br>is the unconsistency I wrote about. But I probably miss something.</p>
+
+<p>&gt;<br>&gt; If you want to track function calls exactly you need own extension <br>&gt; based on pl debug api like <a href="https://github.com/EnterpriseDB/pldebugger" rel="nofollow">https://github.com/EnterpriseDB/pldebugger</a></p>
+
+<p>OK. Thanks for the pointer.</p>
+
+<p>I will probably change the functions architecture, by moving back the <br>sensitive pieces of code into calling functions and set them SECURITY <br>DEFINER. I am not very fan of having more SECURITY DEFINER functions, <br>but I don&#x27;t see other not too complex solution.</p>
+
+<p>Regards. Philippe.</p>
+
+<p>&gt;<br>&gt;<br>&gt; Regards<br>&gt;<br>&gt; Pavel<br>&gt;<br>&gt;<br>&gt;<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAFj8pRA_0FF8HcXzn_Y3HJrZ9nGVj2RDaaf8umaKua-u5S0i1A@mail.gmail.com"></a>
+<a name="f36a29c89f06387e539ac1a14b8b273e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Philippe BEAUDOIN &lt;phb(dot)emaj(at)free(dot)fr&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18767: Inconsistency in result of a Plpgsql GET DIAGNOSTICS
+ PG_CONTEXT instruction.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-07 11:27:11</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAFj8pRA_0FF8HcXzn_Y3HJrZ9nGVj2RDaaf8umaKua-u5S0i1A%40mail.gmail.com">CAFj8pRA_0FF8HcXzn_Y3HJrZ9nGVj2RDaaf8umaKua-u5S0i1A@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAFj8pRA_0FF8HcXzn_Y3HJrZ9nGVj2RDaaf8umaKua-u5S0i1A%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAFj8pRA_0FF8HcXzn_Y3HJrZ9nGVj2RDaaf8umaKua-u5S0i1A%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAFj8pRA_0FF8HcXzn_Y3HJrZ9nGVj2RDaaf8umaKua-u5S0i1A%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAFj8pRA_0FF8HcXzn_Y3HJrZ9nGVj2RDaaf8umaKua-u5S0i1A%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>út 7. 1. 2025 v 11:32 odesílatel Philippe BEAUDOIN &lt;phb(dot)emaj(at)free(dot)fr&gt;<br>napsal:</p>
+
+<p>&gt; Thanks a lot Pavel and Tom for your reply.<br>&gt;<br>&gt; Le 06/01/2025 à 17:24, Pavel Stehule a écrit :<br>&gt;<br>&gt; Hi<br>&gt;<br>&gt; It is not a bug. GET DIAGNOSTICS PG_CONTEXT returns error context<br>&gt;<br>&gt; Error context is generated by the function plpgsql_exec_error_callback.<br>&gt; This function uses estate-&gt;func-&gt;fn_signature string<br>&gt; and this string is generated by function format_procedure. This function<br>&gt; hides schema when function is visible from current search_path<br>&gt;<br>&gt; (2025-01-06 17:01:05) postgres=# create schema test;<br>&gt; CREATE SCHEMA<br>&gt; (2025-01-06 17:01:26) postgres=# create function public.fx(a int) returns<br>&gt; void as $$ begin end $$ language plpgsql;<br>&gt; CREATE FUNCTION<br>&gt; (2025-01-06 17:01:47) postgres=# create function test.fx(a int) returns<br>&gt; void as $$ begin end $$ language plpgsql;<br>&gt; CREATE FUNCTION<br>&gt;<br>&gt; (2025-01-06 17:02:16) postgres=# select &#x27;test.fx&#x27;::regproc;<br>&gt; ┌─────────┐<br>&gt; │ regproc │<br>&gt; ╞═════════╡<br>&gt; │ test.fx │<br>&gt; └─────────┘<br>&gt; (1 row)<br>&gt;<br>&gt; (2025-01-06 17:02:22) postgres=# select &#x27;test.fx&#x27;::regproc::regprocedure;<br>&gt; ┌──────────────────┐<br>&gt; │   regprocedure   │<br>&gt; ╞══════════════════╡<br>&gt; │ test.fx(integer) │<br>&gt; └──────────────────┘<br>&gt; (1 row)<br>&gt;<br>&gt; (2025-01-06 17:02:27) postgres=# select &#x27;public.fx&#x27;::regproc::regprocedure<br>&gt; ;<br>&gt; ┌──────────────┐<br>&gt; │ regprocedure │<br>&gt; ╞══════════════╡<br>&gt; │ fx(integer)  │<br>&gt; └──────────────┘<br>&gt; (1 row)<br>&gt;<br>&gt; This is mostly used for displaying functions in error messages.<br>&gt;<br>&gt; Unfortunately it is not possible to change it without a compatibility<br>&gt; break. This was designed more than 20 years ago.<br>&gt;<br>&gt; I aggree to not break the compatibility. All the more that there are<br>&gt; probably good security arguments for the current behaviour.<br>&gt;<br>&gt; But there is something not clear to me.<br>&gt;<br>&gt; All sub-function calls use the schema-qualified function names. When the<br>&gt; functions have been created with a search_path set to tst, I get :<br>&gt;<br>&gt; select &#x27;tst.caller1&#x27;::regproc::regprocedure;<br>&gt;  regprocedure<br>&gt; --------------<br>&gt;  caller1()<br>&gt; (1 row)<br>&gt;<br>&gt; select &#x27;tst.called&#x27;::regproc::regprocedure;<br>&gt;  regprocedure<br>&gt; --------------<br>&gt;  called()<br>&gt; (1 row)<br>&gt;<br>&gt; select &#x27;caller1&#x27;::regproc::regprocedure;<br>&gt;  regprocedure<br>&gt; --------------<br>&gt;  caller1()<br>&gt; (1 row)<br>&gt;<br>&gt; select &#x27;called&#x27;::regproc::regprocedure;<br>&gt;  regprocedure<br>&gt; --------------<br>&gt;  called()<br>&gt; (1 row)<br>&gt;<br>&gt; This totaly corresponds to the behaviour your explained : the tst schema<br>&gt; is into the path, so it is not returned.<br>&gt;<br>&gt; Then when the search_path is reset, I get :<br>&gt; show search_path;<br>&gt;    search_path<br>&gt; -----------------<br>&gt;  &quot;$user&quot;, public<br>&gt; (1 row)<br>&gt;<br>&gt; select &#x27;tst.caller1&#x27;::regproc::regprocedure;<br>&gt;  regprocedure<br>&gt; ---------------<br>&gt;  tst.caller1()<br>&gt; (1 row)<br>&gt;<br>&gt; select &#x27;tst.called&#x27;::regproc::regprocedure;<br>&gt;  regprocedure<br>&gt; --------------<br>&gt;  tst.called()<br>&gt; (1 row)<br>&gt;<br>&gt;<br>&gt; ... which is also expected. But then (and keeping the same search_path),<br>&gt; the stack in the called() function looks like exactly as when the<br>&gt; search_path is set to tst:<br>&gt; select tst.caller1() as stack_in_called;<br>&gt; psql:test_stack.sql:39: WARNING:  Beware: the calling function is not the<br>&gt; expected one!<br>&gt;                      stack_in_called<br>&gt; ----------------------------------------------------------<br>&gt;  PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+<br>&gt;  PL/pgSQL function caller2() line 1 at RETURN            +<br>&gt;  PL/pgSQL function caller1() line 1 at RETURN<br>&gt; (1 row)<br>&gt;<br>&gt;<br>&gt; To get all schema qualified function calls in the returned stack, the<br>&gt; functions must have been *created* without the schema in the path. So it<br>&gt; looks to me that what matter is the search_path sometimes at the functions<br>&gt; call times and sometimes at the functions creation time. That is the<br>&gt; unconsistency I wrote about. But I probably miss something.<br>&gt;<br>&gt;<br>&gt; If you want to track function calls exactly you need own extension based<br>&gt; on pl debug api like <a href="https://github.com/EnterpriseDB/pldebugger" rel="nofollow">https://github.com/EnterpriseDB/pldebugger</a><br>&gt;<br>&gt; OK. Thanks for the pointer.<br>&gt;<br>&gt; I will probably change the functions architecture, by moving back the<br>&gt; sensitive pieces of code into calling functions and set them SECURITY<br>&gt; DEFINER. I am not very fan of having more SECURITY DEFINER functions, but I<br>&gt; don&#x27;t see other not too complex solution.<br>&gt;<br>&gt; Regards. Philippe.<br>&gt;<br>If you want to understand to these details, you should to look to source<br>code</p>
+
+<p><a href="https://github.com/postgres/postgres/tree/master/src/pl/plpgsql/src" rel="nofollow">https://github.com/postgres/postgres/tree/master/src/pl/plpgsql/src</a></p>
+
+<p>fn_signature is calculated in compile time - this is when the function is<br>first time executed in session. Until the end of session or function<br>change, the interpreter uses already compiled AST from cache and doesn&#x27;t<br>try to call the compiler (or more correctly named - parser). So the<br>behavior depends on the state when the function was executed the first<br>time. It can be more complex when a function uses polymorphic parameters,<br>because then there can be cached more instances of one function.</p>
+
+<p>The reason why signature is calculated only at compile time is just<br>performance. Any access to the system catalog has its own cost, and you<br>don&#x27;t want to execute it again and again when the function is started. It<br>cannot be executed at exception time (when it is usually used), because at<br>this time it is impossible to access the system catalog.</p>
+
+<p>Regards</p>
+
+<p>Pavel</p>
+
+<p>&gt;<br>&gt;<br>&gt; Regards<br>&gt;<br>&gt; Pavel<br>&gt;<br>&gt;<br>&gt;<br>&gt;<br>&gt;<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="e4def4d7-6ac7-48af-b0aa-ddb79df61f54@free.fr"></a>
+<a name="4fed2a7d34249e29fce0c8ec5590b1dc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Philippe BEAUDOIN &lt;phb(dot)emaj(at)free(dot)fr&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18767: Inconsistency in result of a Plpgsql GET DIAGNOSTICS
+ PG_CONTEXT instruction.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-07 15:54:07</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/e4def4d7-6ac7-48af-b0aa-ddb79df61f54%40free.fr">e4def4d7-6ac7-48af-b0aa-ddb79df61f54@free.fr</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/e4def4d7-6ac7-48af-b0aa-ddb79df61f54%40free.fr">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/e4def4d7-6ac7-48af-b0aa-ddb79df61f54%40free.fr" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/e4def4d7-6ac7-48af-b0aa-ddb79df61f54%40free.fr" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/e4def4d7-6ac7-48af-b0aa-ddb79df61f54%40free.fr" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Le 07/01/2025 à 12:27, Pavel Stehule a écrit :<br>&gt; If you want to understand to these details, you should to look to <br>&gt; source code<br>&gt;<br>&gt; <a href="https://github.com/postgres/postgres/tree/master/src/pl/plpgsql/src" rel="nofollow">https://github.com/postgres/postgres/tree/master/src/pl/plpgsql/src</a><br>&gt;<br>&gt; fn_signature is calculated in compile time - this is when the function <br>&gt; is first time executed in session. Until the end of session or <br>&gt; function change, the interpreter uses already compiled AST from cache <br>&gt; and doesn&#x27;t try to call the compiler (or more correctly named - <br>&gt; parser). So the behavior depends on the state when the function was <br>&gt; executed the first time. It can be more complex when a function uses <br>&gt; polymorphic parameters, because then there can be cached more <br>&gt; instances of one function.<br>&gt;<br>&gt; The reason why signature is calculated only at compile time is just <br>&gt; performance. Any access to the system catalog has its own cost, and <br>&gt; you don&#x27;t want to execute it again and again when the function is <br>&gt; started. It cannot be executed at exception time (when it is usually <br>&gt; used), because at this time it is impossible to access the system catalog.<br>&gt;<br>&gt;<br>&gt; Regards<br>&gt;<br>&gt; Pavel<br>&gt;<br>Ah, this clearly explains the strange to me things I noted. Thanks a lot <br>for the explanation.</p>
+
+<p>This closes the issue.</p>
+
+<p>Regards. Philippe.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

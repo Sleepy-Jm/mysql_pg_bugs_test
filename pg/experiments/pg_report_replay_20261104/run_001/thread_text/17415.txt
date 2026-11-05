@@ -1,0 +1,167 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17415
+Logged by:          Daniel Polski
+Email address:      danielpolski(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Linux
+Description:        
+
+
+SELECT set_config('_foo.bar', 'foo', FALSE);
+
+
+ERROR:  invalid configuration parameter name "_foo.bar"
+DETAIL:  Custom parameter names must be two or more simple identifiers
+separated by dots.
+SQL state: 42602
+
+
+(Works in 13.5-2)
+
+
+
+
+
+### MESSAGE 1
+
+On Wed, 23 Feb 2022 at 16:36, PG Bug reporting form <noreply(at)postgresql(dot)org> wrote:
+> The following bug has been logged on the website:
+>
+> Bug reference:      17415
+> Logged by:          Daniel Polski
+> Email address:      danielpolski(at)gmail(dot)com
+> PostgreSQL version: 14.2
+> Operating system:   Linux
+> Description:        
+>
+> SELECT set_config('_foo.bar', 'foo', FALSE);
+>
+> ERROR:  invalid configuration parameter name "_foo.bar"
+> DETAIL:  Custom parameter names must be two or more simple identifiers
+> separated by dots.
+> SQL state: 42602
+>
+> (Works in 13.5-2)
+
+
+The following commit introduces this problem.
+
+
+commit 3db826bd55cd1df0dd8c3d811f8e5b936d7ba1e4 (cusvar)
+Author: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>
+
+
+    Tighten up allowed names for custom GUC parameters.
+
+
+    Formerly we were pretty lax about what a custom GUC's name could
+    be; so long as it had at least one dot in it, we'd take it.
+    However, corner cases such as dashes or equal signs in the name
+    would cause various bits of functionality to misbehave.  Rather
+    than trying to make the world perfectly safe for that, let's
+    just require that custom names look like "identifier.identifier",
+    where "identifier" means something that scan.l would accept
+    without double quotes.
+
+
+    Along the way, this patch refactors things slightly in guc.c
+    so that find_option() is responsible for reporting GUC-not-found
+    cases, allowing removal of duplicative code from its callers.
+
+
+    Per report from Hubert Depesz Lubaczewski.  No back-patch,
+    since the consequences of the problem don't seem to warrant
+    changing behavior in stable branches.
+
+
+    Discussion: https://postgr.es/m/951335.1612910077@sss.pgh.pa.us
+
+
+According to the comment of valid_custom_variable_name(), the custom variable
+must be two or more identifiers separated dots, and the identifier confirm
+scan.l, see below:
+
+
+ident_start     [A-Za-z\200-\377_]
+ident_cont      [A-Za-z\200-\377_0-9\$]
+
+
+identifier      {ident_start}{ident_cont}*
+
+
+However, the code in valid_custom_variable_name() doesn't confirm it.
+
+
+static bool
+valid_custom_variable_name(const char *name)
+{
+    bool        saw_sep = false;
+    bool        name_start = true;
+
+
+    for (const char *p = name; *p; p++)
+    {
+        if (*p == GUC_QUALIFIER_SEPARATOR)
+        {
+            if (name_start)
+                return false;   /* empty name component */
+            saw_sep = true;
+            name_start = true;
+        }
+        else if (strchr("ABCDEFGHIJKLMNOPQRSTUVWXYZ"       <-- here forget the underscore
+                        "abcdefghijklmnopqrstuvwxyz", *p) != NULL ||
+                 IS_HIGHBIT_SET(*p))
+        {
+            /* okay as first or non-first character */
+            name_start = false;
+        }
+        else if (!name_start && strchr("0123456789_$", *p) != NULL)
+             /* okay as non-first character */ ;
+        else
+            return false;
+    }
+    if (name_start)
+        return false;           /* empty name component */
+    /* OK if we found at least one separator */
+    return saw_sep;
+}
+
+
+Here is a simple patch to fix it. 
+
+
+-- 
+Regrads,
+Japin Li.
+ChengDu WenWu Information Technology Co.,Ltd.
+
+
+
+
+
+### MESSAGE 2
+Japin Li <japinli(at)hotmail(dot)com> writes:
+> On Wed, 23 Feb 2022 at 16:36, PG Bug reporting form <noreply(at)postgresql(dot)org> wrote:
+>> SELECT set_config('_foo.bar', 'foo', FALSE);
+>> ERROR:  invalid configuration parameter name "_foo.bar"
+>> DETAIL:  Custom parameter names must be two or more simple identifiers
+>> separated by dots.
+
+
+> According to the comment of valid_custom_variable_name(), the custom variable
+> must be two or more identifiers separated dots, and the identifier confirm
+> scan.l, see below:
+> However, the code in valid_custom_variable_name() doesn't confirm it.
+
+
+Yeah, it's supposed to match scan.l, so that's an embarrassing
+oversight.  Will apply patch.
+
+
+			regards, tom lane
+
+
+

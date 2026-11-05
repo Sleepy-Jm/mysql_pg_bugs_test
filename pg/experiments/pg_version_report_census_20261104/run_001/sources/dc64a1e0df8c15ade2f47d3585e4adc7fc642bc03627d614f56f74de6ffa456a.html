@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17413: update of partitioned table via postgres_fdw updates to much rows</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17413-106983288639aa44%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-02-22T10:03:02" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17413: update of partitioned table via postgres_fdw updates to much rows" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17413 Logged by: Stepan Yankevych Email address: stepya@ukr.net PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17413: update of partitioned table via postgres_fdw updates to much rows</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>stepya(at)ukr(dot)net</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17413: update of partitioned table via postgres_fdw updates to much rows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-22 10:03:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17413-106983288639aa44%40postgresql.org">17413-106983288639aa44@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17413-106983288639aa44%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17413-106983288639aa44%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17413-106983288639aa44%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17413-106983288639aa44%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17413-106983288639aa44%40postgresql.org" selected="selected">2022-02-22 10:03:02 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="MEYP282MB16691CFD2F1D5EC5A80F2201B63B9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">&nbsp;2022-02-22 17:09:13 from Japin Li &lt;japinli(at)hotmail(dot)com&gt;</option>
+  <option value="AM9PR03MB7631F60AA9274EE4D957D76B923B9%40AM9PR03MB7631.eurprd03.prod.outlook.com">&nbsp;&nbsp;2022-02-22 17:28:04 from Stepan Yankevych &lt;Stepan_Yankevych(at)epam(dot)com&gt;</option>
+  <option value="CAPmGK150QauH--kOaV4bnrJvMg7ngQSuP4%2BbGkOh2Yoa8KPyvQ%40mail.gmail.com">&nbsp;&nbsp;2022-02-23 07:40:49 from Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17413<br>Logged by:          Stepan Yankevych<br>Email address:      stepya(at)ukr(dot)net<br>PostgreSQL version: 14.2<br>Operating system:   CentOS<br>Description:        </p>
+
+<p>We noticed that update foreign table in some cases passes following update<br>to the remote DB <br>update part_update_test<br>set field=$2<br>where ctid=$1<br>In that case one row from each partition can be updated. <br>See steps to reproduce</p>
+
+<p>-- pgprod1 <br>drop table if exists trash.part_update_test;</p>
+
+<p>CREATE TABLE trash.part_update_test (<br>	id serial,<br>	date_id int4 NOT NULL,<br>	simple_text varchar<br>) PARTITION BY RANGE (date_id);</p>
+
+<p>CREATE TABLE trash.part_update_test_20220221 PARTITION OF<br>trash.part_update_test FOR VALUES FROM (20220221) TO (20220222);<br>CREATE TABLE trash.part_update_test_20220222 PARTITION OF<br>trash.part_update_test FOR VALUES FROM (20220222) TO (20220223);<br>CREATE TABLE trash.part_update_test_20220223 PARTITION OF<br>trash.part_update_test FOR VALUES FROM (20220223) TO (20220224);</p>
+
+<p>insert into trash.part_update_test (date_id, simple_text)<br>values (20220221, &#x27;Im 20220221&#x27;),(20220222, &#x27;I amd 20220222&#x27;),(20220223, &#x27;I<br>am the third row &#x27;);</p>
+
+<p>select ctid, *<br>from trash.part_update_test;</p>
+
+<p>ctid |id|date_id |simple_text        |<br>-----+--+--------+-------------------+<br>(0,1)| 1|20220221|Im 20220221        |<br>(0,1)| 2|20220222|I amd 20220222     |<br>(0,1)| 3|20220223|I am the third row |</p>
+
+<p>--  pgprod2 <br>DROP FOREIGN TABLE if EXISTS staging.part_update_test;<br>IMPORT FOREIGN SCHEMA &quot;trash&quot; LIMIT TO (part_update_test)<br>FROM SERVER postgresprod<br>into staging;</p>
+
+<p>with ids as materialized (select 1 as id, 20220221 as date_id  )<br>update staging.part_update_test t<br>set simple_text = &#x27;I am  updated version of 20220221 &#x27;<br>from ids<br>where t.id = ids.id<br>and t.date_id = ids.date_id ;</p>
+
+<p>select ctid, *<br>from staging.part_update_test;</p>
+
+<p> ctid |id|date_id |simple_text                       |<br>-----+--+--------+----------------------------------+<br>(0,2)| 1|20220221|I am  updated version of 20220221 |<br>(0,2)| 2|20220222|I am  updated version of 20220221 |<br>(0,2)| 3|20220223|I am  updated version of 20220221 |</p>
+
+<p>As you can see all of rows that had (0,1) where updated , but the only first<br>row with ID =1 had to be updated .<br>The same was reproducible at least in PG14.1</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/MEYP282MB16691CFD2F1D5EC5A80F2201B63B9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">Re: BUG #17413: update of partitioned table via postgres_fdw
+ updates to much rows</a> at 2022-02-22 17:09:13 from Japin Li
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/TYWPR01MB7202664D55ED1F8103B42FA7FF3B9%40TYWPR01MB7202.jpnprd01.prod.outlook.com">Next Message</a></th>
+            <td>egashira.yusuke@fujitsu.com</td>
+            <td>2022-02-22 12:06:23</td>
+            <td><a href="/message-id/TYWPR01MB7202664D55ED1F8103B42FA7FF3B9%40TYWPR01MB7202.jpnprd01.prod.outlook.com">RE: Reconnect a single connection used by multiple threads in
+ embedded SQL in C application causes error.</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/20220221212928.GB3799825%40rfd.leadboat.com">Previous Message</a></th>
+            <td>Noah Misch</td>
+            <td>2022-02-21 21:29:28</td>
+            <td><a href="/message-id/20220221212928.GB3799825%40rfd.leadboat.com">Re: Reconnect a single connection used by multiple threads in
+ embedded SQL in C application causes error.</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

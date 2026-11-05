@@ -1,0 +1,34 @@
+{
+  "report_id": "17393",
+  "scenario_id": "17393_main",
+  "target_version": "14.1",
+  "source_url": "https://www.postgresql.org/message-id/17393-fe5b19a5eb16cf7f%40postgresql.org",
+  "parts": [
+    {
+      "text": "Steps in script:\npsql -c 'CREATE DATABASE test'\n# basebackup\npg_basebackup -D $backup_dir/0\nsleep 5\nrec_pit=`date +'%Y-%m-%d %H:%M:%S'`\nsleep 5\n# drop db\npsql -c 'DROP DATABASE test'\n# save backup\npsql -c 'SELECT pg_switch_wal()'\nsleep 5\n# Stop db\npg_ctl -D $PGDATAstop\n# recovery\nrm -rf $PGDATA/*\ncp -r $backup_dir/0/* $PGDATA/\ntouch $PGDATA/recovery.signal\necho \"recovery_target_time='$rec_pit'\" >> $inst_dir/postgresql.conf\n# start\npg_ctl -D $PGDATA -l ${log_dir}/pgsql.log start\nsleep 5\necho \"\\c test\" | psql;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17393.txt",
+      "start_offset": 2175,
+      "end_offset": 2690,
+      "start_line": 63,
+      "end_line": 88,
+      "excerpt_sha256": "cfad9c33819e7a933c5d70e00ed34f89608a683dc359270e0d0178c6d9fc13dc",
+      "transformations": [
+        "trim outer whitespace",
+        "append SQL terminator at excerpt boundary"
+      ],
+      "material_kind": "operational_steps"
+    }
+  ],
+  "mode": "pitr",
+  "oracle": {
+    "kind": "output",
+    "pattern": "^CATALOG_WITHOUT_FILES$",
+    "reported_phenomenon": "PITR到DROP之前恢复catalog却缺数据库目录",
+    "author_expected_behavior": "catalog及数据文件均恢复"
+  },
+  "config": {},
+  "notes": "按原文步骤编排；路径/端口/用户替换为隔离任务；原数据目录rename保留，不执行rm -rf。",
+  "timeout": 180,
+  "preparation_status": "ready",
+  "spec_sha256": "08261f717b0c8ae4edfc47f42682635bdaf58c2cfd6e72524406a698ba988e7c"
+}

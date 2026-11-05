@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when calling `grouping` on result of subquery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17479-6260deceaf0ad304%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-05-10T01:02:35" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when calling `grouping` on result of subquery" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="485ed1b9def981398c5d9809433cb061">BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when calling `grouping` on result of subquery</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202205100102">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17479-6260deceaf0ad304@postgresql.org"></a>
+<a name="485ed1b9def981398c5d9809433cb061"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sully(at)msully(dot)net</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when calling `grouping` on result of subquery</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-10 01:02:35</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17479-6260deceaf0ad304%40postgresql.org">17479-6260deceaf0ad304@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17479-6260deceaf0ad304%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17479-6260deceaf0ad304%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17479-6260deceaf0ad304%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17479-6260deceaf0ad304%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17479<br>Logged by:          Michael J. Sullivan<br>Email address:      sully(at)msully(dot)net<br>PostgreSQL version: 14.2<br>Operating system:   Linux<br>Description:        </p>
+
+<p>The following query produces &quot;plan should not reference subplan&#x27;s<br>variable&quot;</p>
+
+<p>create table Card (id uuid);</p>
+
+<p>SELECT<br>    -- This line causes &quot;variable not found in subplan target list&quot;<br>    -- grouping(res.cnt)<br>    -- This line causes &quot;plan should not reference subplan&#x27;s variable&quot;<br>   (SELECT grouping(res.cnt))<br>FROM Card<br>CROSS JOIN LATERAL<br>(SELECT<br>    (SELECT Card.id) AS cnt<br>) AS res<br>GROUP BY<br>    res.cnt</p>
+
+<p>As the comment says, a slight change instead errors with &quot;variable not found<br>in subplan target list&quot;.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs4-AmKNFMKwpc1AsJWPUskuaJ3EAJ9-ymV=qe=JQx_e3qA@mail.gmail.com"></a>
+<a name="0fd735c21df8e02c7f6dd7a01480c1db"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>sully(at)msully(dot)net,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when
+ calling `grouping` on result of subquery</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-10 10:07:58</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs4-AmKNFMKwpc1AsJWPUskuaJ3EAJ9-ymV%3Dqe%3DJQx_e3qA%40mail.gmail.com">CAMbWs4-AmKNFMKwpc1AsJWPUskuaJ3EAJ9-ymV=qe=JQx_e3qA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs4-AmKNFMKwpc1AsJWPUskuaJ3EAJ9-ymV%3Dqe%3DJQx_e3qA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs4-AmKNFMKwpc1AsJWPUskuaJ3EAJ9-ymV%3Dqe%3DJQx_e3qA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs4-AmKNFMKwpc1AsJWPUskuaJ3EAJ9-ymV%3Dqe%3DJQx_e3qA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs4-AmKNFMKwpc1AsJWPUskuaJ3EAJ9-ymV%3Dqe%3DJQx_e3qA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, May 10, 2022 at 2:12 PM PG Bug reporting form &lt;<br>noreply(at)postgresql(dot)org&gt; wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17479<br>&gt; Logged by:          Michael J. Sullivan<br>&gt; Email address:      sully(at)msully(dot)net<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   Linux<br>&gt; Description:<br>&gt;<br>&gt; The following query produces &quot;plan should not reference subplan&#x27;s<br>&gt; variable&quot;<br>&gt;<br>&gt; create table Card (id uuid);<br>&gt;<br>&gt; SELECT<br>&gt;     -- This line causes &quot;variable not found in subplan target list&quot;<br>&gt;     -- grouping(res.cnt)<br>&gt;     -- This line causes &quot;plan should not reference subplan&#x27;s variable&quot;<br>&gt;    (SELECT grouping(res.cnt))<br>&gt; FROM Card<br>&gt; CROSS JOIN LATERAL<br>&gt; (SELECT<br>&gt;     (SELECT Card.id) AS cnt<br>&gt; ) AS res<br>&gt; GROUP BY<br>&gt;     res.cnt<br>&gt;<br>&gt; As the comment says, a slight change instead errors with &quot;variable not<br>&gt; found<br>&gt; in subplan target list&quot;.<br>&gt;</p>
+
+<p>Reproduced this issue on HEAD:</p>
+
+<p># explain (verbose, costs off)<br>SELECT grouping(res.cnt) FROM Card CROSS JOIN LATERAL (SELECT (SELECT<br>Card.id) AS cnt) AS res GROUP BY res.cnt;<br>ERROR:  variable not found in subplan target list</p>
+
+<p>For this query, initially it has two TargetEntrys and both referencing<br>the RangeTblEntry of the subquery.</p>
+
+<p>   {TARGETENTRY<br>   :expr<br>      {GROUPINGFUNC<br>      :args (<br>         {VAR<br>         :varno 2<br>         :varattno 1</p>
+
+<p>AND</p>
+
+<p>   {TARGETENTRY<br>   :expr<br>      {VAR<br>      :varno 2<br>      :varattno 1</p>
+
+<p>More specifically, they are both referencing the first TargetEntry from<br>the subquery. And the first TargetEntry of the subquery is of type<br>EXPR SubLink. So after we pull up this subquery, the two TargetEntrys<br>become:</p>
+
+<p>   {TARGETENTRY<br>   :expr<br>      {GROUPINGFUNC<br>      :args (<br>         {SUBLINK<br>         :subLinkType 4<br>         :subLinkId 0</p>
+
+<p>AND</p>
+
+<p>   {TARGETENTRY<br>   :expr<br>      {SUBLINK<br>      :subLinkType 4<br>      :subLinkId 0</p>
+
+<p>Actually the two SubLink expressions are totally the same. But we did<br>not check that and proceeded to expand them to two SubPlans.</p>
+
+<p>  {TARGETENTRY<br>   :expr<br>      {GROUPINGFUNC<br>      :args (<br>         {SUBPLAN<br>         :subLinkType 4<br>         :testexpr &lt;&gt;<br>         :paramIds &lt;&gt;<br>         :plan_id 1<br>         :plan_name SubPlan\ 1</p>
+
+<p>AND</p>
+
+<p>   {TARGETENTRY<br>   :expr<br>      {SUBPLAN<br>      :subLinkType 4<br>      :testexpr &lt;&gt;<br>      :paramIds &lt;&gt;<br>      :plan_id 2<br>      :plan_name SubPlan\ 2</p>
+
+<p>The two SubPlans are assigned with different plan_ids/plan_names.<br>That&#x27;s why when we fix up the GROUPINGFUNC target entry we failed to<br>match the whole SubPlan expression, i.e. we failed to match &#x27;SubPlan 1&#x27;<br>against &#x27;SubPlan 2&#x27;.</p>
+
+<p>Thanks<br>Richard<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs48m-p46J7-mWn3xZwstbo9HCq9oEom1usbKYb7EeGnTog@mail.gmail.com"></a>
+<a name="ee8f3038f66f0f9c5d6aeb45aab0265c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>sully(at)msully(dot)net,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when
+ calling `grouping` on result of subquery</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-10 11:05:10</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs48m-p46J7-mWn3xZwstbo9HCq9oEom1usbKYb7EeGnTog%40mail.gmail.com">CAMbWs48m-p46J7-mWn3xZwstbo9HCq9oEom1usbKYb7EeGnTog@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs48m-p46J7-mWn3xZwstbo9HCq9oEom1usbKYb7EeGnTog%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs48m-p46J7-mWn3xZwstbo9HCq9oEom1usbKYb7EeGnTog%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs48m-p46J7-mWn3xZwstbo9HCq9oEom1usbKYb7EeGnTog%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs48m-p46J7-mWn3xZwstbo9HCq9oEom1usbKYb7EeGnTog%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, May 10, 2022 at 6:07 PM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:</p>
+
+<p>&gt;<br>&gt; On Tue, May 10, 2022 at 2:12 PM PG Bug reporting form &lt;<br>&gt; noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;<br>&gt;&gt; The following bug has been logged on the website:<br>&gt;&gt;<br>&gt;&gt; Bug reference:      17479<br>&gt;&gt; Logged by:          Michael J. Sullivan<br>&gt;&gt; Email address:      sully(at)msully(dot)net<br>&gt;&gt; PostgreSQL version: 14.2<br>&gt;&gt; Operating system:   Linux<br>&gt;&gt; Description:<br>&gt;&gt;<br>&gt;&gt; The following query produces &quot;plan should not reference subplan&#x27;s<br>&gt;&gt; variable&quot;<br>&gt;&gt;<br>&gt;&gt; create table Card (id uuid);<br>&gt;&gt;<br>&gt;&gt; SELECT<br>&gt;&gt;     -- This line causes &quot;variable not found in subplan target list&quot;<br>&gt;&gt;     -- grouping(res.cnt)<br>&gt;&gt;     -- This line causes &quot;plan should not reference subplan&#x27;s variable&quot;<br>&gt;&gt;    (SELECT grouping(res.cnt))<br>&gt;&gt; FROM Card<br>&gt;&gt; CROSS JOIN LATERAL<br>&gt;&gt; (SELECT<br>&gt;&gt;     (SELECT Card.id) AS cnt<br>&gt;&gt; ) AS res<br>&gt;&gt; GROUP BY<br>&gt;&gt;     res.cnt<br>&gt;&gt;<br>&gt;&gt; As the comment says, a slight change instead errors with &quot;variable not<br>&gt;&gt; found<br>&gt;&gt; in subplan target list&quot;.<br>&gt;&gt;<br>&gt;<br>&gt; Reproduced this issue on HEAD:<br>&gt;<br>&gt; # explain (verbose, costs off)<br>&gt; SELECT grouping(res.cnt) FROM Card CROSS JOIN LATERAL (SELECT (SELECT<br>&gt; Card.id) AS cnt) AS res GROUP BY res.cnt;<br>&gt; ERROR:  variable not found in subplan target list<br>&gt;<br>&gt; For this query, initially it has two TargetEntrys and both referencing<br>&gt; the RangeTblEntry of the subquery.<br>&gt;<br>&gt;    {TARGETENTRY<br>&gt;    :expr<br>&gt;       {GROUPINGFUNC<br>&gt;       :args (<br>&gt;          {VAR<br>&gt;          :varno 2<br>&gt;          :varattno 1<br>&gt;<br>&gt;<br>&gt; AND<br>&gt;<br>&gt;    {TARGETENTRY<br>&gt;    :expr<br>&gt;       {VAR<br>&gt;       :varno 2<br>&gt;       :varattno 1<br>&gt;<br>&gt; More specifically, they are both referencing the first TargetEntry from<br>&gt; the subquery. And the first TargetEntry of the subquery is of type<br>&gt; EXPR SubLink. So after we pull up this subquery, the two TargetEntrys<br>&gt; become:<br>&gt;<br>&gt;    {TARGETENTRY<br>&gt;    :expr<br>&gt;       {GROUPINGFUNC<br>&gt;       :args (<br>&gt;          {SUBLINK<br>&gt;          :subLinkType 4<br>&gt;          :subLinkId 0<br>&gt;<br>&gt; AND<br>&gt;<br>&gt;    {TARGETENTRY<br>&gt;    :expr<br>&gt;       {SUBLINK<br>&gt;       :subLinkType 4<br>&gt;       :subLinkId 0<br>&gt;<br>&gt;<br>&gt; Actually the two SubLink expressions are totally the same. But we did<br>&gt; not check that and proceeded to expand them to two SubPlans.<br>&gt;<br>&gt;   {TARGETENTRY<br>&gt;    :expr<br>&gt;       {GROUPINGFUNC<br>&gt;       :args (<br>&gt;          {SUBPLAN<br>&gt;          :subLinkType 4<br>&gt;          :testexpr &lt;&gt;<br>&gt;          :paramIds &lt;&gt;<br>&gt;          :plan_id 1<br>&gt;          :plan_name SubPlan\ 1<br>&gt;<br>&gt; AND<br>&gt;<br>&gt;    {TARGETENTRY<br>&gt;    :expr<br>&gt;       {SUBPLAN<br>&gt;       :subLinkType 4<br>&gt;       :testexpr &lt;&gt;<br>&gt;       :paramIds &lt;&gt;<br>&gt;       :plan_id 2<br>&gt;       :plan_name SubPlan\ 2<br>&gt;<br>&gt; The two SubPlans are assigned with different plan_ids/plan_names.<br>&gt; That&#x27;s why when we fix up the GROUPINGFUNC target entry we failed to<br>&gt; match the whole SubPlan expression, i.e. we failed to match &#x27;SubPlan 1&#x27;<br>&gt; against &#x27;SubPlan 2&#x27;.<br>&gt;</p>
+
+<p>When we generate PathTarget for initial input to grouping nodes in<br>make_group_input_target(), for non-grouping columns we would pull out<br>all the Vars they mention with the help of pull_var_clause(), and add<br>them to the input target. But this ignores the Vars included inside<br>GroupingFunc node, even with flag PVC_RECURSE_AGGREGATES.</p>
+
+<p>If we change that and include the Vars inside GroupingFunc node, we<br>would be able to fix up the GROUPINGFUNC target entry correctly by<br>walking into the GroupingFunc-&gt;args and matching the Vars there.</p>
+
+<p>--- a/src/backend/optimizer/util/var.c<br>+++ b/src/backend/optimizer/util/var.c<br>@@ -661,13 +661,7 @@ pull_var_clause_walker(Node *node,<br>pull_var_clause_context *context)<br>                }<br>                else if (context-&gt;flags &amp; PVC_RECURSE_AGGREGATES)<br>                {<br>-                       /*<br>-                        * We do NOT descend into the contained expression,<br>even if the<br>-                        * caller asked for it, because we never actually<br>evaluate it -<br>-                        * the result is driven entirely off the associated<br>GROUP BY<br>-                        * clause, so we never need to extract the actual<br>Vars here.<br>-                        */<br>-                       return false;<br>+                       /* fall through to recurse into the GroupingFunc&#x27;s<br>arguments */<br>                }<br>                else<br>                        elog(ERROR, &quot;GROUPING found where not expected&quot;);</p>
+
+<p>Can we change that to fix this issue?</p>
+
+<p>Thanks<br>Richard<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="218738.1652310685@sss.pgh.pa.us"></a>
+<a name="02826b0b2d5de35615c4be9783cf2b07"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sully(at)msully(dot)net,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when calling `grouping` on result of subquery</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-11 23:11:25</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/218738.1652310685%40sss.pgh.pa.us">218738.1652310685@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/218738.1652310685%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/218738.1652310685%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/218738.1652310685%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/218738.1652310685%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; writes:<br>&gt;&gt; Actually the two SubLink expressions are totally the same. But we did<br>&gt;&gt; not check that and proceeded to expand them to two SubPlans.</p>
+
+<p>Right.  It&#x27;d be good to improve on that situation somehow, but I doubt<br>that that line of thought will lead to anything backpatchable.</p>
+
+<p>&gt; When we generate PathTarget for initial input to grouping nodes in<br>&gt; make_group_input_target(), for non-grouping columns we would pull out<br>&gt; all the Vars they mention with the help of pull_var_clause(), and add<br>&gt; them to the input target. But this ignores the Vars included inside<br>&gt; GroupingFunc node, even with flag PVC_RECURSE_AGGREGATES.<br>&gt; If we change that and include the Vars inside GroupingFunc node, we<br>&gt; would be able to fix up the GROUPINGFUNC target entry correctly by<br>&gt; walking into the GroupingFunc-&gt;args and matching the Vars there.</p>
+
+<p>At first I didn&#x27;t like this solution at all, but on reflection I think<br>it&#x27;s okay.  The existing comment there is wrong because it neglects<br>the fact that whatever&#x27;s inside the GROUPING construct has to be amenable<br>to later processing by setrefs.c and possibly EXPLAIN.  So we cannot<br>have Vars there that aren&#x27;t output by the lower plan nodes, which is the<br>optimization the comment is incorrectly thinking can work.  This code<br>has accidentally worked so far because whatever&#x27;s inside GROUPING must<br>duplicate a GROUP BY clause elsewhere, which&#x27;ll result in the same Vars<br>getting propagated up the tree as far as the plan node responsible for<br>grouping.  But once you phrase it that way, the fragility become obvious:<br>what if the GROUPING construct is placed above whatever node does the<br>grouping?  I think it might be possible to break it today, even without<br>using SubPlans; and if you can&#x27;t, it&#x27;s only because the planner is leaving<br>money on the table by not aggressively pruning the output tlists for upper<br>plan nodes.</p>
+
+<p>So I now agree that the thing to do is make this logic work the same for<br>GroupingFunc as it does for Aggref (and incidentally make the comment<br>about that less wishy-washy).  The apparent savings of not pulling the<br>contained references is illusory, because we&#x27;ll end up with exactly<br>the same plan tree --- or else a broken plan tree.</p>
+
+<p>We may have more to do here, though, because with this patch I get</p>
+
+<p>explain verbose<br>SELECT<br>    grouping(res.cnt)<br>FROM Card<br>CROSS JOIN LATERAL<br>(SELECT<br>    (SELECT Card.id) AS cnt<br>) AS res<br>GROUP BY<br>    res.cnt;</p>
+
+<p> HashAggregate  (cost=67.38..71.88 rows=200 width=8)<br>   Output: GROUPING((SubPlan 1)), ((SubPlan 2))<br>   Group Key: (SubPlan 2)<br>   -&gt;  Seq Scan on public.card  (cost=0.00..61.00 rows=2550 width=8)<br>         Output: (SubPlan 2), card.id<br>         SubPlan 2<br>           -&gt;  Result  (cost=0.00..0.01 rows=1 width=4)<br>                 Output: card.id</p>
+
+<p>What became of SubPlan 1?  Maybe this is fine but it looks a little<br>shaky.  We should at least run down why that&#x27;s happening and make<br>sure we&#x27;re not leaving dangling pointers anywhere.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs49peoSCckCr4ZtWxJ3-gTOL7kPof+492aDMocGEwGtJ4g@mail.gmail.com"></a>
+<a name="58a30b607921617238633d1cca17fc84"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sully(at)msully(dot)net,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when
+ calling `grouping` on result of subquery</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-12 07:51:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs49peoSCckCr4ZtWxJ3-gTOL7kPof%2B492aDMocGEwGtJ4g%40mail.gmail.com">CAMbWs49peoSCckCr4ZtWxJ3-gTOL7kPof+492aDMocGEwGtJ4g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs49peoSCckCr4ZtWxJ3-gTOL7kPof%2B492aDMocGEwGtJ4g%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs49peoSCckCr4ZtWxJ3-gTOL7kPof%2B492aDMocGEwGtJ4g%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs49peoSCckCr4ZtWxJ3-gTOL7kPof%2B492aDMocGEwGtJ4g%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs49peoSCckCr4ZtWxJ3-gTOL7kPof%2B492aDMocGEwGtJ4g%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, May 12, 2022 at 7:11 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; We may have more to do here, though, because with this patch I get<br>&gt;<br>&gt; explain verbose<br>&gt; SELECT<br>&gt;     grouping(res.cnt)<br>&gt; FROM Card<br>&gt; CROSS JOIN LATERAL<br>&gt; (SELECT<br>&gt;     (SELECT Card.id) AS cnt<br>&gt; ) AS res<br>&gt; GROUP BY<br>&gt;     res.cnt;<br>&gt;<br>&gt;  HashAggregate  (cost=67.38..71.88 rows=200 width=8)<br>&gt;    Output: GROUPING((SubPlan 1)), ((SubPlan 2))<br>&gt;    Group Key: (SubPlan 2)<br>&gt;    -&gt;  Seq Scan on public.card  (cost=0.00..61.00 rows=2550 width=8)<br>&gt;          Output: (SubPlan 2), card.id<br>&gt;          SubPlan 2<br>&gt;            -&gt;  Result  (cost=0.00..0.01 rows=1 width=4)<br>&gt;                  Output: card.id<br>&gt;<br>&gt; What became of SubPlan 1?  Maybe this is fine but it looks a little<br>&gt; shaky.  We should at least run down why that&#x27;s happening and make<br>&gt; sure we&#x27;re not leaving dangling pointers anywhere.<br>&gt;</p>
+
+<p>I did some debug on this. The &#x27;SubPlan 1&#x27; is not explained because its<br>SubPlanState is not created and added to AggState-&gt;subPlan.</p>
+
+<p>When we compile each tlist column for the agg node, the GroupingFunc<br>expressions would not be collected to AggState-&gt;args, because only<br>Aggref nodes are expected there. As a result, the &#x27;SubPlan 1&#x27;, as the<br>arg of the GroupingFunc node, does not have a chance to be initialized<br>by ExecInitSubPlan() and added to AggState-&gt;subPlan when evaluating<br>arguments to aggregate function in ExecBuildAggTrans().</p>
+
+<p>Not sure if this is fine or not.</p>
+
+<p>Thanks<br>Richard<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="327116.1652367082@sss.pgh.pa.us"></a>
+<a name="ca2fb4eb22152eb3d36c16ac5394f61e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sully(at)msully(dot)net,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when calling `grouping` on result of subquery</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-12 14:51:22</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/327116.1652367082%40sss.pgh.pa.us">327116.1652367082@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/327116.1652367082%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/327116.1652367082%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/327116.1652367082%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/327116.1652367082%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; writes:<br>&gt; On Thu, May 12, 2022 at 7:11 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; What became of SubPlan 1?  Maybe this is fine but it looks a little<br>&gt;&gt; shaky.  We should at least run down why that&#x27;s happening and make<br>&gt;&gt; sure we&#x27;re not leaving dangling pointers anywhere.</p>
+
+<p>&gt; I did some debug on this. The &#x27;SubPlan 1&#x27; is not explained because its<br>&gt; SubPlanState is not created and added to AggState-&gt;subPlan.</p>
+
+<p>Yeah, concur: there are two subplans in the plan tree, so no dangling<br>pointers.</p>
+
+<p>&gt; Not sure if this is fine or not.</p>
+
+<p>It seems cosmetic.  We could somehow force initialization of the<br>GroupingFunc&#x27;s argument tree, but that would just be wasted cycles<br>in non-EXPLAIN cases, and it seems semantically wrong anyway given<br>that evaluation of the argument is not supposed to happen.  (Right<br>now that&#x27;s hypothetical, but what if ExecInitExpr started to<br>pre-evaluate some things?)</p>
+
+<p>Given the history of this thing, maybe we will find something that<br>depends on such initialization happening.  But without evidence<br>for that I&#x27;m not inclined to add code for it.</p>
+
+<p>I&#x27;ll run with the patch as you suggested.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

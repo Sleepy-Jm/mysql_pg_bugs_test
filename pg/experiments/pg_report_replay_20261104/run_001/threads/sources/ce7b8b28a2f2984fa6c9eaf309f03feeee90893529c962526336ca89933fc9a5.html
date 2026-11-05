@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17349: Function gen_random_uuid duplicates in pgcrypto and core</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17349-24d61e214429e8c1%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2021-12-28T16:31:15" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17349: Function gen_random_uuid duplicates in pgcrypto and core" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="4854f4b33a43af5d113b49e434e4de87">BUG #17349: Function gen_random_uuid duplicates in pgcrypto and core</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202112281631">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17349-24d61e214429e8c1@postgresql.org"></a>
+<a name="4854f4b33a43af5d113b49e434e4de87"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>andreas(dot)dijkman(at)cygnis(dot)nl</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17349: Function gen_random_uuid duplicates in pgcrypto and core</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-28 16:31:15</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17349-24d61e214429e8c1%40postgresql.org">17349-24d61e214429e8c1@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17349-24d61e214429e8c1%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17349-24d61e214429e8c1%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17349-24d61e214429e8c1%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17349-24d61e214429e8c1%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17349<br>Logged by:          Andreas Dijkman<br>Email address:      andreas(dot)dijkman(at)cygnis(dot)nl<br>PostgreSQL version: 14.1<br>Operating system:   Oracle Linux 8<br>Description:        </p>
+
+<p>As stated in<br><a href="https://www.postgresql.org/docs/current/pgcrypto.html#id-1.11.7.35.10" rel="nofollow">https://www.postgresql.org/docs/current/pgcrypto.html#id-1.11.7.35.10</a>, the<br>function gen_random_uuid is now part of core PostgreSQL. Shouldn&#x27;t this<br>function be removed from the pgcrypto-extension as of PostgreSQL 13?<br>I&#x27;m installing this extension in a PostgreSQL 14.1 database on Oracle Linux<br>8 (I think this is valid for every OS with every version of PostgreSQL 13<br>and up).</p>
+
+<p>If you install the pgcrypto-extension in the pg_catalog-schema (yes, I&#x27;m<br>aware if installing it in public the error doesn&#x27;t occur) you get an<br>error:<br>postgres=# create database testdb;<br>CREATE DATABASE<br>postgres=# \c testdb<br>You are now connected to database &quot;testdb&quot; as user &quot;postgres&quot;.<br>testdb=# create extension pgcrypto schema pg_catalog;<br>ERROR:  function &quot;gen_random_uuid&quot; already exists with same argument types</p>
+
+<p>If you install the pgcrypto-extension in the public-schema, the function<br>gen_random_uuid probably never gets used because the same function in<br>pg_catalog (probably) has precedence by default.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1905059.1640713316@sss.pgh.pa.us"></a>
+<a name="5b7d63a1c4288916c555240710c22918"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>andreas(dot)dijkman(at)cygnis(dot)nl</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17349: Function gen_random_uuid duplicates in pgcrypto and core</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-28 17:41:56</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1905059.1640713316%40sss.pgh.pa.us">1905059.1640713316@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1905059.1640713316%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1905059.1640713316%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1905059.1640713316%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1905059.1640713316%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; As stated in<br>&gt; <a href="https://www.postgresql.org/docs/current/pgcrypto.html#id-1.11.7.35.10" rel="nofollow">https://www.postgresql.org/docs/current/pgcrypto.html#id-1.11.7.35.10</a>, the<br>&gt; function gen_random_uuid is now part of core PostgreSQL. Shouldn&#x27;t this<br>&gt; function be removed from the pgcrypto-extension as of PostgreSQL 13?</p>
+
+<p>pg_crypto&#x27;s gen_random_uuid() is now just a wrapper for the core function.<br>Taking it out entirely would save only a couple lines of code.</p>
+
+<p>&gt; If you install the pgcrypto-extension in the pg_catalog-schema (yes, I&#x27;m<br>&gt; aware if installing it in public the error doesn&#x27;t occur) you get an<br>&gt; error:</p>
+
+<p>The contrary side of that is that taking it out of the extension could<br>break applications that expect gen_random_uuid() to exist in the<br>extension&#x27;s schema.  I don&#x27;t think we consider installing extensions<br>in pg_catalog to be a supported case, anyway.</p>
+
+<p>See previous discussion at</p>
+
+<p><a href="https://www.postgresql.org/message-id/flat/5b2c6230-e0b9-59a9-b945-c7d38fdae296@2ndquadrant.com#7ff316009e81aad797b6c0136251118c" rel="nofollow">https://www.postgresql.org/message-id/flat/5b2c6230-e0b9-59a9-b945-c7d38fdae296%402ndquadrant.com#7ff316009e81aad797b6c0136251118c</a></p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="046A362C-31BC-4C40-ACE5-B71B65EA541A@cygnis.nl"></a>
+<a name="8f86d9ce66efd4ad5e1648bdf7897e05"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andreas Dijkman &lt;andreas(dot)dijkman(at)cygnis(dot)nl&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17349: Function gen_random_uuid duplicates in pgcrypto and
+ core</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-28 20:36:22</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/046A362C-31BC-4C40-ACE5-B71B65EA541A%40cygnis.nl">046A362C-31BC-4C40-ACE5-B71B65EA541A@cygnis.nl</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/046A362C-31BC-4C40-ACE5-B71B65EA541A%40cygnis.nl">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/046A362C-31BC-4C40-ACE5-B71B65EA541A%40cygnis.nl" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/046A362C-31BC-4C40-ACE5-B71B65EA541A%40cygnis.nl" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/046A362C-31BC-4C40-ACE5-B71B65EA541A%40cygnis.nl" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Thanks for pointing me to the discussion. I’ve read the thread and would suggest applying the doc-note, that’s in the last part of that discussion:</p>
+
+<p>Small doc tweak suggestion - the pgcrypto docs [1] now say about gen_random_uuid():</p>
+
+<p>Returns a version 4 (random) UUID. (Obsolete, this function is now also<br>included in core PostgreSQL.)</p>
+
+<p>which gives the impression the code contains two versions of this function, the core<br>one and an obsolete one in pgcrypto. Per the commit message the situation is actually:</p>
+
+<p>The pgcrypto implementation now internally redirects to the built-in one.</p>
+
+<p>That would have avoided this bug-report I guess, as the documentation would reflect the actual situation better.</p>
+
+<p>Regards,<br>Andreas Dijkman</p>
+
+<p>On 28 Dec 2021, at 18:41, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&lt;mailto:tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;&gt; wrote:</p>
+
+<p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&lt;mailto:noreply(at)postgresql(dot)org&gt;&gt; writes:<br>As stated in<br><a href="https://www.postgresql.org/docs/current/pgcrypto.html#id-1.11.7.35.10" rel="nofollow">https://www.postgresql.org/docs/current/pgcrypto.html#id-1.11.7.35.10</a>, the<br>function gen_random_uuid is now part of core PostgreSQL. Shouldn&#x27;t this<br>function be removed from the pgcrypto-extension as of PostgreSQL 13?</p>
+
+<p>pg_crypto&#x27;s gen_random_uuid() is now just a wrapper for the core function.<br>Taking it out entirely would save only a couple lines of code.</p>
+
+<p>If you install the pgcrypto-extension in the pg_catalog-schema (yes, I&#x27;m<br>aware if installing it in public the error doesn&#x27;t occur) you get an<br>error:</p>
+
+<p>The contrary side of that is that taking it out of the extension could<br>break applications that expect gen_random_uuid() to exist in the<br>extension&#x27;s schema.  I don&#x27;t think we consider installing extensions<br>in pg_catalog to be a supported case, anyway.</p>
+
+<p>See previous discussion at</p>
+
+<p><a href="https://www.postgresql.org/message-id/flat/5b2c6230-e0b9-59a9-b945-c7d38fdae296@2ndquadrant.com#7ff316009e81aad797b6c0136251118c" rel="nofollow">https://www.postgresql.org/message-id/flat/5b2c6230-e0b9-59a9-b945-c7d38fdae296%402ndquadrant.com#7ff316009e81aad797b6c0136251118c</a></p>
+
+<p>regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YvvekfZ7/UD2r6+Y@momjian.us"></a>
+<a name="6bc4707ef8810701cd80b14a36d2eb3f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andreas Dijkman &lt;andreas(dot)dijkman(at)cygnis(dot)nl&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17349: Function gen_random_uuid duplicates in pgcrypto and
+ core</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-08-16 18:14:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YvvekfZ7/UD2r6%2BY%40momjian.us">YvvekfZ7/UD2r6+Y@momjian.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YvvekfZ7/UD2r6%2BY%40momjian.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YvvekfZ7/UD2r6%2BY%40momjian.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YvvekfZ7/UD2r6%2BY%40momjian.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YvvekfZ7/UD2r6%2BY%40momjian.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202208160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Dec 28, 2021 at 08:36:22PM +0000, Andreas Dijkman wrote:<br>&gt; Thanks for pointing me to the discussion. I’ve read the thread and would<br>&gt; suggest applying the doc-note, that’s in the last part of that discussion:<br>&gt; <br>&gt; <br>&gt;     Small doc tweak suggestion - the pgcrypto docs [1] now say about<br>&gt;     gen_random_uuid():<br>&gt; <br>&gt;     Returns a version 4 (random) UUID. (Obsolete, this function is now also<br>&gt;     included in core PostgreSQL.)<br>&gt; <br>&gt;     which gives the impression the code contains two versions of this function,<br>&gt;     the core<br>&gt;     one and an obsolete one in pgcrypto. Per the commit message the situation<br>&gt;     is actually:<br>&gt; <br>&gt;     The pgcrypto implementation now internally redirects to the built-in one.<br>&gt; <br>&gt; That would have avoided this bug-report I guess, as the documentation would<br>&gt; reflect the actual situation better. </p>
+
+<p>I have written the attached patch to clarify this.</p>
+
+<p>-- <br>  Bruce Momjian  &lt;bruce(at)momjian(dot)us&gt;        <a href="https://momjian.us" rel="nofollow">https://momjian.us</a><br>  EDB                                      <a href="https://enterprisedb.com" rel="nofollow">https://enterprisedb.com</a></p>
+
+<p>  Indecision is a decision.  Inaction is an action.  Mark Batterson</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/136752/pgcrypto.diff">pgcrypto.diff</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>577 bytes</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="98CC6A98-97A1-4E06-A509-4FEE9FFD3374@yesql.se"></a>
+<a name="19532a613e659e69e530a38f14ef4269"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Daniel Gustafsson &lt;daniel(at)yesql(dot)se&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Andreas Dijkman &lt;andreas(dot)dijkman(at)cygnis(dot)nl&gt;,
+ Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,
+ &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17349: Function gen_random_uuid duplicates in pgcrypto and
+ core</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-08-16 21:40:15</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/98CC6A98-97A1-4E06-A509-4FEE9FFD3374%40yesql.se">98CC6A98-97A1-4E06-A509-4FEE9FFD3374@yesql.se</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/98CC6A98-97A1-4E06-A509-4FEE9FFD3374%40yesql.se">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/98CC6A98-97A1-4E06-A509-4FEE9FFD3374%40yesql.se" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/98CC6A98-97A1-4E06-A509-4FEE9FFD3374%40yesql.se" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/98CC6A98-97A1-4E06-A509-4FEE9FFD3374%40yesql.se" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202208160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; On 16 Aug 2022, at 20:14, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt; wrote:<br>&gt; On Tue, Dec 28, 2021 at 08:36:22PM +0000, Andreas Dijkman wrote:</p>
+
+<p>&gt;&gt; That would have avoided this bug-report I guess, as the documentation would<br>&gt;&gt; reflect the actual situation better. <br>&gt; <br>&gt; I have written the attached patch to clarify this.</p>
+
+<p>LGTM.  I would&#x27;ve added an &lt;xref linkend=&quot;functions-uuid&quot;/&gt; to the the &quot;core<br>function&quot; part but that&#x27;s about it.</p>
+
+<p>--<br>Daniel Gustafsson		<a href="https://vmware.com/" rel="nofollow">https://vmware.com/</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YvwS6mh6+7s9yQfS@momjian.us"></a>
+<a name="5e9b6122d0b4f4d9c4975cd59800916c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Daniel Gustafsson &lt;daniel(at)yesql(dot)se&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Andreas Dijkman &lt;andreas(dot)dijkman(at)cygnis(dot)nl&gt;, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17349: Function gen_random_uuid duplicates in pgcrypto and
+ core</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-08-16 21:58:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YvwS6mh6%2B7s9yQfS%40momjian.us">YvwS6mh6+7s9yQfS@momjian.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YvwS6mh6%2B7s9yQfS%40momjian.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YvwS6mh6%2B7s9yQfS%40momjian.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YvwS6mh6%2B7s9yQfS%40momjian.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YvwS6mh6%2B7s9yQfS%40momjian.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202208160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Aug 16, 2022 at 11:40:15PM +0200, Daniel Gustafsson wrote:<br>&gt; &gt; On 16 Aug 2022, at 20:14, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt; wrote:<br>&gt; &gt; On Tue, Dec 28, 2021 at 08:36:22PM +0000, Andreas Dijkman wrote:<br>&gt; <br>&gt; &gt;&gt; That would have avoided this bug-report I guess, as the documentation would<br>&gt; &gt;&gt; reflect the actual situation better. <br>&gt; &gt; <br>&gt; &gt; I have written the attached patch to clarify this.<br>&gt; <br>&gt; LGTM.  I would&#x27;ve added an &lt;xref linkend=&quot;functions-uuid&quot;/&gt; to the the &quot;core<br>&gt; function&quot; part but that&#x27;s about it.</p>
+
+<p>Sure, attached.  I used &lt;link&gt; so I could just mark the text, rather<br>than adding the chapter number.</p>
+
+<p>-- <br>  Bruce Momjian  &lt;bruce(at)momjian(dot)us&gt;        <a href="https://momjian.us" rel="nofollow">https://momjian.us</a><br>  EDB                                      <a href="https://enterprisedb.com" rel="nofollow">https://enterprisedb.com</a></p>
+
+<p>  Indecision is a decision.  Inaction is an action.  Mark Batterson</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/136766/pgcrypto.diff">pgcrypto.diff</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>620 bytes</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="F4790D11-C948-41B9-9D0E-825354C37D42@yesql.se"></a>
+<a name="5077dd85c0c331a32a6eeeb5e7d4e37c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Daniel Gustafsson &lt;daniel(at)yesql(dot)se&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Andreas Dijkman &lt;andreas(dot)dijkman(at)cygnis(dot)nl&gt;,
+ Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17349: Function gen_random_uuid duplicates in pgcrypto and core</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-08-16 22:18:06</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/F4790D11-C948-41B9-9D0E-825354C37D42%40yesql.se">F4790D11-C948-41B9-9D0E-825354C37D42@yesql.se</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/F4790D11-C948-41B9-9D0E-825354C37D42%40yesql.se">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/F4790D11-C948-41B9-9D0E-825354C37D42%40yesql.se" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/F4790D11-C948-41B9-9D0E-825354C37D42%40yesql.se" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/F4790D11-C948-41B9-9D0E-825354C37D42%40yesql.se" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202208160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; On 16 Aug 2022, at 23:58, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt; wrote:<br>&gt; <br>&gt; ﻿On Tue, Aug 16, 2022 at 11:40:15PM +0200, Daniel Gustafsson wrote:<br>&gt;&gt;&gt;&gt; On 16 Aug 2022, at 20:14, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt; wrote:<br>&gt;&gt;&gt; On Tue, Dec 28, 2021 at 08:36:22PM +0000, Andreas Dijkman wrote:<br>&gt;&gt; <br>&gt;&gt;&gt;&gt; That would have avoided this bug-report I guess, as the documentation would<br>&gt;&gt;&gt;&gt; reflect the actual situation better. <br>&gt;&gt;&gt; <br>&gt;&gt;&gt; I have written the attached patch to clarify this.<br>&gt;&gt; <br>&gt;&gt; LGTM.  I would&#x27;ve added an &lt;xref linkend=&quot;functions-uuid&quot;/&gt; to the the &quot;core<br>&gt;&gt; function&quot; part but that&#x27;s about it.<br>&gt; <br>&gt; Sure, attached.  I used &lt;link&gt; so I could just mark the text, rather<br>&gt; than adding the chapter number.</p>
+
+<p>Of course, that makes sense. +1 for this version.</p>
+
+<p>cheers ./daniel</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YxATeuFEfUeSV+Tz@momjian.us"></a>
+<a name="3441d92eb491f80e76e9954ce6703bc4"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Daniel Gustafsson &lt;daniel(at)yesql(dot)se&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Andreas Dijkman &lt;andreas(dot)dijkman(at)cygnis(dot)nl&gt;, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17349: Function gen_random_uuid duplicates in pgcrypto and
+ core</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-01 02:05:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YxATeuFEfUeSV%2BTz%40momjian.us">YxATeuFEfUeSV+Tz@momjian.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YxATeuFEfUeSV%2BTz%40momjian.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YxATeuFEfUeSV%2BTz%40momjian.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YxATeuFEfUeSV%2BTz%40momjian.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YxATeuFEfUeSV%2BTz%40momjian.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209010000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Aug 17, 2022 at 12:18:06AM +0200, Daniel Gustafsson wrote:<br>&gt; &gt; On 16 Aug 2022, at 23:58, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt; wrote:<br>&gt; &gt; <br>&gt; &gt; ﻿On Tue, Aug 16, 2022 at 11:40:15PM +0200, Daniel Gustafsson wrote:<br>&gt; &gt;&gt;&gt;&gt; On 16 Aug 2022, at 20:14, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt; wrote:<br>&gt; &gt;&gt;&gt; On Tue, Dec 28, 2021 at 08:36:22PM +0000, Andreas Dijkman wrote:<br>&gt; &gt;&gt; <br>&gt; &gt;&gt;&gt;&gt; That would have avoided this bug-report I guess, as the documentation would<br>&gt; &gt;&gt;&gt;&gt; reflect the actual situation better. <br>&gt; &gt;&gt;&gt; <br>&gt; &gt;&gt;&gt; I have written the attached patch to clarify this.<br>&gt; &gt;&gt; <br>&gt; &gt;&gt; LGTM.  I would&#x27;ve added an &lt;xref linkend=&quot;functions-uuid&quot;/&gt; to the the &quot;core<br>&gt; &gt;&gt; function&quot; part but that&#x27;s about it.<br>&gt; &gt; <br>&gt; &gt; Sure, attached.  I used &lt;link&gt; so I could just mark the text, rather<br>&gt; &gt; than adding the chapter number.<br>&gt; <br>&gt; Of course, that makes sense. +1 for this version.</p>
+
+<p>Patch applied back to PG 13, where this was applicable.  Thanks for the<br>team work on this one.</p>
+
+<p>-- <br>  Bruce Momjian  &lt;bruce(at)momjian(dot)us&gt;        <a href="https://momjian.us" rel="nofollow">https://momjian.us</a><br>  EDB                                      <a href="https://enterprisedb.com" rel="nofollow">https://enterprisedb.com</a></p>
+
+<p>  Indecision is a decision.  Inaction is an action.  Mark Batterson</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

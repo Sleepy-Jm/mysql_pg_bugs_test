@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17438: Logical replication hangs on master after huge DB load</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17438-2d4d4d7c6d1e8ec4%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-03-14T17:30:25" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17438: Logical replication hangs on master after huge DB load" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="6439e382553b7f50120c959fded30193">BUG #17438: Logical replication hangs on master after huge DB load</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202203141730">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17438-2d4d4d7c6d1e8ec4@postgresql.org"></a>
+<a name="6439e382553b7f50120c959fded30193"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sergey(dot)belyashov(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17438: Logical replication hangs on master after huge DB load</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-14 17:30:25</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17438-2d4d4d7c6d1e8ec4%40postgresql.org">17438-2d4d4d7c6d1e8ec4@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17438-2d4d4d7c6d1e8ec4%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17438-2d4d4d7c6d1e8ec4%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17438-2d4d4d7c6d1e8ec4%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17438-2d4d4d7c6d1e8ec4%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17438<br>Logged by:          Sergey Belyashov<br>Email address:      sergey(dot)belyashov(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Debian 11, GNU/Linux x86_64<br>Description:        </p>
+
+<p>Master DB has few tables: A (few inserts per second, about 200 updates per<br>second, ~100 deletes each 5 minutes), B (~100 inserts each 5 minutes), C<br>(~200 inserts and ~200 updates per second). B and C are large partitioned by<br>range tables (36 and 12 partitions). A is small table about 10K entries<br>(often updates). Table A has publications for inserts and deletes. Table B<br>has publication for all operations except truncate via root.</p>
+
+<p>I do some maintenance work. I stop production load on DB and do some high<br>load operations with table C (for example: &quot;insert into D select * from C&quot;).<br>After completion replications for A and B freezes and loads CPU for 50-99%<br>without actual data transmission. I try to disable/enable/refresh<br>subscription, but no effect. I try to restart master - no result. Only<br>drop/create of subscriptions helps me.</p>
+
+<p>Publisher logs many messages like following:<br>2022-03-14 19:57:02.907 MSK [1771976] user(at)DB ERROR:  replication slot<br>&quot;A_sub&quot; is active for PID 1766849<br>2022-03-14 19:57:02.907 MSK [1771976] user(at)DB STATEMENT:  START_REPLICATION<br>SLOT &quot;A_sub&quot; LOGICAL 28C/60150F50 (proto_version &#x27;2&#x27;, publication_names<br>&#x27;&quot;A_pub&quot;&#x27;)<br>2022-03-14 19:57:02.909 MSK [1771977] user(at)DB ERROR:  replication slot<br>&quot;B_sub&quot; is active for PID 1766828<br>2022-03-14 19:57:02.909 MSK [1771977] user(at)DB STATEMENT:  START_REPLICATION<br>SLOT &quot;B_sub&quot; LOGICAL 28C/AE2B7D8 (proto_version &#x27;2&#x27;, <br>publication_names &#x27;&quot;B_pub&quot;&#x27;)</p>
+
+<p>Subscriber logs many messages like following:<br>2022-03-14 19:56:52.709 MSK [3266082] LOG:  logical replication apply worker<br>for subscription &quot;B_sub&quot; has started<br>2022-03-14 19:56:52.710 MSK [993] LOG:  background worker &quot;logical<br>replication worker&quot; (PID 3266080) exited with exit code 1<br>2022-03-14 19:56:52.814 MSK [3266081] ERROR:  could not start WAL streaming:<br>ERROR:  replication slot &quot;A_sub&quot; is active for PID 1766849<br>2022-03-14 19:56:52.815 MSK [993] LOG:  background worker &quot;logical<br>replication worker&quot; (PID 3266081) exited with exit code 1<br>2022-03-14 19:56:52.818 MSK [3266082] ERROR:  could not start WAL streaming:<br>ERROR:  replication slot &quot;B_sub&quot; is active for PID 1766828<br>2022-03-14 19:56:52.819 MSK [993] LOG:  background worker &quot;logical<br>replication worker&quot; (PID 3266082) exited with exit code 1</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAA4eK1JO_zijrTqoZdzMn0FtTfV=Nj6Fr++BfdsBkHZqfA_cPw@mail.gmail.com"></a>
+<a name="1c6099be16a28f366e51068800dc2e94"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Sergey Belyashov &lt;sergey(dot)belyashov(at)gmail(dot)com&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17438: Logical replication hangs on master after huge DB load</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-16 11:45:27</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAA4eK1JO_zijrTqoZdzMn0FtTfV%3DNj6Fr%2B%2BBfdsBkHZqfA_cPw%40mail.gmail.com">CAA4eK1JO_zijrTqoZdzMn0FtTfV=Nj6Fr++BfdsBkHZqfA_cPw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAA4eK1JO_zijrTqoZdzMn0FtTfV%3DNj6Fr%2B%2BBfdsBkHZqfA_cPw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAA4eK1JO_zijrTqoZdzMn0FtTfV%3DNj6Fr%2B%2BBfdsBkHZqfA_cPw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAA4eK1JO_zijrTqoZdzMn0FtTfV%3DNj6Fr%2B%2BBfdsBkHZqfA_cPw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAA4eK1JO_zijrTqoZdzMn0FtTfV%3DNj6Fr%2B%2BBfdsBkHZqfA_cPw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Mar 14, 2022 at 11:49 PM PG Bug reporting form<br>&lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;<br>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17438<br>&gt; Logged by:          Sergey Belyashov<br>&gt; Email address:      sergey(dot)belyashov(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   Debian 11, GNU/Linux x86_64<br>&gt; Description:<br>&gt;<br>&gt; Master DB has few tables: A (few inserts per second, about 200 updates per<br>&gt; second, ~100 deletes each 5 minutes), B (~100 inserts each 5 minutes), C<br>&gt; (~200 inserts and ~200 updates per second). B and C are large partitioned by<br>&gt; range tables (36 and 12 partitions). A is small table about 10K entries<br>&gt; (often updates). Table A has publications for inserts and deletes. Table B<br>&gt; has publication for all operations except truncate via root.<br>&gt;<br>&gt; I do some maintenance work. I stop production load on DB and do some high<br>&gt; load operations with table C (for example: &quot;insert into D select * from C&quot;).<br>&gt; After completion replications for A and B freezes and loads CPU for 50-99%<br>&gt; without actual data transmission. I try to disable/enable/refresh<br>&gt; subscription, but no effect. I try to restart master - no result. Only<br>&gt; drop/create of subscriptions helps me.<br>&gt;</p>
+
+<p>Is it possible to get some reproducible script/test for this problem?</p>
+
+<p>&gt; Publisher logs many messages like following:<br>&gt; 2022-03-14 19:57:02.907 MSK [1771976] user(at)DB ERROR:  replication slot<br>&gt; &quot;A_sub&quot; is active for PID 1766849<br>&gt; 2022-03-14 19:57:02.907 MSK [1771976] user(at)DB STATEMENT:  START_REPLICATION<br>&gt; SLOT &quot;A_sub&quot; LOGICAL 28C/60150F50 (proto_version &#x27;2&#x27;, publication_names<br>&gt; &#x27;&quot;A_pub&quot;&#x27;)<br>&gt; 2022-03-14 19:57:02.909 MSK [1771977] user(at)DB ERROR:  replication slot<br>&gt; &quot;B_sub&quot; is active for PID 1766828<br>&gt; 2022-03-14 19:57:02.909 MSK [1771977] user(at)DB STATEMENT:  START_REPLICATION<br>&gt; SLOT &quot;B_sub&quot; LOGICAL 28C/AE2B7D8 (proto_version &#x27;2&#x27;,<br>&gt; publication_names &#x27;&quot;B_pub&quot;&#x27;)<br>&gt;<br>&gt; Subscriber logs many messages like following:<br>&gt; 2022-03-14 19:56:52.709 MSK [3266082] LOG:  logical replication apply worker<br>&gt; for subscription &quot;B_sub&quot; has started<br>&gt; 2022-03-14 19:56:52.710 MSK [993] LOG:  background worker &quot;logical<br>&gt; replication worker&quot; (PID 3266080) exited with exit code 1<br>&gt; 2022-03-14 19:56:52.814 MSK [3266081] ERROR:  could not start WAL streaming:<br>&gt; ERROR:  replication slot &quot;A_sub&quot; is active for PID 1766849<br>&gt; 2022-03-14 19:56:52.815 MSK [993] LOG:  background worker &quot;logical<br>&gt; replication worker&quot; (PID 3266081) exited with exit code 1<br>&gt; 2022-03-14 19:56:52.818 MSK [3266082] ERROR:  could not start WAL streaming:<br>&gt; ERROR:  replication slot &quot;B_sub&quot; is active for PID 1766828<br>&gt; 2022-03-14 19:56:52.819 MSK [993] LOG:  background worker &quot;logical<br>&gt; replication worker&quot; (PID 3266082) exited with exit code 1<br>&gt;</p>
+
+<p>Just by seeing these LOGs, it seems subscriber side workers are<br>exiting due to some error and publisher-side (WALSender) still<br>continues due to which I think we are seeing &quot;&quot;A_sub&quot; is active for<br>PID 1766849&quot;. Do you see any different type of error in<br>subscriber-side logs?</p>
+
+<p>-- <br>With Regards,<br>Amit Kapila.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAOe0RDwDiHrV43KunAD27wqvXDr35jCw21bUONxRuorSUBWEAA@mail.gmail.com"></a>
+<a name="3570a8bf7cd9680512e1572184cd9dd5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Sergey Belyashov &lt;sergey(dot)belyashov(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17438: Logical replication hangs on master after huge DB load</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-16 12:09:30</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAOe0RDwDiHrV43KunAD27wqvXDr35jCw21bUONxRuorSUBWEAA%40mail.gmail.com">CAOe0RDwDiHrV43KunAD27wqvXDr35jCw21bUONxRuorSUBWEAA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAOe0RDwDiHrV43KunAD27wqvXDr35jCw21bUONxRuorSUBWEAA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAOe0RDwDiHrV43KunAD27wqvXDr35jCw21bUONxRuorSUBWEAA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAOe0RDwDiHrV43KunAD27wqvXDr35jCw21bUONxRuorSUBWEAA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAOe0RDwDiHrV43KunAD27wqvXDr35jCw21bUONxRuorSUBWEAA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>ср, 16 мар. 2022 г. в 14:45, Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;:<br>&gt;<br>&gt; Is it possible to get some reproducible script/test for this problem?</p>
+
+<p>I have not tried to do it. But it is always reproducible for me: I try<br>to do it on different servers. My maintenance work takes more than 4<br>hours. There is no difference, do I &quot;insert into x select * from C&quot; or<br>&quot;alter table C alter column X type text&quot; (I did this command initially<br>for each detached partition, but have issues with subscriptions, so I<br>try to change column type by copying table partitions to new table).</p>
+
+<p>&gt;<br>&gt; Just by seeing these LOGs, it seems subscriber side workers are<br>&gt; exiting due to some error and publisher-side (WALSender) still<br>&gt; continues due to which I think we are seeing &quot;&quot;A_sub&quot; is active for<br>&gt; PID 1766849&quot;. Do you see any different type of error in<br>&gt; subscriber-side logs?<br>&gt;</p>
+
+<p>No errors other than those provided in the previous email.</p>
+
+<p>Sergey Belyashov</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAA4eK1L-1wYX00svcv0bzeT58qAQ6adQE11=sKzg6tU7TZJWdw@mail.gmail.com"></a>
+<a name="851daad0ee4b1119d20be79520184739"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Sergey Belyashov &lt;sergey(dot)belyashov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17438: Logical replication hangs on master after huge DB load</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-29 12:03:08</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAA4eK1L-1wYX00svcv0bzeT58qAQ6adQE11%3DsKzg6tU7TZJWdw%40mail.gmail.com">CAA4eK1L-1wYX00svcv0bzeT58qAQ6adQE11=sKzg6tU7TZJWdw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAA4eK1L-1wYX00svcv0bzeT58qAQ6adQE11%3DsKzg6tU7TZJWdw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAA4eK1L-1wYX00svcv0bzeT58qAQ6adQE11%3DsKzg6tU7TZJWdw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAA4eK1L-1wYX00svcv0bzeT58qAQ6adQE11%3DsKzg6tU7TZJWdw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAA4eK1L-1wYX00svcv0bzeT58qAQ6adQE11%3DsKzg6tU7TZJWdw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Mar 16, 2022 at 5:39 PM Sergey Belyashov<br>&lt;sergey(dot)belyashov(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; ср, 16 мар. 2022 г. в 14:45, Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;:<br>&gt; &gt;<br>&gt; &gt; Is it possible to get some reproducible script/test for this problem?<br>&gt;<br>&gt; I have not tried to do it. But it is always reproducible for me: I try<br>&gt; to do it on different servers. My maintenance work takes more than 4<br>&gt; hours. There is no difference, do I &quot;insert into x select * from C&quot; or<br>&gt; &quot;alter table C alter column X type text&quot; (I did this command initially<br>&gt; for each detached partition, but have issues with subscriptions, so I<br>&gt; try to change column type by copying table partitions to new table).<br>&gt;</p>
+
+<p>Is my understanding correct that this problem occurs only when you are<br>doing large operations of tables that are not published (like C or D)<br>in your case?</p>
+
+<p>&gt; &gt;<br>&gt; &gt; Just by seeing these LOGs, it seems subscriber side workers are<br>&gt; &gt; exiting due to some error and publisher-side (WALSender) still<br>&gt; &gt; continues due to which I think we are seeing &quot;&quot;A_sub&quot; is active for<br>&gt; &gt; PID 1766849&quot;. Do you see any different type of error in<br>&gt; &gt; subscriber-side logs?<br>&gt; &gt;<br>&gt;<br>&gt; No errors other than those provided in the previous email.<br>&gt;</p>
+
+<p>It is difficult for me to deduce anything from the errors given. I<br>think we need some more information from the logs to find the reason.<br>One idea could be that we run the subscriber with log_min_messages as<br>debug1 as that might give some more information in logs.</p>
+
+<p>-- <br>With Regards,<br>Amit Kapila.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAOe0RDwJsLHAjs+XfCPYFz4Uy3_nZtCj9SnOCQ1JLM6PgwxeTA@mail.gmail.com"></a>
+<a name="b45dca9b0e3c82fbb12b4e4db4289347"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Sergey Belyashov &lt;sergey(dot)belyashov(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17438: Logical replication hangs on master after huge DB load</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-31 12:53:27</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAOe0RDwJsLHAjs%2BXfCPYFz4Uy3_nZtCj9SnOCQ1JLM6PgwxeTA%40mail.gmail.com">CAOe0RDwJsLHAjs+XfCPYFz4Uy3_nZtCj9SnOCQ1JLM6PgwxeTA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAOe0RDwJsLHAjs%2BXfCPYFz4Uy3_nZtCj9SnOCQ1JLM6PgwxeTA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAOe0RDwJsLHAjs%2BXfCPYFz4Uy3_nZtCj9SnOCQ1JLM6PgwxeTA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAOe0RDwJsLHAjs%2BXfCPYFz4Uy3_nZtCj9SnOCQ1JLM6PgwxeTA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAOe0RDwJsLHAjs%2BXfCPYFz4Uy3_nZtCj9SnOCQ1JLM6PgwxeTA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203310000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>вт, 29 мар. 2022 г. в 15:03, Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;:<br>&gt; Is my understanding correct that this problem occurs only when you are<br>&gt; doing large operations of tables that are not published (like C or D)<br>&gt; in your case?</p>
+
+<p>I do not try to do anything on published tables, because I do it on<br>partitions and I detach them first from published tables.</p>
+
+<p>&gt; It is difficult for me to deduce anything from the errors given. I<br>&gt; think we need some more information from the logs to find the reason.<br>&gt; One idea could be that we run the subscriber with log_min_messages as<br>&gt; debug1 as that might give some more information in logs.</p>
+
+<p>Most of errors are:<br>2022-03-31 13:05:22.228 MSK [993] LOG:  received SIGHUP, reloading<br>configuration files<br>2022-03-31 13:05:22.233 MSK [993] LOG:  parameter &quot;log_min_messages&quot;<br>changed to &quot;debug1&quot;<br>2022-03-31 13:05:34.393 MSK [1158752] DEBUG:  autovacuum: processing<br>database &quot;DB3&quot;<br>2022-03-31 13:05:43.567 MSK [894778] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C88EF210.snap<br>2022-03-31 13:05:43.567 MSK [894781] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C88EF210.snap<br>2022-03-31 13:05:43.567 MSK [893220] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C88EF210.snap<br>2022-03-31 13:05:43.567 MSK [894670] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C88EF210.snap<br>2022-03-31 13:05:43.567 MSK [894873] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C88EF210.snap<br>2022-03-31 13:05:43.569 MSK [891054] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C88EF210.snap<br>2022-03-31 13:05:43.582 MSK [894781] node(at)DB DEBUG:  updated xmin: 1 restart: 0<br>2022-03-31 13:05:43.583 MSK [894781] node(at)DB DEBUG:  failed to<br>increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,<br>current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up<br>to 57B/C88EF210<br>2022-03-31 13:05:43.584 MSK [894778] node(at)DB DEBUG:  updated xmin: 1 restart: 0<br>2022-03-31 13:05:43.584 MSK [894778] node(at)DB DEBUG:  failed to<br>increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,<br>current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up<br>to 57B/C88EF210<br>2022-03-31 13:05:43.584 MSK [894670] node(at)DB DEBUG:  updated xmin: 1 restart: 0<br>2022-03-31 13:05:43.584 MSK [894670] node(at)DB DEBUG:  failed to<br>increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,<br>current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up<br>to 57B/C88EF210<br>2022-03-31 13:05:43.585 MSK [894873] node(at)DB DEBUG:  updated xmin: 1 restart: 0<br>2022-03-31 13:05:43.586 MSK [894873] node(at)DB DEBUG:  failed to<br>increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,<br>current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up<br>to 57B/C88EF210<br>2022-03-31 13:05:43.586 MSK [891054] node(at)DB DEBUG:  updated xmin: 1 restart: 0<br>2022-03-31 13:05:43.586 MSK [893220] node(at)DB DEBUG:  updated xmin: 1 restart: 0<br>2022-03-31 13:05:43.586 MSK [891054] node(at)DB DEBUG:  failed to<br>increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,<br>current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up<br>to 57B/C88EF210<br>2022-03-31 13:05:43.586 MSK [893220] node(at)DB DEBUG:  failed to<br>increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,<br>current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up<br>to 57B/C88EF210<br>2022-03-31 13:05:43.588 MSK [894781] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:05:43.591 MSK [894778] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:05:43.591 MSK [894670] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:05:43.592 MSK [893220] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:05:43.592 MSK [891054] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:05:43.592 MSK [894873] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:05:46.393 MSK [1158756] DEBUG:  autovacuum: processing<br>database &quot;DB&quot;<br>2022-03-31 13:05:58.396 MSK [1158759] DEBUG:  autovacuum: processing<br>database &quot;postgres&quot;<br>2022-03-31 13:06:02.044 MSK [893220] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C8925660.snap<br>2022-03-31 13:06:02.044 MSK [894873] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C8925660.snap<br>2022-03-31 13:06:02.044 MSK [891054] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C8925660.snap<br>2022-03-31 13:06:02.044 MSK [894670] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C8925660.snap<br>2022-03-31 13:06:02.044 MSK [894778] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C8925660.snap<br>2022-03-31 13:06:02.045 MSK [894781] node(at)DB DEBUG:  serializing<br>snapshot to pg_logical/snapshots/57B-C8925660.snap<br>2022-03-31 13:06:02.051 MSK [894778] node(at)DB DEBUG:  got new restart<br>lsn 57B/C88EF210 at 57B/C8925660<br>2022-03-31 13:06:02.052 MSK [894670] node(at)DB DEBUG:  got new restart<br>lsn 57B/C88EF210 at 57B/C8925660<br>2022-03-31 13:06:02.052 MSK [894781] node(at)DB DEBUG:  got new restart<br>lsn 57B/C88EF210 at 57B/C8925660<br>2022-03-31 13:06:02.052 MSK [893220] node(at)DB DEBUG:  got new restart<br>lsn 57B/C88EF210 at 57B/C8925660<br>2022-03-31 13:06:02.052 MSK [891054] node(at)DB DEBUG:  got new restart<br>lsn 57B/C88EF210 at 57B/C8925660<br>2022-03-31 13:06:02.052 MSK [894873] node(at)DB DEBUG:  got new restart<br>lsn 57B/C88EF210 at 57B/C8925660<br>2022-03-31 13:06:02.055 MSK [894778] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:06:02.059 MSK [894873] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:06:02.065 MSK [894781] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:06:02.065 MSK [891054] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:06:02.066 MSK [894670] node(at)DB DEBUG:  updated xmin: 0 restart: 1<br>2022-03-31 13:06:02.081 MSK [893220] node(at)DB DEBUG:  updated xmin: 0 restart: 1</p>
+
+<p>log file is attached.</p>
+
+<p>Sergey Belyashov<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/132718/log.zip">log.zip</a>
+            
+          </th>
+          <td>application/zip</td>
+          <td>81.0 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAA4eK1+F84tYPZ1CZJVf7PcyM8qZG+c4bmsBSq+w_Hce5Of5zg@mail.gmail.com"></a>
+<a name="25cbf6f3cfcc97a5a1e247638affb462"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Sergey Belyashov &lt;sergey(dot)belyashov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17438: Logical replication hangs on master after huge DB load</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-01 04:39:37</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAA4eK1%2BF84tYPZ1CZJVf7PcyM8qZG%2Bc4bmsBSq%2Bw_Hce5Of5zg%40mail.gmail.com">CAA4eK1+F84tYPZ1CZJVf7PcyM8qZG+c4bmsBSq+w_Hce5Of5zg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAA4eK1%2BF84tYPZ1CZJVf7PcyM8qZG%2Bc4bmsBSq%2Bw_Hce5Of5zg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAA4eK1%2BF84tYPZ1CZJVf7PcyM8qZG%2Bc4bmsBSq%2Bw_Hce5Of5zg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAA4eK1%2BF84tYPZ1CZJVf7PcyM8qZG%2Bc4bmsBSq%2Bw_Hce5Of5zg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAA4eK1%2BF84tYPZ1CZJVf7PcyM8qZG%2Bc4bmsBSq%2Bw_Hce5Of5zg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204010000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Mar 31, 2022 at 6:23 PM Sergey Belyashov<br>&lt;sergey(dot)belyashov(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; вт, 29 мар. 2022 г. в 15:03, Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;:<br>&gt; &gt; Is my understanding correct that this problem occurs only when you are<br>&gt; &gt; doing large operations of tables that are not published (like C or D)<br>&gt; &gt; in your case?<br>&gt;<br>&gt; I do not try to do anything on published tables, because I do it on<br>&gt; partitions and I detach them first from published tables.<br>&gt;<br>&gt; &gt; It is difficult for me to deduce anything from the errors given. I<br>&gt; &gt; think we need some more information from the logs to find the reason.<br>&gt; &gt; One idea could be that we run the subscriber with log_min_messages as<br>&gt; &gt; debug1 as that might give some more information in logs.<br>&gt;<br>&gt; Most of errors are:<br>...<br>&gt;<br>&gt; log file is attached.<br>&gt;</p>
+
+<p>From the logs, I see the below errors:<br>...<br>2022-03-31 13:26:47.234 MSK [887763] ERROR:  terminating logical<br>replication worker due to timeout<br>2022-03-31 13:26:47.241 MSK [888012] ERROR:  terminating logical<br>replication worker due to timeout<br>...</p>
+
+<p>Based on these errors and the information provided by you (operations<br>of non-published tables), I think you are facing the same problem as<br>being discussed in the thread [1]. If you can test the patch submitted<br>in email [2] and let us know your findings that would be great.</p>
+
+<p>[1] - <a href="https://www.postgresql.org/message-id/CAA5-nLARN7-3SLU_QUxfy510pmrYK6JJb=bk3hcgemAM_pAv+w@mail.gmail.com" rel="nofollow">https://www.postgresql.org/message-id/CAA5-nLARN7-3SLU_QUxfy510pmrYK6JJb%3Dbk3hcgemAM_pAv%2Bw%40mail.gmail.com</a><br>[2] - <a href="https://www.postgresql.org/message-id/OS3PR01MB6275E0C2B4D9E488AD7CBA209E1F9@OS3PR01MB6275.jpnprd01.prod.outlook.com" rel="nofollow">https://www.postgresql.org/message-id/OS3PR01MB6275E0C2B4D9E488AD7CBA209E1F9%40OS3PR01MB6275.jpnprd01.prod.outlook.com</a></p>
+
+<p>-- <br>With Regards,<br>Amit Kapila.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,42 @@
+{
+  "report_id": "17344",
+  "scenario_id": "17344_main",
+  "target_version": "14.1",
+  "source_url": "https://www.postgresql.org/message-id/17344-226b78b00de73a7e%40postgresql.org",
+  "parts": [
+    {
+      "text": "create extension postgres_fdw;\ndo $d$\n    begin\n        execute $$create server loopback foreign data wrapper postgres_fdw\n            options (dbname '$$||current_database()||$$',\n                     port '$$||current_setting('port')||$$',\n                     async_capable 'true'\n            )$$;\n    end;\n$d$;\ncreate user mapping for current_user server loopback;\n\n\ncreate table tab1 (a int);\ninsert into tab1 values(1), (2), (3);\ncreate foreign table ftab1 (b int) server loopback options (table_name\n'tab1');\n\n\ncreate foreign table ftab2 () inherits (ftab1) server loopback;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17344.txt",
+      "start_offset": 279,
+      "end_offset": 861,
+      "start_line": 13,
+      "end_line": 33,
+      "excerpt_sha256": "a76e3a1a585d1e121d8ccc8799bf0cc2b90a097e6d7772cd5c9a0428fc766475",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    },
+    {
+      "text": "select a from tab1 where a in (select a from ftab1);",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17344.txt",
+      "start_offset": 861,
+      "end_offset": 913,
+      "start_line": 33,
+      "end_line": 33,
+      "excerpt_sha256": "9d0460bea0d6067fc3409b1844df315afaca6bbbfa32516c46617d7bdec3a0d5",
+      "transformations": []
+    }
+  ],
+  "mode": "psql",
+  "oracle": {
+    "kind": "crash",
+    "pattern": "terminated by signal 6",
+    "reported_phenomenon": "async foreign table inheritance 查询断言",
+    "author_expected_behavior": "不崩溃"
+  },
+  "config": {},
+  "notes": "loopback libpq 通过服务器进程 PGHOST 指向本任务私有 socket。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "spec_sha256": "9dfd864b455eebb22ef94ecb7f9ced50de80b41d77e1713476e3bcc37b020521"
+}

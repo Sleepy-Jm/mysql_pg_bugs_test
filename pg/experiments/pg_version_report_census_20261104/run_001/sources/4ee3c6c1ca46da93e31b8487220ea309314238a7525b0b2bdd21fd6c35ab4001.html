@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18782: Inconsistent behaviour with triggers and row level security - depends on prior number of inserts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/18782-c189e15f237f27d6%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-01-21T15:30:46" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18782: Inconsistent behaviour with triggers and row level security - depends on prior number of inserts" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 18782 Logged by: Julian Wreford Email address: julian.wreford@gearset.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #18782: Inconsistent behaviour with triggers and row level security - depends on prior number of inserts</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>julian(dot)wreford(at)gearset(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18782: Inconsistent behaviour with triggers and row level security - depends on prior number of inserts</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-21 15:30:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18782-c189e15f237f27d6%40postgresql.org">18782-c189e15f237f27d6@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18782-c189e15f237f27d6%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18782-c189e15f237f27d6%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18782-c189e15f237f27d6%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18782-c189e15f237f27d6%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="18782-c189e15f237f27d6%40postgresql.org" selected="selected">2025-01-21 15:30:46 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="762350.1737834988%40sss.pgh.pa.us">&nbsp;2025-01-25 19:56:28 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAEd9u5%3Dg2CS3XAG_k-ua2Lgymob-gLXdGyC1c9EeOgxRb8Kt2Q%40mail.gmail.com">&nbsp;&nbsp;2025-01-27 09:45:25 from Julian Wreford &lt;julian(dot)wreford(at)gearset(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18782<br>Logged by:          Julian Wreford<br>Email address:      julian(dot)wreford(at)gearset(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Windows 11 Pro, 24H2, 26100.2605<br>Description:        </p>
+
+<p>We have been seeing behaviour of the interaction between triggers and row<br>level security being inconsistent depending on the number of inserts that<br>have previously been made to the table which the trigger is attached to. I<br>will attach full a code reproduction at the end of the issue.</p>
+
+<p>Our expectation is that a trigger which calls RLS which throws an exception<br>should always throw an exception. But our observed behaviour is that this is<br>only the case straight after the table has been made, and after some number<br>of inserts (at least 6) the trigger stops throwing an exception even when<br>the RLS policy should throw an exception</p>
+
+<p>I create two tables (`no_rls_table` and `rls_table`). These tables both have<br>a column called `should_not_duplicate` where the aim is that we block<br>inserts into one table if the other table has the same value already<br>existing.</p>
+
+<p>`no_rls_table` has not got any RLS on it and the app user has full<br>permissions on it<br>`rls_table` has RLS on it which checks if the `team_id` (uuid type) column<br>matches a setting called `team.team_id` (which we check using<br>`current_setting`). When `team.team_id` is missing we expect the RLS to<br>throw an exception (because Postgres reads it as an empty string and an<br>empty string can&#x27;t be converted to a UUID).</p>
+
+<p>We then add a trigger to `no_rls_table` which checks for every row inserted<br>if the value already exists in `rls_table`. If it does then we raise an<br>exception, otherwise continue with the insert.</p>
+
+<p>(1) As expected, we can correctly INSERT into `no_rls_table` if we use `SET<br>LOCAL team.team_id = &#x27;6a43cea8-4a5c-4989-bae2-ef5a77d92620&#x27;`<br>(2) And again, as expected the INSERT into `no_rls_table` will fail with an<br>exception if we don&#x27;t set `team.team_id` to a value</p>
+
+<p>(3) HOWEVER, if we then do a bunch (6+) of inserts into the `no_rls_table`<br>we observe different behaviours for the above.<br>(4) Specifically, we now try and do an INSERT without setting `team.team_id`<br>and we expect the behaviour to be a thrown exception as was the case above,<br>but now the INSERT completes with no exceptions. </p>
+
+<p>It was our understanding that the RLS function is the first thing that is<br>called before accessing any table, so we would expect the trigger to ALWAYS<br>fail if there is no local variable set, but this is not the case if it<br>follows a chunk of inserts into the relevant table.</p>
+
+<p>I would be very grateful if anyone was able to help provide some light on<br>this situation! We have tested this on v14.5, 16.6 and 17.2 and found<br>consistent behaviour</p>
+
+<p>Full code to reproduce the scenario<br>```sql<br>-- Create less privileged user<br>CREATE USER app_user;</p>
+
+<p>-- Create table which has no Row level security and give necessary<br>permissions to app user<br>CREATE TABLE no_rls_table<br>(<br>    id BIGSERIAL PRIMARY KEY,<br>    should_not_duplicate uuid<br>);<br>GRANT SELECT, INSERT, DELETE ON TABLE no_rls_table to app_user;<br>GRANT USAGE, SELECT ON SEQUENCE no_rls_table_id_seq to app_user;</p>
+
+<p>-- Create table which has row level security based on local settings<br>(team.team_id)<br>CREATE TABLE rls_table<br>(<br>    id BIGSERIAL PRIMARY KEY,<br>    team_id uuid,<br>    should_not_duplicate uuid<br>);<br>GRANT SELECT, INSERT, DELETE ON TABLE rls_table to app_user;<br>GRANT USAGE, SELECT ON SEQUENCE rls_table_id_seq to app_user;</p>
+
+<p>CREATE POLICY rls_table_policy<br>    ON rls_table<br>    TO app_user<br>    USING (<br>        team_id = current_setting(&#x27;team.team_id&#x27;) :: uuid<br>        )<br>    WITH CHECK (<br>        team_id = current_setting(&#x27;team.team_id&#x27;) :: uuid<br>    );</p>
+
+<p>ALTER TABLE rls_table ENABLE ROW LEVEL SECURITY;</p>
+
+<p>-- Add a trigger on the no_rls_table which checks if the rls_table has a<br>particular value<br>CREATE OR REPLACE FUNCTION ensure_not_duplicated_on_rls_table() RETURNS<br>TRIGGER AS<br>$$<br>    BEGIN<br>        IF EXISTS (<br>            SELECT 1<br>            FROM rls_table<br>            WHERE rls_table.should_not_duplicate =<br>NEW.should_not_duplicate<br>        )<br>        THEN<br>            RAISE EXCEPTION &#x27;This value should not be duplicated between the<br>two tables&#x27;;<br>        END IF;</p>
+
+<p>        RETURN NEW;<br>    END;<br>$$ LANGUAGE plpgsql;</p>
+
+<p>CREATE TRIGGER check_not_duplicated_on_rls_table<br>    BEFORE INSERT OR UPDATE ON no_rls_table<br>    FOR EACH ROW<br>EXECUTE PROCEDURE ensure_not_duplicated_on_rls_table();</p>
+
+<p>-- (1) One INSERT to demonstrate it works correctly with a local team<br>BEGIN;<br>SET ROLE app_user;<br>SET LOCAL team.team_id = &#x27;6a43cea8-4a5c-4989-bae2-ef5a77d92620&#x27;;<br>INSERT INTO no_rls_table (should_not_duplicate) VALUES (<br>gen_random_uuid());<br>COMMIT;</p>
+
+<p>-- (2) Try and insert into no_rls_table and it fails if it has no<br>team.team_id<br>BEGIN;<br>SET ROLE app_user;<br> -- This command will fail with an exception `[22P02] ERROR: invalid input<br>syntax for type uuid: &quot;&quot;`<br>INSERT INTO no_rls_table (should_not_duplicate) VALUES (<br>gen_random_uuid());<br>COMMIT;</p>
+
+<p>-- (3) Do a bunch of inserts into no_rls_table with team.team_id so these<br>work correctly<br>BEGIN;<br>SET ROLE app_user;<br>SET LOCAL team.team_id = &#x27;6a43cea8-4a5c-4989-bae2-ef5a77d92620&#x27;;<br>INSERT INTO no_rls_table (should_not_duplicate) VALUES (<br>gen_random_uuid());<br>INSERT INTO no_rls_table (should_not_duplicate) VALUES (<br>gen_random_uuid());<br>INSERT INTO no_rls_table (should_not_duplicate) VALUES (<br>gen_random_uuid());<br>INSERT INTO no_rls_table (should_not_duplicate) VALUES (<br>gen_random_uuid());<br>INSERT INTO no_rls_table (should_not_duplicate) VALUES (<br>gen_random_uuid());<br>INSERT INTO no_rls_table (should_not_duplicate) VALUES (<br>gen_random_uuid());<br>COMMIT;</p>
+
+<p>-- (4) Try and insert the no_rls_table without team.team_id again and this<br>time no exception is thrown. THIS IS THE UNEXPECTED BEHAVIOUR<br>BEGIN;<br>SET ROLE app_user;<br>INSERT INTO no_rls_table (should_not_duplicate) VALUES (<br>gen_random_uuid());<br>COMMIT;</p>
+
+<p>-- Cleanup Phase<br>RESET ROLE;<br>DROP TABLE rls_table;<br>DROP TABLE no_rls_table;<br>```</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/762350.1737834988%40sss.pgh.pa.us">Re: BUG #18782: Inconsistent behaviour with triggers and row level security - depends on prior number of inserts</a> at 2025-01-25 19:56:28 from Tom Lane
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAGECzQR%2BCUuHDYOooGO5y87nRJnw_sjOvPVBUt7pmg2vopgc7w%40mail.gmail.com">Next Message</a></th>
+            <td>Jelte Fennema-Nio</td>
+            <td>2025-01-21 16:35:17</td>
+            <td><a href="/message-id/CAGECzQR%2BCUuHDYOooGO5y87nRJnw_sjOvPVBUt7pmg2vopgc7w%40mail.gmail.com">Combining array slicing and indexing causes incorrect/confusing results</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/Z49Qtip-KixCZ0LA%40paquier.xyz">Previous Message</a></th>
+            <td>Michael Paquier</td>
+            <td>2025-01-21 07:45:58</td>
+            <td><a href="/message-id/Z49Qtip-KixCZ0LA%40paquier.xyz">Re: reltuples kept decreasing with each autovacuum run Re: BUG #18773: オートバキュームのリトライ時にreltuplesの値が減少する</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

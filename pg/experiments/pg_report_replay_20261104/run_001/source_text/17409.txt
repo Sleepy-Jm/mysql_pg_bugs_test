@@ -1,0 +1,74 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17409
+Logged by:          Holly Roberts
+Email address:      holly(dot)roberts(at)starlingbank(dot)com
+PostgreSQL version: 14.2
+Operating system:   Debian 10.2.1-6
+Description:        
+
+
+When attempting to change the data type of a column that has previously been
+clustered on, which is also referenced by a foreign key, then an exception
+is thrown.
+
+
+Reproduction steps using a fresh database:
+	CREATE TABLE parent (
+		parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY
+	);
+	CREATE TABLE child (
+		child_field INTEGER,
+		CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent
+(parent_field)
+	);
+	CLUSTER parent USING pk_parent;
+	ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;
+
+
+This throws the following error:
+	ERROR:  relation 16458 has multiple clustered indexes
+	'SELECT 16458::regclass' returns 'parent';
+This has previously worked on various versions of postgres 12 and 13 for me
+(latest tried 13.6)
+
+
+I have reproduced the following on both 14.2 and 14.0, my postgres version
+is as follows:
+	SELECT version();
+	PostgreSQL 14.2 (Debian 14.2-1.pgdg110+1) on x86_64-pc-linux-gnu, compiled
+by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
+
+
+Some minor observations:
+- Removing the FK allows the data type to be changed
+- Occurs for both primary key/unique index
+- Occurs on other data types (eg. going from TEXT to BIGINT with 'USING')
+
+
+Looking through pg_catalog I can also see that only one index is clustered
+as would be expected:
+	SELECT
+	  table_cls.relnamespace::regnamespace::text AS schema,
+	  table_cls.relname AS table,
+	  index_cls.relname AS index,
+	  indisclustered
+	FROM pg_index pi
+	INNER JOIN pg_class index_cls ON (pi.indexrelid = index_cls.oid)
+	INNER JOIN pg_class table_cls ON (pi.indrelid = table_cls.oid)
+	WHERE (table_cls.relnamespace::regnamespace::text, table_cls.relname) =
+('public', 'parent');
+
+
+	 schema | table  |   index   | indisclustered
+	--------+--------+-----------+----------------
+	 public | parent | pk_parent | t
+	(1 row)
+
+
+Many Thanks,
+Holly Roberts
+
+
+

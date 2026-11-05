@@ -1,0 +1,284 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17320
+Logged by:          Zhiyong Wu
+Email address:      253540651(at)qq(dot)com
+PostgreSQL version: 14.1
+Operating system:   Linux version 5.13.0-1-MANJARO (builduser(at)LEGION)
+Description:        
+
+
+PoC:
+WITH RECURSIVE x ( x ) AS ( SELECT 4 UNION ( WITH x AS ( SELECT 5 UNION (
+WITH TIMESTAMP AS ( SELECT 2 UNION ( WITH x ( x ) AS ( SELECT 1 UNION ( WITH
+x AS ( SELECT 6 FROM ( VALUES ( ROW ( 1 , 2 ) ) , ( ROW ( 1 , 4 ) ) ) x ( x
+) UNION ( WITH x AS ( SELECT 7 ) SELECT * FROM x ) ) SELECT * FROM x UNION
+SELECT * FROM x ) ) SELECT * FROM x ) ) SELECT * FROM ( SELECT * FROM x
+WHERE x = x ) x ) ) SELECT * FROM x ) ) SEARCH BREADTH FIRST BY x SET NCHAR
+SELECT * FROM x WHERE x BETWEEN 0 AND 1000000 ;
+ COPY x FROM STDIN WHERE x IN ( x ( 1 , 5 ) ) ;
+ CREATE OR REPLACE TEMP VIEW x AS SELECT x , x ( x ) OVER ( ORDER BY x ROWS
+BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE NO OTHERS ) AS x FROM x ( 1 , 10
+) x ;
+ EXECUTE x ( '-9223372036854775800' ) ;
+
+
+Asan LoG:
+=================================================================
+==4218==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000008 (pc
+0x000000da215c bp 0x000000000001 sp 0x7ffd39de1d50 T0)
+==4218==The signal is caused by a READ memory access.
+==4218==Hint: address points to the zero page.
+    #0 0xda215c in bms_add_members
+/root/postgres/bld/../src/backend/nodes/bitmapset.c:806:9
+    #1 0xf25518 in add_vars_to_targetlist
+/root/postgres/bld/../src/backend/optimizer/plan/initsplan.c:259:30
+    #2 0xf250c7 in build_base_rel_tlists
+/root/postgres/bld/../src/backend/optimizer/plan/initsplan.c:192:3
+    #3 0xf32c45 in query_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planmain.c:178:2
+    #4 0xf3f24e in grouping_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1448:17
+    #5 0xf394a7 in subquery_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2
+    #6 0xe859a6 in set_subquery_pathlist
+/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:2229:17
+    #7 0xe859a6 in set_rel_size
+/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:423:5
+    #8 0xe7a0cb in set_base_rel_sizes
+/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:324:3
+    #9 0xe7a0cb in make_one_rel
+/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:186:2
+    #10 0xf32cd2 in query_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planmain.c:276:14
+    #11 0xf3f24e in grouping_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1448:17
+    #12 0xf394a7 in subquery_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2
+    #13 0xfa116c in recurse_set_operations
+/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:239:28
+    #14 0xfa04ea in generate_recursion_path
+/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:469:9
+    #15 0xfa04ea in plan_set_operations
+/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:156:15
+    #16 0xf3c035 in grouping_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1286:17
+    #17 0xf394a7 in subquery_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2
+    #18 0xf790cd in SS_process_ctes
+/root/postgres/bld/../src/backend/optimizer/plan/subselect.c:980:13
+    #19 0xf3552c in subquery_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:650:3
+    #20 0xf33304 in standard_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:406:9
+    #21 0xf32fa8 in planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:277:12
+    #22 0x13379c7 in pg_plan_query
+/root/postgres/bld/../src/backend/tcop/postgres.c:847:9
+    #23 0x13379c7 in pg_plan_queries
+/root/postgres/bld/../src/backend/tcop/postgres.c:939:11
+    #24 0x1345487 in exec_simple_query
+/root/postgres/bld/../src/backend/tcop/postgres.c:1133:19
+    #25 0x133da73 in PostgresMain
+/root/postgres/bld/../src/backend/tcop/postgres.c
+    #26 0x1094d63 in BackendRun
+/root/postgres/bld/../src/backend/postmaster/postmaster.c:4584:2
+    #27 0x109333d in BackendStartup
+/root/postgres/bld/../src/backend/postmaster/postmaster.c:4312:3
+    #28 0x109333d in ServerLoop
+/root/postgres/bld/../src/backend/postmaster/postmaster.c:1801:7
+    #29 0x10898e3 in PostmasterMain
+/root/postgres/bld/../src/backend/postmaster/postmaster.c:1473:11
+    #30 0xd9d463 in main
+/root/postgres/bld/../src/backend/main/main.c:198:3
+    #31 0x7f9a9f2ce0b2 in __libc_start_main
+/build/glibc-eX1tMB/glibc-2.31/csu/../csu/libc-start.c:308:16
+    #32 0x49bc1d in _start (/usr/local/pgsql/bin/postgres+0x49bc1d)
+
+
+AddressSanitizer can not provide additional info.
+SUMMARY: AddressSanitizer: SEGV
+/root/postgres/bld/../src/backend/nodes/bitmapset.c:806:9 in
+bms_add_members
+==4218==ABORTING
+
+
+
+
+
+### MESSAGE 1
+At Mon, 06 Dec 2021 06:42:57 +0000, PG Bug reporting form <noreply(at)postgresql(dot)org> wrote in 
+> The following bug has been logged on the website:
+> 
+> Bug reference:      17320
+> Logged by:          Zhiyong Wu
+> Email address:      253540651(at)qq(dot)com
+> PostgreSQL version: 14.1
+> Operating system:   Linux version 5.13.0-1-MANJARO (builduser(at)LEGION)
+> Description:        
+> 
+> PoC:
+> WITH RECURSIVE x ( x ) AS ( SELECT 4 UNION ( WITH x AS ( SELECT 5 UNION (
+> WITH TIMESTAMP AS ( SELECT 2 UNION ( WITH x ( x ) AS ( SELECT 1 UNION ( WITH
+> x AS ( SELECT 6 FROM ( VALUES ( ROW ( 1 , 2 ) ) , ( ROW ( 1 , 4 ) ) ) x ( x
+> ) UNION ( WITH x AS ( SELECT 7 ) SELECT * FROM x ) ) SELECT * FROM x UNION
+> SELECT * FROM x ) ) SELECT * FROM x ) ) SELECT * FROM ( SELECT * FROM x
+> WHERE x = x ) x ) ) SELECT * FROM x ) ) SEARCH BREADTH FIRST BY x SET NCHAR
+> SELECT * FROM x WHERE x BETWEEN 0 AND 1000000 ;
+>  COPY x FROM STDIN WHERE x IN ( x ( 1 , 5 ) ) ;
+>  CREATE OR REPLACE TEMP VIEW x AS SELECT x , x ( x ) OVER ( ORDER BY x ROWS
+> BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE NO OTHERS ) AS x FROM x ( 1 , 10
+> ) x ;
+>  EXECUTE x ( '-9223372036854775800' ) ;
+..
+>     #0 0xda215c in bms_add_members
+> /root/postgres/bld/../src/backend/nodes/bitmapset.c:806:9
+>     #1 0xf25518 in add_vars_to_targetlist
+> /root/postgres/bld/../src/backend/optimizer/plan/initsplan.c:259:30
+>     #2 0xf250c7 in build_base_rel_tlists
+
+
+I had the following assertion failure from the original query by
+master head.
+
+
+> TRAP: FailedAssertion("attno >= rel->min_attr && attno <= rel->max_attr", File: "initsplan.c", Line: 249, PID: 25862)
+
+
+max_attr is 1 and attno is 2 here.  I could reduce the query like this.
+
+
+WITH RECURSIVE x ( x ) AS
+ (SELECT 1
+  UNION
+  (WITH x AS
+    (WITH TIMESTAMP AS (SELECT 2)
+     SELECT * FROM x)
+   SELECT * FROM x)
+ ) SEARCH BREADTH FIRST BY x SET NCHAR
+SELECT * FROM x;
+
+
+If I tried to execute the following query, I got the follwoing
+error. This looks like rooted from the same mistake.
+
+
+WITH RECURSIVE x ( x ) AS
+ (SELECT 1
+  UNION
+  (WITH x AS (SELECT * FROM x)
+   SELECT * FROM x)
+ ) SEARCH BREADTH FIRST BY x SET NCHAR
+SELECT * FROM x;
+
+
+> ERROR:  could not find attribute 2 in subquery targetlist
+
+
+The outmost query tries to access nchar that the second level query
+doesn't have. The implicit column is not surfaced through the
+upper-level CTEs.
+
+
+By the way, if I executed the following query, I get the following
+another assertion failure.
+
+
+WITH RECURSIVE x ( x ) AS
+ (SELECT 1
+  UNION
+  (WITH y AS (SELECT * FROM x)
+   SELECT * FROM y)
+ ) SEARCH BREADTH FIRST BY x SET NCHAR
+SELECT * FROM x;
+
+
+> TRAP: FailedAssertion("cte_rtindex > 0", File: "rewriteSearchCycle.c", Line: 398, PID: 31288)
+
+
+This looks a bit different but rooted from the same issue.
+
+
+The most simple way to avoid such assertion failures or internal erors
+is to reject indirecto references to CTEs that have SEARCH or CYCLE
+clause.  I'm not sure it's worth the trouble somehow allowing such
+references.
+
+
+I'm not confident that it is the right fix, but the attached catches
+the original problem query and the above reduced queries as syntax
+error.
+
+
+regards.
+
+
+-- 
+Kyotaro Horiguchi
+NTT Open Source Software Center
+
+
+
+### MESSAGE 2
+[ this'd been on my to-do list for a long time, I finally got to it ]
+
+
+Kyotaro Horiguchi <horikyota(dot)ntt(at)gmail(dot)com> writes:
+> If I tried to execute the following query, I got the follwoing
+> error. This looks like rooted from the same mistake.
+
+
+> WITH RECURSIVE x ( x ) AS
+>  (SELECT 1
+>   UNION
+>   (WITH x AS (SELECT * FROM x)
+>    SELECT * FROM x)
+>  ) SEARCH BREADTH FIRST BY x SET NCHAR
+> SELECT * FROM x;
+
+
+> ERROR:  could not find attribute 2 in subquery targetlist
+
+
+> By the way, if I executed the following query, I get the following
+> another assertion failure.
+
+
+> WITH RECURSIVE x ( x ) AS
+>  (SELECT 1
+>   UNION
+>   (WITH y AS (SELECT * FROM x)
+>    SELECT * FROM y)
+>  ) SEARCH BREADTH FIRST BY x SET NCHAR
+> SELECT * FROM x;
+
+
+> TRAP: FailedAssertion("cte_rtindex > 0", File: "rewriteSearchCycle.c", Line: 398, PID: 31288)
+
+
+This is pretty remarkable, because those two queries *should* be
+semantically identical.  I guessed that something is getting confused
+by the duplicated CTE name, and it didn't take long to see what:
+rewriteSearchAndCycle() is failing to check ctelevelsup while looking
+for a match to the recursive CTE's name.  Thus, it thinks that the
+reference to the lower WITH item (either "x" or "y" in these two
+examples) is the recursive reference it seeks, which it ain't.
+
+
+Eventually perhaps we should support this, since a recursive query
+of this form is allowed in other contexts.  But I'm content to
+throw error for now, as per the attached patch.  This catches all
+the cases shown in this thread, as well as the seemingly unrelated
+error shown in bug #17318.
+
+
+(I looked for other places that might be carelessly matching on
+ctename without checking levelsup, and found none.)
+
+
+			regards, tom lane
+
+
+

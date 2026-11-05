@@ -1,0 +1,70 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17288
+Logged by:          Dmitry Koval
+Email address:      d(dot)koval(at)postgrespro(dot)ru
+PostgreSQL version: 14.1
+Operating system:   Windows 10 (21H1)
+Description:        
+
+
+Hi,
+there is a problem on the REL_14_STABLE branch (on the REL_14_1
+branch too). When executing a query under Windows 10 (21H1)
+
+
+\copy (SELECT 1) TO stdout
+
+
+PSQL utility prints error 
+"could not stat file" (null) ": Invalid argument" and crashes.
+There is no error under Ubuntu 20.04 LTS.
+
+
+Issue source: commit bed90759fcbcd72d4d06969eebab81e47326f9a 
+("Fix our Windows stat() emulation to handle file sizes > 4GB.", 
+discussion: https://postgr.es/m/15858-9572469fd3b73263@postgresql.org)
+
+
+In this commit function stat () was replaced to function 
+GetFileInformationByHandle() 
+(see src/port/win32stat.c, function fileinfo_to_stat()):
+
+
+	if (!GetFileInformationByHandle(hFile, &fiData))
+	{
+		_dosmaperr(GetLastError());
+		return -1;
+	}
+
+
+Function GetFileInformationByHandle() works for files but can not work
+with streams like "stdout".
+For "stdout" the GetFileInformationByHandle () function returns an error
+(GetLastError () == ERROR_INVALID_FUNCTION), which causes PSQL crash.
+
+
+Examples of errors processing for function GetFileInformationByHandle()
+in other applications:
+
+
+1) https://github.com/python/cpython/blob/main/Modules/posixmodule.c
+2)
+https://doxygen.reactos.org/da/d6a/subsystems_2mvdm_2ntvdm_2hardware_2disk_8c_source.html
+
+
+Quick fix in src/port/win32stat.c: 
+in case function GetFileInformationByHandle() returns a specific error
+code, call the _stat64() function for this descriptor.
+It's not elegant, but it works.
+
+
+(I'll attach file with patch in next email).
+
+
+With best regards,
+Dmitry Koval.
+
+
+

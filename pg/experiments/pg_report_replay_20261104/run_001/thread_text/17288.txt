@@ -1,0 +1,835 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17288
+Logged by:          Dmitry Koval
+Email address:      d(dot)koval(at)postgrespro(dot)ru
+PostgreSQL version: 14.1
+Operating system:   Windows 10 (21H1)
+Description:        
+
+
+Hi,
+there is a problem on the REL_14_STABLE branch (on the REL_14_1
+branch too). When executing a query under Windows 10 (21H1)
+
+
+\copy (SELECT 1) TO stdout
+
+
+PSQL utility prints error 
+"could not stat file" (null) ": Invalid argument" and crashes.
+There is no error under Ubuntu 20.04 LTS.
+
+
+Issue source: commit bed90759fcbcd72d4d06969eebab81e47326f9a 
+("Fix our Windows stat() emulation to handle file sizes > 4GB.", 
+discussion: https://postgr.es/m/15858-9572469fd3b73263@postgresql.org)
+
+
+In this commit function stat () was replaced to function 
+GetFileInformationByHandle() 
+(see src/port/win32stat.c, function fileinfo_to_stat()):
+
+
+	if (!GetFileInformationByHandle(hFile, &fiData))
+	{
+		_dosmaperr(GetLastError());
+		return -1;
+	}
+
+
+Function GetFileInformationByHandle() works for files but can not work
+with streams like "stdout".
+For "stdout" the GetFileInformationByHandle () function returns an error
+(GetLastError () == ERROR_INVALID_FUNCTION), which causes PSQL crash.
+
+
+Examples of errors processing for function GetFileInformationByHandle()
+in other applications:
+
+
+1) https://github.com/python/cpython/blob/main/Modules/posixmodule.c
+2)
+https://doxygen.reactos.org/da/d6a/subsystems_2mvdm_2ntvdm_2hardware_2disk_8c_source.html
+
+
+Quick fix in src/port/win32stat.c: 
+in case function GetFileInformationByHandle() returns a specific error
+code, call the _stat64() function for this descriptor.
+It's not elegant, but it works.
+
+
+(I'll attach file with patch in next email).
+
+
+With best regards,
+Dmitry Koval.
+
+
+
+
+
+### MESSAGE 1
+Attachments: patch + screenshot with error.
+
+
+### MESSAGE 2
+On Wed, Nov 17, 2021 at 01:29:02PM +0300, Dmitry Koval wrote:
+> Attachments: patch + screenshot with error.
+
+
+Gulp.  I can reproduce this problem.
+
+
+>  	if (!GetFileInformationByHandle(hFile, &fiData))
+>  	{
+> -		_dosmaperr(GetLastError());
+> +		DWORD		error = GetLastError();
+> +
+> +		switch (error)
+> +		{
+> +			case ERROR_INVALID_PARAMETER:
+> +			case ERROR_INVALID_FUNCTION:
+> +			case ERROR_NOT_SUPPORTED:
+> +
+> +				/*
+> +				 * Object is other than real file (stdout, for example). So
+> +				 * need to call _fstat64 in this case. "struct stat" should
+> +				 * match "struct __stat64", see "struct stat" definition.
+> +				 */
+> +				if (fileno >= 0)
+> +					return _fstat64(fileno, (struct __stat64 *) buf);
+> +				else if (name)
+> +					return _stat64(name, (struct __stat64 *) buf);
+> +		}
+> +		_dosmaperr(error);
+>  		return -1;
+
+
+Hmm.  _fstat64() and _stat64() have proved to be tricky to work with
+and rather unworkable across all the build systems we support
+(remember the 2GB file size problem, for example), which is why we
+have the existing business of win32stat.c to begin with.  It seems to
+me, also, that we could run into issues if we blindly map those error
+codes to call a stat() function as fallback.  I am not sure that doing
+a blind cast to __stat64 is going to work all the time, either.
+
+
+I think that we had better never call GetFileInformationByHandle() if
+we use a fileno that maps to stdin, stdout or stderr.  The 10000$
+question is what to use though.  One option is to let our emulation
+code fill in the gap for those three cases with at least st_mode
+filled with S_IFIFO, then return 0 as error code :/
+
+
+Just to be sure, this is the code path in psql's copy.c where we check
+that a specified copystream is not a directory, right?
+--
+Michael
+
+
+
+### MESSAGE 3
+Thanks for reporting.
+
+
+On Thu, Nov 18, 2021 at 8:40 AM Michael Paquier <michael(at)paquier(dot)xyz> wrote:
+
+
+> On Wed, Nov 17, 2021 at 01:29:02PM +0300, Dmitry Koval wrote:
+> > Attachments: patch + screenshot with error.
+>
+> I think that we had better never call GetFileInformationByHandle() if
+> we use a fileno that maps to stdin, stdout or stderr.  The 10000$
+> question is what to use though.  One option is to let our emulation
+> code fill in the gap for those three cases with at least st_mode
+> filled with S_IFIFO, then return 0 as error code :/
+>
+> When the file descriptor is coming from a stream I don't think we have to
+use GetFileInformationByHandle() or stat() to get any information, but we
+can directly return the stat information. Please find attached a patch for
+so.
+
+
+Regards,
+
+
+Juan José Santamaría Flecha
+
+
+
+### MESSAGE 4
+ >_fstat64() and _stat64() have proved to be tricky to work with and 
+ >rather unworkable across all the build systems we support
+
+
+I agree, it is better not use them.
+
+
+ >I think that we had better never call GetFileInformationByHandle() if
+ >we use a fileno that maps to stdin, stdout or stderr.
+
+
+Probably we should call GetFileInformationByHandle() for case standard
+streams stdin/stdout/stderr are redirected to files.
+See file src\backend\utils\error\elog.c, for example. It contains
+lines:
+
+
+if (!freopen(OutputFileName, "a", stderr))
+if (!freopen(OutputFileName, "a", stdout))
+
+
+And this command with "stderr" works in PSQL without crash (in
+contrast to "stdout"):
+
+
+\copy (SELECT 1) TO stderr
+
+
+(it put resullt into file with name "stderr").
+We can emulate stats for stdin/stdout/stderr after call
+GetFileInformationByHandle().
+
+
+ >Just to be sure, this is the code path in psql's copy.c where we check 
+ >that a specified copystream is not a directory, right?
+
+
+Yes, fstat() called from file src/bin/psql/copy.c:
+
+
+/* make sure the specified file is not a directory */
+if ((result = fstat(fileno(copystream), &st)) < 0)
+
+
+I attached new patch version.
+
+
+With best regards,
+Dmitry Koval.
+
+
+### MESSAGE 5
+Three corrections for patch
+v2-0001-Fixed-Windows-stat-emulation-working-with-streams.patch:
+
+
+1) I see in debugger that field "st_mode" for stdout has value
+_S_IFCHR (0x2000, 8192);
+
+
+2) "st_rdev" feild should have the same value as "st_dev";
+
+
+3) we can not use emulated stat information for stderr after call
+"freopen(OutputFileName, "a", stderr);".
+
+
+With best regards,
+Dmitry Koval.
+
+
+
+
+
+### MESSAGE 6
+On Thu, Nov 18, 2021 at 2:40 PM Dmitry Koval <d(dot)koval(at)postgrespro(dot)ru> wrote:
+
+
+>  >I think that we had better never call GetFileInformationByHandle() if
+>  >we use a fileno that maps to stdin, stdout or stderr.
+>
+> Probably we should call GetFileInformationByHandle() for case standard
+> streams stdin/stdout/stderr are redirected to files.
+> See file src\backend\utils\error\elog.c, for example. It contains
+> lines:
+>
+> if (!freopen(OutputFileName, "a", stderr))
+> if (!freopen(OutputFileName, "a", stdout))
+>
+> And this command with "stderr" works in PSQL without crash (in
+> contrast to "stdout"):
+>
+> \copy (SELECT 1) TO stderr
+>
+> (it put resullt into file with name "stderr").
+> We can emulate stats for stdin/stdout/stderr after call
+> GetFileInformationByHandle().
+>
+> You are right about freopen(), but stderr works just because it's being
+parsed as a file, not a stream, by parse_slash_copy().
+
+
+> I attached new patch version.
+>
+> I would keep the memset(buf, 0, sizeof(*buf)) for the members we are not
+setting.
+
+
+Regards,
+
+
+Juan José Santamaría Flecha
+
+
+
+### MESSAGE 7
+ >You are right about freopen(), but stderr works just because it's being
+ >parsed as a file, not a stream, by parse_slash_copy().
+
+
+You are right. I wrote about stderr without inspecting code (
+
+
+ >I would keep the memset(buf, 0, sizeof(*buf)) for the members we
+ >are not setting.
+
+
+Of course. Original code (src/port/win32stat.c) contains line
+
+
+memset(buf, 0, sizeof(*buf))
+
+
+before call GetFileInformationByHandle().
+
+
+With best regards,
+Dmitry Koval.
+
+
+
+
+
+### MESSAGE 8
+On Thu, Nov 18, 2021 at 09:48:55PM +0300, Dmitry Koval wrote:
+> >You are right about freopen(), but stderr works just because it's being
+> >parsed as a file, not a stream, by parse_slash_copy().
+> 
+> You are right. I wrote about stderr without inspecting code (
+> 
+> >I would keep the memset(buf, 0, sizeof(*buf)) for the members we
+> >are not setting.
+> 
+> Of course. Original code (src/port/win32stat.c) contains line
+> 
+> memset(buf, 0, sizeof(*buf))
+> 
+> before call GetFileInformationByHandle().
+
+
+I still think that we should not call GetFileInformationByHandle()
+when it comes to an argument that we know will fail, so I would agree
+with Juan's approach in v2 to just patch _pgfstat64() rather than
+messing with the code paths in charge of checking handles pending for
+deletion.  Each fileno is going to be 0, 1 or 2 in those cases, still
+it would be better to rely on the result of fileno() as v3 is doing?
+
+
+It looks like you are right about _S_IFCHR for st_mode, as of this
+part of the docs:
+https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/fstat-fstat32-fstat64-fstati64-fstat32i64-fstat64i32?view=msvc-170
+--
+Michael
+
+
+
+### MESSAGE 9
+ >I still think that we should not call GetFileInformationByHandle()
+ >when it comes to an argument that we know will fail, ...
+
+
+Our program calls function freopen() (this function is used in file
+src\backend\utils\error\elog.c). So we don't know exactly that
+GetFileInformationByHandle() will fails for stdin/stdout/stderr.
+
+
+Ior illustration, I attached small example (test.c) for this case:
+1) GetFileInformationByHandle() for "stdout" works without error;
+2) file "1.txt" after running test contains:
+
+
+Sample string
+attributes = 0x2020, file size = 15
+
+
+ >Each fileno is going to be 0, 1 or 2 in those cases, still
+ >it would be better to rely on the result of fileno() as v3 is
+ >doing?
+
+
+I think fileno() is safer. We can call fclose(stdout) and
+_fileno(stdout) returns -1 after that. But I don't know:
+can OS reuse fileno=1 or not in this case?
+
+
+With best regards,
+Dmitry.
+
+
+### MESSAGE 10
+On Fri, Nov 19, 2021 at 9:47 AM Dmitry Koval <d(dot)koval(at)postgrespro(dot)ru> wrote:
+
+
+>  >I still think that we should not call GetFileInformationByHandle()
+>  >when it comes to an argument that we know will fail, ...
+>
+> Our program calls function freopen() (this function is used in file
+> src\backend\utils\error\elog.c). So we don't know exactly that
+> GetFileInformationByHandle() will fails for stdin/stdout/stderr.
+>
+> Ior illustration, I attached small example (test.c) for this case:
+> 1) GetFileInformationByHandle() for "stdout" works without error;
+> 2) file "1.txt" after running test contains:
+>
+> Sample string
+> attributes = 0x2020, file size = 15
+>
+> We can check for redirection without calling GetFileInformationByHandle(),
+please consider the attached patch.
+
+
+Regards,
+
+
+Juan José Santamaría Flecha
+
+
+
+### MESSAGE 11
+ >We can check for redirection without calling
+ >GetFileInformationByHandle(), please consider the attached patch.
+
+
+There are doubts:
+
+
+1) we always use system function (GetFinalPathNameByHandleA or
+GetFileInformationByHandle); sometimes we use these two calls
+GetFinalPathNameByHandleA + GetFileInformationByHandle
+together (in freopen() case);
+
+
+2) function GetFinalPathNameByHandleA is slower than
+GetFileInformationByHandle (2-4 times).
+Might be exist a cheaper way than GetFinalPathNameByHandleA?
+
+
+I don't understand why this way better than using one call
+GetFileInformationByHandle...
+
+
+With best regards,
+Dmitry Koval.
+
+
+
+
+
+### MESSAGE 12
+On Fri, Nov 19, 2021 at 11:45 AM Dmitry Koval <d(dot)koval(at)postgrespro(dot)ru>
+wrote:
+
+
+>  >We can check for redirection without calling
+>  >GetFileInformationByHandle(), please consider the attached patch.
+>
+> There are doubts:
+>
+> 1) we always use system function (GetFinalPathNameByHandleA or
+> GetFileInformationByHandle); sometimes we use these two calls
+> GetFinalPathNameByHandleA + GetFileInformationByHandle
+> together (in freopen() case);
+>
+> 2) function GetFinalPathNameByHandleA is slower than
+> GetFileInformationByHandle (2-4 times).
+> Might be exist a cheaper way than GetFinalPathNameByHandleA?
+>
+> I don't understand why this way better than using one call
+> GetFileInformationByHandle...
+>
+> Personally, I think it is more readable, although a comment should explain
+what we are checking.
+
+
+GetFinalPathNameByHandleA() is slower when there is redirection, when there
+is no redirection it's similar or faster than GetFileInformationByHandle(),
+and that should be the most common case.
+
+
+Regards,
+
+
+Juan José Santamaría Flecha
+
+
+
+### MESSAGE 13
+ >GetFinalPathNameByHandleA() is slower when there is redirection, when
+ >there is no redirection it's similar or faster than
+ >GetFileInformationByHandle(), and that should be the most common case.
+
+
+I tested 2 cases:
+
+
+1) "stdout" is not redirected.
+In this case GetFinalPathNameByHandleA() returns error and 
+GetFileInformationByHandle() returns error.
+Simple test in attachment.
+---
+Result:
+GetFileInformationByHandle: 7, GetFinalPathNameByHandleA: 16
+
+
+2) "stdout" redirected (need to uncomment 2 lines in test).
+Both function works without error.
+---
+Result (see file "1.txt"):
+GetFileInformationByHandle: 34, GetFinalPathNameByHandleA: 120
+
+
+The difference is not very big, but it is.
+
+
+With best regards,
+Dmitry.
+
+
+### MESSAGE 14
+On Fri, Nov 19, 2021 at 12:44:14PM +0100, Juan José Santamaría Flecha wrote:
+> GetFinalPathNameByHandleA() is slower when there is redirection, when there
+> is no redirection it's similar or faster than GetFileInformationByHandle(),
+> and that should be the most common case.
+
+
+Yeah, the slight performance impact caused by the redirection does not
+worry me much, based on the code path of Postgres where this would be
+called.  And that's unlikely going to become a bottleneck anyway as
+GetFinalPathNameByHandleA() would just be called if we know that we
+are with stdin, stdout or stderr thanks to the first part of the "if"
+clause.
+
+
+I like the simplicity behind v4 as it does not interfere with
+_pgstat64() while dealing with the redirection case, so it should
+address the concerns from Dmitry anyway (right?).  We should really
+add a comment explaining why this is handled this way though for the
+case of streams, why the case of the redirection matters, and why we
+count on a failure of GetFinalPathNameByHandleA().
+--
+Michael
+
+
+
+### MESSAGE 15
+ >... We should really
+ >add a comment explaining why this is handled this way though for the
+ >case of streams, why the case of the redirection matters, and why we
+ >count on a failure of GetFinalPathNameByHandleA().
+
+
+Added a comment for v4 (as draft).
+But I don't know English well enough and probably comment should be
+corrected.
+
+
+With best regards,
+Dmitry.
+
+
+### MESSAGE 16
+On Sat, Nov 20, 2021 at 12:51 PM Dmitry Koval <d(dot)koval(at)postgrespro(dot)ru>
+wrote:
+
+
+>
+> Added a comment for v4 (as draft).
+> But I don't know English well enough and probably comment should be
+> corrected.
+>
+> It reads a little too much like pseudocode for my liking. Please consider
+the attached version.
+
+
+Regards,
+
+
+Juan José Santamaría Flecha
+
+
+
+### MESSAGE 17
+> It reads a little too much like pseudocode for my liking. Please 
+> consider the attached version.
+
+
+This is a good comment, I like it.
+
+
+With best regards,
+Dmitry Koval.
+
+
+
+
+
+### MESSAGE 18
+On Mon, Nov 22, 2021 at 02:07:09PM +0300, Dmitry Koval wrote:
+> > It reads a little too much like pseudocode for my liking. Please
+> > consider the attached version.
+> 
+> This is a good comment, I like it.
+
+
+        /*
++        * Check if the fileno is a data stream. If so, unless it has been
++        * redirected to a file, getting information by handle will fail. Return
++        * the appropriate stat information instead.
++        */
+I would perhaps add an extra note that we emulate the result in the
+best way we can.  Anyway, what you have here looks basically enough.
+
+
+Another thing that has been itching me on this thread is that we have
+not been able to detect this problem even if we have tests in
+copyselect.sql that cover those paths.  Is that because running
+vcregress.pl implies a redirection of stdout so we would never see,
+except from a terminal?
+--
+Michael
+
+
+
+### MESSAGE 19
+ >Is that because running vcregress.pl implies a redirection of stdout so
+ >we would never see, except from a terminal?
+
+
+Unfortunately, you are.
+All my COPY-tests work well with files.
+I see a problem in the terminal only ...
+
+
+With best regards,
+Dmitry Koval.
+
+
+
+
+
+### MESSAGE 20
+On Wed, Nov 24, 2021 at 10:44:09AM +0300, Dmitry Koval wrote:
+> Unfortunately, you are.
+> All my COPY-tests work well with files.
+> I see a problem in the terminal only ...
+
+
+While checking all the callers of fstat() in the core code, I have
+discovered that this broke a second case when stdout is not
+redirected: pg_recvlogical -f -.  In this case, the code would just
+bump on EINVAL repeatedly instead of crashing, but equally broken it
+was.  There is a TAP test for this case in src/bin/pg_basebackup/, but
+it would not trigger the problem per the redirection already done
+there.
+
+
+Anyway, I have run more tests, tweaked slightly the comment, and
+applied it down to 14.  Thanks to both of you!
+--
+Michael
+
+
+
+### MESSAGE 21
+On Thu, Nov 25, 2021 at 4:23 AM Michael Paquier <michael(at)paquier(dot)xyz> wrote:
+
+
+> On Wed, Nov 24, 2021 at 10:44:09AM +0300, Dmitry Koval wrote:
+> > Unfortunately, you are.
+> > All my COPY-tests work well with files.
+> > I see a problem in the terminal only ...
+>
+> Anyway, I have run more tests, tweaked slightly the comment, and
+> applied it down to 14.  Thanks to both of you!
+>
+> After some experimentation I have been able to test this type of error
+through a tap test using console input. Looking at the patch I'm not sure
+it is worth all the extra code, but I'm submitting it for future reference
+at least.
+
+
+Regards,
+
+
+Juan José Santamaría Flecha
+
+
+
+### MESSAGE 22
+On Fri, Nov 26, 2021 at 01:37:49PM +0100, Juan José Santamaría Flecha wrote:
+> through a tap test using console input. Looking at the patch I'm not sure
+> it is worth all the extra code, but I'm submitting it for future reference
+> at least.
+
+
++       eval {
++               $result = IPC::Run::run [ 'psql', '-p', $port, '-c',
+"\\copy public.test from stdin", 'postgres' ],
++                       IPC::Run::timeout( 1, name => "stall timeout" );
+Using directly psql commands in the tests is not a good idea as it
+makes the client-side execution more sensitive to the environment.
+src/test/perl/PostgreSQL/Test/Cluster.pm does the same work, in the
+wanted way, so it would be better to rely on it (see 384f1ab for one
+recent issue).  A test with a minimal timeout also takes time, making
+for slower tests on faster machines.
+
+
+Hmm.  Do you think that a test based on Cluster::psql and stdout would
+actually be able to do the work or would the redirection done in the
+INIT block of Utils.pm prevent that?  Contrary to the code path of
+pg_recvlogical, Cluster::psql would use directly IPC::Run, and not
+redirect stdout to the test log file.
+
+
+I would stick a test in one of the existing test suites, to not create
+an extra cluster and reduce its run time.
+--
+Michael
+
+
+
+### MESSAGE 23
+On Sun, Nov 28, 2021 at 01:15:36PM +0900, Michael Paquier wrote:
+> Using directly psql commands in the tests is not a good idea as it
+> makes the client-side execution more sensitive to the environment.
+> src/test/perl/PostgreSQL/Test/Cluster.pm does the same work, in the
+> wanted way, so it would be better to rely on it (see 384f1ab for one
+> recent issue).  A test with a minimal timeout also takes time, making
+> for slower tests on faster machines.
+
+
+Or, rather than relying on a small timeout, could we just send some
+data to stdin and check the table's contents in return?  That would
+make the test faster, while not penalizing the coverage.
+--
+Michael
+
+
+
+### MESSAGE 24
+On Thu, Nov 25, 2021 at 12:23:41PM +0900, Michael Paquier wrote:
+> On Wed, Nov 24, 2021 at 10:44:09AM +0300, Dmitry Koval wrote:
+> > Unfortunately, you are.
+> > All my COPY-tests work well with files.
+> > I see a problem in the terminal only ...
+> 
+> While checking all the callers of fstat() in the core code, I have
+> discovered that this broke a second case when stdout is not
+> redirected: pg_recvlogical -f -.  In this case, the code would just
+> bump on EINVAL repeatedly instead of crashing, but equally broken it
+> was.  There is a TAP test for this case in src/bin/pg_basebackup/, but
+> it would not trigger the problem per the redirection already done
+> there.
+> 
+> Anyway, I have run more tests, tweaked slightly the comment, and
+> applied it down to 14.  Thanks to both of you!
+
+
+Do you know this causes a new warning ?
+
+
+https://buildfarm.postgresql.org/cgi-bin/show_log.pl?nm=jacana&dt=2021-11-29%2004%3A00%3A29
+
+
+Nov 28 23:06:41 c:/mingw/msys/1.0/home/pgrunner/bf/root/HEAD/pgsql.build/../pgsql/src/port/win32stat.c:309:3: warning: implicit declaration of function 'GetFinalPathNameByHandleA'; did you mean 'GetFullPathNameA'? [-Wimplicit-function-declaration]
+...
+
+
+-- 
+Justin
+
+
+
+
+
+### MESSAGE 25
+On Sun, Nov 28, 2021 at 11:01:22PM -0600, Justin Pryzby wrote:
+> Do you know this causes a new warning ?
+
+
+No, I did not know that.
+
+
+> https://buildfarm.postgresql.org/cgi-bin/show_log.pl?nm=jacana&dt=2021-11-29%2004%3A00%3A29
+> 
+> Nov 28 23:06:41 c:/mingw/msys/1.0/home/pgrunner/bf/root/HEAD/pgsql.build/../pgsql/src/port/win32stat.c:309:3: warning: implicit declaration of function 'GetFinalPathNameByHandleA'; did you mean 'GetFullPathNameA'? [-Wimplicit-function-declaration]
+> ...
+
+
+Hmm.  Looking at MinGW, mingw-w64-headers/include/fileapi.h includes
+GetFinalPathNameByHandleA() as long as _WIN32_WINNT >= 0x0600, so this
+stuff is not going to work when we are under an older _WIN32_WINNT as
+it seems to be the case here.  I have missed that.
+
+
+We know that GetFileInformationByHandle() would be able to work in
+the scope of win32stat.c as it is supported down to Windows XP so we
+would be covered, so switching to that instead of
+GetFinalPathNameByHandleA() would take care of the problem.  Better to
+call that only for a standard stream, only for the emulation of
+fstat(), in the spirit of the original fix.
+--
+Michael
+
+
+
+### MESSAGE 26
+On Mon, Nov 29, 2021 at 7:51 AM Michael Paquier <michael(at)paquier(dot)xyz> wrote:
+
+
+>
+> We know that GetFileInformationByHandle() would be able to work in
+> the scope of win32stat.c as it is supported down to Windows XP so we
+> would be covered, so switching to that instead of
+> GetFinalPathNameByHandleA() would take care of the problem.  Better to
+> call that only for a standard stream, only for the emulation of
+> fstat(), in the spirit of the original fix.
+>
+> Fair enough. Windows XP support is a discussion for another thread.
+
+
+Regards,
+
+
+Juan José Santamaría Flecha
+
+
+
+### MESSAGE 27
+On Mon, Nov 29, 2021 at 08:53:28AM +0100, Juan José Santamaría Flecha wrote:
+> Fair enough. Windows XP support is a discussion for another thread.
+
+
+Yeah, I would not mind doing something about that on HEAD.  I am not
+sure what this implies for the buildfarm, though.
+--
+Michael
+
+
+
+### MESSAGE 28
+On Tue, Nov 30, 2021 at 09:57:23AM +0900, Michael Paquier wrote:
+> Yeah, I would not mind doing something about that on HEAD.  I am not
+> sure what this implies for the buildfarm, though.
+
+
+So, this compatibility fix has been applied as of 58651d8.  And based
+on the buildfarm members jacana and fairywren, the warning is now
+gone.
+--
+Michael
+

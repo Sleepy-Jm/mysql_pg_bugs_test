@@ -1,0 +1,2725 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18711
+Logged by:          Adam Rauch
+Email address:      adam(at)labkey(dot)com
+PostgreSQL version: 17.1
+Operating system:   Windows 11
+Description:        
+
+
+For many years, our test infrastructure has used database names that are
+longer than the stated maximum length of 63 characters. The PostgreSQL
+server simply truncates these names to 63 characters in all operations and
+everything works fine. Starting with 17.x, our application is able to CREATE
+and ALTER databases with long names, but all connection attempts using them
+fail with an error:  database "<very long name>" does not exist
+
+
+I fully recognize that these names are not legal, the previous truncation
+behavior was not documented, and there are obvious ways to work around this
+"issue." But given the long running truncation behavior, the now
+inconsistent behavior (CREATE and ALTER happily accept long database names,
+but connections fail), and the lack of any mention in the release notes
+makes me think this may be an unintentional change worth flagging.
+
+
+I happen to be connecting via the (latest) JDBC driver. I can provide the
+simple Java code that passes on PostgreSQL 16 but fails on PostgreSQL 17, if
+needed.
+
+
+Thanks!
+Adam
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> For many years, our test infrastructure has used database names that are
+> longer than the stated maximum length of 63 characters. The PostgreSQL
+> server simply truncates these names to 63 characters in all operations and
+> everything works fine. Starting with 17.x, our application is able to CREATE
+> and ALTER databases with long names, but all connection attempts using them
+> fail with an error:  database "<very long name>" does not exist
+
+
+Yeah, this was an intentional change in v17:
+
+
+commit 562bee0fc13dc95710b8db6a48edad2f3d052f2e
+Author: Nathan Bossart <nathan(at)postgresql(dot)org>
+Date:   Mon Jul 3 13:18:05 2023 -0700
+
+
+    Don't truncate database and user names in startup packets.
+    
+    Unlike commands such as CREATE DATABASE, ProcessStartupPacket()
+    does not perform multibyte-aware truncation of overlength names.
+    This means that connection attempts might fail even if the user
+    provides the same overlength names that were used in CREATE
+    DATABASE, CREATE ROLE, etc.  Ideally, we'd do the same multibyte-
+    aware truncation in both code paths, but it doesn't seem worth the
+    added complexity of trying to discover the encoding of the names.
+    Instead, let's simply skip truncating the names in the startup
+    packet and let the user/database lookup fail later on.  With this
+    change, users must provide the exact names stored in the catalogs,
+    even if the names were truncated.
+    
+    This reverts commit d18c1d1f51.
+    
+    Author: Bertrand Drouvot
+    Reviewed-by: Kyotaro Horiguchi, Tom Lane
+    Discussion: https://postgr.es/m/07436793-1426-29b2-f924-db7422a05fb7%40gmail.com
+
+
+As said, the difficulty is that we don't know what encoding the
+incoming name is meant to be in, and with multibyte encodings that
+matters.  The name actually stored in the catalog might be less
+than 63 bytes long if it was truncated in a multibyte-aware way,
+so that the former behavior of blindly truncating at 63 bytes
+can still yield unexpected no-such-database results.
+
+
+I can imagine still performing the truncation if the incoming
+name is all-ASCII, but that seems like a hack.  The world isn't
+nearly as ASCII-centric as it was in 2001.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+On Sun, Nov 17, 2024 at 01:00:14PM -0500, Tom Lane wrote:
+> As said, the difficulty is that we don't know what encoding the
+> incoming name is meant to be in, and with multibyte encodings that
+> matters.  The name actually stored in the catalog might be less
+> than 63 bytes long if it was truncated in a multibyte-aware way,
+> so that the former behavior of blindly truncating at 63 bytes
+> can still yield unexpected no-such-database results.
+> 
+> I can imagine still performing the truncation if the incoming
+> name is all-ASCII, but that seems like a hack.  The world isn't
+> nearly as ASCII-centric as it was in 2001.
+
+
+I wonder if we should consider removing the identifier truncation
+altogether.  Granted, it mostly works (or at least did before v17), but I'm
+not sure we'd make the same decision today if we were starting from
+scratch.  IMHO it'd be better to ERROR so that users are forced to produce
+legal identifiers.  That being said, I realize this behavior has been
+present for over a quarter century now [0] [1] [2], and folks are unlikely
+to be happy with even more breakage.
+
+
+[0] https://postgr.es/c/d15c37c
+[1] https://postgr.es/c/0672a3c
+[2] https://postgr.es/c/49581f9
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 3
+Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> On Sun, Nov 17, 2024 at 01:00:14PM -0500, Tom Lane wrote:
+>> As said, the difficulty is that we don't know what encoding the
+>> incoming name is meant to be in, and with multibyte encodings that
+>> matters.  The name actually stored in the catalog might be less
+>> than 63 bytes long if it was truncated in a multibyte-aware way,
+>> so that the former behavior of blindly truncating at 63 bytes
+>> can still yield unexpected no-such-database results.
+
+
+> I wonder if we should consider removing the identifier truncation
+> altogether.  Granted, it mostly works (or at least did before v17), but I'm
+> not sure we'd make the same decision today if we were starting from
+> scratch.  IMHO it'd be better to ERROR so that users are forced to produce
+> legal identifiers.  That being said, I realize this behavior has been
+> present for over a quarter century now [0] [1] [2], and folks are unlikely
+> to be happy with even more breakage.
+
+
+Yeah, I think removing it now is a non-starter.
+
+
+I did think of a way that we could approximate encoding-correct
+truncation here, relying on the fact that what's in pg_database
+is encoding-correct according to somebody:
+
+
+1. If NAMEDATALEN-1'th byte is ASCII (high bit clear), just truncate
+there and look up as usual.
+
+
+2. If it's non-ASCII, truncate there and try to look up. On success,
+we're good.  On failure, if the next-to-last byte is non-ASCII,
+truncate that too and try to look up.  Repeat a maximum of
+MAX_MULTIBYTE_CHAR_LEN-1 times before failing.
+
+
+I think this works unconditionally so long as all entries in
+pg_database.datname are in the same encoding.  If there's a
+mixture of encodings (which we don't forbid) then in principle
+you could probably select a database other than the one the
+client thought it was asking for.  But that seems mighty
+improbable, and the answer can always be "so connect using
+the name as it appears in the catalog".
+
+
+It's ugly of course.  But considering that we got a complaint
+so quickly after v17 release, I'm not sure we can just camp on
+562bee0fc as being an acceptable answer.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 4
+On Tue, Nov 19, 2024 at 02:33:27PM -0500, Tom Lane wrote:
+> I did think of a way that we could approximate encoding-correct
+> truncation here, relying on the fact that what's in pg_database
+> is encoding-correct according to somebody:
+> 
+> 1. If NAMEDATALEN-1'th byte is ASCII (high bit clear), just truncate
+> there and look up as usual.
+> 
+> 2. If it's non-ASCII, truncate there and try to look up. On success,
+> we're good.  On failure, if the next-to-last byte is non-ASCII,
+> truncate that too and try to look up.  Repeat a maximum of
+> MAX_MULTIBYTE_CHAR_LEN-1 times before failing.
+> 
+> I think this works unconditionally so long as all entries in
+> pg_database.datname are in the same encoding.  If there's a
+> mixture of encodings (which we don't forbid) then in principle
+> you could probably select a database other than the one the
+> client thought it was asking for.  But that seems mighty
+> improbable, and the answer can always be "so connect using
+> the name as it appears in the catalog".
+
+
+That's an interesting idea.  That code would probably need to live in
+GetDatabaseTuple(), but it seems doable.  We might be able to avoid the
+"mighty improbable" case by always truncating up to
+MAX_MULTIBYTE_CHAR_LEN-1 times and failing if there are multiple matches,
+too.
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 5
+Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> On Tue, Nov 19, 2024 at 02:33:27PM -0500, Tom Lane wrote:
+>> I did think of a way that we could approximate encoding-correct
+>> truncation here, relying on the fact that what's in pg_database
+>> is encoding-correct according to somebody:
+>> ...
+
+
+> That's an interesting idea.  That code would probably need to live in
+> GetDatabaseTuple(), but it seems doable.  We might be able to avoid the
+> "mighty improbable" case by always truncating up to
+> MAX_MULTIBYTE_CHAR_LEN-1 times and failing if there are multiple matches,
+> too.
+
+
+Hmm ... but with short characters (e.g. LATIN1) there might be
+legitimately-different names that that rule would complain about.
+Still, the workaround remains "so spell it like it is in the catalog".
+On balance I think that's an improvement over what I was visualizing.
+
+
+Also, we could bypass the multiple lookups unless both the
+NAMEDATALEN-1'th and NAMEDATALEN-2'th bytes are non-ASCII, which
+should be rare enough to make it not much of a performance issue.
+
+
+One annoying point is that we also need this for role lookup.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 6
+On Tue, Nov 19, 2024 at 06:09:44PM -0500, Tom Lane wrote:
+> Also, we could bypass the multiple lookups unless both the
+> NAMEDATALEN-1'th and NAMEDATALEN-2'th bytes are non-ASCII, which
+> should be rare enough to make it not much of a performance issue.
+
+
+I'm admittedly not an expert in the multi-byte code, but since there are
+encodings like LATIN1 that use a byte per character, don't we need to do
+multiple lookups any time the NAMEDATALEN-1'th byte is non-ASCII?
+
+
+> One annoying point is that we also need this for role lookup.
+
+
+Right.
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 7
+Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> On Tue, Nov 19, 2024 at 06:09:44PM -0500, Tom Lane wrote:
+>> Also, we could bypass the multiple lookups unless both the
+>> NAMEDATALEN-1'th and NAMEDATALEN-2'th bytes are non-ASCII, which
+>> should be rare enough to make it not much of a performance issue.
+
+
+> I'm admittedly not an expert in the multi-byte code, but since there are
+> encodings like LATIN1 that use a byte per character, don't we need to do
+> multiple lookups any time the NAMEDATALEN-1'th byte is non-ASCII?
+
+
+I don't think so, but maybe I'm missing something.  An important
+property of backend-legal encodings is that all bytes of a multibyte
+character have their high bits set.  Thus if the NAMEDATALEN-2'th
+byte does not have that, it is not part of a multibyte character.
+That's also the reason we can stop if we reach a high-bit-clear
+byte while backing up to earlier bytes.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 8
+On Tue, Nov 19, 2024 at 06:09:44PM -0500, Tom Lane wrote:
+> Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> > On Tue, Nov 19, 2024 at 02:33:27PM -0500, Tom Lane wrote:
+> >> I did think of a way that we could approximate encoding-correct
+> >> truncation here, relying on the fact that what's in pg_database
+> >> is encoding-correct according to somebody:
+> >> ...
+> 
+> > That's an interesting idea.  That code would probably need to live in
+> > GetDatabaseTuple(), but it seems doable.  We might be able to avoid the
+> > "mighty improbable" case by always truncating up to
+> > MAX_MULTIBYTE_CHAR_LEN-1 times and failing if there are multiple matches,
+> > too.
+> 
+> Hmm ... but with short characters (e.g. LATIN1) there might be
+> legitimately-different names that that rule would complain about.
+
+
+Could we rely on pg_encoding_max_length() instead of MAX_MULTIBYTE_CHAR_LEN? That
+would then work for short characters too IIUC.
+
+
+> Also, we could bypass the multiple lookups unless both the
+> NAMEDATALEN-1'th and NAMEDATALEN-2'th bytes are non-ASCII, which
+> should be rare enough to make it not much of a performance issue.
+> 
+> One annoying point is that we also need this for role lookup.
+
+
+Yeah. The role existence is checked before the database existence. And even if
+that would not be the case, it would make litle sense to rely on the
+pg_encoding_max_length() of the matching database for the role, as those are
+global.
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 9
+Bertrand Drouvot <bertranddrouvot(dot)pg(at)gmail(dot)com> writes:
+> Could we rely on pg_encoding_max_length() instead of MAX_MULTIBYTE_CHAR_LEN? That
+> would then work for short characters too IIUC.
+
+
+No.  We don't know which encoding it is.  Even if you wanted to say
+"use the database encoding", we haven't identified the database yet.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 10
+Hi,
+
+
+On Wed, Nov 20, 2024 at 10:10:51AM -0500, Tom Lane wrote:
+> Bertrand Drouvot <bertranddrouvot(dot)pg(at)gmail(dot)com> writes:
+> > Could we rely on pg_encoding_max_length() instead of MAX_MULTIBYTE_CHAR_LEN? That
+> > would then work for short characters too IIUC.
+> 
+> No.  We don't know which encoding it is.  Even if you wanted to say
+> "use the database encoding", we haven't identified the database yet.
+
+
+I had in mind to "fully scan" pg_database in GetDatabaseTuple(), get the datname
+and encoding from FormData_pg_database and start from there the comparison 
+with the dbname passed as an argument to GetDatabaseTuple(). Thoughts?
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 11
+On Wed, Nov 20, 2024 at 03:20:45PM +0000, Bertrand Drouvot wrote:
+> On Wed, Nov 20, 2024 at 10:10:51AM -0500, Tom Lane wrote:
+>> Bertrand Drouvot <bertranddrouvot(dot)pg(at)gmail(dot)com> writes:
+>> > Could we rely on pg_encoding_max_length() instead of MAX_MULTIBYTE_CHAR_LEN? That
+>> > would then work for short characters too IIUC.
+>> 
+>> No.  We don't know which encoding it is.  Even if you wanted to say
+>> "use the database encoding", we haven't identified the database yet.
+> 
+> I had in mind to "fully scan" pg_database in GetDatabaseTuple(), get the datname
+> and encoding from FormData_pg_database and start from there the comparison 
+> with the dbname passed as an argument to GetDatabaseTuple(). Thoughts?
+
+
+I was wondering if we could use the database encoding to disambiguate if we
+found multiple matches, but IIUC the identifier will be truncated using the
+encoding of the database from which it was created.  But hopefully this is
+all rare enough in practice...
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 12
+On Tue, Nov 19, 2024 at 11:23:13PM -0500, Tom Lane wrote:
+> Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+>> I'm admittedly not an expert in the multi-byte code, but since there are
+>> encodings like LATIN1 that use a byte per character, don't we need to do
+>> multiple lookups any time the NAMEDATALEN-1'th byte is non-ASCII?
+> 
+> I don't think so, but maybe I'm missing something.  An important
+> property of backend-legal encodings is that all bytes of a multibyte
+> character have their high bits set.  Thus if the NAMEDATALEN-2'th
+> byte does not have that, it is not part of a multibyte character.
+> That's also the reason we can stop if we reach a high-bit-clear
+> byte while backing up to earlier bytes.
+
+
+That's good to know.  If we can assume that 1) all bytes of a multibyte
+character have the high bit set and 2) all multibyte characters actually
+require multiple bytes, then there are just a handful of cases that require
+multiple lookups, and we can restrict even those to some extent, too.
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 13
+Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> On Wed, Nov 20, 2024 at 03:20:45PM +0000, Bertrand Drouvot wrote:
+>> I had in mind to "fully scan" pg_database in GetDatabaseTuple(), get the datname
+>> and encoding from FormData_pg_database and start from there the comparison 
+>> with the dbname passed as an argument to GetDatabaseTuple(). Thoughts?
+
+
+> I was wondering if we could use the database encoding to disambiguate if we
+> found multiple matches, but IIUC the identifier will be truncated using the
+> encoding of the database from which it was created.
+
+
+Yeah, you can't really assume that a database's name is stored using
+the encoding of that database.  And even if you did, you still can't
+make any assumptions about pg_role.  I doubt we want to do this
+differently for roles than databases.
+
+
+We've had some past discussions about tightening all this up, like
+insisting that names in shared catalogs are always in UTF8.  But
+there are downsides to that too.
+
+
+In any case, there is no way that a seqscan of pg_database (or
+pg_role) is going to be adequately performant, let alone faster
+than at-most-four indexed probes.  We just had somebody inquiring
+about whether it'd be okay to create a million roles...
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 14
+Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> That's good to know.  If we can assume that 1) all bytes of a multibyte
+> character have the high bit set and 2) all multibyte characters actually
+> require multiple bytes, then there are just a handful of cases that require
+> multiple lookups, and we can restrict even those to some extent, too.
+
+
+I'm failing to parse your (2).  Either that's content-free or you're
+thinking something that probably isn't true.  There are encodings
+(mostly the LATINn series) that have high-bit-set characters that
+only occupy one byte.  So I don't think we can take any shortcuts
+compared to the strip-one-byte-at-a-time approach.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 15
+On Wed, Nov 20, 2024 at 10:39:35AM -0500, Tom Lane wrote:
+> Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> > On Wed, Nov 20, 2024 at 03:20:45PM +0000, Bertrand Drouvot wrote:
+> >> I had in mind to "fully scan" pg_database in GetDatabaseTuple(), get the datname
+> >> and encoding from FormData_pg_database and start from there the comparison 
+> >> with the dbname passed as an argument to GetDatabaseTuple(). Thoughts?
+> 
+> > I was wondering if we could use the database encoding to disambiguate if we
+> > found multiple matches, but IIUC the identifier will be truncated using the
+> > encoding of the database from which it was created.
+> 
+> Yeah, you can't really assume that a database's name is stored using
+> the encoding of that database.
+
+
+Yeah, good point, let's stick to the MAX_MULTIBYTE_CHAR_LEN idea then and discard
+the usage of pg_encoding_max_length().
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 16
+On Wed, Nov 20, 2024 at 10:54:50AM -0500, Tom Lane wrote:
+> Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+>> That's good to know.  If we can assume that 1) all bytes of a multibyte
+>> character have the high bit set and 2) all multibyte characters actually
+>> require multiple bytes, then there are just a handful of cases that require
+>> multiple lookups, and we can restrict even those to some extent, too.
+> 
+> I'm failing to parse your (2).  Either that's content-free or you're
+> thinking something that probably isn't true.  There are encodings
+> (mostly the LATINn series) that have high-bit-set characters that
+> only occupy one byte.  So I don't think we can take any shortcuts
+> compared to the strip-one-byte-at-a-time approach.
+
+
+I'm probably missing something here, sorry.
+
+
+Upthread, you mentioned that we could bypass multiple lookups unless both
+the NAMEDATALEN-1'th and NAMEDATALEN-2'th bytes are non-ASCII.  But if
+there are encodings with the high bit set that don't require multiple bytes
+per character, then how can we do that?  For example, let's say the
+initially-truncated identifier ends with an ASCII byte followed by a
+non-ASCII byte.  That last byte might be a LATIN1 character, or it could be
+the beginning of a character that requires multiple bytes, so we need to
+lookup both the initially truncated string as well as the string with one
+extra byte truncated, right?
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 17
+Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> Upthread, you mentioned that we could bypass multiple lookups unless both
+> the NAMEDATALEN-1'th and NAMEDATALEN-2'th bytes are non-ASCII.  But if
+> there are encodings with the high bit set that don't require multiple bytes
+> per character, then how can we do that?
+
+
+Well, we don't know the length of the hypothetically-truncated
+character, but if there was one then all its bytes must have had their
+high bits set.  Suppose that the untruncated name has a 4-byte
+multibyte character extending from the NAMEDATALEN-3 byte through the
+NAMEDATALEN'th byte (counting in origin zero here):
+
+
+	...61 irrelevant bytes... C1 C2 C3 C4 ...
+
+
+The original CREATE DATABASE would have removed that whole character
+and stored a name of length NAMEDATALEN-3:
+
+
+	...61 irrelevant bytes...
+
+
+In the connection attempt, when we
+receive the untruncated name, we'll first try to truncate it to
+NAMEDATALEN-1 bytes:
+
+
+	...61 irrelevant bytes... C1 C2
+
+
+We'll look that up and not find it.  At this point we remember that
+C3 had the high bit set, and we note that C2 does too, so we try
+
+
+	...61 irrelevant bytes... C1
+
+
+That still doesn't work, but C1 still has the high bit set,
+so we try
+
+
+	...61 irrelevant bytes...
+
+
+and find the match.
+
+
+Now as for the shortcut cases: if C3 does not have the high bit set,
+it cannot be part of a multibyte character.  Therefore the original
+encoding-aware truncation would have removed C3 and following bytes,
+but no more.  The character immediately before might have been one
+byte or several, but it doesn't matter.  Similarly, if C2 does not
+have the high bit set, it cannot be part of a multibyte character.
+The original truncation would have removed C3 and following bytes,
+but no more.
+
+
+Another way to think about this is that without knowledge of the
+encoding, we don't know whether a run of several high-bit-set
+bytes represents one character or several.  But all the encodings
+we support are ASCII extensions, meaning that any high-bit-clear
+byte represents an ASCII character and is not part of a multibyte
+character.  So it would have gotten truncated or not independently
+of what's around it.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 18
+On Wed, Nov 20, 2024 at 11:29:56AM -0500, Tom Lane wrote:
+> Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+>> Upthread, you mentioned that we could bypass multiple lookups unless both
+>> the NAMEDATALEN-1'th and NAMEDATALEN-2'th bytes are non-ASCII.  But if
+>> there are encodings with the high bit set that don't require multiple bytes
+>> per character, then how can we do that?
+> 
+> Well, we don't know the length of the hypothetically-truncated
+> character, but if there was one then all its bytes must have had their
+> high bits set.  Suppose that the untruncated name has a 4-byte
+> multibyte character extending from the NAMEDATALEN-3 byte through the
+> NAMEDATALEN'th byte (counting in origin zero here):
+>
+> [...]
+> 
+> Now as for the shortcut cases: if C3 does not have the high bit set,
+> it cannot be part of a multibyte character.  Therefore the original
+> encoding-aware truncation would have removed C3 and following bytes,
+> but no more.  The character immediately before might have been one
+> byte or several, but it doesn't matter.  Similarly, if C2 does not
+> have the high bit set, it cannot be part of a multibyte character.
+> The original truncation would have removed C3 and following bytes,
+> but no more.
+
+
+Oh, I think I had an off-by-one error in my mental model and was thinking
+of the NAMEDATALEN-1'th byte as the last possible byte in the identifier
+(i.e., name[NAMEDATALEN - 2]), whereas you meant the location where the
+trailing zero would go for the largest possible all-ASCII identifier (i.e.,
+name[NAMEDATALEN - 1]).  Thank you for elaborating.
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 19
+Here is a draft patch that seems to work with some simple tests.  I've yet
+to look into the role name side of things.
+
+
+-- 
+nathan
+
+
+
+### MESSAGE 20
+Hi,
+
+
+On Wed, Nov 20, 2024 at 04:36:44PM -0600, Nathan Bossart wrote:
+> Here is a draft patch that seems to work with some simple tests.
+
+
+Thanks!
+
+
+While doing the review, I added comments (that also helped me understand the
+code). So please find attached, v2 which is v1 with added comments. The logic
+in v1 looks good to me. The comments are based on my understanding so could
+be wrong.
+
+
++                       /* XXX: should we fix process title? */
+
+
+Prior to 562bee0fc1, we would have seen the truncated name in the process title.
+Now, with the patch applied, we would see the non truncated name (even in the
+non multibyte case).
+
+
+So, if want to be at the same state as prior to 562bee0fc1, then yes we would
+need to fix the process title. But thinking about it, I think that's a good thing
+to see what the "initial" attempt was (specially as the code is much more
+complicated now), so there is pros showing the non truncated name too.
+
+
+I'm tempted to vote for "show the non truncated name" then.
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+### MESSAGE 21
+On Thu, Nov 21, 2024 at 07:27:22AM +0000, Bertrand Drouvot wrote:
+> +		/*
+> +		 * If the original name is too long and we see two consecutive bytes
+> +		 * with their high bits set at the truncation point, we might have
+> +		 * truncated in the middle of a multibyte character. In multibyte
+> +		 * encodings, every byte of a multibyte character has its high bit
+> +		 * set. So if IS_HIGHBIT_SET is true for both NAMEDATALEN-1 and
+> +		 * NAMEDATALEN-2, we know we're in the middle of a multibyte
+> +		 * character. We need to try truncating one more byte back to find the
+> +		 * start of the next character.
+> +		 */
+...
+> +				/*
+> +				 * If we've hit a byte with high bit clear (an ASCII byte), we
+> +				 * know we can't be in the middle of a multibyte character,
+> +				 * because all bytes of a multibyte character must have their
+> +				 * high bits set. Any following byte must therefore be the
+> +				 * start of a new character, so we can stop looking for
+> +				 * earlier truncation points.
+> +				 */
+
+
+I don't understand this logic.  Why are two bytes important?  If we knew
+it was UTF8 we could check for non-first bytes always starting with
+bits 10, but we can't know that.
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  When a patient asks the doctor, "Am I going to die?", he means 
+  "Am I going to die soon?"
+
+
+
+
+
+### MESSAGE 22
+Hi,
+
+
+On Thu, Nov 21, 2024 at 09:21:16AM -0500, Bruce Momjian wrote:
+> On Thu, Nov 21, 2024 at 07:27:22AM +0000, Bertrand Drouvot wrote:
+> > +		/*
+> > +		 * If the original name is too long and we see two consecutive bytes
+> > +		 * with their high bits set at the truncation point, we might have
+> > +		 * truncated in the middle of a multibyte character. In multibyte
+> > +		 * encodings, every byte of a multibyte character has its high bit
+> > +		 * set. So if IS_HIGHBIT_SET is true for both NAMEDATALEN-1 and
+> > +		 * NAMEDATALEN-2, we know we're in the middle of a multibyte
+> > +		 * character. We need to try truncating one more byte back to find the
+> > +		 * start of the next character.
+> > +		 */
+> ...
+> > +				/*
+> > +				 * If we've hit a byte with high bit clear (an ASCII byte), we
+> > +				 * know we can't be in the middle of a multibyte character,
+> > +				 * because all bytes of a multibyte character must have their
+> > +				 * high bits set. Any following byte must therefore be the
+> > +				 * start of a new character, so we can stop looking for
+> > +				 * earlier truncation points.
+> > +				 */
+> 
+> I don't understand this logic.  Why are two bytes important?  If we knew
+> it was UTF8 we could check for non-first bytes always starting with
+> bits 10, but we can't know that.
+
+
+I think this is because this is a reliable way to detect if the truncation happened
+in the middle of a character, without needing to know the specifics of the encoding.
+
+
+My understanding is that the key insight is that in any multibyte encoding, all
+bytes within a multibyte character will have their high bits set.
+
+
+That's just my understanding from the code and Tom's previous explanations:  I
+might be wrong as not an expert in this area.
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 23
+On Thu, Nov 21, 2024 at 02:35:50PM +0000, Bertrand Drouvot wrote:
+> On Thu, Nov 21, 2024 at 09:21:16AM -0500, Bruce Momjian wrote:
+> > I don't understand this logic.  Why are two bytes important?  If we knew
+> > it was UTF8 we could check for non-first bytes always starting with
+> > bits 10, but we can't know that.
+> 
+> I think this is because this is a reliable way to detect if the truncation happened
+> in the middle of a character, without needing to know the specifics of the encoding.
+> 
+> My understanding is that the key insight is that in any multibyte encoding, all
+> bytes within a multibyte character will have their high bits set.
+> 
+> That's just my understanding from the code and Tom's previous explanations:  I
+> might be wrong as not an expert in this area.
+
+
+But the logic doesn't make sense.  Why would two bytes be any different
+than one?  I assumed you would just remove all trailing high-bit bytes
+and stop and the first non-high-bit byte.  Also, do we really expect
+there to be trailing multi-byte characters and then some ASCII before
+it? Isn't it likely it will be all ASCII or all multi-byte characters? 
+I guess for Latin1, it would work fine, but I assume for Asian
+languages, it will be almost all multi-byte characters.  I guess digits
+would be ASCII.  This all just seems very unfocused.
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  When a patient asks the doctor, "Am I going to die?", he means 
+  "Am I going to die soon?"
+
+
+
+
+
+### MESSAGE 24
+On Thu, Nov 21, 2024 at 09:47:56AM -0500, Bruce Momjian wrote:
+> On Thu, Nov 21, 2024 at 02:35:50PM +0000, Bertrand Drouvot wrote:
+>> On Thu, Nov 21, 2024 at 09:21:16AM -0500, Bruce Momjian wrote:
+>> > I don't understand this logic.  Why are two bytes important?  If we knew
+>> > it was UTF8 we could check for non-first bytes always starting with
+>> > bits 10, but we can't know that.
+>> 
+>> I think this is because this is a reliable way to detect if the truncation happened
+>> in the middle of a character, without needing to know the specifics of the encoding.
+>> 
+>> My understanding is that the key insight is that in any multibyte encoding, all
+>> bytes within a multibyte character will have their high bits set.
+>> 
+>> That's just my understanding from the code and Tom's previous explanations:  I
+>> might be wrong as not an expert in this area.
+> 
+> But the logic doesn't make sense.  Why would two bytes be any different
+> than one?
+
+
+Tom provided a concise explanation upthread [0].  My understanding is the
+same as Bertrand's, i.e., this is an easy way to rule out a bunch of cases
+where we know that we couldn't possibly have truncated in the middle of a
+multi-byte character.  This allows us to avoid doing multiple pg_database
+lookups.
+
+
+> I assumed you would just remove all trailing high-bit bytes
+> and stop and the first non-high-bit byte.
+
+
+I think this risks truncating more than one multi-byte character, which
+would cause the login path to truncate differently than the CREATE/ALTER
+DATABASE path (which is encoding-aware).
+
+
+> Also, do we really expect
+> there to be trailing multi-byte characters and then some ASCII before
+> it? Isn't it likely it will be all ASCII or all multi-byte characters? 
+> I guess for Latin1, it would work fine, but I assume for Asian
+> languages, it will be almost all multi-byte characters.  I guess digits
+> would be ASCII.
+
+
+All of these seem within the realm of possibility to me.
+
+
+> This all just seems very unfocused.
+
+
+I see the following options:
+
+
+* Try to do multibyte-aware truncation (the patch at hand).
+* Only truncate for all-ASCII identifiers for historical purposes.  Folks
+  using non-ASCII characters in database names will need to specify the
+  datname exactly during login.
+* ERROR for long identifiers instead of automatically truncating (upthread
+  this was considered a non-starter since this behavior has been around for
+  so long).
+* Revert the patch, leaving multibyte database names potentially broken
+  (AFAIK Bertrand's initial report is the only one).
+* Do nothing, so folks who previously relied on the truncation will now
+  have to specify the datname exactly during login as of >= v17.
+
+
+[0] https://postgr.es/m/158506.1732120196%40sss.pgh.pa.us
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 25
+On Thu, Nov 21, 2024 at 09:14:23AM -0600, Nathan Bossart wrote:
+> On Thu, Nov 21, 2024 at 09:47:56AM -0500, Bruce Momjian wrote:
+> > On Thu, Nov 21, 2024 at 02:35:50PM +0000, Bertrand Drouvot wrote:
+> >> On Thu, Nov 21, 2024 at 09:21:16AM -0500, Bruce Momjian wrote:
+> >> > I don't understand this logic.  Why are two bytes important?  If we knew
+> >> > it was UTF8 we could check for non-first bytes always starting with
+> >> > bits 10, but we can't know that.
+> >> 
+> >> I think this is because this is a reliable way to detect if the truncation happened
+> >> in the middle of a character, without needing to know the specifics of the encoding.
+> >> 
+> >> My understanding is that the key insight is that in any multibyte encoding, all
+> >> bytes within a multibyte character will have their high bits set.
+> >> 
+> >> That's just my understanding from the code and Tom's previous explanations:  I
+> >> might be wrong as not an expert in this area.
+> > 
+> > But the logic doesn't make sense.  Why would two bytes be any different
+> > than one?
+> 
+> Tom provided a concise explanation upthread [0].  My understanding is the
+> same as Bertrand's, i.e., this is an easy way to rule out a bunch of cases
+> where we know that we couldn't possibly have truncated in the middle of a
+> multi-byte character.  This allows us to avoid doing multiple pg_database
+> lookups.
+
+
+Where does Tom mention anything about checking two bytes?  He is
+basically saying remove all trailing high-bit characters until you get a
+match, because once you get a match, you are have found the point of
+valid truncation for the encoding.  In fact, here, he specifically talks
+about MAX_MULTIBYTE_CHAR_LEN-1:
+
+
+	https://www.postgresql.org/message-id/3796535.1732044807%40sss.pgh.pa.us
+
+
+This text:
+
+
+               * If the original name is too long and we see two consecutive bytes
+               * with their high bits set at the truncation point, we might have
+               * truncated in the middle of a multibyte character. In multibyte
+               * encodings, every byte of a multibyte character has its high bit
+               * set. So if IS_HIGHBIT_SET is true for both NAMEDATALEN-1 and
+               * NAMEDATALEN-2, we know we're in the middle of a multibyte
+               * character. We need to try truncating one more byte back to find the
+               * start of the next character.
+
+
+needs to be fixed, at a minimum, specifically, "So if IS_HIGHBIT_SET is
+true for both NAMEDATALEN-1 and NAMEDATALEN-2, we know we're in the
+middle of a multibyte character."
+
+
+> > I assumed you would just remove all trailing high-bit bytes
+> > and stop and the first non-high-bit byte.
+> 
+> I think this risks truncating more than one multi-byte character, which
+> would cause the login path to truncate differently than the CREATE/ALTER
+> DATABASE path (which is encoding-aware).
+
+
+True, we can stop at MAX_MULTIBYTE_CHAR_LEN-1, and know there is no match.
+
+
+> * Try to do multibyte-aware truncation (the patch at hand).
+
+
+Yes, I am fine with that, but we need to do more than the patch does to
+accomplish this, unless I am totally confused.
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  When a patient asks the doctor, "Am I going to die?", he means 
+  "Am I going to die soon?"
+
+
+
+
+
+### MESSAGE 26
+On Thu, Nov 21, 2024 at 11:44:44AM -0500, Bruce Momjian wrote:
+> On Thu, Nov 21, 2024 at 09:14:23AM -0600, Nathan Bossart wrote:
+>> Tom provided a concise explanation upthread [0].  My understanding is the
+>> same as Bertrand's, i.e., this is an easy way to rule out a bunch of cases
+>> where we know that we couldn't possibly have truncated in the middle of a
+>> multi-byte character.  This allows us to avoid doing multiple pg_database
+>> lookups.
+> 
+> Where does Tom mention anything about checking two bytes?
+
+
+Here [0].  And he further elaborated on this idea here [1].
+
+
+> He is
+> basically saying remove all trailing high-bit characters until you get a
+> match, because once you get a match, you are have found the point of
+> valid truncation for the encoding.
+
+
+Yes, we still need to do that if it's possible the truncation wiped out
+part of a multi-byte character.  But it's not possible that we truncated
+part of a multi-byte character if the NAMEDATALEN-1'th or NAMEDATALEN-2'th
+byte is ASCII, in which case we can avoid doing extra lookups.
+
+
+> This text:
+> 
+>                * If the original name is too long and we see two consecutive bytes
+>                * with their high bits set at the truncation point, we might have
+>                * truncated in the middle of a multibyte character. In multibyte
+>                * encodings, every byte of a multibyte character has its high bit
+>                * set. So if IS_HIGHBIT_SET is true for both NAMEDATALEN-1 and
+>                * NAMEDATALEN-2, we know we're in the middle of a multibyte
+>                * character. We need to try truncating one more byte back to find the
+>                * start of the next character.
+> 
+> needs to be fixed, at a minimum, specifically, "So if IS_HIGHBIT_SET is
+> true for both NAMEDATALEN-1 and NAMEDATALEN-2, we know we're in the
+> middle of a multibyte character."
+
+
+Agreed, the second-to-last sentence should be adjusted to something like
+"we might be in the middle of a multibyte character."  We don't know for
+sure.
+
+
+>> * Try to do multibyte-aware truncation (the patch at hand).
+> 
+> Yes, I am fine with that, but we need to do more than the patch does to
+> accomplish this, unless I am totally confused.
+
+
+What more do you think is required?
+
+
+[0] https://postgr.es/m/3976665.1732057784%40sss.pgh.pa.us
+[1] https://postgr.es/m/158506.1732120196%40sss.pgh.pa.us
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 27
+On Thu, Nov 21, 2024 at 11:09:14AM -0600, Nathan Bossart wrote:
+> On Thu, Nov 21, 2024 at 11:44:44AM -0500, Bruce Momjian wrote:
+> > On Thu, Nov 21, 2024 at 09:14:23AM -0600, Nathan Bossart wrote:
+> >> Tom provided a concise explanation upthread [0].  My understanding is the
+> >> same as Bertrand's, i.e., this is an easy way to rule out a bunch of cases
+> >> where we know that we couldn't possibly have truncated in the middle of a
+> >> multi-byte character.  This allows us to avoid doing multiple pg_database
+> >> lookups.
+> > 
+> > Where does Tom mention anything about checking two bytes?
+> 
+> Here [0].  And he further elaborated on this idea here [1].
+> 
+> > He is
+> > basically saying remove all trailing high-bit characters until you get a
+> > match, because once you get a match, you are have found the point of
+> > valid truncation for the encoding.
+> 
+> Yes, we still need to do that if it's possible the truncation wiped out
+> part of a multi-byte character.  But it's not possible that we truncated
+> part of a multi-byte character if the NAMEDATALEN-1'th or NAMEDATALEN-2'th
+> byte is ASCII, in which case we can avoid doing extra lookups.
+
+
+Why would you check for two characters at the end rather than just a
+normal check in the main loop?
+
+
+> > needs to be fixed, at a minimum, specifically, "So if IS_HIGHBIT_SET is
+> > true for both NAMEDATALEN-1 and NAMEDATALEN-2, we know we're in the
+> > middle of a multibyte character."
+> 
+> Agreed, the second-to-last sentence should be adjusted to something like
+> "we might be in the middle of a multibyte character."  We don't know for
+> sure.
+> 
+> >> * Try to do multibyte-aware truncation (the patch at hand).
+> > 
+> > Yes, I am fine with that, but we need to do more than the patch does to
+> > accomplish this, unless I am totally confused.
+> 
+> What more do you think is required?
+
+
+I think the IS_HIGHBIT_SET needs to be integrated into the 'for' loop
+more clearly;  the 'if' check plus the comment above it is just
+confusing.
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  When a patient asks the doctor, "Am I going to die?", he means 
+  "Am I going to die soon?"
+
+
+
+
+
+### MESSAGE 28
+On Thu, Nov 21, 2024 at 01:05:38PM -0500, Bruce Momjian wrote:
+> On Thu, Nov 21, 2024 at 11:09:14AM -0600, Nathan Bossart wrote:
+>> Yes, we still need to do that if it's possible the truncation wiped out
+>> part of a multi-byte character.  But it's not possible that we truncated
+>> part of a multi-byte character if the NAMEDATALEN-1'th or NAMEDATALEN-2'th
+>> byte is ASCII, in which case we can avoid doing extra lookups.
+> 
+> Why would you check for two characters at the end rather than just a
+> normal check in the main loop?
+
+
+It might be possible to integrate this check into the loop, which could
+potentially be cleaner.  The reason I didn't at first is because it
+requires checking a byte that we will have already truncated away.  We have
+to look at the original, non-truncated string for that.  I'll give it a try
+(unless Bertrand beats me to it).
+
+
+>> What more do you think is required?
+> 
+> I think the IS_HIGHBIT_SET needs to be integrated into the 'for' loop
+> more clearly;  the 'if' check plus the comment above it is just
+> confusing.
+
+
+Got it.  Thank you for reviewing.
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 29
+Bruce Momjian <bruce(at)momjian(dot)us> writes:
+> But the logic doesn't make sense.  Why would two bytes be any different
+> than one?  I assumed you would just remove all trailing high-bit bytes
+> and stop and the first non-high-bit byte. 
+
+
+To take the most obvious counterexample: what if the name contains
+*only* high-bit-set bytes?  In any case, this logic must achieve
+the same effect as the original encoding-aware truncation, which
+will not have removed more than it absolutely had to.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 30
+On Thu, Nov 21, 2024 at 2:27 PM Bertrand Drouvot
+<bertranddrouvot(dot)pg(at)gmail(dot)com> wrote:
+
+
++ /*
++ * If the original name is too long and we see two consecutive bytes
++ * with their high bits set at the truncation point, we might have
++ * truncated in the middle of a multibyte character. In multibyte
++ * encodings, every byte of a multibyte character has its high bit
++ * set.
+
+
+Counterexample: Shift JIS -- I don't think we can short-circuit the full check.
+
+
+--
+John Naylor
+Amazon Web Services
+
+
+
+
+
+### MESSAGE 31
+John Naylor <johncnaylorls(at)gmail(dot)com> writes:
+> On Thu, Nov 21, 2024 at 2:27 PM Bertrand Drouvot
+> <bertranddrouvot(dot)pg(at)gmail(dot)com> wrote:
+> + * If the original name is too long and we see two consecutive bytes
+> + * with their high bits set at the truncation point, we might have
+> + * truncated in the middle of a multibyte character. In multibyte
+> + * encodings, every byte of a multibyte character has its high bit
+> + * set.
+
+
+> Counterexample: Shift JIS -- I don't think we can short-circuit the full check.
+
+
+Shift JIS is not an allowed server-side encoding, for precisely
+that reason.  This whole proposal is based on the assumption that
+the string we need to match in pg_database is valid in some
+server-side encoding.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 32
+Hi,
+
+
+On Thu, Nov 21, 2024 at 12:14:47PM -0600, Nathan Bossart wrote:
+> On Thu, Nov 21, 2024 at 01:05:38PM -0500, Bruce Momjian wrote:
+> > On Thu, Nov 21, 2024 at 11:09:14AM -0600, Nathan Bossart wrote:
+> >> Yes, we still need to do that if it's possible the truncation wiped out
+> >> part of a multi-byte character.  But it's not possible that we truncated
+> >> part of a multi-byte character if the NAMEDATALEN-1'th or NAMEDATALEN-2'th
+> >> byte is ASCII, in which case we can avoid doing extra lookups.
+> > 
+> > Why would you check for two characters at the end rather than just a
+> > normal check in the main loop?
+> 
+> It might be possible to integrate this check into the loop, which could
+> potentially be cleaner.  The reason I didn't at first is because it
+> requires checking a byte that we will have already truncated away.  We have
+> to look at the original, non-truncated string for that.  I'll give it a try
+> (unless Bertrand beats me to it).
+
+
+> > 
+> > I think the IS_HIGHBIT_SET needs to be integrated into the 'for' loop
+> > more clearly;  the 'if' check plus the comment above it is just
+> > confusing.
+> 
+> Got it.  Thank you for reviewing.
+
+
+What about something like in v3 attached? (I did a few tests and that seems to
+work as expected).
+
+
+If that's ok I can also look at the role part.
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+### MESSAGE 33
+Bertrand Drouvot <bertranddrouvot(dot)pg(at)gmail(dot)com> writes:
+> What about something like in v3 attached? (I did a few tests and that seems to
+> work as expected).
+
+
+After more thought I don't really like the idea of failing if there
+are multiple matches.  It means that we might fail in cases where
+pre-v17 worked fine (because NAMEDATALEN-1 was accidentally the
+right truncation point).  ISTM the entire point of this patch is to
+restore the pre-v17 behavior as much as possible, so that seems like
+the wrong outcome.
+
+
+So that means we could do something like the attached.  (There's
+room for argument about which error messages in InitPostgres
+should use in_dbname versus the truncated name, but I chose to
+use in_dbname for the two "does not exist" reports.)
+
+
+I didn't try to write a test case, but we probably should have one.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 34
+On Fri, Nov 22, 2024 at 02:23:47PM -0500, Tom Lane wrote:
+> After more thought I don't really like the idea of failing if there
+> are multiple matches.  It means that we might fail in cases where
+> pre-v17 worked fine (because NAMEDATALEN-1 was accidentally the
+> right truncation point).  ISTM the entire point of this patch is to
+> restore the pre-v17 behavior as much as possible, so that seems like
+> the wrong outcome.
+
+
+That's fine with me.
+ 
+> So that means we could do something like the attached.  (There's
+> room for argument about which error messages in InitPostgres
+> should use in_dbname versus the truncated name, but I chose to
+> use in_dbname for the two "does not exist" reports.)
+
+
+Looks reasonable to me.  I had been thinking of ways to simplify this code
+based on Bruce's feedback, and I came up with the attached.  If nothing
+else, this at least helps minimize the amount of code that is only reached
+in extremely rare cases, but it's probably not quite as performant as v4
+for the usual path, so v4 may still be the way to go.
+
+
+I think we'll also want to do something about MyProcPort->database_name
+(and the user name, of course).  In a previous patch, I tried to update it
+when a match was found, but maybe it'd be better to postpone setting those
+values at all until after we've found the database tuple.  AFAICT they are
+only used for the process title before this code is reached.
+
+
+-- 
+nathan
+
+
+
+### MESSAGE 35
+On Fri, Nov 22, 2024 at 02:01:41PM -0600, Nathan Bossart wrote:
+>  static HeapTuple
+>  GetDatabaseTuple(const char *dbname)
+>  {
+>  	HeapTuple	tuple;
+>  	Relation	relation;
+> +	char		tname[NAMEDATALEN];
+
+
+(tuple should be initialized to NULL here.  I accidentally left that out.)
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 36
+Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> I think we'll also want to do something about MyProcPort->database_name
+
+
+Huh, isn't that getting filled from InitPostgres's out_dbname?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 37
+On Fri, Nov 22, 2024 at 03:07:46PM -0500, Tom Lane wrote:
+> Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+>> I think we'll also want to do something about MyProcPort->database_name
+> 
+> Huh, isn't that getting filled from InitPostgres's out_dbname?
+
+
+I think ProcessStartupPacket() sets it.  That's called by
+BackendInitialize(), which is called before PostgresMain() (which is what
+ultimately calls InitPostgres()).  The truncation used to happen within
+ProcessStartupPacket(), and it updated MyProcPort directly.
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 38
+Hi,
+
+
+On Fri, Nov 22, 2024 at 02:01:41PM -0600, Nathan Bossart wrote:
+> On Fri, Nov 22, 2024 at 02:23:47PM -0500, Tom Lane wrote:
+> > After more thought I don't really like the idea of failing if there
+> > are multiple matches.  It means that we might fail in cases where
+> > pre-v17 worked fine (because NAMEDATALEN-1 was accidentally the
+> > right truncation point).  ISTM the entire point of this patch is to
+> > restore the pre-v17 behavior as much as possible, so that seems like
+> > the wrong outcome.
+> 
+> That's fine with me.
+
+
++1 
+
+
+> > So that means we could do something like the attached.  (There's
+> > room for argument about which error messages in InitPostgres
+> > should use in_dbname versus the truncated name, but I chose to
+> > use in_dbname for the two "does not exist" reports.)
+> 
+> Looks reasonable to me.  I had been thinking of ways to simplify this code
+> based on Bruce's feedback, and I came up with the attached.  If nothing
+> else, this at least helps minimize the amount of code that is only reached
+> in extremely rare cases, but it's probably not quite as performant as v4
+> for the usual path, so v4 may still be the way to go.
+
+
+Yeah, so what about v6 attached ("mixing" v4 and v5 by using a fast path in
+case the name is short enough).
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+### MESSAGE 39
+On Sat, Nov 23, 2024 at 08:37:18AM +0000, Bertrand Drouvot wrote:
+> Hi,
+> 
+> On Fri, Nov 22, 2024 at 02:01:41PM -0600, Nathan Bossart wrote:
+> > On Fri, Nov 22, 2024 at 02:23:47PM -0500, Tom Lane wrote:
+> > > After more thought I don't really like the idea of failing if there
+> > > are multiple matches.  It means that we might fail in cases where
+> > > pre-v17 worked fine (because NAMEDATALEN-1 was accidentally the
+> > > right truncation point).  ISTM the entire point of this patch is to
+> > > restore the pre-v17 behavior as much as possible, so that seems like
+> > > the wrong outcome.
+> > 
+> > That's fine with me.
+> 
+> +1 
+> 
+> > > So that means we could do something like the attached.  (There's
+> > > room for argument about which error messages in InitPostgres
+> > > should use in_dbname versus the truncated name, but I chose to
+> > > use in_dbname for the two "does not exist" reports.)
+> > 
+> > Looks reasonable to me.  I had been thinking of ways to simplify this code
+> > based on Bruce's feedback, and I came up with the attached.  If nothing
+> > else, this at least helps minimize the amount of code that is only reached
+> > in extremely rare cases, but it's probably not quite as performant as v4
+> > for the usual path, so v4 may still be the way to go.
+> 
+> Yeah, so what about v6 attached ("mixing" v4 and v5 by using a fast path in
+> case the name is short enough).
+
+
+v7 attach is even better than v6.
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+### MESSAGE 40
+On Fri, Nov 22, 2024 at 02:23:47PM -0500, Tom Lane wrote:
+> +	if (strlen(dbname) < NAMEDATALEN)
+> +	{
+> +		/* Typical, easy case: no truncation needed */
+> +		tuple = GetDatabaseTupleInternal(relation, dbname);
+> +	}
+> +	else if (!IS_HIGHBIT_SET(dbname[NAMEDATALEN - 1]) ||
+> +			 !IS_HIGHBIT_SET(dbname[NAMEDATALEN - 2]))
+> +	{
+> +		/* Also easy: truncation at NAMEDATALEN - 1 cannot break an MB char */
+> +		memcpy(tname, dbname, sizeof(tname));
+> +		tname[NAMEDATALEN - 1] = '\0';
+> +		tuple = GetDatabaseTupleInternal(relation, tname);
+
+
+I had some time to think about this issue and I now realize the test
+above is correct, but I couldn't figure out why it was correct before.
+If we want to use this test, which I now think is fine, I suggest the
+following comment:
+
+
+	If we put a NULL byte at byte offset NAMEDATALEN - 1, we don't want
+	to break a multi-byte character when doing this.  If byte offset
+	NAMEDATALEN - 1 does not have its high bit set, we can be sure
+	we will not break a multi-byte character during the overwrite.
+	Also, if NAMEDATALEN - 2 does not have its high bit set, then
+	NAMEDATALEN - 1 is either a single-byte non-ASCII character,
+	or is the _start_ of a multi-byte character, so it is also safe
+	to overwrite it without breaking a multi-byte character.
+
+
+Sorry I did not figure this out earlier.
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  When a patient asks the doctor, "Am I going to die?", he means 
+  "Am I going to die soon?"
+
+
+
+
+
+### MESSAGE 41
+On Fri, Nov 22, 2024 at 02:17:07PM -0600, Nathan Bossart wrote:
+> On Fri, Nov 22, 2024 at 03:07:46PM -0500, Tom Lane wrote:
+>> Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+>>> I think we'll also want to do something about MyProcPort->database_name
+>> 
+>> Huh, isn't that getting filled from InitPostgres's out_dbname?
+> 
+> I think ProcessStartupPacket() sets it.  That's called by
+> BackendInitialize(), which is called before PostgresMain() (which is what
+> ultimately calls InitPostgres()).  The truncation used to happen within
+> ProcessStartupPacket(), and it updated MyProcPort directly.
+
+
+Here's an attempt at dealing with this problem.  I've just taught
+PostgresMain() to use out_dbname to update MyProcPort->database_name and
+the process title as needed.  Of course, we still need to handle role
+names, too...
+
+
+That being said, I'm growing quite uneasy about the size of this hack, and
+I'm wondering if it would be better to leave it alone (perhaps with an
+update to the release notes) or just revert commit 562bee0 until we have a
+better way of dealing with multibyte characters in identifiers (e.g.,
+tracking their encoding).  I suspect there are similar problems in other
+places (e.g., pg_dumpall).
+
+
+-- 
+nathan
+
+
+
+### MESSAGE 42
+Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> That being said, I'm growing quite uneasy about the size of this hack, and
+> I'm wondering if it would be better to leave it alone (perhaps with an
+> update to the release notes) or just revert commit 562bee0 until we have a
+> better way of dealing with multibyte characters in identifiers (e.g.,
+> tracking their encoding).  I suspect there are similar problems in other
+> places (e.g., pg_dumpall).
+
+
+Yeah, there is something to be said for reverting.  There is nothing
+about our handling of non-ASCII characters in shared system catalogs
+that isn't squishy as heck, and yet there have been darn few field
+complaints over the many years it's been like that.  Maybe trying to
+make this truncation issue better in isolation wasn't such a great
+plan.
+
+
+(If we recorded the encoding of names in shared catalogs then this
+particular issue would be far easier to solve, but then we have
+other problems to address --- particularly, what to do if a name
+in the catalog fails to convert to the encoding we are using.)
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 43
+Hi,
+
+
+On Wed, Nov 27, 2024 at 11:03:36AM -0500, Tom Lane wrote:
+> Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> > That being said, I'm growing quite uneasy about the size of this hack, and
+> > I'm wondering if it would be better to leave it alone (perhaps with an
+> > update to the release notes) or just revert commit 562bee0 until we have a
+> > better way of dealing with multibyte characters in identifiers (e.g.,
+> > tracking their encoding).  I suspect there are similar problems in other
+> > places (e.g., pg_dumpall).
+> 
+> Yeah, there is something to be said for reverting.
+
+
+Agree that the size of the hack is growing quite uneasy.
+
+
+But also it is not (because it currently just can't be) "perfect" (as in case of
+multiple matches it would pick up the first one).
+
+
+Producing multiple possible matches could be as simple as:
+
+
+CREATE DATABASE "aäääääääääääääääääääääääääääääää";
+CREATE DATABASE "aääääääääääääääääääääääääääääää";
+
+
+and then:
+
+
+psql -d "aääääääääääääääääääääääääääääääää"
+
+
+I said "simple" because:
+
+
+- both pg_database.datname are in the same encoding.
+- none are truncated at creation time.
+
+
+I think that could easily lead to bad surprise.
+
+
+Leaving the current behavior (as in 17) alone has the pros of being consistent
+for both ASCII and non-ASCII characters (as compared to reverting).
+
+
+I'd vote for "leave it alone" or wait to see if we get more reports before
+deciding.
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 44
+On Wed, Nov 27, 2024 at 04:36:07PM +0000, Bertrand Drouvot wrote:
+> I'd vote for "leave it alone" or wait to see if we get more reports before
+> deciding.
+
+
+Did your initial report originate from users or from just exploring the
+code?  If it's the latter, then AFAICT this thread is really the only
+feedback from the field we have to go on, and IMHO it'd be better to
+proceed with reverting.  But if you were fielding complaints from users,
+then perhaps there is more room for discussion.
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 45
+Hi,
+
+
+On Wed, Nov 27, 2024 at 10:50:18AM -0600, Nathan Bossart wrote:
+> On Wed, Nov 27, 2024 at 04:36:07PM +0000, Bertrand Drouvot wrote:
+> > I'd vote for "leave it alone" or wait to see if we get more reports before
+> > deciding.
+> 
+> Did your initial report originate from users or from just exploring the
+> code?  If it's the latter, then AFAICT this thread is really the only
+> feedback from the field we have to go on, and IMHO it'd be better to
+> proceed with reverting.
+
+
+I meant to say get more reports regarding the 17 behavior to decide between
+reverting or "leave it alone".
+
+
+Regarding the question, the report that lead to the initial discussion was coming
+from a real case from an internal team. 562bee0fc1 did not fix it though but at
+least provides a consistent behavior between ASCII and non-ASCII.
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 46
+On Wed, Nov 27, 2024 at 05:43:38PM +0000, Bertrand Drouvot wrote:
+> Regarding the question, the report that lead to the initial discussion was coming
+> from a real case from an internal team. 562bee0fc1 did not fix it though but at
+> least provides a consistent behavior between ASCII and non-ASCII.
+
+
+It may be more consistent, but if it didn't fix the issue for that user,
+and it's breaking things for other users, then the added consistency seems
+to have helped no one.
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 47
+On Wed, Nov 27, 2024 at 11:50:19AM -0600, Nathan Bossart wrote:
+> On Wed, Nov 27, 2024 at 05:43:38PM +0000, Bertrand Drouvot wrote:
+> > Regarding the question, the report that lead to the initial discussion was coming
+> > from a real case from an internal team. 562bee0fc1 did not fix it though but at
+> > least provides a consistent behavior between ASCII and non-ASCII.
+> 
+> It may be more consistent, but if it didn't fix the issue for that user,
+> and it's breaking things for other users, then the added consistency seems
+> to have helped no one.
+
+
+Right. That would just avoid new "surprises" like the one that lead to the initial
+discussion. But as the pre-17 behavior was there since long enough, it looks like
+that the "surprises" are not that frequent though (or not reported).
+
+
+Indeed, reverting might be the way to go then (without waiting for more 17
+behavior reports).
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 48
+On Wed, Nov 27, 2024 at 06:03:43PM +0000, Bertrand Drouvot wrote:
+> Indeed, reverting might be the way to go then (without waiting for more 17
+> behavior reports).
+
+
+Okay.  I'll plan on reverting it early next week.
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 49
+Bertrand Drouvot <bertranddrouvot(dot)pg(at)gmail(dot)com> writes:
+> Indeed, reverting might be the way to go then (without waiting for more 17
+> behavior reports).
+
+
+I have an idea that might salvage something from what we've just
+been doing.  The biggest single problem with the old behavior,
+AIUI, was the possibility of sending back encoding-corrupt names
+in connection failure reports.  How about something like:
+
+
+* Don't truncate the names on sight (so we keep 562bee0fc1).
+
+
+* Truncate the names at NAMEDATALEN-1 just before catalog lookup
+(this restores the old lookup behavior, solving the current report).
+
+
+* In lookup-failure messages, be sure to report the un-truncated
+name (avoiding the bad-encoding problem).
+
+
+* Copy the correctly-truncated names from the catalog to any
+persistent storage such as MyProcPort, so that those are used
+for all post-connection purposes.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 50
+On Wed, Nov 27, 2024 at 01:17:18PM -0500, Tom Lane wrote:
+> I have an idea that might salvage something from what we've just
+> been doing.  The biggest single problem with the old behavior,
+> AIUI, was the possibility of sending back encoding-corrupt names
+> in connection failure reports.  How about something like:
+> 
+> * Don't truncate the names on sight (so we keep 562bee0fc1).
+> 
+> * Truncate the names at NAMEDATALEN-1 just before catalog lookup
+> (this restores the old lookup behavior, solving the current report).
+> 
+> * In lookup-failure messages, be sure to report the un-truncated
+> name (avoiding the bad-encoding problem).
+> 
+> * Copy the correctly-truncated names from the catalog to any
+> persistent storage such as MyProcPort, so that those are used
+> for all post-connection purposes.
+
+
+One possible issue with truncating the names after-the-fact is that hooks
+like ClientAuthentication_hook will have already been called with the
+untruncated names.  If it's just the connection failure reports we are
+worried about, then maybe we should save the "raw" names to MyProcPort
+before truncating and be sure to use those in the log messages.
+
+
+I attached a rough sketch of what I'm imagining.  If we aren't thrilled
+about adding new fields to "struct Port" in a minor release, we could just
+do a straight revert on the back-branches and add that part to v18.
+
+
+-- 
+nathan
+
+
+
+### MESSAGE 51
+Hi,
+
+
+On Wed, Nov 27, 2024 at 01:34:22PM -0600, Nathan Bossart wrote:
+> On Wed, Nov 27, 2024 at 01:17:18PM -0500, Tom Lane wrote:
+> > I have an idea that might salvage something from what we've just
+> > been doing.  The biggest single problem with the old behavior,
+> > AIUI, was the possibility of sending back encoding-corrupt names
+> > in connection failure reports.  How about something like:
+> > 
+> > * Don't truncate the names on sight (so we keep 562bee0fc1).
+> > 
+> > * Truncate the names at NAMEDATALEN-1 just before catalog lookup
+> > (this restores the old lookup behavior, solving the current report).
+> > 
+> > * In lookup-failure messages, be sure to report the un-truncated
+> > name (avoiding the bad-encoding problem).
+> > 
+> > * Copy the correctly-truncated names from the catalog to any
+> > persistent storage such as MyProcPort, so that those are used
+> > for all post-connection purposes.
+
+
++1 for not reporting an encoding-corrupt name in connection failure
+reports.
+
+
+> One possible issue with truncating the names after-the-fact is that hooks
+> like ClientAuthentication_hook will have already been called with the
+> untruncated names.
+
+
+Yeah.
+
+
+> If it's just the connection failure reports we are
+> worried about, then maybe we should save the "raw" names to MyProcPort
+> before truncating and be sure to use those in the log messages.
+
+
+I think that makes sense. Bonus point: the ClientAuthentication_hook would have
+both names (truncated and non-truncated) at its disposal.
+
+
+> I attached a rough sketch of what I'm imagining.  If we aren't thrilled
+> about adding new fields to "struct Port" in a minor release, we could just
+> do a straight revert on the back-branches and add that part to v18.
+
+
+If we do a straight revert on 17 then that would mean switching back to 
+reporting truncated name (currently 17 reports non truncated names) and handle
+correct truncation on "ASCII" database name connections.
+
+
+If we back patch, then "only" one change is made (from an end user point of
+view): handle correct truncation on "ASCII" database name connections.
+
+
+OTOH:
+
+
+- the 2 new members would have to be at the end of the struct (since they
+are 8 bytes long and there is no existing padding holes that could host them).
+- I did a quick check in the commit log history and I did not see any change in
+the Port struct that has been back-patched.
+
+
+Based on the above, it might be better to just do a straight revert on 17.
+
+
++       /*
++        * Truncate given database and user names to length of a Postgres name.
++        * This avoids lookup failures when overlength names are given.
++        */
+
+
+This is the exact comment prior to 562bee0fc1, worth to add a few words about
+the non-ASCII case?
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 52
+On Thu, Nov 28, 2024 at 5:04 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> There is nothing
+> about our handling of non-ASCII characters in shared system catalogs
+> that isn't squishy as heck, and yet there have been darn few field
+> complaints over the many years it's been like that.  Maybe trying to
+> make this truncation issue better in isolation wasn't such a great
+> plan.
+
+
+I guess most people in Unix-land just use UTF-8 in every layer of
+their software stack these days, so don't often see confused encodings
+anymore?  But I don't think that's true in the other place, where they
+still routinely juggle multiple encodings and see garbled junk when it
+goes wrong[1].  They might still generally prefer UTF-8 for database
+encoding though, IDK.
+
+
+> (If we recorded the encoding of names in shared catalogs then this
+> particular issue would be far easier to solve, but then we have
+> other problems to address --- particularly, what to do if a name
+> in the catalog fails to convert to the encoding we are using.)
+
+
+Here is a much dumber coarse-grained way I have wondered about for
+making the encoding certain, without having to do any new conversions
+at all: (1) single-encoding cluster mode, shared catalogues use same
+encoding as all databases, (2) multi-encoding cluster mode with
+ASCII-only shared catalogues, and (3) legacy squishy/raw mode you
+normally only reach by pg_upgrade.  Maybe you could switch between
+them with an operation that validates names.
+
+
+Then I think you could always know the shared cat encoding even with
+no database context, and when you are connected to a database you
+could mostly just carry on assuming it's database encoding (either it
+is, or it's the ASCII subset).  That can only be wrong in mode 3, all
+bets off just like today, but that's your own fault for using mode 3.
+
+
+I guess serious users of multi-encoding clusters already learn to
+stick to ASCII-only role names and database names anyway, unless they
+like seeing garbage?
+
+
+[1] https://www.postgresql.org/message-id/flat/00a601db3b20%24b00261e0%24100725a0%24%40gmx.net
+
+
+
+
+
+### MESSAGE 53
+Thomas Munro <thomas(dot)munro(at)gmail(dot)com> writes:
+> On Thu, Nov 28, 2024 at 5:04 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+>> (If we recorded the encoding of names in shared catalogs then this
+>> particular issue would be far easier to solve, but then we have
+>> other problems to address --- particularly, what to do if a name
+>> in the catalog fails to convert to the encoding we are using.)
+
+
+> Here is a much dumber coarse-grained way I have wondered about for
+> making the encoding certain, without having to do any new conversions
+> at all: (1) single-encoding cluster mode, shared catalogues use same
+> encoding as all databases, (2) multi-encoding cluster mode with
+> ASCII-only shared catalogues, and (3) legacy squishy/raw mode you
+> normally only reach by pg_upgrade.  Maybe you could switch between
+> them with an operation that validates names.
+
+
+Hmm, yeah maybe that could work.  The other consideration here
+(which we've been dancing around in this thread) is "what encoding
+are role and database names in startup packets presented in?"
+But I think your idea addresses that too:
+
+
+* mode 1: incoming names must be in the One True Encoding
+
+
+* mode 2: incoming names must be ASCII
+
+
+* mode 3: same wild-west behavior as always
+
+
+In modes 1 and 2 we could validate that the string meets our
+expectations (and then truncate it correctly, too).
+
+
+> I guess serious users of multi-encoding clusters already learn to
+> stick to ASCII-only role names and database names anyway, unless they
+> like seeing garbage?
+
+
+Probably ... that's been the recommendation in the small number
+of cases that have been reported, IIRC.  That suggests that mode 2
+might be the most reasonable default.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 54
+On Fri, Nov 29, 2024 at 5:45 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> Hmm, yeah maybe that could work.  The other consideration here
+> (which we've been dancing around in this thread) is "what encoding
+> are role and database names in startup packets presented in?"
+> But I think your idea addresses that too:
+>
+> * mode 1: incoming names must be in the One True Encoding
+>
+> * mode 2: incoming names must be ASCII
+>
+> * mode 3: same wild-west behavior as always
+>
+> In modes 1 and 2 we could validate that the string meets our
+> expectations (and then truncate it correctly, too).
+
+
+Perhaps we could have a property shared_catalog_encoding:, -1 for
+unknown (mode 3), PG_SQL_ASCII (mode 2), or something else (mode 1).
+I realise that PG_SQL_ASCII normally means bytes with no validation,
+but we don't have an encoding that means ASCII with pg_is_ascii()
+validation, and I think it'd be confusing if SQL_ASCII meant wild west
+mode, IDK.  To have any hope of being able to change it after initdb,
+I think it has to be in the control file and suspect you might have to
+take AEL on all affected catalogues while validating and changing it.
+
+
+Some random UX sketches:
+
+
+$ CREATE DATABASE foo ... ENCODING latin1;
+ERROR: encoding LATIN1 does not match shared catalog encoding UTF8
+HINT: To allow databases with different encodings,
+shared_catalog_encoding must be SQL_ASCII (or UNKNOWN, not
+recommended)
+
+
+$ ALTER SYSTEM SET shared_catalog_encoding = 'SQL_ASCII';
+ERROR: existing role name "frédéric" cannot be represented in SQL_ASCII
+HINT: Rename all databases and roles to use only ASCII characters.
+
+
+(I realise that ALTER SYSTEM is for GUCs, but something that sounds a
+bit like that.)
+
+
+$ CREATE ROLE lætitia;
+ERROR: role name "lætitia" cannot be represented in the shared catalog
+encoding SQL_ASCII
+HINT: To allow non-ASCII roles, shared_catalog_encoding must be set to
+an encoding matching all databases (or UNKNOWN, not recommended)
+
+
+
+
+
+### MESSAGE 55
+Hi,
+
+
+On Fri, Nov 29, 2024 at 10:12:08AM +1300, Thomas Munro wrote:
+> On Fri, Nov 29, 2024 at 5:45 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> > Hmm, yeah maybe that could work.  The other consideration here
+> > (which we've been dancing around in this thread) is "what encoding
+> > are role and database names in startup packets presented in?"
+> > But I think your idea addresses that too:
+> >
+> > * mode 1: incoming names must be in the One True Encoding
+
+
+Yeah, in practice how would we do that? Just relying on pg_verify_mbstr()
+or trying to do the actual "conversion"? Asking, because IIUC pg_verify_mbstr()
+does not check for specific encoding rules for single byte (LATIN%) encoding.
+
+
+> Perhaps we could have a property shared_catalog_encoding:, -1 for
+> unknown (mode 3), PG_SQL_ASCII (mode 2), or something else (mode 1).
+> I realise that PG_SQL_ASCII normally means bytes with no validation,
+> but we don't have an encoding that means ASCII with pg_is_ascii()
+> validation, and I think it'd be confusing if SQL_ASCII meant wild west
+> mode, IDK. 
+
+
+hm, are you saying that when choosing PG_SQL_ASCII to represent Mode 2
+(ASCII-only with validation) in the shared_catalog_encoding field,
+we're giving it a different semantic meaning than it has elsewhere in the
+system? Maybe we could just document very clearly that its meaning in
+shared_catalog_encoding is special/different?
+
+
+> To have any hope of being able to change it after initdb,
+> I think it has to be in the control file and suspect you might have to
+> take AEL on all affected catalogues
+
+
+Yeah.
+
+
+> Some random UX sketches:
+> 
+> $ CREATE DATABASE foo ... ENCODING latin1;
+> ERROR: encoding LATIN1 does not match shared catalog encoding UTF8
+> HINT: To allow databases with different encodings,
+> shared_catalog_encoding must be SQL_ASCII (or UNKNOWN, not
+> recommended)
+> 
+> $ ALTER SYSTEM SET shared_catalog_encoding = 'SQL_ASCII';
+> ERROR: existing role name "frédéric" cannot be represented in SQL_ASCII
+> HINT: Rename all databases and roles to use only ASCII characters.
+> 
+> (I realise that ALTER SYSTEM is for GUCs, but something that sounds a
+> bit like that.)
+> 
+> $ CREATE ROLE lætitia;
+> ERROR: role name "lætitia" cannot be represented in the shared catalog
+> encoding SQL_ASCII
+> HINT: To allow non-ASCII roles, shared_catalog_encoding must be set to
+> an encoding matching all databases (or UNKNOWN, not recommended)
+
+
+That would sound reasonable to me.
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 56
+On Fri, Nov 29, 2024 at 11:15 PM Bertrand Drouvot
+<bertranddrouvot(dot)pg(at)gmail(dot)com> wrote:
+> hm, are you saying that when choosing PG_SQL_ASCII to represent Mode 2
+> (ASCII-only with validation) in the shared_catalog_encoding field,
+> we're giving it a different semantic meaning than it has elsewhere in the
+> system? Maybe we could just document very clearly that its meaning in
+> shared_catalog_encoding is special/different?
+
+
+Documentation seems enough to me.  Unless you think it would be useful
+outside this use case?
+
+
+Hmm, in theory I suppose validated ASCII7 would be the ideal encoding
+for template0, or generally any template that is allowed to be cloned
+into a new database with a different encoding.  It would enforce
+something that is just a promise or convention today.  I don't think
+that is really a pressing issue in itself, the convention holds up
+pretty well, but it's conceptually quite closely related, so it's at
+least interesting to think about.  I dunno.
+
+
+> > $ CREATE ROLE lætitia;
+> > ERROR: role name "lætitia" cannot be represented in the shared catalog
+> > encoding SQL_ASCII
+> > HINT: To allow non-ASCII roles, shared_catalog_encoding must be set to
+> > an encoding matching all databases (or UNKNOWN, not recommended)
+>
+> That would sound reasonable to me.
+
+
+Cool.  You're both telling me this sounds worth trying out, so I
+hacked up a proof-of-concept.  Please see attached.
+
+
+Almost half of the patch is tedious validation code that knows where
+all the strings are hiding in the shared catalogs (and TODOs remain).
+I wonder if that part could be automated somehow with schema analysis.
+On the other hand, that stuff is not changing in a hurry, and you get
+to write friendly actionable messages if you do it manually, for
+example:
+
+
+ALTER SYSTEM CATALOG ENCODING SQL_ASCII;
+ERROR:  role "regress_fred" has setting "application_name" with value
+"café" that contains invalid characters
+HINT:  Consider ALTER ROLE ... SET ... TO ... using characters valid
+in SQL_ASCII.
+
+
+(See lots more variations and cases in regress/expected/catalog_encoding.out.)
+
+
+I'm on the fence about the default.  Here I defaulted to
+single-encoding, figuring that multi-encoding clusters are possibly a
+fairly advanced configuration and that that user group could just run
+one extra command, and there's even a HINT.
+
+
+I wrote some documentation as an exercise to see how practical and
+defensible the idea seemed when put into manualspeak.
+
+
+Despite being a really simple idea for adding one new switch that
+really only "stops" things rather than actually doing anything new, it
+finishes up interacting with locking, logging, checkpointing, control
+file, redo, grammar, pg_upgrade (and I see now that pg_dumpall might
+need a similar approach), and I didn't even look at the startup stuff
+you guys were working on that can hopefully benefit from having
+GetSharedCatalogEncoding().  Hopefully the patch has the right sort of
+ideas in some of those places, but obviously it's a rapid prototype so
+might be way off on some of the details. It fails on Windows CI in a
+very minor way that I see how to fix... later.  It's enough to try out
+the user experience anyway.   Feedback, flames and ideas welcome.
+
+
+
+### MESSAGE 57
+On Mon, Dec  2, 2024 at 06:39:48PM +1300, Thomas Munro wrote:
+> Despite being a really simple idea for adding one new switch that
+> really only "stops" things rather than actually doing anything new, it
+> finishes up interacting with locking, logging, checkpointing, control
+> file, redo, grammar, pg_upgrade (and I see now that pg_dumpall might
+> need a similar approach), and I didn't even look at the startup stuff
+> you guys were working on that can hopefully benefit from having
+> GetSharedCatalogEncoding().  Hopefully the patch has the right sort of
+> ideas in some of those places, but obviously it's a rapid prototype so
+> might be way off on some of the details. It fails on Windows CI in a
+> very minor way that I see how to fix... later.  It's enough to try out
+> the user experience anyway.   Feedback, flames and ideas welcome.
+
+
+I am concerned we are going to get a lot of complaints about this
+restricted change because most people are happily using whatever
+encoding they want, and as long as they don't hit the 64-byte limit,
+they are fine.  Are people going to be happy with this restriction just
+to keep 64+-byte identifiers safe?
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  When a patient asks the doctor, "Am I going to die?", he means 
+  "Am I going to die soon?"
+
+
+
+
+
+### MESSAGE 58
+Bruce Momjian <bruce(at)momjian(dot)us> writes:
+> I am concerned we are going to get a lot of complaints about this
+> restricted change because most people are happily using whatever
+> encoding they want, and as long as they don't hit the 64-byte limit,
+> they are fine.  Are people going to be happy with this restriction just
+> to keep 64+-byte identifiers safe?
+
+
+That's a remarkably rose-tinted view of the current state of affairs.
+Reality is that using multiple encodings in shared catalogs just plain
+doesn't work very well.  Even something as simple as "select datname
+from pg_database" is likely to give garbage if there are entries in
+encodings that don't match your current database's encoding.  What
+Thomas is proposing is to formalize and then enforce the two usage
+patterns that we know work okay.
+
+
+Moreover, the proposal also includes a third backwards-compatibility
+mode that will let anyone who does like the current approach to keep
+using it.  So I'm unclear on why you think there's a big downside.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 59
+On Mon, Dec  2, 2024 at 06:16:19PM -0500, Tom Lane wrote:
+> Bruce Momjian <bruce(at)momjian(dot)us> writes:
+> > I am concerned we are going to get a lot of complaints about this
+> > restricted change because most people are happily using whatever
+> > encoding they want, and as long as they don't hit the 64-byte limit,
+> > they are fine.  Are people going to be happy with this restriction just
+> > to keep 64+-byte identifiers safe?
+> 
+> That's a remarkably rose-tinted view of the current state of affairs.
+> Reality is that using multiple encodings in shared catalogs just plain
+> doesn't work very well.  Even something as simple as "select datname
+> from pg_database" is likely to give garbage if there are entries in
+> encodings that don't match your current database's encoding.  What
+> Thomas is proposing is to formalize and then enforce the two usage
+> patterns that we know work okay.
+> 
+> Moreover, the proposal also includes a third backwards-compatibility
+> mode that will let anyone who does like the current approach to keep
+> using it.  So I'm unclear on why you think there's a big downside.
+
+
+I have not heard of anyone complaining about the problem of viewing the
+shared catalog  columns so I didn't consider that benefit.
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  When a patient asks the doctor, "Am I going to die?", he means 
+  "Am I going to die soon?"
+
+
+
+
+
+### MESSAGE 60
+Bruce Momjian <bruce(at)momjian(dot)us> writes:
+> On Mon, Dec  2, 2024 at 06:16:19PM -0500, Tom Lane wrote:
+>> Reality is that using multiple encodings in shared catalogs just plain
+>> doesn't work very well.  Even something as simple as "select datname
+>> from pg_database" is likely to give garbage if there are entries in
+>> encodings that don't match your current database's encoding.  What
+>> Thomas is proposing is to formalize and then enforce the two usage
+>> patterns that we know work okay.
+
+
+> I have not heard of anyone complaining about the problem of viewing the
+> shared catalog  columns so I didn't consider that benefit.
+
+
+That's probably because they've learned the hard way to use one of
+the two usage patterns that actually work.
+
+
+Also, I think we have some code around pg_stat_activity that
+suppresses possibly-wrongly-encoded data from other DBs (in query
+text, not only user/DB names).  That suppression could be relaxed
+in the only-one-encoding mode, which would be a genuinue benefit.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 61
+Hi,
+
+
+On Mon, Dec 02, 2024 at 06:39:48PM +1300, Thomas Munro wrote:
+> On Fri, Nov 29, 2024 at 11:15 PM Bertrand Drouvot
+> <bertranddrouvot(dot)pg(at)gmail(dot)com> wrote:
+> > hm, are you saying that when choosing PG_SQL_ASCII to represent Mode 2
+> > (ASCII-only with validation) in the shared_catalog_encoding field,
+> > we're giving it a different semantic meaning than it has elsewhere in the
+> > system? Maybe we could just document very clearly that its meaning in
+> > shared_catalog_encoding is special/different?
+> 
+> Documentation seems enough to me.  Unless you think it would be useful
+> outside this use case?
+
+
+No, I also think that documentation update should be enough.
+
+
+> Hmm, in theory I suppose validated ASCII7 would be the ideal encoding
+> for template0, or generally any template that is allowed to be cloned
+> into a new database with a different encoding.  It would enforce
+> something that is just a promise or convention today.
+
+
+I agree since all ASCII7 characters should be valid in the other encoding.
+
+
+> I don't think
+> that is really a pressing issue in itself, the convention holds up
+> pretty well, but it's conceptually quite closely related, so it's at
+> least interesting to think about.  I dunno.
+
+
+Yeah, while it's true that SQL_ASCII is more like "no encoding" (no validation
+and allows any byte sequence), I also don't think there is pressure to enforce
+"real" ASCII7 for template0.
+
+
+> > > $ CREATE ROLE lætitia;
+> > > ERROR: role name "lætitia" cannot be represented in the shared catalog
+> > > encoding SQL_ASCII
+> > > HINT: To allow non-ASCII roles, shared_catalog_encoding must be set to
+> > > an encoding matching all databases (or UNKNOWN, not recommended)
+> >
+> > That would sound reasonable to me.
+> 
+> Cool.  You're both telling me this sounds worth trying out, so I
+> hacked up a proof-of-concept.  Please see attached.
+
+
+Thanks for the patch!
+
+
+> Almost half of the patch is tedious validation code that knows where
+> all the strings are hiding in the shared catalogs (and TODOs remain).
+> I wonder if that part could be automated somehow with schema analysis.
+> On the other hand, that stuff is not changing in a hurry, and you get
+> to write friendly actionable messages if you do it manually, for
+
+
+I also think the user experience is important here (better error messages) over
+maintenance simplicity (automated schema analysis).
+
+
+Maybe we can try an "hybrid" approach that could simplify the AlterSystemCatalogEncoding()
+by relying on a new struct, say:
+
+
+"
+typedef struct {
+    Oid relationId;
+    const char *relationName;
+    struct {
+        AttrNumber attrNum;
+        bool isName;
+        const char *fieldDesc;
+        const char *hintMsg;
+    } attrs[4];
+} CatalogValidationDef;
+"
+
+
+And then let the validation iterates over an array of CatalogValidationDef?
+
+
+"
+static const CatalogValidationDef validationDefs[] = {
+    {
+        AuthIdRelationId,
+        "role",
+        {{Anum_pg_authid_rolname, true, "name",
+          "Consider ALTER ROLE ... RENAME TO ... using characters valid in SQL_ASCII."}}
+    },
+.
+.
+"
+And use schema analysis "only" to verify completeness (catch missing fields)?
+
+
+> I'm on the fence about the default.  Here I defaulted to
+> single-encoding, figuring that multi-encoding clusters are possibly a
+> fairly advanced configuration and that that user group could just run
+> one extra command, and there's even a HINT.
+
+
+I think that makes sense. It makes the default "simple" and the complex case
+possible considering multi-encoding an advanced configuration.
+
+
+> Despite being a really simple idea for adding one new switch that
+> really only "stops" things rather than actually doing anything new, it
+> finishes up interacting with locking, logging, checkpointing, control
+> file, redo, grammar, pg_upgrade (and I see now that pg_dumpall might
+> need a similar approach),
+
+
+Yeah, indeed the impact is not negligible and that's probably one more reason
+to "just" keep the "only stops" behavior.
+
+
+> and I didn't even look at the startup stuff
+> you guys were working on that can hopefully benefit from having
+> GetSharedCatalogEncoding().  Hopefully the patch has the right sort of
+> ideas in some of those places, but obviously it's a rapid prototype so
+> might be way off on some of the details.
+
+
+I'll look more in details in the near future (unless someone has cons about your
+suggested approach, which is not my case). 
+
+
+Do you think it's worth to move the discussion into a dedicated hackers thread?
+(maybe reaching a wider audience?) I think the subject is sensible enough.
+
+
+Regards,
+
+
+-- 
+Bertrand Drouvot
+PostgreSQL Contributors Team
+RDS Open Source Databases
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 62
+On Tue, Dec 3, 2024 at 8:38 PM Bertrand Drouvot
+<bertranddrouvot(dot)pg(at)gmail(dot)com> wrote:
+> Maybe we can try an "hybrid" approach that could simplify the AlterSystemCatalogEncoding()
+> by relying on a new struct, say:
+
+
+Interesting idea, yeah, I'll look into that.
+
+
+> Do you think it's worth to move the discussion into a dedicated hackers thread?
+> (maybe reaching a wider audience?) I think the subject is sensible enough.
+
+
+Ok yeah, I'll start a new thread on -hackers soon.
+
+
+
+
+
+### MESSAGE 63
+On Tue, Dec 03, 2024 at 09:03:55PM +1300, Thomas Munro wrote:
+> On Tue, Dec 3, 2024 at 8:38 PM Bertrand Drouvot
+> <bertranddrouvot(dot)pg(at)gmail(dot)com> wrote:
+>> Maybe we can try an "hybrid" approach that could simplify the AlterSystemCatalogEncoding()
+>> by relying on a new struct, say:
+> 
+> Interesting idea, yeah, I'll look into that.
+> 
+>> Do you think it's worth to move the discussion into a dedicated hackers thread?
+>> (maybe reaching a wider audience?) I think the subject is sensible enough.
+> 
+> Ok yeah, I'll start a new thread on -hackers soon.
+
+
+If we are leaning towards a more comprehensive fix in v18, ISTM we should
+go ahead and revert commit 562bee0 (both for master and v17).  Or am I
+misinterpreting the proposed path forward here?
+
+
+-- 
+nathan
+
+
+
+
+
+### MESSAGE 64
+Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+> If we are leaning towards a more comprehensive fix in v18, ISTM we should
+> go ahead and revert commit 562bee0 (both for master and v17).  Or am I
+> misinterpreting the proposed path forward here?
+
+
+That seems like a reasonable thing to do now, since we have a
+complaint about v17's behavior and there seems no compelling
+reason why v17 has to address this ancient issue.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 65
+On Thu, Dec 12, 2024 at 9:59 AM Nathan Bossart <nathandbossart(at)gmail(dot)com> wrote:
+> If we are leaning towards a more comprehensive fix in v18, ISTM we should
+> go ahead and revert commit 562bee0 (both for master and v17).  Or am I
+> misinterpreting the proposed path forward here?
+
+
+Yeah.  Just to confirm, the CLUSTER ENCODING concept is definitely
+future-release-only material
+
+
+
+
+
+### MESSAGE 66
+On Wed, Dec 11, 2024 at 04:12:46PM -0500, Tom Lane wrote:
+> Nathan Bossart <nathandbossart(at)gmail(dot)com> writes:
+>> If we are leaning towards a more comprehensive fix in v18, ISTM we should
+>> go ahead and revert commit 562bee0 (both for master and v17).  Or am I
+>> misinterpreting the proposed path forward here?
+> 
+> That seems like a reasonable thing to do now, since we have a
+> complaint about v17's behavior and there seems no compelling
+> reason why v17 has to address this ancient issue.
+
+
+Done.  Thanks all for the discussion.
+
+
+-- 
+nathan
+
+
+

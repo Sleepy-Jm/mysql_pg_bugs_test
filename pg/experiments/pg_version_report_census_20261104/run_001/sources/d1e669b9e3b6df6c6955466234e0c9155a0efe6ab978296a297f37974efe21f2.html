@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17292: view definition containing multiple joins on partitioned table returns invalid explain plan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17292-77f65b65342c5bf0%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2021-11-19T10:01:16" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17292: view definition containing multiple joins on partitioned table returns invalid explain plan" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17292 Logged by: reiner peterke Email address: zedaardv@drizzle.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17292: view definition containing multiple joins on partitioned table returns invalid explain plan</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>zedaardv(at)drizzle(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17292: view definition containing multiple joins on partitioned table returns invalid explain plan</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-11-19 10:01:16</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17292-77f65b65342c5bf0%40postgresql.org">17292-77f65b65342c5bf0@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17292-77f65b65342c5bf0%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17292-77f65b65342c5bf0%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17292-77f65b65342c5bf0%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17292-77f65b65342c5bf0%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17292-77f65b65342c5bf0%40postgresql.org" selected="selected">2021-11-19 10:01:16 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="CAAQ3%2BE5Fa1PwwYBk9uqrEor%3DHqV3TvJ5fmri1b8khYz36yHjTA%40mail.gmail.com">&nbsp;2021-11-19 10:17:27 from reiner peterke &lt;zedaardv(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202111190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17292<br>Logged by:          reiner peterke<br>Email address:      zedaardv(at)drizzle(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   centos 8<br>Description:        </p>
+
+<p>This has been observer on centos8, ubuntu, and Mac OS</p>
+
+<p>there is a view defintion, provided below.</p>
+
+<p>It has 51 joins on the same partitioned table.<br>the table has 219 partitions<br>when an index is build on the partitioned table, executing the explain plan<br>takes hours (over 5 on my mac) and returns an incomplete explain plan</p>
+
+<p>I will follow up this report with a mail with and attached tar file with all<br>the necessary information for creating the situation</p>
+
+<p>view definition<br>CREATE OR REPLACE VIEW bmk.vw_ftrucf_index<br> AS<br> SELECT s.source_id,<br>    s.src_name,<br>    m.index_id,<br>    d.as_of_date,<br>    dp.as_of_date AS prior_date,<br>    ica_mk_usd.currency_id AS mv_currency_id,<br>    c_usd.code AS mv_currency_code,<br>    a_mk.attribute_id AS mv_attribute_id,<br>    a_mk.code AS mv_attribute_code,<br>    ica_mk_usd.nvalue AS mv,<br>    c_usd.currency_id AS return_currency_id,<br>    c_usd.code AS return_currency_code,<br>    ( SELECT c.attribute_id<br>           FROM bmk.attributes c<br>          WHERE c.code::text = &#x27;PI&#x27;::text AND c.attribute_type_id =<br>1::numeric) AS pi_attribute_id,<br>    &#x27;PI&#x27;::text AS pi_attribute_code,<br>    ica_pi_usd.nvalue / p_ica_pi_usd.nvalue - 1::numeric AS pr,<br>    p_ica_pi_usd.nvalue AS p_wi_t0,<br>    ica_pi_usd.nvalue AS p_wi_t1,<br>    ( SELECT c.attribute_id<br>           FROM bmk.attributes c<br>          WHERE c.code::text = &#x27;GI&#x27;::text AND c.attribute_type_id =<br>1::numeric) AS gi_attribute_id,<br>    &#x27;GI&#x27;::text AS gi_attribute_code,<br>    ica_gi_usd.nvalue / p_ica_gi_usd.nvalue - 1::numeric AS gr,<br>    p_ica_gi_usd.nvalue AS g_wi_t0,<br>    ica_gi_usd.nvalue AS g_wi_t1,<br>    ( SELECT c.attribute_id<br>           FROM bmk.attributes c<br>          WHERE c.code::text = &#x27;NI&#x27;::text AND c.attribute_type_id =<br>1::numeric) AS ni_attribute_id,<br>    &#x27;NI&#x27;::text AS ni_attribute_code,<br>    ica_ni_usd.nvalue / p_ica_ni_usd.nvalue - 1::numeric AS nr,<br>    p_ica_ni_usd.nvalue AS n_wi_t0,<br>    ica_ni_usd.nvalue AS n_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgrjpy_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgrjpy_attribute_code,<br>    ica_hgi_jpy.nvalue / p_ica_hgi_jpy.nvalue - 1::numeric AS hgrjpy,<br>    p_ica_hgi_jpy.nvalue AS hgrjpy_wi_t0,<br>    ica_hgi_jpy.nvalue AS hgrjpy_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgrnzd_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgrnzd_attribute_code,<br>    ica_hgi_nzd.nvalue / p_ica_hgi_nzd.nvalue - 1::numeric AS hgrnzd,<br>    p_ica_hgi_nzd.nvalue AS hgrnzd_wi_t0,<br>    ica_hgi_nzd.nvalue AS hgrnzd_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnrgbp_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnrgbp_attribute_code,<br>    ica_hni_gbp.nvalue / p_ica_hni_gbp.nvalue - 1::numeric AS hnrgbp,<br>    p_ica_hni_gbp.nvalue AS hnrgbp_wi_t0,<br>    ica_hni_gbp.nvalue AS hnrgbp_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnrnzd_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnrnzd_attribute_code,<br>    ica_hni_nzd.nvalue / p_ica_hni_nzd.nvalue - 1::numeric AS hnrnzd,<br>    p_ica_hni_nzd.nvalue AS hnrnzd_wi_t0,<br>    ica_hni_nzd.nvalue AS hnrnzd_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgreur_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgreur_attribute_code,<br>    ica_hgi_eur.nvalue / p_ica_hgi_eur.nvalue - 1::numeric AS hgreur,<br>    p_ica_hgi_eur.nvalue AS hgreur_wi_t0,<br>    ica_hgi_eur.nvalue AS hgreur_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgrgbp_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgrgbp_attribute_code,<br>    ica_hgi_gbp.nvalue / p_ica_hgi_gbp.nvalue - 1::numeric AS hgrgbp,<br>    p_ica_hgi_gbp.nvalue AS hgrgbp_wi_t0,<br>    ica_hgi_gbp.nvalue AS hgrgbp_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgrhkd_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgrhkd_attribute_code,<br>    ica_hgi_hkd.nvalue / p_ica_hgi_hkd.nvalue - 1::numeric AS hgrhkd,<br>    p_ica_hgi_hkd.nvalue AS hgrhkd_wi_t0,<br>    ica_hgi_hkd.nvalue AS hgrhkd_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgrchf_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgrchf_attribute_code,<br>    ica_hgi_chf.nvalue / p_ica_hgi_chf.nvalue - 1::numeric AS hgrchf,<br>    p_ica_hgi_chf.nvalue AS hgrchf_wi_t0,<br>    ica_hgi_chf.nvalue AS hgrchf_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgrzar_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgrzar_attribute_code,<br>    ica_hgi_zar.nvalue / p_ica_hgi_zar.nvalue - 1::numeric AS hgrzar,<br>    p_ica_hgi_zar.nvalue AS hgrzar_wi_t0,<br>    ica_hgi_zar.nvalue AS hgrzar_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnreur_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnreur_attribute_code,<br>    ica_hni_eur.nvalue / p_ica_hni_eur.nvalue - 1::numeric AS hnreur,<br>    p_ica_hni_eur.nvalue AS hnreur_wi_t0,<br>    ica_hni_eur.nvalue AS hnreur_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgrusd_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgrusd_attribute_code,<br>    ica_hgi_usd.nvalue / p_ica_hgi_usd.nvalue - 1::numeric AS hgrusd,<br>    p_ica_hgi_usd.nvalue AS hgrusd_wi_t0,<br>    ica_hgi_usd.nvalue AS hgrusd_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgrcad_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgrcad_attribute_code,<br>    ica_hgi_cad.nvalue / p_ica_hgi_cad.nvalue - 1::numeric AS hgrcad,<br>    p_ica_hgi_cad.nvalue AS hgrcad_wi_t0,<br>    ica_hgi_cad.nvalue AS hgrcad_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnrcad_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnrcad_attribute_code,<br>    ica_hni_cad.nvalue / p_ica_hni_cad.nvalue - 1::numeric AS hnrcad,<br>    p_ica_hni_cad.nvalue AS hnrcad_wi_t0,<br>    ica_hni_cad.nvalue AS hnrcad_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnrhkd_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnrhkd_attribute_code,<br>    ica_hni_hkd.nvalue / p_ica_hni_hkd.nvalue - 1::numeric AS hnrhkd,<br>    p_ica_hni_hkd.nvalue AS hnrhkd_wi_t0,<br>    ica_hni_hkd.nvalue AS hnrhkd_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnrsgd_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnrsgd_attribute_code,<br>    ica_hni_sgd.nvalue / p_ica_hni_sgd.nvalue - 1::numeric AS hnrsgd,<br>    p_ica_hni_sgd.nvalue AS hnrsgd_wi_t0,<br>    ica_hni_sgd.nvalue AS hnrsgd_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnrusd_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnrusd_attribute_code,<br>    ica_hni_usd.nvalue / p_ica_hni_usd.nvalue - 1::numeric AS hnrusd,<br>    p_ica_hni_usd.nvalue AS hnrusd_wi_t0,<br>    ica_hni_usd.nvalue AS hnrusd_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgrsgd_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgrsgd_attribute_code,<br>    ica_hgi_sgd.nvalue / p_ica_hgi_sgd.nvalue - 1::numeric AS hgrsgd,<br>    p_ica_hgi_sgd.nvalue AS hgrsgd_wi_t0,<br>    ica_hgi_sgd.nvalue AS hgrsgd_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnraud_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnraud_attribute_code,<br>    ica_hni_aud.nvalue / p_ica_hni_aud.nvalue - 1::numeric AS hnraud,<br>    p_ica_hni_aud.nvalue AS hnraud_wi_t0,<br>    ica_hni_aud.nvalue AS hnraud_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnrjpy_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnrjpy_attribute_code,<br>    ica_hni_jpy.nvalue / p_ica_hni_jpy.nvalue - 1::numeric AS hnrjpy,<br>    p_ica_hni_jpy.nvalue AS hnrjpy_wi_t0,<br>    ica_hni_jpy.nvalue AS hnrjpy_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HGI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hgraud_attribute_id,<br>    &#x27;HGI&#x27;::text AS hgraud_attribute_code,<br>    ica_hgi_aud.nvalue / p_ica_hgi_aud.nvalue - 1::numeric AS hgraud,<br>    p_ica_hgi_aud.nvalue AS hgraud_wi_t0,<br>    ica_hgi_aud.nvalue AS hgraud_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnrchf_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnrchf_attribute_code,<br>    ica_hni_chf.nvalue / p_ica_hni_chf.nvalue - 1::numeric AS hnrchf,<br>    p_ica_hni_chf.nvalue AS hnrchf_wi_t0,<br>    ica_hni_chf.nvalue AS hnrchf_wi_t1,<br>    ( SELECT a.attribute_id<br>           FROM bmk.attributes a<br>          WHERE a.code::text = &#x27;HNI&#x27;::text AND a.attribute_type_id =<br>1::numeric) AS hnrzar_attribute_id,<br>    &#x27;HNI&#x27;::text AS hnrzar_attribute_code,<br>    ica_hni_zar.nvalue / p_ica_hni_zar.nvalue - 1::numeric AS hnrzar,<br>    p_ica_hni_zar.nvalue AS hnrzar_wi_t0,<br>    ica_hni_zar.nvalue AS hnrzar_wi_t1<br>   FROM bmk.sources s<br>     JOIN bmk.dates d ON d.as_of_date = d.as_of_date<br>     JOIN bmk.dates dp ON d.as_of_date &gt; dp.as_of_date<br>     JOIN bmk.index_main m ON s.source_id = m.source_id AND d.as_of_date =<br>m.as_of_date<br>     JOIN bmk.attribute_types att_idx ON att_idx.att_typ_name::text =<br>&#x27;INDEX&#x27;::text<br>     JOIN bmk.currencies c_eur ON c_eur.code::text = &#x27;EUR&#x27;::text<br>     JOIN bmk.currencies c_zar ON c_zar.code::text = &#x27;ZAR&#x27;::text<br>     JOIN bmk.currencies c_nzd ON c_nzd.code::text = &#x27;NZD&#x27;::text<br>     JOIN bmk.currencies c_cny ON c_cny.code::text = &#x27;CNY&#x27;::text<br>     JOIN bmk.currencies c_gbp ON c_gbp.code::text = &#x27;GBP&#x27;::text<br>     JOIN bmk.currencies c_jpy ON c_jpy.code::text = &#x27;JPY&#x27;::text<br>     JOIN bmk.currencies c_sgd ON c_sgd.code::text = &#x27;SGD&#x27;::text<br>     JOIN bmk.currencies c_chf ON c_chf.code::text = &#x27;CHF&#x27;::text<br>     JOIN bmk.currencies c_hkd ON c_hkd.code::text = &#x27;HKD&#x27;::text<br>     JOIN bmk.currencies c_loc ON c_loc.code::text = &#x27;LOC&#x27;::text<br>     JOIN bmk.currencies c_usd ON c_usd.code::text = &#x27;USD&#x27;::text<br>     JOIN bmk.currencies c_aud ON c_aud.code::text = &#x27;AUD&#x27;::text<br>     JOIN bmk.currencies c_cad ON c_cad.code::text = &#x27;CAD&#x27;::text<br>     JOIN bmk.attributes a_gi ON a_gi.code::text = &#x27;GI&#x27;::text AND<br>a_gi.attribute_type_id = att_idx.attribute_type_id<br>     JOIN bmk.attributes a_ni ON a_ni.code::text = &#x27;NI&#x27;::text AND<br>a_ni.attribute_type_id = att_idx.attribute_type_id<br>     JOIN bmk.attributes a_hgi ON a_hgi.code::text = &#x27;HGI&#x27;::text AND<br>a_hgi.attribute_type_id = att_idx.attribute_type_id<br>     JOIN bmk.attributes a_mk ON a_mk.code::text = &#x27;MK&#x27;::text AND<br>a_mk.attribute_type_id = att_idx.attribute_type_id<br>     JOIN bmk.attributes a_hni ON a_hni.code::text = &#x27;HNI&#x27;::text AND<br>a_hni.attribute_type_id = att_idx.attribute_type_id<br>     JOIN bmk.attributes a_pi ON a_pi.code::text = &#x27;PI&#x27;::text AND<br>a_pi.attribute_type_id = att_idx.attribute_type_id<br>     LEFT JOIN bmk.index_curr_analytics ica_gi_usd ON ica_gi_usd.as_of_date<br>= d.as_of_date AND ica_gi_usd.source_id = s.source_id AND<br>ica_gi_usd.index_id = m.index_id AND ica_gi_usd.attribute_id =<br>a_gi.attribute_id AND ica_gi_usd.currency_id = c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_gi_usd ON<br>p_ica_gi_usd.as_of_date = dp.as_of_date AND p_ica_gi_usd.source_id =<br>s.source_id AND p_ica_gi_usd.index_id = m.index_id AND<br>p_ica_gi_usd.attribute_id = a_gi.attribute_id AND p_ica_gi_usd.currency_id =<br>c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_pi_usd ON ica_pi_usd.as_of_date<br>= d.as_of_date AND ica_pi_usd.source_id = s.source_id AND<br>ica_pi_usd.index_id = m.index_id AND ica_pi_usd.attribute_id =<br>a_pi.attribute_id AND ica_pi_usd.currency_id = c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_pi_usd ON<br>p_ica_pi_usd.as_of_date = dp.as_of_date AND p_ica_pi_usd.source_id =<br>s.source_id AND p_ica_pi_usd.index_id = m.index_id AND<br>p_ica_pi_usd.attribute_id = a_pi.attribute_id AND p_ica_pi_usd.currency_id =<br>c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_ni_usd ON ica_ni_usd.as_of_date<br>= d.as_of_date AND ica_ni_usd.source_id = s.source_id AND<br>ica_ni_usd.index_id = m.index_id AND ica_ni_usd.attribute_id =<br>a_ni.attribute_id AND ica_ni_usd.currency_id = c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_ni_usd ON<br>p_ica_ni_usd.as_of_date = dp.as_of_date AND p_ica_ni_usd.source_id =<br>s.source_id AND p_ica_ni_usd.index_id = m.index_id AND<br>p_ica_ni_usd.attribute_id = a_ni.attribute_id AND p_ica_ni_usd.currency_id =<br>c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_mk_usd ON ica_mk_usd.as_of_date<br>= d.as_of_date AND ica_mk_usd.source_id = s.source_id AND<br>ica_mk_usd.index_id = m.index_id AND ica_mk_usd.attribute_id =<br>a_mk.attribute_id AND ica_mk_usd.currency_id = c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_cad ON<br>ica_hni_cad.as_of_date = d.as_of_date AND ica_hni_cad.source_id =<br>s.source_id AND ica_hni_cad.index_id = m.index_id AND<br>ica_hni_cad.attribute_id = a_hni.attribute_id AND ica_hni_cad.currency_id =<br>c_cad.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_cad ON<br>p_ica_hni_cad.as_of_date = dp.as_of_date AND p_ica_hni_cad.source_id =<br>s.source_id AND p_ica_hni_cad.index_id = m.index_id AND<br>p_ica_hni_cad.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_cad.currency_id = c_cad.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_chf ON<br>ica_hni_chf.as_of_date = d.as_of_date AND ica_hni_chf.source_id =<br>s.source_id AND ica_hni_chf.index_id = m.index_id AND<br>ica_hni_chf.attribute_id = a_hni.attribute_id AND ica_hni_chf.currency_id =<br>c_chf.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_chf ON<br>p_ica_hni_chf.as_of_date = dp.as_of_date AND p_ica_hni_chf.source_id =<br>s.source_id AND p_ica_hni_chf.index_id = m.index_id AND<br>p_ica_hni_chf.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_chf.currency_id = c_chf.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_eur ON<br>ica_hni_eur.as_of_date = d.as_of_date AND ica_hni_eur.source_id =<br>s.source_id AND ica_hni_eur.index_id = m.index_id AND<br>ica_hni_eur.attribute_id = a_hni.attribute_id AND ica_hni_eur.currency_id =<br>c_eur.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_eur ON<br>p_ica_hni_eur.as_of_date = dp.as_of_date AND p_ica_hni_eur.source_id =<br>s.source_id AND p_ica_hni_eur.index_id = m.index_id AND<br>p_ica_hni_eur.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_eur.currency_id = c_eur.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_gbp ON<br>ica_hni_gbp.as_of_date = d.as_of_date AND ica_hni_gbp.source_id =<br>s.source_id AND ica_hni_gbp.index_id = m.index_id AND<br>ica_hni_gbp.attribute_id = a_hni.attribute_id AND ica_hni_gbp.currency_id =<br>c_gbp.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_gbp ON<br>p_ica_hni_gbp.as_of_date = dp.as_of_date AND p_ica_hni_gbp.source_id =<br>s.source_id AND p_ica_hni_gbp.index_id = m.index_id AND<br>p_ica_hni_gbp.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_gbp.currency_id = c_gbp.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_sgd ON<br>ica_hni_sgd.as_of_date = d.as_of_date AND ica_hni_sgd.source_id =<br>s.source_id AND ica_hni_sgd.index_id = m.index_id AND<br>ica_hni_sgd.attribute_id = a_hni.attribute_id AND ica_hni_sgd.currency_id =<br>c_sgd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_sgd ON<br>p_ica_hni_sgd.as_of_date = dp.as_of_date AND p_ica_hni_sgd.source_id =<br>s.source_id AND p_ica_hni_sgd.index_id = m.index_id AND<br>p_ica_hni_sgd.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_sgd.currency_id = c_sgd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_usd ON<br>ica_hni_usd.as_of_date = d.as_of_date AND ica_hni_usd.source_id =<br>s.source_id AND ica_hni_usd.index_id = m.index_id AND<br>ica_hni_usd.attribute_id = a_hni.attribute_id AND ica_hni_usd.currency_id =<br>c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_usd ON<br>p_ica_hni_usd.as_of_date = dp.as_of_date AND p_ica_hni_usd.source_id =<br>s.source_id AND p_ica_hni_usd.index_id = m.index_id AND<br>p_ica_hni_usd.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_usd.currency_id = c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_aud ON<br>ica_hni_aud.as_of_date = d.as_of_date AND ica_hni_aud.source_id =<br>s.source_id AND ica_hni_aud.index_id = m.index_id AND<br>ica_hni_aud.attribute_id = a_hni.attribute_id AND ica_hni_aud.currency_id =<br>c_aud.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_aud ON<br>p_ica_hni_aud.as_of_date = dp.as_of_date AND p_ica_hni_aud.source_id =<br>s.source_id AND p_ica_hni_aud.index_id = m.index_id AND<br>p_ica_hni_aud.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_aud.currency_id = c_aud.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_jpy ON<br>ica_hni_jpy.as_of_date = d.as_of_date AND ica_hni_jpy.source_id =<br>s.source_id AND ica_hni_jpy.index_id = m.index_id AND<br>ica_hni_jpy.attribute_id = a_hni.attribute_id AND ica_hni_jpy.currency_id =<br>c_jpy.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_jpy ON<br>p_ica_hni_jpy.as_of_date = dp.as_of_date AND p_ica_hni_jpy.source_id =<br>s.source_id AND p_ica_hni_jpy.index_id = m.index_id AND<br>p_ica_hni_jpy.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_jpy.currency_id = c_jpy.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_zar ON<br>ica_hni_zar.as_of_date = d.as_of_date AND ica_hni_zar.source_id =<br>s.source_id AND ica_hni_zar.index_id = m.index_id AND<br>ica_hni_zar.attribute_id = a_hni.attribute_id AND ica_hni_zar.currency_id =<br>c_zar.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_zar ON<br>p_ica_hni_zar.as_of_date = dp.as_of_date AND p_ica_hni_zar.source_id =<br>s.source_id AND p_ica_hni_zar.index_id = m.index_id AND<br>p_ica_hni_zar.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_zar.currency_id = c_zar.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_hkd ON<br>ica_hni_hkd.as_of_date = d.as_of_date AND ica_hni_hkd.source_id =<br>s.source_id AND ica_hni_hkd.index_id = m.index_id AND<br>ica_hni_hkd.attribute_id = a_hni.attribute_id AND ica_hni_hkd.currency_id =<br>c_hkd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_hkd ON<br>p_ica_hni_hkd.as_of_date = dp.as_of_date AND p_ica_hni_hkd.source_id =<br>s.source_id AND p_ica_hni_hkd.index_id = m.index_id AND<br>p_ica_hni_hkd.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_hkd.currency_id = c_hkd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hni_nzd ON<br>ica_hni_nzd.as_of_date = d.as_of_date AND ica_hni_nzd.source_id =<br>s.source_id AND ica_hni_nzd.index_id = m.index_id AND<br>ica_hni_nzd.attribute_id = a_hni.attribute_id AND ica_hni_nzd.currency_id =<br>c_nzd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hni_nzd ON<br>p_ica_hni_nzd.as_of_date = dp.as_of_date AND p_ica_hni_nzd.source_id =<br>s.source_id AND p_ica_hni_nzd.index_id = m.index_id AND<br>p_ica_hni_nzd.attribute_id = a_hni.attribute_id AND<br>p_ica_hni_nzd.currency_id = c_nzd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_cad ON<br>ica_hgi_cad.as_of_date = d.as_of_date AND ica_hgi_cad.source_id =<br>s.source_id AND ica_hgi_cad.index_id = m.index_id AND<br>ica_hgi_cad.attribute_id = a_hgi.attribute_id AND ica_hgi_cad.currency_id =<br>c_cad.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_cad ON<br>p_ica_hgi_cad.as_of_date = dp.as_of_date AND p_ica_hgi_cad.source_id =<br>s.source_id AND p_ica_hgi_cad.index_id = m.index_id AND<br>p_ica_hgi_cad.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_cad.currency_id = c_cad.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_chf ON<br>ica_hgi_chf.as_of_date = d.as_of_date AND ica_hgi_chf.source_id =<br>s.source_id AND ica_hgi_chf.index_id = m.index_id AND<br>ica_hgi_chf.attribute_id = a_hgi.attribute_id AND ica_hgi_chf.currency_id =<br>c_chf.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_chf ON<br>p_ica_hgi_chf.as_of_date = dp.as_of_date AND p_ica_hgi_chf.source_id =<br>s.source_id AND p_ica_hgi_chf.index_id = m.index_id AND<br>p_ica_hgi_chf.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_chf.currency_id = c_chf.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_eur ON<br>ica_hgi_eur.as_of_date = d.as_of_date AND ica_hgi_eur.source_id =<br>s.source_id AND ica_hgi_eur.index_id = m.index_id AND<br>ica_hgi_eur.attribute_id = a_hgi.attribute_id AND ica_hgi_eur.currency_id =<br>c_eur.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_eur ON<br>p_ica_hgi_eur.as_of_date = dp.as_of_date AND p_ica_hgi_eur.source_id =<br>s.source_id AND p_ica_hgi_eur.index_id = m.index_id AND<br>p_ica_hgi_eur.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_eur.currency_id = c_eur.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_gbp ON<br>ica_hgi_gbp.as_of_date = d.as_of_date AND ica_hgi_gbp.source_id =<br>s.source_id AND ica_hgi_gbp.index_id = m.index_id AND<br>ica_hgi_gbp.attribute_id = a_hgi.attribute_id AND ica_hgi_gbp.currency_id =<br>c_gbp.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_gbp ON<br>p_ica_hgi_gbp.as_of_date = dp.as_of_date AND p_ica_hgi_gbp.source_id =<br>s.source_id AND p_ica_hgi_gbp.index_id = m.index_id AND<br>p_ica_hgi_gbp.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_gbp.currency_id = c_gbp.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_sgd ON<br>ica_hgi_sgd.as_of_date = d.as_of_date AND ica_hgi_sgd.source_id =<br>s.source_id AND ica_hgi_sgd.index_id = m.index_id AND<br>ica_hgi_sgd.attribute_id = a_hgi.attribute_id AND ica_hgi_sgd.currency_id =<br>c_sgd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_sgd ON<br>p_ica_hgi_sgd.as_of_date = dp.as_of_date AND p_ica_hgi_sgd.source_id =<br>s.source_id AND p_ica_hgi_sgd.index_id = m.index_id AND<br>p_ica_hgi_sgd.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_sgd.currency_id = c_sgd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_usd ON<br>ica_hgi_usd.as_of_date = d.as_of_date AND ica_hgi_usd.source_id =<br>s.source_id AND ica_hgi_usd.index_id = m.index_id AND<br>ica_hgi_usd.attribute_id = a_hgi.attribute_id AND ica_hgi_usd.currency_id =<br>c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_usd ON<br>p_ica_hgi_usd.as_of_date = dp.as_of_date AND p_ica_hgi_usd.source_id =<br>s.source_id AND p_ica_hgi_usd.index_id = m.index_id AND<br>p_ica_hgi_usd.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_usd.currency_id = c_usd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_aud ON<br>ica_hgi_aud.as_of_date = d.as_of_date AND ica_hgi_aud.source_id =<br>s.source_id AND ica_hgi_aud.index_id = m.index_id AND<br>ica_hgi_aud.attribute_id = a_hgi.attribute_id AND ica_hgi_aud.currency_id =<br>c_aud.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_aud ON<br>p_ica_hgi_aud.as_of_date = dp.as_of_date AND p_ica_hgi_aud.source_id =<br>s.source_id AND p_ica_hgi_aud.index_id = m.index_id AND<br>p_ica_hgi_aud.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_aud.currency_id = c_aud.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_jpy ON<br>ica_hgi_jpy.as_of_date = d.as_of_date AND ica_hgi_jpy.source_id =<br>s.source_id AND ica_hgi_jpy.index_id = m.index_id AND<br>ica_hgi_jpy.attribute_id = a_hgi.attribute_id AND ica_hgi_jpy.currency_id =<br>c_jpy.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_jpy ON<br>p_ica_hgi_jpy.as_of_date = dp.as_of_date AND p_ica_hgi_jpy.source_id =<br>s.source_id AND p_ica_hgi_jpy.index_id = m.index_id AND<br>p_ica_hgi_jpy.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_jpy.currency_id = c_jpy.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_zar ON<br>ica_hgi_zar.as_of_date = d.as_of_date AND ica_hgi_zar.source_id =<br>s.source_id AND ica_hgi_zar.index_id = m.index_id AND<br>ica_hgi_zar.attribute_id = a_hgi.attribute_id AND ica_hgi_zar.currency_id =<br>c_zar.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_zar ON<br>p_ica_hgi_zar.as_of_date = dp.as_of_date AND p_ica_hgi_zar.source_id =<br>s.source_id AND p_ica_hgi_zar.index_id = m.index_id AND<br>p_ica_hgi_zar.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_zar.currency_id = c_zar.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_hkd ON<br>ica_hgi_hkd.as_of_date = d.as_of_date AND ica_hgi_hkd.source_id =<br>s.source_id AND ica_hgi_hkd.index_id = m.index_id AND<br>ica_hgi_hkd.attribute_id = a_hgi.attribute_id AND ica_hgi_hkd.currency_id =<br>c_hkd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_hkd ON<br>p_ica_hgi_hkd.as_of_date = dp.as_of_date AND p_ica_hgi_hkd.source_id =<br>s.source_id AND p_ica_hgi_hkd.index_id = m.index_id AND<br>p_ica_hgi_hkd.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_hkd.currency_id = c_hkd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics ica_hgi_nzd ON<br>ica_hgi_nzd.as_of_date = d.as_of_date AND ica_hgi_nzd.source_id =<br>s.source_id AND ica_hgi_nzd.index_id = m.index_id AND<br>ica_hgi_nzd.attribute_id = a_hgi.attribute_id AND ica_hgi_nzd.currency_id =<br>c_nzd.currency_id<br>     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_nzd ON<br>p_ica_hgi_nzd.as_of_date = dp.as_of_date AND p_ica_hgi_nzd.source_id =<br>s.source_id AND p_ica_hgi_nzd.index_id = m.index_id AND<br>p_ica_hgi_nzd.attribute_id = a_hgi.attribute_id AND<br>p_ica_hgi_nzd.currency_id = c_nzd.currency_id<br>  WHERE s.src_name::text = &#x27;FTRUCF&#x27;::text;</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAAQ3%2BE5Fa1PwwYBk9uqrEor%3DHqV3TvJ5fmri1b8khYz36yHjTA%40mail.gmail.com">Re: BUG #17292: view definition containing multiple joins on
+ partitioned table returns invalid explain plan</a> at 2021-11-19 10:17:27 from reiner peterke
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAAQ3%2BE5Fa1PwwYBk9uqrEor%3DHqV3TvJ5fmri1b8khYz36yHjTA%40mail.gmail.com">Next Message</a></th>
+            <td>reiner peterke</td>
+            <td>2021-11-19 10:17:27</td>
+            <td><a href="/message-id/CAAQ3%2BE5Fa1PwwYBk9uqrEor%3DHqV3TvJ5fmri1b8khYz36yHjTA%40mail.gmail.com">Re: BUG #17292: view definition containing multiple joins on
+ partitioned table returns invalid explain plan</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAC%2BAXB1C1C_z3XQR%3DZxiG%2BV0U9RDJFtJJamvYMoq%2Bd4RoVRh4A%40mail.gmail.com">Previous Message</a></th>
+            <td>Juan José Santamaría Flecha</td>
+            <td>2021-11-19 09:25:14</td>
+            <td><a href="/message-id/CAC%2BAXB1C1C_z3XQR%3DZxiG%2BV0U9RDJFtJJamvYMoq%2Bd4RoVRh4A%40mail.gmail.com">Re: BUG #17288: PSQL bug with COPY command (Windows)</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

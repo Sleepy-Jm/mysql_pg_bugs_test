@@ -1,0 +1,1258 @@
+[
+  {
+    "report_id": "17294",
+    "scenario_id": "17294_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17294-8f6c7962ce877edc%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table test (a text, b varchar);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17294.txt",
+        "start_offset": 427,
+        "end_offset": 465,
+        "start_line": 17,
+        "end_line": 17,
+        "excerpt_sha256": "cf77290b38af9e3828986e94ab3e39454c9cab7d27a530d56c7a7b395630f9f6",
+        "transformations": []
+      },
+      {
+        "text": "create index on test using spgist (a);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17294.txt",
+        "start_offset": 488,
+        "end_offset": 526,
+        "start_line": 19,
+        "end_line": 19,
+        "excerpt_sha256": "5e0e59b6c8812b0b74f5be7f0c6f46cce6c7a3058a85e7cb9887edc34ae1e5bc",
+        "transformations": []
+      },
+      {
+        "text": "create index on test using spgist (b);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17294.txt",
+        "start_offset": 549,
+        "end_offset": 587,
+        "start_line": 21,
+        "end_line": 21,
+        "excerpt_sha256": "a1279c7cfb3c74768ea90f5e31e5cf093307e067da5b724afb4e78226b96de86",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "compress method must be defined",
+      "reported_phenomenon": "varchar SP-GiST 索引报 compress method 错误",
+      "author_expected_behavior": "应与旧版本一样允许创建索引"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "1f78bc15d65be32b06ae6f771675305e4ff4fe73294ad41c83024f84d8a30b38"
+  },
+  {
+    "report_id": "17302",
+    "scenario_id": "17302_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17302-dea8025c932a92f1%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE TABLE point_tbl (f1 point);\nCREATE INDEX gpointind ON point_tbl USING gist (f1);\nINSERT INTO point_tbl SELECT '(0,0)'::point FROM generate_series(1, 1000)\ng;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17302.txt",
+        "start_offset": 300,
+        "end_offset": 465,
+        "start_line": 13,
+        "end_line": 17,
+        "excerpt_sha256": "708250fb6212ebd8e17ea9eadc097a954e99ef70a318fc1dfb63b9ee72914e60",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "INSERT INTO point_tbl VALUES ('(1e-300,-1e-300)'::point);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17302.txt",
+        "start_offset": 465,
+        "end_offset": 522,
+        "start_line": 17,
+        "end_line": 17,
+        "excerpt_sha256": "f7cb9e38dc163b3353d340c5ccec21391b59490f29d4a6e9bddf035a757ec702",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "value out of range: underflow",
+      "reported_phenomenon": "GiST 索引存在时插入极小坐标报 underflow",
+      "author_expected_behavior": "插入成功"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "e681e11dc3f43ac835b115cd05d4265a2886d2c0519bcc1bafa11c3e48d393fc"
+  },
+  {
+    "report_id": "17318",
+    "scenario_id": "17318_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17318-2eb65a3a611d2368%40postgresql.org",
+    "parts": [
+      {
+        "text": "WITH RECURSIVE x ( x ) AS\n  ( SELECT 1\n    UNION ALL\n    SELECT x FROM\n    (\n      SELECT 4 AS x\n      UNION ALL\n      SELECT x FROM x\n    ) AS x\n  )\nCYCLE x SET b USING v\nSELECT * FROM x\n;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\17318.txt",
+        "start_offset": 5228,
+        "end_offset": 5420,
+        "start_line": 122,
+        "end_line": 137,
+        "excerpt_sha256": "c390a7c92e5bae7fc1d9a4a88dbb6a5b85bf293eb0edae5fa130570853aff738",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal (?:6|11)",
+      "reported_phenomenon": "递归 CTE/CYCLE 嵌套 UNION 导致崩溃",
+      "author_expected_behavior": "不崩溃，可正常拒绝不支持的语法"
+    },
+    "config": {},
+    "notes": "使用官方讨论中 Tom Lane 给出的简化 SQL，保留来源，不使用无关后续 INSERT。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "570121e20f3febc88e715b4fde6f51094c907a9863afd9babd1bac9c0136262d"
+  },
+  {
+    "report_id": "17320",
+    "scenario_id": "17320_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17320-70e37868182512ab%40postgresql.org",
+    "parts": [
+      {
+        "text": "WITH RECURSIVE x ( x ) AS\n (SELECT 1\n  UNION\n  (WITH x AS\n    (WITH TIMESTAMP AS (SELECT 2)\n     SELECT * FROM x)\n   SELECT * FROM x)\n ) SEARCH BREADTH FIRST BY x SET NCHAR\nSELECT * FROM x;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\17320.txt",
+        "start_offset": 6531,
+        "end_offset": 6723,
+        "start_line": 153,
+        "end_line": 164,
+        "excerpt_sha256": "fed78cce559bb069ec774631303f7a34620a812b61e2aded4c64fc002549806b",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal (?:6|11)",
+      "reported_phenomenon": "SEARCH 子句递归引用导致崩溃/断言",
+      "author_expected_behavior": "不崩溃，可正常拒绝语法"
+    },
+    "config": {},
+    "notes": "使用官方回复中第一个完整简化 SQL。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "895c43b74fe053edeeb7a4a91e8dd23a1212048f45eaed3c2fd3bcf55140b412"
+  },
+  {
+    "report_id": "17334",
+    "scenario_id": "17334_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17334-135f485c21739caa%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE TABLE point_tbl(f1 point);\nCREATE INDEX gpointind ON point_tbl USING gist(f1);\nINSERT INTO point_tbl SELECT ('0,0') FROM generate_series(1, 185);\nINSERT INTO point_tbl VALUES ('0,NaN');",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17334.txt",
+        "start_offset": 281,
+        "end_offset": 474,
+        "start_line": 13,
+        "end_line": 17,
+        "excerpt_sha256": "d11fd2b92b1784ba8c943d6678e35397ec30fb1f60c53505fed5e0ba4f45f420",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "SET enable_seqscan=off; SELECT f1 <-> point '(0,0)' AS dist FROM point_tbl\nORDER BY dist;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17334.txt",
+        "start_offset": 474,
+        "end_offset": 566,
+        "start_line": 17,
+        "end_line": 21,
+        "excerpt_sha256": "e69e1732c2cf2813edf6a00ca0036c789d2c30f8a37bde13b3e2bf9f3f356d30",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal 6",
+      "reported_phenomenon": "GiST NaN 距离扫描断言失败",
+      "author_expected_behavior": "不发生断言崩溃"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "8a92b9fb34fa597a398cbffbac7aaf3763d223160126aebdc830d33b41769e9a"
+  },
+  {
+    "report_id": "17339",
+    "scenario_id": "17339_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17339-a9e09aaf38a3457a%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE SEQUENCE seq;\nCREATE TABLE range_parted(a int) PARTITION BY RANGE(a);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17339.txt",
+        "start_offset": 264,
+        "end_offset": 341,
+        "start_line": 13,
+        "end_line": 15,
+        "excerpt_sha256": "34c58e855aef26452604db513c4483a3b9a4b3bc256f77d70ba0d4a091ce1525",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "ALTER TABLE range_parted DETACH PARTITION seq CONCURRENTLY;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17339.txt",
+        "start_offset": 341,
+        "end_offset": 400,
+        "start_line": 15,
+        "end_line": 15,
+        "excerpt_sha256": "0b646636d8abcae84ca04393394584bc3fa120fefeb6d1677e8b9fc83d09a883",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal 6",
+      "reported_phenomenon": "对序列 DETACH PARTITION CONCURRENTLY 导致断言",
+      "author_expected_behavior": "正常拒绝无效分区对象"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "fc5bccd6ae4c68958a7e224c28fd36ec59b2ea89e69c5d49d27a88a553ef5463"
+  },
+  {
+    "report_id": "17340",
+    "scenario_id": "17340_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17340-74d17bbe94cb4190%40postgresql.org",
+    "parts": [
+      {
+        "text": "select name,unnest(test_values.int_array) as array_item from\n(select 'test_a' as name,null :: int[] as int_array union all\nselect 'test_b' as name ,array[1,2,3] as int_array ) test_values;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17340.txt",
+        "start_offset": 484,
+        "end_offset": 674,
+        "start_line": 20,
+        "end_line": 25,
+        "excerpt_sha256": "7be3f6b53c6330bf3b5e78485c8f63ed16a4b0561628e12d17defc5c6129f691",
+        "transformations": [
+          "trim outer whitespace",
+          "append SQL terminator at excerpt boundary"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "output",
+      "pattern": "(?m)^test_b\\|1\\ntest_b\\|2\\ntest_b\\|3$",
+      "reported_phenomenon": "NULL 数组对应 test_a 行被 unnest 删除",
+      "author_expected_behavior": "作者期望额外的 test_a NULL 行"
+    },
+    "config": {},
+    "notes": "报告现象不自动等于缺陷；保留官方讨论解释。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "8e4cb30a17275a6cdc97e831fe2970fddd2e5ffb34fc62a3b3cb997407db9adc"
+  },
+  {
+    "report_id": "17344",
+    "scenario_id": "17344_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17344-226b78b00de73a7e%40postgresql.org",
+    "parts": [
+      {
+        "text": "create extension postgres_fdw;\ndo $d$\n    begin\n        execute $$create server loopback foreign data wrapper postgres_fdw\n            options (dbname '$$||current_database()||$$',\n                     port '$$||current_setting('port')||$$',\n                     async_capable 'true'\n            )$$;\n    end;\n$d$;\ncreate user mapping for current_user server loopback;\n\n\ncreate table tab1 (a int);\ninsert into tab1 values(1), (2), (3);\ncreate foreign table ftab1 (b int) server loopback options (table_name\n'tab1');\n\n\ncreate foreign table ftab2 () inherits (ftab1) server loopback;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17344.txt",
+        "start_offset": 279,
+        "end_offset": 861,
+        "start_line": 13,
+        "end_line": 33,
+        "excerpt_sha256": "a76e3a1a585d1e121d8ccc8799bf0cc2b90a097e6d7772cd5c9a0428fc766475",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "select a from tab1 where a in (select a from ftab1);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17344.txt",
+        "start_offset": 861,
+        "end_offset": 913,
+        "start_line": 33,
+        "end_line": 33,
+        "excerpt_sha256": "9d0460bea0d6067fc3409b1844df315afaca6bbbfa32516c46617d7bdec3a0d5",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal 6",
+      "reported_phenomenon": "async foreign table inheritance 查询断言",
+      "author_expected_behavior": "不崩溃"
+    },
+    "config": {},
+    "notes": "loopback libpq 通过服务器进程 PGHOST 指向本任务私有 socket。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "9dfd864b455eebb22ef94ecb7f9ced50de80b41d77e1713476e3bcc37b020521"
+  },
+  {
+    "report_id": "17349",
+    "scenario_id": "17349_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17349-24d61e214429e8c1%40postgresql.org",
+    "parts": [
+      {
+        "text": "create extension pgcrypto schema pg_catalog;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17349.txt",
+        "start_offset": 937,
+        "end_offset": 981,
+        "start_line": 28,
+        "end_line": 28,
+        "excerpt_sha256": "58ad6ba1121214a656798602f4b807fdee73bed1d42cfad6fc1d73008ead853f",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "function \"gen_random_uuid\" already exists",
+      "reported_phenomenon": "在 pg_catalog 安装 pgcrypto 因同名函数失败",
+      "author_expected_behavior": "作者希望消除重复函数"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "8dd2025e8501fd57f4df237e0d489529601016afc29c651296f7faf3df8ae86d"
+  },
+  {
+    "report_id": "17351",
+    "scenario_id": "17351_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17351-6db1870f3f4f612a%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table pt (a int, b int) partition by list (b);\ncreate table t(a pt, check (a = '(1, 2)'::pt));\nalter table pt alter column a type char(4);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17351.txt",
+        "start_offset": 281,
+        "end_offset": 427,
+        "start_line": 13,
+        "end_line": 16,
+        "excerpt_sha256": "9ddfa5cbf5f03eaa8ebdad2e3956d514775c1cd268a274c85a332ba4f9d6edbe",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "\\d+ t",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17351.txt",
+        "start_offset": 427,
+        "end_offset": 432,
+        "start_line": 16,
+        "end_line": 16,
+        "excerpt_sha256": "6f4308111aef15f85482a2a11d4c6ab5925611dc93413fed9ed5ea32ebcbd995",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal (?:6|11)",
+      "reported_phenomenon": "修改分区表行类型后显示约束导致崩溃",
+      "author_expected_behavior": "不崩溃并正确处理行类型依赖"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "6111ab851fe541a9aabf0d51fc1632b35145c00f4f762328e4d422bb6d937f56"
+  },
+  {
+    "report_id": "17366",
+    "scenario_id": "17366_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17366-8744a901d10fd9d1%40postgresql.org",
+    "parts": [
+      {
+        "text": "set timezone to \"PST8PDT\";",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17366.txt",
+        "start_offset": 388,
+        "end_offset": 414,
+        "start_line": 18,
+        "end_line": 18,
+        "excerpt_sha256": "fc1b07201aa07a2e5d277a8625ff64833b1b5b61ac2ddda8e5376448a40c4954",
+        "transformations": []
+      },
+      {
+        "text": "select (timestamp '2021-03-14 02:00:00')::timestamptz;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17366.txt",
+        "start_offset": 624,
+        "end_offset": 678,
+        "start_line": 27,
+        "end_line": 27,
+        "excerpt_sha256": "3665eb3c1947341ae3143656966fe49d394868f4572265e5d9245cef545c07a5",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "output",
+      "pattern": "2021-03-14 03:00:00-07",
+      "reported_phenomenon": "不存在的 DST 本地时间被转换为 03:00",
+      "author_expected_behavior": "作者期望 02:00-07"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "5aa51a0f7c669bd1cfb9395db3b21a141604d4e88180784ca4cadd6d9873817d"
+  },
+  {
+    "report_id": "17385",
+    "scenario_id": "17385_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17385-9ee529fb091f0ce5%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE TABLE abc (a int);\nBEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;\n        SELECT * FROM abc;\n        RESET transaction_isolation;\nEND;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17385.txt",
+        "start_offset": 399,
+        "end_offset": 544,
+        "start_line": 18,
+        "end_line": 25,
+        "excerpt_sha256": "ab83cd4b624810fdd2f45b24f3268ac15ff8cfca41377d8ec638697a505ab863",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal 6",
+      "reported_phenomenon": "serializable 事务内 RESET transaction_isolation 导致提交断言",
+      "author_expected_behavior": "不发生断言崩溃"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "a98069f1bf6555e446c9c556ac44d3deb18e6ed8d271487c9a9610c5277a6768"
+  },
+  {
+    "report_id": "17387",
+    "scenario_id": "17387_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17387-5dfe54b988444963%40postgresql.org",
+    "parts": [
+      {
+        "text": "with q_data as (\n  select '1' as testa, 1 as testb \n  union\n  select '2' as testa, 2 as testb \n  union\n  select '3' as testa, 3 as testb \n  union\n  select '4' as testa, 4 as testb \n)\nselect array_agg(q) || array_agg(q) from q_data q;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17387.txt",
+        "start_offset": 302,
+        "end_offset": 538,
+        "start_line": 15,
+        "end_line": 27,
+        "excerpt_sha256": "d313f64d111f0907ad5a6e7b09afb813ead913a26811a1908846163fd3d38032",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "operator is not unique: record\\[\\] \\|\\| record\\[\\]",
+      "reported_phenomenon": "record[] 拼接运算符歧义报错",
+      "author_expected_behavior": "与 PG13 一样返回拼接后的数组"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "033a4fbbe1f4f4cc7f390a55e3d5b56449865f86a1b1cfd1ea2fc71395a63428"
+  },
+  {
+    "report_id": "17395",
+    "scenario_id": "17395_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17395-8c326292078d1a57%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE EXTENSION postgres_fdw;\nDO $d$\n    BEGIN\n        EXECUTE $$CREATE SERVER loopback FOREIGN DATA WRAPPER postgres_fdw\n            OPTIONS (dbname '$$||current_database()||$$',\n                     port '$$||current_setting('port')||$$'\n            )$$;\n    END;\n$d$;\nCREATE USER MAPPING FOR CURRENT_USER SERVER loopback;\n\n\nCREATE TABLE fprt2 (a int) PARTITION BY RANGE(a);\nCREATE TABLE fprt2_p1 (LIKE fprt2);\nCREATE TABLE fprt2_p2 (LIKE fprt2);\nINSERT INTO fprt2_p1 VALUES (2);\nINSERT INTO fprt2_p2 VALUES (1);\n\n\nCREATE FOREIGN TABLE ftprt2_p1 PARTITION OF fprt2 FOR VALUES FROM (0) TO\n(1)\n    SERVER loopback OPTIONS (table_name 'fprt2_p1');\nCREATE FOREIGN TABLE ftprt2_p2 PARTITION OF fprt2 FOR VALUES FROM (1) TO\n(2)\n    SERVER loopback OPTIONS (table_name 'fprt2_p2', use_remote_estimate\n'true');",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17395.txt",
+        "start_offset": 264,
+        "end_offset": 1072,
+        "start_line": 13,
+        "end_line": 41,
+        "excerpt_sha256": "b7e3c783cd8f990612d4963fde20b9fc12b6f1a4c7456188c58034c72f729999",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "SELECT t1.a FROM fprt2 t1 JOIN fprt2 t2 ON (t1.a = t2.a);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17395.txt",
+        "start_offset": 1072,
+        "end_offset": 1129,
+        "start_line": 41,
+        "end_line": 41,
+        "excerpt_sha256": "acfbf397e88948ba5e4cc6580162ce660357c6207136f104702740c72add4736",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal 6",
+      "reported_phenomenon": "外部分区越界数据触发 merge join 断言",
+      "author_expected_behavior": "不得因越界数据导致服务崩溃"
+    },
+    "config": {},
+    "notes": "按报告保留越界数据，不修正分区内容。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "e2ceb65d3803db082ca4d9811ea75aaf69bd412310986d68f8d88efcfdccf4e7"
+  },
+  {
+    "report_id": "17409",
+    "scenario_id": "17409_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17409-52871dda8b5741cb%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE TABLE parent (\n\t\tparent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY\n\t);\n\tCREATE TABLE child (\n\t\tchild_field INTEGER,\n\t\tCONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent\n(parent_field)\n\t);\n\tCLUSTER parent USING pk_parent;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17409.txt",
+        "start_offset": 467,
+        "end_offset": 713,
+        "start_line": 18,
+        "end_line": 27,
+        "excerpt_sha256": "4631803f928004929c2264933ab675a59f22c911e37e2c50fd48f34b476d95f5",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17409.txt",
+        "start_offset": 713,
+        "end_offset": 779,
+        "start_line": 27,
+        "end_line": 27,
+        "excerpt_sha256": "2418eccf2a829ccb5b1eddbe56b51e017989ccc91c3919228962d3549ec71922",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "has multiple clustered indexes",
+      "reported_phenomenon": "CLUSTER 后修改被外键引用列的类型失败",
+      "author_expected_behavior": "允许类型修改"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "0bbf3934c354e6c6ed00a552288beeed23049cd21f5234eeb8d85afaeb26f549"
+  },
+  {
+    "report_id": "17415",
+    "scenario_id": "17415_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17415-ebdb683d7e09a51c%40postgresql.org",
+    "parts": [
+      {
+        "text": "SELECT set_config('_foo.bar', 'foo', FALSE);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17415.txt",
+        "start_offset": 236,
+        "end_offset": 280,
+        "start_line": 12,
+        "end_line": 12,
+        "excerpt_sha256": "a6b9a8d0b97bd8895b85f2a95b70b1c0cc2c3c1c60540421fb9b7fb781bde26c",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "invalid configuration parameter name \"_foo.bar\"",
+      "reported_phenomenon": "自定义参数首字符下划线被拒绝",
+      "author_expected_behavior": "允许下划线开头"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "540e04808a4782a099b108d828a8723e67f9d6a5d4de6d0085b728cfa630a05c"
+  },
+  {
+    "report_id": "17452",
+    "scenario_id": "17452_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17452-d10a023545015922%40postgresql.org",
+    "parts": [
+      {
+        "text": "SELECT 'version'::regproc IN ('version');",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17452.txt",
+        "start_offset": 1101,
+        "end_offset": 1142,
+        "start_line": 35,
+        "end_line": 35,
+        "excerpt_sha256": "b60aa485c4a2930c8fa36f06b7296ac195820f749e9bcf550548cc67ab1327d6",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "invalid input syntax for type oid: \"version\"",
+      "reported_phenomenon": "单项 IN 报 oid 转换错误",
+      "author_expected_behavior": "作者期望单项与多项 IN 一致"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "574332f9a4b7a507e71a2731b88516c70dbc90fecd4bc1ac0c9c835a2b4b2ecc"
+  },
+  {
+    "report_id": "17454",
+    "scenario_id": "17454_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17454-f120d78fa9c3013d%40postgresql.org",
+    "parts": [
+      {
+        "text": "select inet_server_port();",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17454.txt",
+        "start_offset": 278,
+        "end_offset": 304,
+        "start_line": 12,
+        "end_line": 12,
+        "excerpt_sha256": "cbcfdd1fa3ab66402b94575f1cc5d34396c83c546f21d63b461a8a378726f32c",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "output",
+      "pattern": "(?m)^<NULL>$",
+      "reported_phenomenon": "Unix socket 连接 inet_server_port 返回 NULL",
+      "author_expected_behavior": "作者期望返回服务器端口"
+    },
+    "config": {},
+    "notes": "psql 使用私有 Unix socket，保持报告未指定 IPv4 的连接类别。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "4dbc9daa67b429e5252039b4b9fe4ac03afdd6c32956823358d604832db1ddf4"
+  },
+  {
+    "report_id": "17473",
+    "scenario_id": "17473_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17473-0b8caedccc6ee7b1%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE TYPE tstzrange3 AS RANGE ( subtype = timestamp(3) with\ntime zone);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17473.txt",
+        "start_offset": 582,
+        "end_offset": 656,
+        "start_line": 23,
+        "end_line": 25,
+        "excerpt_sha256": "d876beb5d2a1ab1a7010bad16b5ad5e5e1c91f88758188bb7277fee7e17c2597",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "select tstzrange3(NOW(), NULL);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17473.txt",
+        "start_offset": 679,
+        "end_offset": 710,
+        "start_line": 26,
+        "end_line": 26,
+        "excerpt_sha256": "8ba503cb253016e8417afb280f38f17b47bf8787fb2692f64337ae9d04cc2aa5",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "output",
+      "pattern": "\\.\\d{4,6}[+-]",
+      "reported_phenomenon": "range subtype timestamp(3) 未限制时间戳为三位小数",
+      "author_expected_behavior": "作者期望保留 timestamp(3) 精度"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "c1f65c3860f0dcdcdb82e0f759630fac43be29e075c8d59f49d74c3df1fb1179"
+  },
+  {
+    "report_id": "17477",
+    "scenario_id": "17477_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17477-0af3c6ac6b0a6ae0%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table v0();",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\17477.txt",
+        "start_offset": 10853,
+        "end_offset": 10871,
+        "start_line": 272,
+        "end_line": 272,
+        "excerpt_sha256": "ffa43c38dd5f46d1d20522790f689a04b005078366518090c21c7ebbfdb2a5a0",
+        "transformations": []
+      },
+      {
+        "text": "select * from v0 group by ((values (v0.*)));",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\17477.txt",
+        "start_offset": 10872,
+        "end_offset": 10916,
+        "start_line": 273,
+        "end_line": 273,
+        "excerpt_sha256": "d7cbeaf94333083fed8d6806ad8ef4409ff3a03921d1f0ab9e95df921ced6db6",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal (?:6|11)",
+      "reported_phenomenon": "零列关系 VALUES 触发 transformValuesClause 崩溃",
+      "author_expected_behavior": "允许或正常拒绝查询，不崩溃"
+    },
+    "config": {},
+    "notes": "采用官方评论的完整简化复现，未补造原 PoC 缺失角色。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "d59eed9ce7af05f6e0072269e6ef3066fb209bd6efc10247ce98fe9b6e9ed5e7"
+  },
+  {
+    "report_id": "17479",
+    "scenario_id": "17479_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17479-6260deceaf0ad304%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table Card (id uuid);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17479.txt",
+        "start_offset": 314,
+        "end_offset": 342,
+        "start_line": 16,
+        "end_line": 16,
+        "excerpt_sha256": "654057094a9e44e7982816c478e3cdb42a250db53d51898220a9d2d2ebe4dd1f",
+        "transformations": []
+      },
+      {
+        "text": "SELECT\n    -- This line causes \"variable not found in subplan target list\"\n    -- grouping(res.cnt)\n    -- This line causes \"plan should not reference subplan's variable\"\n   (SELECT grouping(res.cnt))\nFROM Card\nCROSS JOIN LATERAL\n(SELECT\n    (SELECT Card.id) AS cnt\n) AS res\nGROUP BY\n    res.cnt;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17479.txt",
+        "start_offset": 345,
+        "end_offset": 643,
+        "start_line": 19,
+        "end_line": 33,
+        "excerpt_sha256": "4cdbdfed912c1d07354eb788986c9e05401967bf7f3917b66d4208d2d78dc39e",
+        "transformations": [
+          "trim outer whitespace",
+          "append SQL terminator at excerpt boundary"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "plan should not reference subplan.s variable",
+      "reported_phenomenon": "grouping 子查询报内部计划错误",
+      "author_expected_behavior": "正常处理查询"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "c2f88dc50b9b0ce063e9d78f520caa2945931b99c739c0014c8dad3f24dbf90f"
+  },
+  {
+    "report_id": "17480",
+    "scenario_id": "17480_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17480-1c9d73565bb28e90%40postgresql.org",
+    "parts": [
+      {
+        "text": "SELECT * FROM XMLTABLE (ROW () passing null COLUMNS v1 TIMESTAMP, v2 int) AS f (v1, v2, v3);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\17480.txt",
+        "start_offset": 5035,
+        "end_offset": 5127,
+        "start_line": 132,
+        "end_line": 132,
+        "excerpt_sha256": "8f6c98ac953edcd943e72826f5b80ac8e812aef6be8a940248ac50787eaf00e0",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal 6",
+      "reported_phenomenon": "过长 XMLTABLE 别名列表触发断言",
+      "author_expected_behavior": "正常报告别名数量错误"
+    },
+    "config": {},
+    "notes": "官方回复的单语句最小复现。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "763375f0865f85b55f96d571cd11cc797662ea985f8e231eb19df8cdceb6e18d"
+  },
+  {
+    "report_id": "17546",
+    "scenario_id": "17546_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17546-d71fe78a505f9f7b%40postgresql.org",
+    "parts": [
+      {
+        "text": "with w_degree as (\n                   select 0::integer as degree union all\n                   select 1::integer as degree union all\n                   select 2::integer as degree union all\n                   select 3::integer as degree union all\n                   select 4::integer as degree union all\n                   select 5::integer as degree union all\n                   select 6::integer as degree union all\n                   select 7::integer as degree union all\n                   select 8::integer as degree union all\n                   select 9::integer as degree\n                 )\nselect\n  power(10, w.degree::integer)                                  as\n\"power()\"\n, 1.11::numeric(20, 5) * power(10, w.degree::integer)           as \" 1.11 *\npower()\"\n, 1.11::numeric(20, 5) * power(10, w.degree::integer)::integer  as \" 1.11 *\npower()::integer\"\n, 69.96::numeric(20, 5) * power(10, w.degree::integer)          as \"69.96 *\npower()\"\n, 69.96::numeric(20, 5) * power(10, w.degree::integer)::integer as \"69.96 *\npower()::integer\"\nfrom w_degree w;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17546.txt",
+        "start_offset": 646,
+        "end_offset": 1705,
+        "start_line": 22,
+        "end_line": 48,
+        "excerpt_sha256": "015ef2722c9a3492ca87ac13e58a4337909dd1cd44df09a953621ac9c1b3f5e0",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "output",
+      "pattern": "11\\.100000000000001",
+      "reported_phenomenon": "power 隐式浮点计算产生可见舍入差异",
+      "author_expected_behavior": "作者期望等于显式整数转换结果"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "1dad7dd458a9a77ab1c349cd5cb2924753de132adfc9d6530c32c8550476afc2"
+  },
+  {
+    "report_id": "18265",
+    "scenario_id": "18265_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/18265-fd06fa2f9ad3d1db%40postgresql.org",
+    "parts": [
+      {
+        "text": "select * from\n(values('null'::jsonb),('[]'::jsonb),('[null]'::jsonb),('[[]]'::jsonb)) as\nt(j) order by j;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18265.txt",
+        "start_offset": 1435,
+        "end_offset": 1541,
+        "start_line": 36,
+        "end_line": 39,
+        "excerpt_sha256": "69212a02d81b2314bf9f763d747bcab182813b496446a492ad4de1d829774e68",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "output",
+      "pattern": "(?m)^\\[\\]\\nnull\\n\\[null\\]\\n\\[\\[\\]\\]$",
+      "reported_phenomenon": "空 jsonb 数组排序早于 null，嵌套时顺序不同",
+      "author_expected_behavior": "作者期望类型排序一致"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "4a48f88843867dc1e5bc71ab3d1114ebd5780eed854077e6cff543dd2dcc2c54"
+  },
+  {
+    "report_id": "18712",
+    "scenario_id": "18712_main",
+    "target_version": "17.1",
+    "source_url": "https://www.postgresql.org/message-id/18712-f787a146022a78e4%40postgresql.org",
+    "parts": [
+      {
+        "text": "select '::0.0.0.2'::inet;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18712.txt",
+        "start_offset": 273,
+        "end_offset": 298,
+        "start_line": 15,
+        "end_line": 15,
+        "excerpt_sha256": "df06646901df240847321c35bc9bcebc29d7258bac202531571ef10a03499d98",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "output",
+      "pattern": "(?m)^::2$",
+      "reported_phenomenon": "IPv6 输出为 ::2",
+      "author_expected_behavior": "作者期望 ::0.0.0.2"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "14116d3b2232b18d35eb6be878dcd7d46b3c315a60e797d42bcfc1a109579a25"
+  },
+  {
+    "report_id": "18722",
+    "scenario_id": "18722_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18722-fd9e645448cc78b4%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE FUNCTION make_ia() RETURNS int[] LANGUAGE plpgsql AS\n  'declare x int[]; begin x := array[0]; return x; end';\nCREATE FUNCTION ia_eq(int[], int[]) RETURNS boolean LANGUAGE plpgsql AS\n'begin return array_eq($1, $2); end'; \nCREATE OPERATOR = (procedure = ia_eq, leftarg = int[], rightarg = int[]);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18722.txt",
+        "start_offset": 265,
+        "end_offset": 567,
+        "start_line": 13,
+        "end_line": 18,
+        "excerpt_sha256": "67d849a5ad79be40f93f59b44b591b17d464fc61d497ae0f9074602583c835d0",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "SELECT NULLIF(make_ia(), array[1]::int[]);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18722.txt",
+        "start_offset": 567,
+        "end_offset": 609,
+        "start_line": 18,
+        "end_line": 18,
+        "excerpt_sha256": "d3973fd9b6a317ab5e1dc5a64bbd102497c5d5f50c267428c20797f455f3676f",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "cache lookup failed for type",
+      "reported_phenomenon": "PLpgSQL 数组 NULLIF 访问损坏类型",
+      "author_expected_behavior": "不发生内部类型查找错误"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "a0628a7bab1db8bc0fa7c64a882c94764ac99e1c9e0b6ff16edd02ded3c3f6c2"
+  },
+  {
+    "report_id": "18730",
+    "scenario_id": "18730_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18730-0410c43cdb0229d8%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table test_smallint(smint smallint);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18730.txt",
+        "start_offset": 241,
+        "end_offset": 284,
+        "start_line": 15,
+        "end_line": 15,
+        "excerpt_sha256": "5a036a84268ea1c7de7baffb243e0db1165a6afb4769976d557245b32f0fa354",
+        "transformations": []
+      },
+      {
+        "text": "insert into test_smallint values (-1);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18730.txt",
+        "start_offset": 287,
+        "end_offset": 325,
+        "start_line": 18,
+        "end_line": 18,
+        "excerpt_sha256": "dc0805464f91db95b644a21bc7c7a52389c33e3cee6bccd0d24051f0176946bd",
+        "transformations": []
+      },
+      {
+        "text": "select * from test_smallint where smint!=-2;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18730.txt",
+        "start_offset": 601,
+        "end_offset": 645,
+        "start_line": 40,
+        "end_line": 40,
+        "excerpt_sha256": "377737f07e208117e2379d777dddd9a7711faf60e1ba43d9be938b8af378e53f",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "operator does not exist: smallint !=- integer",
+      "reported_phenomenon": "无空格的 !=-2 被识别为不存在的运算符",
+      "author_expected_behavior": "作者希望与有空格形式一致"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "5e6ec51d34026dd59bf6383330a46427133d1f1e6a86f9b7e92ac5c79087eb8d"
+  },
+  {
+    "report_id": "18741",
+    "scenario_id": "18741_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18741-e4ef6f7aa8a956cb%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE TABLE pt1 (a int PRIMARY KEY) PARTITION BY RANGE (a);\nCREATE TABLE p1 PARTITION OF pt1 FOR VALUES FROM (0) TO (1);\n\n\nCREATE TABLE pt2 (a int) PARTITION BY RANGE (a);\nCREATE TABLE p2 (a int, FOREIGN KEY (a) REFERENCES pt1);\n\n\nALTER TABLE pt2 ATTACH PARTITION p2 FOR VALUES FROM (0) TO (1);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18741.txt",
+        "start_offset": 265,
+        "end_offset": 561,
+        "start_line": 13,
+        "end_line": 22,
+        "excerpt_sha256": "85d87c7462f2bea54ed6207097939c9b57267ad99ecf0050184786d3f7eccc00",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "ALTER TABLE pt2 DETACH PARTITION p2;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18741.txt",
+        "start_offset": 561,
+        "end_offset": 597,
+        "start_line": 22,
+        "end_line": 22,
+        "excerpt_sha256": "4fb92cd905b94ce263d8b1b8ee5d9e0727adca300dbb11984c32f2260a6f48b9",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "could not find ON INSERT check triggers of foreign key",
+      "reported_phenomenon": "分离带外键分区失败",
+      "author_expected_behavior": "应正常分离"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "fde444a94f5e519a9ee0e9cca343346b0da12d467a682b1a4edef9ea7a726fe0"
+  },
+  {
+    "report_id": "18758",
+    "scenario_id": "18758_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18758-7bbeea9719044a29%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table t1 (c1 char(50));\ncreate table t2 (c1 integer);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18758.txt",
+        "start_offset": 237,
+        "end_offset": 298,
+        "start_line": 12,
+        "end_line": 14,
+        "excerpt_sha256": "3d54069c80ce0c53b3d94d2d375decbef871756197d1baff4856027a8aaec6e2",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "select  t1.c1 from t2, t1 group by rollup(t1.c1);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18758.txt",
+        "start_offset": 298,
+        "end_offset": 348,
+        "start_line": 14,
+        "end_line": 14,
+        "excerpt_sha256": "93592b1315d423e363a19a9ad4303e69247a7b34abee17c9e2ccba1a9aa1195c",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "output",
+      "pattern": "(?m)^<NULL>$",
+      "reported_phenomenon": "空表 ROLLUP 返回 NULL 行",
+      "author_expected_behavior": "作者期望空结果"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "08594231fd1a9d87dcc8700715d6c3fdd6e4853e706bc6aef7e51985dd1f3f6c"
+  },
+  {
+    "report_id": "18764",
+    "scenario_id": "18764_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18764-63ad667ea26e877a%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE TABLE t0 (c1 INT, c2 DECIMAL);\nINSERT INTO t0 VALUES (0, NULL);\nINSERT INTO t0 VALUES (8, NULL);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18764.txt",
+        "start_offset": 284,
+        "end_offset": 388,
+        "start_line": 15,
+        "end_line": 18,
+        "excerpt_sha256": "c508cb29d5283c4c1a6389aec1d6f9155c05c237048d18051165501961a2debb",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "SELECT c2 AS ca2, c2 AS ca3 FROM t0 UNION SELECT DISTINCT ca8 AS ca5, ca7 AS\nca6 FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1 JOIN (SELECT c1 AS\nca10, c1 AS ca11 FROM t0) AS ta2 ON TRUE;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18764.txt",
+        "start_offset": 388,
+        "end_offset": 580,
+        "start_line": 18,
+        "end_line": 20,
+        "excerpt_sha256": "fc15f18b3530c42101c03379e1258ec37783735d4db55c1123d9a2b6ca3d7410",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal (?:6|11)",
+      "reported_phenomenon": "UNION DISTINCT 查询导致服务端连接意外关闭",
+      "author_expected_behavior": "返回正确结果不崩溃"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "e2b18c28c73e2b2d066b0eff06cd8b5cc3992a130f644535cebebc55b62514a9"
+  },
+  {
+    "report_id": "18778",
+    "scenario_id": "18778_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18778-24cd399df6c806af%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE TABLE t (id int, PRIMARY KEY (id)) PARTITION BY RANGE (id);\nCREATE TABLE t0 PARTITION OF t FOR VALUES FROM (0) TO (1);\nCREATE TABLE t1 PARTITION OF t FOR VALUES FROM (1) TO (2);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18778.txt",
+        "start_offset": 265,
+        "end_offset": 452,
+        "start_line": 13,
+        "end_line": 18,
+        "excerpt_sha256": "be19763e99db6ae7d7232bbfbbc4b882c59fd431e2b9468399c0732ebc67d4f4",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM\nt0 t00) r, t\nWHERE t.id > CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18778.txt",
+        "start_offset": 452,
+        "end_offset": 615,
+        "start_line": 18,
+        "end_line": 23,
+        "excerpt_sha256": "d0bbe04f835e9118fd092184eeb8a48ea471db802f20aa66ab1aacd0a511a66e",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "unrecognized node type:",
+      "reported_phenomenon": "分区查询计划执行报 unrecognized node type",
+      "author_expected_behavior": "正常处理查询"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "916875c23a8fc275ba560200956c054dd0effe6bd8e73de687b144dbc5c9c9db"
+  },
+  {
+    "report_id": "18812",
+    "scenario_id": "18812_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18812-565809b4823e2b68%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE TABLE t\n(\n    c varchar(10) NOT NULL\n);\n\n\nCREATE VIEW v AS\nSELECT NULL::text AS c\nFROM t;\n\n\nCREATE RULE \"insert\" AS ON INSERT TO v\n    WHERE FALSE\n    DO INSTEAD\n    INSERT INTO t (c)\n    VALUES (new.c);\n\n\nCREATE RULE \"skip\" AS ON INSERT TO v DO INSTEAD NOTHING;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18812.txt",
+        "start_offset": 330,
+        "end_offset": 600,
+        "start_line": 17,
+        "end_line": 36,
+        "excerpt_sha256": "4d6c0396cbd7aea5499436ea2665172a48cb3382007114c133aecfbfb7abcbc9",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "INSERT INTO v (c) VALUES ('testtesttest');",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18812.txt",
+        "start_offset": 809,
+        "end_offset": 851,
+        "start_line": 45,
+        "end_line": 45,
+        "excerpt_sha256": "61ff56ac431b07c44029643a51cbdec1c962aca837b8f1b41db5b61bc6c0067c",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "error",
+      "pattern": "value too long for type character varying\\(10\\)",
+      "reported_phenomenon": "WHERE FALSE 规则仍报长度约束错误",
+      "author_expected_behavior": "作者期望跳过规则不检查长度"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "a57d1d945c1e238958fa3e7116b32fe9d3e8fd42282a809a146e7678e31b7f62"
+  },
+  {
+    "report_id": "18829",
+    "scenario_id": "18829_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18829-2ed4d964795b3b57%40postgresql.org",
+    "parts": [
+      {
+        "text": "DO $$\nDECLARE\n    my_var TEXT := 'garth';\nBEGIN\n    RAISE NOTICE '%s is slim', my_var;\nEND\n$$;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18829.txt",
+        "start_offset": 489,
+        "end_offset": 586,
+        "start_line": 18,
+        "end_line": 27,
+        "excerpt_sha256": "7794741b508e0e4f888771d861ca476191e33c6417a03fa46e545aed2b495d14",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "stderr",
+      "pattern": "NOTICE:\\s+garths is slim",
+      "reported_phenomenon": "RAISE NOTICE %s 留下额外 s",
+      "author_expected_behavior": "作者期望 garth is slim"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "6608d2db042cc21df3a5893a8191a5b5d34f58aa66c05461ee39e32b253290c8"
+  }
+]

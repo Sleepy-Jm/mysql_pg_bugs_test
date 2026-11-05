@@ -1,0 +1,1177 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17448
+Logged by:          Okano Naoki
+Email address:      okano(dot)naoki(at)jp(dot)fujitsu(dot)com
+PostgreSQL version: 14.2
+Operating system:   Windows
+Description:        
+
+
+With huge_pages = on, the postgres process does not appear to use large
+pages.
+I checked with VMMap if the large pages are used in the following
+environment.
+Environment
+  PostgreSQL version: 14.2
+  Operating system  : Windows 10 20H2
+
+
+On this page (*) says that in Windows 10, version 1703 and later OS
+versions,  
+you must specify the FILE_MAP_LARGE_PAGES flag with the MapViewOfFile
+function 
+to map large pages.
+
+
+I think it seems to be the cause that MapViewOfFile() in
+src/backend/port/win32_shmem.c 
+does not specify FILE_MAP_LARGE_PAGES flag.
+
+
+(*) MapViewOfFileEx function
+https://docs.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-mapviewoffileex
+
+
+FILE_MAP_LARGE_PAGES
+  Starting with Windows 10, version 1703, this flag specifies 
+  that the view should be mapped using large page support. 
+  The size of the view must be a multiple of the size of a large page 
+  reported by the GetLargePageMinimum function, 
+  and the file-mapping object must have been created using the
+SEC_LARGE_PAGES option. 
+  If you provide a non-null value for lpBaseAddress, 
+  then the value must be a multiple of GetLargePageMinimum.
+
+
+
+
+
+### MESSAGE 1
+On Fri, Mar 25, 2022 at 07:52:57AM +0000, PG Bug reporting form wrote:
+> On this page (*) says that in Windows 10, version 1703 and later OS
+> versions,  
+> you must specify the FILE_MAP_LARGE_PAGES flag with the MapViewOfFile
+> function 
+> to map large pages.
+> 
+> I think it seems to be the cause that MapViewOfFile() in
+> src/backend/port/win32_shmem.c 
+> does not specify FILE_MAP_LARGE_PAGES flag.
+
+
+Hmm.  Okay.  A patch would be straight-forward, as we could just
+assign the optional flag in a separate variable at the beginning of
+PGSharedMemoryCreate(), similarly to flProtect when we find out that
+large pages can be used, then pass it down to MapViewOfFileEx().  I
+don't have a Windows 10 machine as recent as that at hand, though..
+
+
+Perhaps the CI uses Windows machines that would allow to test and
+check that, with some logs magically added to debug things.
+--
+Michael
+
+
+
+### MESSAGE 2
+On Sat, Mar 26, 2022 at 02:46:45PM +0900, Michael Paquier wrote:
+> On Fri, Mar 25, 2022 at 07:52:57AM +0000, PG Bug reporting form wrote:
+> > On this page (*) says that in Windows 10, version 1703 and later OS
+> > versions,
+> > you must specify the FILE_MAP_LARGE_PAGES flag with the MapViewOfFile
+> > function
+> > to map large pages.
+> >
+> > I think it seems to be the cause that MapViewOfFile() in
+> > src/backend/port/win32_shmem.c
+> > does not specify FILE_MAP_LARGE_PAGES flag.
+>
+> I don't have a Windows 10 machine as recent as that at hand, though..
+
+
+I have a Windows 10 apparently version 20H2 (the versioning doesn't make any
+sense) with all needed to compile postgres at hand.  I can have a look next
+week.
+
+
+
+
+
+### MESSAGE 3
+On Sat, Mar 26, 2022 at 04:24:08PM +0800, Julien Rouhaud wrote:
+> I have a Windows 10 apparently version 20H2 (the versioning doesn't make any
+> sense) with all needed to compile postgres at hand.  I can have a look next
+> week.
+
+
+Thanks!
+--
+Michael
+
+
+
+### MESSAGE 4
+On Sat, Mar 26, 2022 at 9:24 PM Julien Rouhaud <rjuju123(at)gmail(dot)com> wrote:
+> On Sat, Mar 26, 2022 at 02:46:45PM +0900, Michael Paquier wrote:
+> > On Fri, Mar 25, 2022 at 07:52:57AM +0000, PG Bug reporting form wrote:
+> > > On this page (*) says that in Windows 10, version 1703 and later OS
+> > > versions,
+> > > you must specify the FILE_MAP_LARGE_PAGES flag with the MapViewOfFile
+> > > function
+> > > to map large pages.
+> > >
+> > > I think it seems to be the cause that MapViewOfFile() in
+> > > src/backend/port/win32_shmem.c
+> > > does not specify FILE_MAP_LARGE_PAGES flag.
+> >
+> > I don't have a Windows 10 machine as recent as that at hand, though..
+>
+> I have a Windows 10 apparently version 20H2 (the versioning doesn't make any
+> sense) with all needed to compile postgres at hand.  I can have a look next
+> week.
+
+
+There are traces of method to the madness:  It's basically YYMM, but
+then after 2004 they switched to H1 and H2 (first/second half of the
+year) instead of MM, perhaps to avoid confusion with YYYY format year.
+Note also that Windows 10 has a 21H2 and Windows 11 has a 21H2.
+
+
+Hmm, so all versions of Windows that our current coding worked on were
+EOL'd 6 months after PostgreSQL 11 came out with huge_pages support
+for Windows:
+
+
+https://en.wikipedia.org/wiki/Windows_10_version_history
+
+
+Some question I have: is FILE_MAP_LARGE PAGES a macro?  We claim to
+support all those ancient zombie OSes like Windows 7, or maybe it's
+even XP for 11, and this has to be back-patched to 11, so we might
+need to make it conditional.  But conditional on what?  For example,
+does something like the attached work (untested)?  What happens if a <
+1703 kernel sees this flag, does it reject it or ignore it?
+
+
+
+### MESSAGE 5
+On Sun, Mar 27, 2022 at 12:07:57AM +1300, Thomas Munro wrote:
+> Some question I have: is FILE_MAP_LARGE PAGES a macro?  We claim to
+> support all those ancient zombie OSes like Windows 7, or maybe it's
+> even XP for 11, and this has to be back-patched to 11, so we might
+> need to make it conditional.  But conditional on what?  For example,
+> does something like the attached work (untested)?  What happens if a <
+> 1703 kernel sees this flag, does it reject it or ignore it?
+
+
+Good question.  I would choose a soft approach here and not insist if
+the flag was not known at compilation time, but we could also take a
+more aggressive approach and hardcode a value.  Anyway, it seems to me
+that the correct solution here would be to compile the code with a
+PG_FILE_MAP_LARGE_PAGES that checks if the flag exists at compile
+time, and we would set it at run time if we know that we are on a
+version of Windows that supports it.  IsWindowsVersionOrGreater()
+should be able to do the job.
+--
+Michael
+
+
+
+### MESSAGE 6
+On Sun, Mar 27, 2022 at 12:07:57AM +1300, Thomas Munro wrote:
+> There are traces of method to the madness:  It's basically YYMM, but
+> then after 2004 they switched to H1 and H2 (first/second half of the
+> year) instead of MM, perhaps to avoid confusion with YYYY format year.
+> Note also that Windows 10 has a 21H2 and Windows 11 has a 21H2.
+>
+> Some question I have: is FILE_MAP_LARGE PAGES a macro?  We claim to
+> support all those ancient zombie OSes like Windows 7, or maybe it's
+> even XP for 11, and this has to be back-patched to 11, so we might
+> need to make it conditional.  But conditional on what?  For example,
+> does something like the attached work (untested)?  What happens if a <
+> 1703 kernel sees this flag, does it reject it or ignore it?
+
+
+I don't have an answer about how much Windows gets angry if we pass
+down to MapViewOfFileEx() the flag FILE_MAP_LARGE_PAGES when running
+the code on a version of Windows that does not support it.
+
+
+Anyway, I think that we could just play it safe.  See for example the
+attached, where I use PG_FILE_MAP_LARGE_PAGES at compile time to find
+if the value is set.  Then, at run-time, I am just relying on 
+IsWindowsVersionOrGreater() to do the job, something useful when
+huge_pages=on as I guess we should fail hard if we did not know about
+FILE_MAP_LARGE_PAGES at compile-time, but try to use huge pages at run
+time with version >= 10.0.1703.
+
+
+Perhaps there is a better thing to do?
+--
+Michael
+
+
+
+### MESSAGE 7
+Hi,
+
+
+On Wed, Mar 30, 2022 at 04:54:50PM +0900, Michael Paquier wrote:
+> On Sun, Mar 27, 2022 at 12:07:57AM +1300, Thomas Munro wrote:
+> > There are traces of method to the madness:  It's basically YYMM, but
+> > then after 2004 they switched to H1 and H2 (first/second half of the
+> > year) instead of MM, perhaps to avoid confusion with YYYY format year.
+> > Note also that Windows 10 has a 21H2 and Windows 11 has a 21H2.
+> >
+> > Some question I have: is FILE_MAP_LARGE PAGES a macro?  We claim to
+> > support all those ancient zombie OSes like Windows 7, or maybe it's
+> > even XP for 11, and this has to be back-patched to 11, so we might
+> > need to make it conditional.  But conditional on what?  For example,
+> > does something like the attached work (untested)?  What happens if a <
+> > 1703 kernel sees this flag, does it reject it or ignore it?
+>
+> I don't have an answer about how much Windows gets angry if we pass
+> down to MapViewOfFileEx() the flag FILE_MAP_LARGE_PAGES when running
+> the code on a version of Windows that does not support it.
+
+
+No idea either, and I don't have old enough Windows machine available to try.
+
+
+> Anyway, I think that we could just play it safe.  See for example the
+> attached, where I use PG_FILE_MAP_LARGE_PAGES at compile time to find
+> if the value is set.  Then, at run-time, I am just relying on
+> IsWindowsVersionOrGreater() to do the job, something useful when
+> huge_pages=on as I guess we should fail hard if we did not know about
+> FILE_MAP_LARGE_PAGES at compile-time, but try to use huge pages at run
+> time with version >= 10.0.1703.
+
+
+That approach seems sensible.  For reference the versionhelpers.h seems to be
+available starting with VS 2013 / v120, which is ok since that the oldest
+version we support AFAICS.
+
+
+After *a lot of time* I could finally test this patch.  For the record I could
+never find a way to allow 'Lock pages in memory' on the Windows 10 home I have,
+so I tried on my Windows 11 evaluation I also had around (version 21H2, so it
+should be recent enough).  For the record on this one there was gpedit
+available, but then I got a 1450 error, and didn't find any information on how
+to reserve huge pages or something like that on Windows.  So I just configured
+shared_buffers to 10MB, which should still be big enough to need multiple huge
+pages, and it seems to work:
+
+
+postgres=# select version();
+                            version
+---------------------------------------------------------------
+ PostgreSQL 15devel, compiled by Visual C++ build 1929, 64-bit
+(1 row)
+
+
+postgres=# show huge_pages;
+ huge_pages
+------------
+ on
+(1 row)
+
+
+Now, I also have the exact same result without the patch applied so it's hard
+to know whether it had any impact at all.  Unfortunately, I didn't find any
+information on how to check if "large pages" are used and/or by which program.
+
+
+
+
+
+### MESSAGE 8
+On Thu, Mar 31, 2022 at 12:59:08PM +0800, Julien Rouhaud wrote:
+> That approach seems sensible.  For reference the versionhelpers.h seems to be
+> available starting with VS 2013 / v120, which is ok since that the oldest
+> version we support AFAICS.
+
+
+Hmm.  This points out to a different problem.  The oldest version of
+MSVC supported on v10 and v11 is VS2005, so a backpatch means that
+those checks would need to be tweaked if we'd want to be perfectly
+compatible.  But I'd rather not enter in this game category, limiting
+this patch to v12~ :)
+
+
+> Now, I also have the exact same result without the patch applied so it's hard
+> to know whether it had any impact at all.  Unfortunately, I didn't find any
+> information on how to check if "large pages" are used and/or by which program.
+
+
+Okano-san has mentioned VMMap upthread:
+https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap
+--
+Michael
+
+
+
+### MESSAGE 9
+On Thu, Mar 31, 2022 at 04:42:37PM +0900, Michael Paquier wrote:
+> On Thu, Mar 31, 2022 at 12:59:08PM +0800, Julien Rouhaud wrote:
+> > That approach seems sensible.  For reference the versionhelpers.h seems to be
+> > available starting with VS 2013 / v120, which is ok since that the oldest
+> > version we support AFAICS.
+> 
+> Hmm.  This points out to a different problem.  The oldest version of
+> MSVC supported on v10 and v11 is VS2005, so a backpatch means that
+> those checks would need to be tweaked if we'd want to be perfectly
+> compatible.  But I'd rather not enter in this game category, limiting
+> this patch to v12~ :)
+
+
+Ah, I indeed haven't check in back branches.  v12 isn't that bad.
+
+
+> > Now, I also have the exact same result without the patch applied so it's hard
+> > to know whether it had any impact at all.  Unfortunately, I didn't find any
+> > information on how to check if "large pages" are used and/or by which program.
+> 
+> Okano-san has mentioned VMMap upthread:
+> https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap
+
+
+Yes, I totally missed that.  Thomas Munro also mentioned it off-list, and
+also found some reference [1] indicating that large pages should show up as
+"Locked WS".  I tested with and without the patch and in both case I don't see
+any "Locked WS" usage.  I also get the same Page Table size, which seems
+consistent with large pages not being used.  Now, this is a vm running with
+virtualbox and we're not entirely sure that huge pages can be allocated with
+it.  I wish I could test on my windows 10 machine as it's not virtualized, but
+I can't give the required privileges.
+
+
+[1] https://aloiskraus.wordpress.com/2016/10/03/windows-10-memory-compression-and-more/
+
+
+
+
+
+### MESSAGE 10
+On Thu, Mar 31, 2022 at 04:00:55PM +0800, Julien Rouhaud wrote:
+> > Okano-san has mentioned VMMap upthread:
+> > https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap
+> 
+> Yes, I totally missed that.  Thomas Munro also mentioned it off-list, and
+> also found some reference [1] indicating that large pages should show up as
+> "Locked WS".  I tested with and without the patch and in both case I don't see
+> any "Locked WS" usage.  I also get the same Page Table size, which seems
+> consistent with large pages not being used.  Now, this is a vm running with
+> virtualbox and we're not entirely sure that huge pages can be allocated with
+> it.  I wish I could test on my windows 10 machine as it's not virtualized, but
+> I can't give the required privileges.
+> 
+> [1] https://aloiskraus.wordpress.com/2016/10/03/windows-10-memory-compression-and-more/
+
+
+So, after more digging it turns out that the patch is supposed to work.  If I
+force using the PG_FILE_MAP_LARGE_PAGES, postgres starts and I do see "Locked
+WS" usage with VMMap, with a size in the order of magnitude of my
+shared_buffers.
+
+
+What is apparently not working on my VM is IsWindowsVersionOrGreater(10, 0,
+1703).  I added some debug around to check what GetVersionEx() [2] is saying,
+and I get:
+
+
+dwMajorVersion == 6
+dwMinorVersion == 2
+dwBuildNumber == 9200
+
+
+While winver.exe on the same vm says windows 11, version 21H2, build 22000.493.
+
+
+I'm therefore extremely confused.  The documentation of
+IsWindowsVersionOrGreater() at [3] is also highly confusing:
+
+
+> TRUE if the specified version matches, or is greater than, the version of the
+> current Windows OS; otherwise, FALSE.
+
+
+Isn't that supposed to be the opposite?
+
+
+[2] https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getversionexa
+https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-osversioninfoexa
+
+
+[3] https://docs.microsoft.com/en-us/windows/win32/api/versionhelpers/nf-versionhelpers-iswindowsversionorgreater
+
+
+
+
+
+### MESSAGE 11
+On Thu, Mar 31, 2022 at 06:46:59PM +0800, Julien Rouhaud wrote:
+> On Thu, Mar 31, 2022 at 04:00:55PM +0800, Julien Rouhaud wrote:
+> > > Okano-san has mentioned VMMap upthread:
+> > > https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap
+> > 
+> > Yes, I totally missed that.  Thomas Munro also mentioned it off-list, and
+> > also found some reference [1] indicating that large pages should show up as
+> > "Locked WS".  I tested with and without the patch and in both case I don't see
+> > any "Locked WS" usage.  I also get the same Page Table size, which seems
+> > consistent with large pages not being used.  Now, this is a vm running with
+> > virtualbox and we're not entirely sure that huge pages can be allocated with
+> > it.  I wish I could test on my windows 10 machine as it's not virtualized, but
+> > I can't give the required privileges.
+> > 
+> > [1] https://aloiskraus.wordpress.com/2016/10/03/windows-10-memory-compression-and-more/
+> 
+> So, after more digging it turns out that the patch is supposed to work.  If I
+> force using the PG_FILE_MAP_LARGE_PAGES, postgres starts and I do see "Locked
+> WS" usage with VMMap, with a size in the order of magnitude of my
+> shared_buffers.
+> 
+> What is apparently not working on my VM is IsWindowsVersionOrGreater(10, 0,
+> 1703).  I added some debug around to check what GetVersionEx() [2] is saying,
+> and I get:
+> 
+> dwMajorVersion == 6
+> dwMinorVersion == 2
+> dwBuildNumber == 9200
+> 
+> While winver.exe on the same vm says windows 11, version 21H2, build 22000.493.
+
+
+So, what GetVersionEx returns is actually "it depends", and this is documented:
+
+
+> With the release of Windows 8.1, the behavior of the GetVersionEx API has
+> changed in the value it will return for the operating system version. The
+> value returned by the GetVersionEx function now depends on how the
+> application is manifested.
+>
+> Applications not manifested for Windows 8.1 or Windows 10 will return the
+> Windows 8 OS version value (6.2). Once an application is manifested for a
+> given operating system version, GetVersionEx will always return the version
+> that the application is manifested for in future releases. To manifest your
+> applications for Windows 8.1 or Windows 10, refer to Targeting your
+> application for Windows.
+
+
+There's no such indication on IsWindowsVersionOrGreater(), but after seeing
+various comments on forums from angry people, it may be a hint that it behaves
+similarly.  I'm not sure what to do at this point, maybe just always use the
+flag (the PG_ version which may be 0), hoping that hopefully windows won't
+define it if it can't handle it?
+
+
+
+
+
+### MESSAGE 12
+On Thu, Mar 31, 2022 at 06:46:59PM +0800, Julien Rouhaud wrote:
+> So, after more digging it turns out that the patch is supposed to work.  If I
+> force using the PG_FILE_MAP_LARGE_PAGES, postgres starts and I do see "Locked
+> WS" usage with VMMap, with a size in the order of magnitude of my
+> shared_buffers.
+> 
+> What is apparently not working on my VM is IsWindowsVersionOrGreater(10, 0,
+> 1703).  I added some debug around to check what GetVersionEx() [2] is saying,
+> and I get:
+> 
+> dwMajorVersion == 6
+> dwMinorVersion == 2
+> dwBuildNumber == 9200
+
+
+Okay.  Well, I'd like to think that the patch written as-is is
+correct.  Now your tests are saying the contrary, so I don't really
+know what to think about it :)
+
+
+>> TRUE if the specified version matches, or is greater than, the version of the
+>> current Windows OS; otherwise, FALSE.
+> 
+> Isn't that supposed to be the opposite?
+
+
+I get from the upstream docs that if the runtime version of Windows is
+higher than 10.0.1703, IsWindowsVersionOrGreater() should return
+true.  Perhaps the issue is in the patch and its argument values, but
+it does not look straight-forward to know what those values should
+be, and there are no examples in the docs to show that, either :/
+--
+Michael
+
+
+
+### MESSAGE 13
+On Thu, Mar 31, 2022 at 07:03:09PM +0800, Julien Rouhaud wrote:
+> There's no such indication on IsWindowsVersionOrGreater(), but after seeing
+> various comments on forums from angry people, it may be a hint that it behaves
+> similarly.  I'm not sure what to do at this point, maybe just always use the
+> flag (the PG_ version which may be 0), hoping that hopefully windows won't
+> define it if it can't handle it?
+
+
+Looking at the internals of versionhelpers.h, would it work to use as
+arguments for IsWindowsVersionOrGreater() the following, in this
+order?  As of:
+- HIBYTE(_WIN32_WINNT_WINTHRESHOLD)
+- LOBYTE(_WIN32_WINNT_WINTHRESHOLD)
+- 1703
+
+
+Just to drop an idea.
+--
+Michael
+
+
+
+### MESSAGE 14
+On Fri, Apr 01, 2022 at 02:59:22PM +0900, Michael Paquier wrote:
+> On Thu, Mar 31, 2022 at 07:03:09PM +0800, Julien Rouhaud wrote:
+> > There's no such indication on IsWindowsVersionOrGreater(), but after seeing
+> > various comments on forums from angry people, it may be a hint that it behaves
+> > similarly.  I'm not sure what to do at this point, maybe just always use the
+> > flag (the PG_ version which may be 0), hoping that hopefully windows won't
+> > define it if it can't handle it?
+>
+> Looking at the internals of versionhelpers.h, would it work to use as
+> arguments for IsWindowsVersionOrGreater() the following, in this
+> order?  As of:
+> - HIBYTE(_WIN32_WINNT_WINTHRESHOLD)
+> - LOBYTE(_WIN32_WINNT_WINTHRESHOLD)
+> - 1703
+>
+> Just to drop an idea.
+
+
+I will test that in a bit.  I still think that at least some API exists to give
+the real answer since winver and similar report correct info, I just don't know
+what those are.
+
+
+Note that if you want to test yourself you could use this script [1] using the
+evaluation virtual machine [2] to automatically setup a windows 11 environment
+with everything needed to compile postgres with a extra dependencies.  The
+whole process is a bit long though, so I can also give you access to my vm if
+you prefer, probably the latency shouldn't be too bad :)
+
+
+[1] https://github.com/rjuju/pg_msvc_generator/blob/master/bootstrap.ps1
+[2] https://developer.microsoft.com/en-us/windows/downloads/virtual-machines/
+
+
+
+
+
+### MESSAGE 15
+Hi,
+
+
+Please keep the list in copy, especially if that's about Windows specific as
+I'm definitely not very knowledgeable about it.
+
+
+On Fri, Apr 01, 2022 at 09:18:03AM +0000, Wilm Hoyer wrote:
+> 
+> If you don't wanna go the manifest way, maybe the RtlGetVersion function is the one you need:
+> https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlgetversion?redirectedfrom=MSDN
+
+
+Thanks for the info!  I tried to use the function but trying to include either
+wdm.h or Ntddk.h errors out.  Unfortunately I don't know how to look for a file
+in Windows so I don't even know if those files are present.
+
+
+I searched a bit and apparently some people are using this function directly
+opening some dll, which seems wrong.
+
+
+> Another Idea on windows machines would be to use the commandline to execute
+> ver in a separate Process and store the result in a file.
+
+
+That also seems hackish, I don't think that we want to rely on something like
+that.
+
+
+> >> While winver.exe on the same vm says windows 11, version 21H2, build 22000.493.
+> 
+> > So, what GetVersionEx returns is actually "it depends", and this is documented:
+> 
+> >> With the release of Windows 8.1, the behavior of the GetVersionEx API 
+> >> has changed in the value it will return for the operating system 
+> >> version. The value returned by the GetVersionEx function now depends 
+> >> on how the application is manifested.
+> >>
+> >> Applications not manifested for Windows 8.1 or Windows 10 will return 
+> >> the Windows 8 OS version value (6.2). Once an application is 
+> >> manifested for a given operating system version, GetVersionEx will 
+> >> always return the version that the application is manifested for in 
+> >> future releases. To manifest your applications for Windows 8.1 or 
+> >> Windows 10, refer to Targeting your application for Windows.
+> 
+> The documentation is a bit unclear - with the correct functions you should get the:
+> Minimum( actualOS-Version, Maximum(Manifested OS Versions))
+> The Idea behind, as I understand it, is to better support virtualization and
+> backward compatibility - you manifest only Windows 8.1 -> than you always get
+> a System that behaves like Windows 8.1 in every aspect.  (Every Aspect not
+> true in some corner cases due to security patches)
+
+
+Well, it clearly does *NOT* behave as a Windows 8.1, even if for some reason
+large pages relies on security patches.
+
+
+Their API is entirely useless, so I'm still on the opinion that we should
+unconditionally use the FILE_MAP_LARGE_PAGES flag if it's defined and call it a
+day.
+
+
+
+
+
+### MESSAGE 16
+On Tue, Apr 26, 2022 at 12:54:35PM +0800, Julien Rouhaud wrote:
+> I searched a bit and apparently some people are using this function directly
+> opening some dll, which seems wrong.
+
+
+I was wondering about this whole business, and the manifest approach
+is a *horrible* design for an API where the goal is to know if your
+run-time environment is greater than a given threshold.
+
+
+>> Another Idea on windows machines would be to use the commandline to execute
+>> ver in a separate Process and store the result in a file.
+> 
+> That also seems hackish, I don't think that we want to rely on something like
+> that.
+
+
+Hmm.  That depends on the dependency set, I guess.  We do that on
+Linux at some extent to for large pages in sysv_shmem.c.  Perhaps this
+could work for Win10 if this avoids the extra loopholes with the
+manifests.
+
+
+> Their API is entirely useless,
+
+
+This I agree.
+
+
+> so I'm still on the opinion that we should
+> unconditionally use the FILE_MAP_LARGE_PAGES flag if it's defined and call it a
+> day.
+
+
+Are we sure that this is not going to cause failures in environments
+where the flag is not supported?
+--
+Michael
+
+
+
+### MESSAGE 17
+On Tue, Apr 26, 2022, 05:55 Julien Rouhaud <rjuju123(at)gmail(dot)com> wrote:
+
+
+> Hi,
+>
+> Please keep the list in copy, especially if that's about Windows specific
+> as
+> I'm definitely not very knowledgeable about it.
+>
+> On Fri, Apr 01, 2022 at 09:18:03AM +0000, Wilm Hoyer wrote:
+> >
+> > If you don't wanna go the manifest way, maybe the RtlGetVersion function
+> is the one you need:
+> >
+> https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlgetversion?redirectedfrom=MSDN
+>
+> Thanks for the info!  I tried to use the function but trying to include
+> either
+> wdm.h or Ntddk.h errors out.  Unfortunately I don't know how to look for a
+> file
+> in Windows so I don't even know if those files are present.
+>
+
+
+That's a kernel api for use in drivers. Not in applications. You need the
+device driver developer kit to get to the headers.
+
+
+It's not supposed to be used from a user land application.
+
+
+But note the documentation comment that says: “*RtlGetVersion* is the
+kernel-mode equivalent of the user-mode *GetVersionEx* function in the
+Windows SDK. ".
+
+
+Tldr, user mode applications are supposed to use GetVersionEx().
+
+
+/Magnus
+
+
+
+### MESSAGE 18
+
+On Tue, Apr 26, 2022 at 12:54:35PM +0800, Julien Rouhaud wrote:
+>> I searched a bit and apparently some people are using this function 
+>> directly opening some dll, which seems wrong.
+
+
+> I was wondering about this whole business, and the manifest approach is a *horrible* design for an API where the goal is to know if your run-time environment is greater than a given threshold.
+
+
+Agreed for the use case at hand, where you want to use one core API Function or another depending on the OS Version.
+
+
+One Blog from Microsoft, I remember, told that one reason for the change were the increase of false installation error messages "Install Error - Your system does not meet the minimum supported operating system and service pack level."
+where the software in question was written for Windows XP and the user tried to install it on, say, Windows 8.
+That is just a Developer-Pilot error, where the Developers forgot to anticipate future OS Versions and instead of checking for Version at least, where checking for Version equality of all at design time known Windows Version.
+Since you can develop only against OS APIs known at design time, and Microsoft claims to be pretty good at maintaining backward compatible facades for their APIs, there is some reason in that decision.
+(To only see the Versions and APIs you told the OS with the manifest, you knew about at compile time).
+The core Problem at hand is, that ms broke the promise of backward compatibility, since the function in question is working differently, depending on windows version, although with the above reasoning we should get the exact same behavior on windows 10 as on windows 8.1 (as PostgreSql, per default, only claims to know about Windows 8.1 features).
+
+
+That said, I can understand the design decision. Personally, I still don't like it a bit, since developers should be allowed to make some stupid mistakes.
+
+
+>>> Another Idea on windows machines would be to use the commandline to 
+>>> execute ver in a separate Process and store the result in a file.
+>> 
+>> That also seems hackish, I don't think that we want to rely on 
+>> something like that.
+
+
+>Hmm.  That depends on the dependency set, I guess.  We do that on Linux at some extent to for large pages in sysv_shmem.c.  Perhaps this could work for Win10 if this avoids the extra loopholes with the >manifests.
+
+
+I used the following hack to get the "real" Major and Minor Version of Windows - it's in C# (.Net) and needs to be adjusted (you can compile as x64 and use a long-long as return value ) to return the Service Number too and translated it into C.
+I share it anyways, as it might help - please be kind, as it really is a little hack.
+
+
+Situation: 
+Main Application can't or is not willing to add a manifest file into its resources.
+
+
+Solution:
+Start a small executable (which has a manifest file compiled into its resources), let it read the OS Version and code the Version into its return Code.
+
+
+CInt32 is basically an integer redefinition, where one can access the lower and higher Int16 separately.
+
+
+The Main Programm eventually calls this (locate the executable, adjust the Process startup to be minimal, call the executable as separate process and interpret the return value as Version):
+private static Version ReadModernOsVersionInternal()
+{
+    String codeBase = Assembly.GetExecutingAssembly().CodeBase;
+    Uri uri = new Uri(codeBase);
+
+
+    String localPath = uri.LocalPath;
+    String pathDirectory = Path.GetDirectoryName(localPath);
+
+
+    if (pathDirectory != null)
+    {
+        String fullCombinePath = Path.Combine(pathDirectory, "Cf.Utilities.ReadModernOSVersion");
+
+
+        ProcessStartInfo processInfo = new ProcessStartInfo
+        {
+            FileName = fullCombinePath,
+            CreateNoWindow = true,
+            UseShellExecute = false
+        };
+
+
+        Process process = new Process
+        {
+            StartInfo = processInfo
+        };
+
+
+        process.Start();
+
+
+        if (process.WaitForExit(TimeSpan.FromSeconds(1).Milliseconds))
+        {
+            CInt32 versionInteger = process.ExitCode;
+            return new Version(versionInteger.HighValue, versionInteger.LowValue);
+        }
+    }
+
+
+    return new Version();
+}
+
+
+The small Version Check executable:
+
+
+static Int32 Main(String[] args)
+{
+    return OsVersionErmittler.ErmittleOsVersion();
+}
+
+
+and
+
+
+static class OsVersionErmittler
+{
+    /// <summary>
+    /// Ermittelt die OsVersion und übergibt diese als High und LowWord.
+    /// </summary>
+    /// <returns></returns>
+    public static CInt32 ErmittleOsVersion()
+    {
+        OperatingSystem version = Environment.OSVersion;
+        if (version.Platform == PlatformID.Win32NT && version.Version >= new Version(6, 3))
+        {
+            String versionString = version.VersionString;
+            return new CInt32((Int16) version.Version.Major, (Int16) version.Version.Minor);
+        }
+        return 0;
+    }
+}
+
+
+The shortened manifest of the small executable:
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+    <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Eine Liste der Windows-Versionen, unter denen diese Anwendung getestet
+           und für die sie entwickelt wurde. Wenn Sie die Auskommentierung der entsprechenden Elemente aufheben, 
+           wird von Windows automatisch die kompatibelste Umgebung ausgewählt. -->
+
+
+      <!-- Windows Vista -->
+      <!--<supportedOS Id="{e2011457-1546-43c5-a5fe-008deee3d3f0}" />-->
+
+
+      <!-- Windows 7 -->
+      <!--<supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}" />-->
+
+
+      <!-- Windows 8 -->
+      <!--<supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}" />-->
+
+
+      <!-- Windows 8.1 -->
+      <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}" />
+
+
+      <!-- Windows 10 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+
+
+    </application>
+  </compatibility>
+
+
+ </assembly>
+
+
+I hope I'm not intrusive, otherwise, feel free to ignore this mail,
+Wilm.
+
+
+
+
+
+### MESSAGE 19
+On Wed, Apr 27, 2022 at 05:13:12PM +0900, Michael Paquier wrote:
+> On Tue, Apr 26, 2022 at 12:54:35PM +0800, Julien Rouhaud wrote:
+> > so I'm still on the opinion that we should
+> > unconditionally use the FILE_MAP_LARGE_PAGES flag if it's defined and call it a
+> > day.
+> 
+> Are we sure that this is not going to cause failures in environments
+> where the flag is not supported?
+
+
+I don't know for sure as I have no way to test, but it would be very lame for
+an OS to provide a #define explicitly intended for one use case if that use
+case can't handle that flag yet.
+
+
+
+
+
+### MESSAGE 20
+On Wed, Apr 27, 2022 at 03:04:23PM +0000, Wilm Hoyer wrote:
+>
+> I used the following hack to get the "real" Major and Minor Version of
+> Windows - it's in C# (.Net) and needs to be adjusted (you can compile as x64
+> and use a long-long as return value ) to return the Service Number too and
+> translated it into C.
+> I share it anyways, as it might help - please be kind, as it really is a
+> little hack.
+>
+> Situation:
+> Main Application can't or is not willing to add a manifest file into its
+> resources.
+>
+> Solution:
+> Start a small executable (which has a manifest file compiled into its
+> resources), let it read the OS Version and code the Version into its return
+> Code.
+
+
+Thanks for sharing.
+
+
+Having to compile another tool just for that seems like a very high price to
+pay, especially since we don't have any C# code in the tree.  I'm not even sure
+that compiling this wouldn't need additional requirements and/or if it would
+work on our oldest supported Windows versions.
+
+
+
+
+
+### MESSAGE 21
+
+On Wed, Apr 27, 2022 at 03:04:23PM +0000, Wilm Hoyer wrote:
+>>
+>> I used the following hack to get the "real" Major and Minor Version of 
+>> Windows - it's in C# (.Net) and needs to be adjusted (you can compile 
+>> as x64 and use a long-long as return value ) to return the Service 
+>> Number too and translated it into C.
+>> I share it anyways, as it might help - please be kind, as it really is 
+>> a little hack.
+>>
+>> Situation:
+>> Main Application can't or is not willing to add a manifest file into 
+>> its resources.
+>>
+>> Solution:
+>> Start a small executable (which has a manifest file compiled into its 
+>> resources), let it read the OS Version and code the Version into its 
+>> return Code.
+
+
+> Thanks for sharing.
+
+
+You are welcome.
+
+
+> Having to compile another tool just for that seems like a very high price to pay, especially since we don't have any C# code in the tree.  I'm not even sure that compiling this wouldn't need additional  requirements and/or if it would work on our oldest supported Windows versions.
+
+
+With "translate it into C" I meant "tread it as pseudo code, for a solution in plain C" (e.g. substitude Environment.OSVersion with IsWindowsVersionOrGreater or GetVersion )
+
+
+On Wed, Apr 27, 2022 at 05:13:12PM +0900, Michael Paquier wrote:
+> On Tue, Apr 26, 2022 at 12:54:35PM +0800, Julien Rouhaud wrote:
+> > so I'm still on the opinion that we should unconditionally use the 
+> > FILE_MAP_LARGE_PAGES flag if it's defined and call it a day.
+> 
+> Are we sure that this is not going to cause failures in environments 
+> where the flag is not supported?
+
+
+I'm not that familiar with the Microsoft OS or C (that's why I haven't migrated the c# code to C in the first place) to have a clear answer to that question.
+
+
+If there is any risk and you want to avoid it, I can share a search result when I faced the same issue for our application. I declined this solution in favor of the previously shared one.
+It's from NUnit (and needs migration to C as well - but since it just involves the Registry this should be pretty forward).
+Just in case the Framework is not known: NUnit is the most popular .Net port of the Unit Testing Framework JUnit. There exits a C port too (CUnit) Maybe in there you can find an OS Version check too.
+
+
+// Copyright (c) Charlie Poole, Rob Prouse and Contributors. MIT License - see LICENSE.txt
+[...]
+namespace NUnit.Framework.Internal
+{
+    [SecuritySafeCritical]
+    public class OSPlatform
+    {
+[...]
+        /// <summary>
+        /// Gets the actual OS Version, not the incorrect value that might be
+        /// returned for Win 8.1 and Win 10
+        /// </summary>
+        /// <remarks>
+        /// If an application is not manifested as Windows 8.1 or Windows 10,
+        /// the version returned from Environment.OSVersion will not be 6.3 and 10.0
+        /// respectively, but will be 6.2 and 6.3. The correct value can be found in
+        /// the registry.
+        /// </remarks>
+        /// <param name="version">The original version</param>
+        /// <returns>The correct OS version</returns>
+        private static Version GetWindows81PlusVersion(Version version)
+        {
+            try
+            {
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
+                {
+                    if (key != null)
+                    {
+                        var buildStr = key.GetValue("CurrentBuildNumber") as string;
+                        int.TryParse(buildStr, out var build);
+
+
+                        // These two keys are in Windows 10 only and are DWORDS
+                        var major = key.GetValue("CurrentMajorVersionNumber") as int?;
+                        var minor = key.GetValue("CurrentMinorVersionNumber") as int?;
+                        if (major.HasValue && minor.HasValue)
+                        {
+                            return new Version(major.Value, minor.Value, build);
+                        }
+
+
+                        // If we get here, we are not Windows 10, so we are Windows 8
+                        // or 8.1. 8.1 might report itself as 6.2, but will have 6.3
+                        // in the registry. We can't do this earlier because for backwards
+                        // compatibility, Windows 10 also has 6.3 for this key.
+                        var currentVersion = key.GetValue("CurrentVersion") as string;
+                        if(currentVersion == "6.3")
+                        {
+                            return new Version(6, 3, build);
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+            }
+            return version;
+        }
+[...]
+   }
+}
+
+
+Finally, my reasoning to use the executable solution in favor of the NUnit one: 
+I found no guarantee from Microsoft regarding the keys and values in the registry - hence a change with an update or in a newer Windows is not likely, but still possible. That's no problem for a heavily used and supported framework like NUnit - they are likely to adopt within days of a new Windows release. I on the other hand wanted a solution with small to no support. That's why I decided to implement a solution that's as in line as possible with the official Microsoft advice for targeting newer OS Versions.
+
+
+Best regards
+Wilm.
+
+
+
+
+
+### MESSAGE 22
+On Tue, Apr 26, 2022 at 12:54:35PM +0800, Julien Rouhaud wrote:
+> Their API is entirely useless, so I'm still on the opinion that we should
+> unconditionally use the FILE_MAP_LARGE_PAGES flag if it's defined and call it a
+> day.
+
+
+Now that the minimal runtime version is Windows 10 in v16~ thanks to
+495ed0e, we could be much more aggressive and do the attached, which
+is roughly what Thomas has proposed upthread at the exception of
+assuming that FILE_MAP_LARGE_PAGES always exists, because updates are
+forced by MS in this environment.  We could make it conditional, of
+course, with an extra #ifdef painting.
+--
+Michael
+
+
+
+### MESSAGE 23
+On Sun, Mar 27, 2022 at 12:07:57AM +1300, Thomas Munro wrote:
+> Some question I have: is FILE_MAP_LARGE PAGES a macro?  We claim to
+> support all those ancient zombie OSes like Windows 7, or maybe it's
+> even XP for 11, and this has to be back-patched to 11, so we might
+> need to make it conditional.  But conditional on what?  For example,
+> does something like the attached work (untested)?  What happens if a <
+> 1703 kernel sees this flag, does it reject it or ignore it?
+
+
+I have been looking at this thread, and found an answer in an example
+of application creating a map object with large pages in [1]:
+"This flag is ignored on OS versions before Windows 10, version 1703."
+
+
+So based on that I think that we could just apply and backpatch what
+you have here.  This issue is much easier to reason about on HEAD
+where we just care about Win >= 10, and we've be rather careful with
+changes like that when it came to Windows.  Any objections about doing 
+a backpatch?  I'd like to do so after an extra lookup, if there are no
+objections.  Or would folks prefer a HEAD-only fix for now?
+
+
+[1]: https://docs.microsoft.com/en-us/windows/win32/memory/creating-a-file-mapping-using-large-pages?source=recommendations
+--
+Michael
+
+
+
+### MESSAGE 24
+Michael Paquier <michael(at)paquier(dot)xyz> writes:
+> So based on that I think that we could just apply and backpatch what
+> you have here.  This issue is much easier to reason about on HEAD
+> where we just care about Win >= 10, and we've be rather careful with
+> changes like that when it came to Windows.  Any objections about doing 
+> a backpatch?  I'd like to do so after an extra lookup, if there are no
+> objections.  Or would folks prefer a HEAD-only fix for now?
+
+
+Let's just fix it in HEAD.  I think the risk/reward ratio isn't very
+good here.
+
+
+(I'd be particularly against changing this in v10, because 10.23 will
+be the last one; there will be no second chance if we ship it broken.)
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 25
+On Fri, Sep 16, 2022 at 10:29:38AM -0400, Tom Lane wrote:
+> Michael Paquier <michael(at)paquier(dot)xyz> writes:
+> > So based on that I think that we could just apply and backpatch what
+> > you have here.  This issue is much easier to reason about on HEAD
+> > where we just care about Win >= 10, and we've be rather careful with
+> > changes like that when it came to Windows.  Any objections about doing
+> > a backpatch?  I'd like to do so after an extra lookup, if there are no
+> > objections.  Or would folks prefer a HEAD-only fix for now?
+>
+> Let's just fix it in HEAD.  I think the risk/reward ratio isn't very
+> good here.
+>
+> (I'd be particularly against changing this in v10, because 10.23 will
+> be the last one; there will be no second chance if we ship it broken.)
+
+
++1
+
+
+
+
+
+### MESSAGE 26
+On Fri, Sep 16, 2022 at 10:36:12PM +0800, Julien Rouhaud wrote:
+> On Fri, Sep 16, 2022 at 10:29:38AM -0400, Tom Lane wrote:
+>> Let's just fix it in HEAD.  I think the risk/reward ratio isn't very
+>> good here.
+>>
+>> (I'd be particularly against changing this in v10, because 10.23 will
+>> be the last one; there will be no second chance if we ship it broken.)
+> 
+> +1
+
+
+Okay, fine by me.  I have applied that only on HEAD, then.
+--
+Michael
+

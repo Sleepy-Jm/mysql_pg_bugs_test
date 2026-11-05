@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17698: On SIGTERM, psql terminates, but leaves the statement running</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17698-58a6ab8caec496b0%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-11-25T18:01:40" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17698: On SIGTERM, psql terminates, but leaves the statement running" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="4cb5d61dd89a554d446278e989677514">BUG #17698: On SIGTERM, psql terminates, but leaves the statement running</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202211251801">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17698-58a6ab8caec496b0@postgresql.org"></a>
+<a name="4cb5d61dd89a554d446278e989677514"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>dastapov(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17698: On SIGTERM, psql terminates, but leaves the statement running</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-25 18:01:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17698-58a6ab8caec496b0%40postgresql.org">17698-58a6ab8caec496b0@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17698-58a6ab8caec496b0%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17698-58a6ab8caec496b0%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17698-58a6ab8caec496b0%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17698-58a6ab8caec496b0%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211250000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17698<br>Logged by:          Dmitry Astapov<br>Email address:      dastapov(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   CentOS 7<br>Description:        </p>
+
+<p>Reproduction: start psql, launch a query that will take a while (I used<br>&#x27;select pg_sleep(1234)&#x27;), then from another terminal do &quot;kill -TERM &lt;pid of<br>psql&gt;&quot;.<br>Psql would be terminated, but query would not be, and will keep running<br>until TCP timeout kicks in and kills the stale connection.</p>
+
+<p>SIGINT, on the other hand, will cause psql will terminate the current<br>statement.</p>
+
+<p>Perhaps psql could have a SIGTERM handler that does roughly what SIGINT<br>handler does before terminating the whole process, and would cancel the<br>current statement (if any)?</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20230116151459.fzg6mlegkcrzch4i@alvherre.pgsql"></a>
+<a name="746f95d357725067ef95f6daa6eb5a5d"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>dastapov(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17698: On SIGTERM, psql terminates, but leaves the
+ statement running</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2023-01-16 15:14:59</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20230116151459.fzg6mlegkcrzch4i%40alvherre.pgsql">20230116151459.fzg6mlegkcrzch4i@alvherre.pgsql</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20230116151459.fzg6mlegkcrzch4i%40alvherre.pgsql">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20230116151459.fzg6mlegkcrzch4i%40alvherre.pgsql" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20230116151459.fzg6mlegkcrzch4i%40alvherre.pgsql" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20230116151459.fzg6mlegkcrzch4i%40alvherre.pgsql" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202301160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2022-Nov-25, PG Bug reporting form wrote:</p>
+
+<p>&gt; Reproduction: start psql, launch a query that will take a while (I<br>&gt; used &#x27;select pg_sleep(1234)&#x27;), then from another terminal do<br>&gt; &quot;kill -TERM &lt;pid of psql&gt;&quot;.  Psql would be terminated, but query would<br>&gt; not be, and will keep running until TCP timeout kicks in and kills the<br>&gt; stale connection.<br>&gt; <br>&gt; SIGINT, on the other hand, will cause psql will terminate the current<br>&gt; statement.<br>&gt; <br>&gt; Perhaps psql could have a SIGTERM handler that does roughly what<br>&gt; SIGINT handler does before terminating the whole process, and would<br>&gt; cancel the current statement (if any)?</p>
+
+<p>Sure.  I doubt we want to wait until a reply to the cancel request is<br>obtained, but we could have the sigterm handler at least send it before<br>terminating.</p>
+
+<p>Why do you send SIGTERM to psql anyway?</p>
+
+<p>-- <br>Álvaro Herrera         PostgreSQL Developer  —  <a href="https://www.EnterpriseDB.com/" rel="nofollow">https://www.EnterpriseDB.com/</a><br>&quot;Thou shalt not follow the NULL pointer, for chaos and madness await<br>thee at its end.&quot; (2nd Commandment for C programmers)</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAFQUnFgYi4+ySU-D4w1v3zeMTsjSymbc5VF+KRvnoRZ01K99-g@mail.gmail.com"></a>
+<a name="df6bc4138a7823ca74fecc724a83eb47"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dmitry Astapov &lt;dastapov(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17698: On SIGTERM, psql terminates, but leaves the statement running</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2023-01-16 19:44:36</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAFQUnFgYi4%2BySU-D4w1v3zeMTsjSymbc5VF%2BKRvnoRZ01K99-g%40mail.gmail.com">CAFQUnFgYi4+ySU-D4w1v3zeMTsjSymbc5VF+KRvnoRZ01K99-g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAFQUnFgYi4%2BySU-D4w1v3zeMTsjSymbc5VF%2BKRvnoRZ01K99-g%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAFQUnFgYi4%2BySU-D4w1v3zeMTsjSymbc5VF%2BKRvnoRZ01K99-g%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAFQUnFgYi4%2BySU-D4w1v3zeMTsjSymbc5VF%2BKRvnoRZ01K99-g%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAFQUnFgYi4%2BySU-D4w1v3zeMTsjSymbc5VF%2BKRvnoRZ01K99-g%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202301160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Jan 16, 2023 at 3:21 PM Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;<br>wrote:</p>
+
+<p>&gt; On 2022-Nov-25, PG Bug reporting form wrote:<br>&gt; &gt;<br>&gt; &gt; Perhaps psql could have a SIGTERM handler that does roughly what<br>&gt; &gt; SIGINT handler does before terminating the whole process, and would<br>&gt; &gt; cancel the current statement (if any)?<br>&gt;<br>&gt; Sure.  I doubt we want to wait until a reply to the cancel request is<br>&gt; obtained, but we could have the sigterm handler at least send it before<br>&gt; terminating.<br>&gt;<br>&gt; Why do you send SIGTERM to psql anyway?<br>&gt;<br>&gt;<br>The way the story was told to me by the user, they started psql from inside<br>the neovim session and then cancelled it with Ctrl-C. Apparently, neovim<br>(unlike, say, vim) sends SIGTERM to the child process in this case (whereas<br>vim will send SIGINT).</p>
+
+<p>-- <br>D. Astapov<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAFj8pRD86XAkb8kw5mF5Z6Jvv8ygVkmyNouFq+0T=mOUgFGm=g@mail.gmail.com"></a>
+<a name="6963893101e9df1626355679b5f43cb7"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dmitry Astapov &lt;dastapov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17698: On SIGTERM, psql terminates, but leaves the statement running</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2023-01-16 20:34:51</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAFj8pRD86XAkb8kw5mF5Z6Jvv8ygVkmyNouFq%2B0T%3DmOUgFGm%3Dg%40mail.gmail.com">CAFj8pRD86XAkb8kw5mF5Z6Jvv8ygVkmyNouFq+0T=mOUgFGm=g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAFj8pRD86XAkb8kw5mF5Z6Jvv8ygVkmyNouFq%2B0T%3DmOUgFGm%3Dg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAFj8pRD86XAkb8kw5mF5Z6Jvv8ygVkmyNouFq%2B0T%3DmOUgFGm%3Dg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAFj8pRD86XAkb8kw5mF5Z6Jvv8ygVkmyNouFq%2B0T%3DmOUgFGm%3Dg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAFj8pRD86XAkb8kw5mF5Z6Jvv8ygVkmyNouFq%2B0T%3DmOUgFGm%3Dg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202301160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>po 16. 1. 2023 v 20:45 odesílatel Dmitry Astapov &lt;dastapov(at)gmail(dot)com&gt;<br>napsal:</p>
+
+<p>&gt;<br>&gt;<br>&gt; On Mon, Jan 16, 2023 at 3:21 PM Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;<br>&gt; wrote:<br>&gt;<br>&gt;&gt; On 2022-Nov-25, PG Bug reporting form wrote:<br>&gt;&gt; &gt;<br>&gt;&gt; &gt; Perhaps psql could have a SIGTERM handler that does roughly what<br>&gt;&gt; &gt; SIGINT handler does before terminating the whole process, and would<br>&gt;&gt; &gt; cancel the current statement (if any)?<br>&gt;&gt;<br>&gt;&gt; Sure.  I doubt we want to wait until a reply to the cancel request is<br>&gt;&gt; obtained, but we could have the sigterm handler at least send it before<br>&gt;&gt; terminating.<br>&gt;&gt;<br>&gt;&gt; Why do you send SIGTERM to psql anyway?<br>&gt;&gt;<br>&gt;&gt;<br>&gt; The way the story was told to me by the user, they started psql from<br>&gt; inside the neovim session and then cancelled it with Ctrl-C. Apparently,<br>&gt; neovim (unlike, say, vim) sends SIGTERM to the child process in this case<br>&gt; (whereas vim will send SIGINT).<br>&gt;</p>
+
+<p>I think there may be a bug - I am not able to reproduce it, but sometimes I<br>can crash psql by CTRL-C too.</p>
+
+<p>Regards</p>
+
+<p>Pavel</p>
+
+<p>&gt;<br>&gt;<br>&gt; --<br>&gt; D. Astapov<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CSSYXFI3JCDF.1RO2ES99IT2GH@c3po"></a>
+<a name="38c9dce6b5aa8b50cfbb04e89d328961"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;Tristan Partin&quot; &lt;tristan(at)neon(dot)tech&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;Alvaro Herrera&quot; &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;, &lt;dastapov(at)gmail(dot)com&gt;,
+ &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17698: On SIGTERM, psql terminates, but leaves the
+ statement running</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2023-05-22 17:04:58</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CSSYXFI3JCDF.1RO2ES99IT2GH%40c3po">CSSYXFI3JCDF.1RO2ES99IT2GH@c3po</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CSSYXFI3JCDF.1RO2ES99IT2GH%40c3po">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CSSYXFI3JCDF.1RO2ES99IT2GH%40c3po" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CSSYXFI3JCDF.1RO2ES99IT2GH%40c3po" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CSSYXFI3JCDF.1RO2ES99IT2GH%40c3po" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202305220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon Jan 16, 2023 at 9:14 AM CST, Alvaro Herrera wrote:<br>&gt; On 2022-Nov-25, PG Bug reporting form wrote:<br>&gt;<br>&gt; &gt; Reproduction: start psql, launch a query that will take a while (I<br>&gt; &gt; used &#x27;select pg_sleep(1234)&#x27;), then from another terminal do<br>&gt; &gt; &quot;kill -TERM &lt;pid of psql&gt;&quot;.  Psql would be terminated, but query would<br>&gt; &gt; not be, and will keep running until TCP timeout kicks in and kills the<br>&gt; &gt; stale connection.<br>&gt; &gt; <br>&gt; &gt; SIGINT, on the other hand, will cause psql will terminate the current<br>&gt; &gt; statement.<br>&gt; &gt; <br>&gt; &gt; Perhaps psql could have a SIGTERM handler that does roughly what<br>&gt; &gt; SIGINT handler does before terminating the whole process, and would<br>&gt; &gt; cancel the current statement (if any)?<br>&gt;<br>&gt; Sure.  I doubt we want to wait until a reply to the cancel request is<br>&gt; obtained, but we could have the sigterm handler at least send it before<br>&gt; terminating.</p>
+
+<p>I am currently working on a patch for this.</p>
+
+<p>-- <br>Tristan Partin<br>Neon (<a href="https://neon.tech" rel="nofollow">https://neon.tech</a>)</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

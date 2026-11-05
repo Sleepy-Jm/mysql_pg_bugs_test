@@ -1,0 +1,48 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17315
+Logged by:          Markus Weyermann
+Email address:      markus(dot)weyermann(at)gmx(dot)net
+PostgreSQL version: 14.1
+Operating system:   Linux 5.10.63-v8+ aarch64 (Bullseye)
+Description:        
+
+
+For recovery purposes i do backup the system at filesystem level. I'm
+using
+a script that starts rsync to save the default Raspberry Pi OS Partitions
+"/" (vfat) and "/boot" (ext4) to nfs target on a nas. Before starting the
+script postgresql is shut  down by "systemctl stop postgres".
+After restore, when trying to start postgres by "systemctl start postgres"
+errors are logged:
+
+
+"
+2021-11-21 11:15:11.838 CET [842] LOG:  received fast shutdown request
+2021-11-21 11:15:11.842 CET [842] LOG:  aborting any active transactions
+2021-11-21 11:15:11.843 CET [2735] <user>@<server> FATAL:  terminating
+connection due to administrator command
+2021-11-21 11:15:11.849 CET [842] LOG:  background worker "logical
+replication launcher" (PID 884) exited with exit code 1
+2021-11-21 11:15:11.866 CET [879] LOG:  shutting down
+2021-11-21 11:15:11.970 CET [842] LOG:  database system is shut down
+/usr/lib/postgresql/14/bin/postgres: error while loading shared libraries:
+libicui18n.so.63: cannot open shared object file: No such file or
+directory
+no data was returned by command ""/usr/lib/postgresql/14/bin/postgres" -V"
+The program "postgres" is needed by pg_ctl but was not found in the
+same directory as "/usr/lib/postgresql/14/bin/pg_ctl".
+Check your installation.
+"
+
+
+When doing "apt --reinstall install postgresql-14" everything is working
+again as expected.
+
+
+This has been working before when running on Buster without the need of
+reinstalling postgresql.
+
+
+

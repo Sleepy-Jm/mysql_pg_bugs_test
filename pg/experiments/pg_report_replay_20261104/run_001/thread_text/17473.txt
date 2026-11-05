@@ -1,0 +1,222 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17473
+Logged by:          John Cwikla
+Email address:      cwikla(at)puzzle(dot)io
+PostgreSQL version: 14.2
+Operating system:   Debian 14.2-1.pgdg110+1
+Description:        
+
+
+Are range types supposed to respect precision? There is no mention of
+precision in the documents that I can find, and it doesn't seem to be the
+case for timestamps.
+
+
+psql (14.2 (Debian 14.2-1.pgdg110+1))
+SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits:
+256, compression: off)
+Type "help" for help.
+
+
+postgres=> CREATE TYPE tstzrange3 AS RANGE ( subtype = timestamp(3) with
+time zone);
+CREATE TYPE
+postgres=> select tstzrange3(NOW(), NULL);
+             tstzrange3
+------------------------------------
+ ["2022-04-29 19:11:31.920322+00",)
+(1 row)
+
+
+
+
+
+### MESSAGE 1
+On Fri, Apr 29, 2022 at 1:53 PM PG Bug reporting form <
+noreply(at)postgresql(dot)org> wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17473
+> Logged by:          John Cwikla
+> Email address:      cwikla(at)puzzle(dot)io
+> PostgreSQL version: 14.2
+> Operating system:   Debian 14.2-1.pgdg110+1
+> Description:
+>
+> Are range types supposed to respect precision? There is no mention of
+> precision in the documents that I can find, and it doesn't seem to be the
+> case for timestamps.
+>
+> psql (14.2 (Debian 14.2-1.pgdg110+1))
+> SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits:
+> 256, compression: off)
+> Type "help" for help.
+>
+> postgres=> CREATE TYPE tstzrange3 AS RANGE ( subtype = timestamp(3) with
+> time zone);
+> CREATE TYPE
+> postgres=> select tstzrange3(NOW(), NULL);
+>              tstzrange3
+> ------------------------------------
+>  ["2022-04-29 19:11:31.920322+00",)
+> (1 row)
+>
+>
+In short, that isn't how the type modifier works.  Once you have a value of
+a given base type you end up passing it around the system as-is.
+
+
+# create function echotime(intime timestamp(3) with time zone) returns
+timestamp(3) with time zone as $$ select intime; $$ language sql;
+CREATE FUNCTION
+# select echotime(now());
+           echotime
+-------------------------------
+ 2022-04-29 21:04:14.047011+00
+(1 row)
+
+
+Though you can explicitly cast an existing value, creating a new one with
+the newly specified type modifier.
+
+
+# select echotime(now()::timestamptz(3));
+          echotime
+----------------------------
+ 2022-04-29 21:04:48.887+00
+(1 row)
+
+
+Basically, in most cases the type modifier is simply either documentation
+or a runtime constraint enforced when first creating a data value.
+However, one can use "create domain" to actually create a brand new type
+without a direct modifier but whose underlying base type is constrained.
+
+
+# create domain tstz3 as timestamptz(3);
+CREATE DOMAIN
+                                       ^
+# create function echotime3(intime tstz3) returns tstz3 as $$ select
+intime; $$ language sql;
+CREATE FUNCTION
+
+
+# select echotime3(now());
+         echotime3
+----------------------------
+ 2022-04-29 21:14:56.703+00
+(1 row)
+
+
+Not tested, but a range type of that domain should provide the behavior you
+are looking for.
+
+
+Domains do have their own idiosyncrasies, particularly when it comes to
+working out implicit casts and general type resolution, since a domain is
+also a valid instance of the base type and that fact can be relied upon to
+make things work, possibly in reliable but unexpected ways (I don't have a
+good example at the moment though...)
+
+
+David J.
+
+
+
+### MESSAGE 2
+Groovy, thanks for the thorough explanation.
+
+
+On Fri, Apr 29, 2022 at 2:20 PM David G. Johnston <
+david(dot)g(dot)johnston(at)gmail(dot)com> wrote:
+
+
+> On Fri, Apr 29, 2022 at 1:53 PM PG Bug reporting form <
+> noreply(at)postgresql(dot)org> wrote:
+>
+>> The following bug has been logged on the website:
+>>
+>> Bug reference:      17473
+>> Logged by:          John Cwikla
+>> Email address:      cwikla(at)puzzle(dot)io
+>> PostgreSQL version: 14.2
+>> Operating system:   Debian 14.2-1.pgdg110+1
+>> Description:
+>>
+>> Are range types supposed to respect precision? There is no mention of
+>> precision in the documents that I can find, and it doesn't seem to be the
+>> case for timestamps.
+>>
+>> psql (14.2 (Debian 14.2-1.pgdg110+1))
+>> SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits:
+>> 256, compression: off)
+>> Type "help" for help.
+>>
+>> postgres=> CREATE TYPE tstzrange3 AS RANGE ( subtype = timestamp(3) with
+>> time zone);
+>> CREATE TYPE
+>> postgres=> select tstzrange3(NOW(), NULL);
+>>              tstzrange3
+>> ------------------------------------
+>>  ["2022-04-29 19:11:31.920322+00",)
+>> (1 row)
+>>
+>>
+> In short, that isn't how the type modifier works.  Once you have a value
+> of a given base type you end up passing it around the system as-is.
+>
+> # create function echotime(intime timestamp(3) with time zone) returns
+> timestamp(3) with time zone as $$ select intime; $$ language sql;
+> CREATE FUNCTION
+> # select echotime(now());
+>            echotime
+> -------------------------------
+>  2022-04-29 21:04:14.047011+00
+> (1 row)
+>
+> Though you can explicitly cast an existing value, creating a new one with
+> the newly specified type modifier.
+>
+> # select echotime(now()::timestamptz(3));
+>           echotime
+> ----------------------------
+>  2022-04-29 21:04:48.887+00
+> (1 row)
+>
+> Basically, in most cases the type modifier is simply either documentation
+> or a runtime constraint enforced when first creating a data value.
+> However, one can use "create domain" to actually create a brand new type
+> without a direct modifier but whose underlying base type is constrained.
+>
+> # create domain tstz3 as timestamptz(3);
+> CREATE DOMAIN
+>                                        ^
+> # create function echotime3(intime tstz3) returns tstz3 as $$ select
+> intime; $$ language sql;
+> CREATE FUNCTION
+>
+> # select echotime3(now());
+>          echotime3
+> ----------------------------
+>  2022-04-29 21:14:56.703+00
+> (1 row)
+>
+> Not tested, but a range type of that domain should provide the behavior
+> you are looking for.
+>
+> Domains do have their own idiosyncrasies, particularly when it comes to
+> working out implicit casts and general type resolution, since a domain is
+> also a valid instance of the base type and that fact can be relied upon to
+> make things work, possibly in reliable but unexpected ways (I don't have a
+> good example at the moment though...)
+>
+> David J.
+>
+>
+>
+

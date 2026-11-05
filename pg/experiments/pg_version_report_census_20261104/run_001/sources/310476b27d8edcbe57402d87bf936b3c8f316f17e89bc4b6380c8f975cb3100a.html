@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/18793-07a72289887f0966%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-02-04T12:43:25" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 18793 Logged by: Ugur YILMAZ Email address: ugurlu2001@hotmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>ugurlu2001(at)hotmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-04 12:43:25</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18793-07a72289887f0966%40postgresql.org">18793-07a72289887f0966@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18793-07a72289887f0966%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18793-07a72289887f0966%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18793-07a72289887f0966%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18793-07a72289887f0966%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="18793-07a72289887f0966%40postgresql.org" selected="selected">2025-02-04 12:43:25 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="65eb4d7a46a2759dc2583f274bf50d16811caebe.camel%40cybertec.at">&nbsp;2025-02-04 15:13:46 from Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</option>
+  <option value="641679.1738684189%40sss.pgh.pa.us">&nbsp;&nbsp;2025-02-04 15:49:49 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="DU0PR10MB714275ACEBAB82D8C8F559D5C0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM">&nbsp;&nbsp;2025-02-09 21:22:24 from Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt;</option>
+  <option value="DU0PR10MB7142A855C86EC71EAD9C9F1CC0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM">&nbsp;&nbsp;2025-02-09 22:34:35 from Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt;</option>
+  <option value="CAKFQuwZy-JU0tAWYd%3D6OheZci8OEXVx99J6eSH%3DhV3z0%3DOZfmg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2025-02-09 23:13:26 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="2069593.1739143167%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;2025-02-09 23:19:27 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="DU0PR10MB71425233264A7687CB729D6FC0F22%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM">&nbsp;&nbsp;&nbsp;&nbsp;2025-02-10 00:21:34 from Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt;</option>
+  <option value="CAKFQuwaRY_x3XXnhpi3Q6NcUAsW9aMRAcEwRtxb8kDDjk1fKvA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2025-02-10 00:55:01 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="CAKFQuwa-R9UdDfbqfYyMBuYLT6dqFRcJAMB26jBgBkgDvBFJtw%40mail.gmail.com">&nbsp;2025-02-04 15:30:03 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502040000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18793<br>Logged by:          Ugur YILMAZ<br>Email address:      ugurlu2001(at)hotmail(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Windows 11 Pro<br>Description:        </p>
+
+<p>I have a set of &quot;Functions&quot; that I created dynamically with PLPgSQL and are<br>connected to each other in a chain.</p>
+
+<p>The first function dynamically creates the second function. The second<br>function returns a set of values with a dynamic &quot;Return Query&quot; statement and<br>a reference to &quot;Returns Table (field1 type1, field2 type2 .... )&quot;.</p>
+
+<p>Basically, the result set seems to return exactly the desired result. The<br>exception is the varchar(n) fixed-length data type. Although the result set<br>is expected to be varchar(n) -a fixed-length value is expected-, a result of<br>type character varying (length indeterminate) is obtained.</p>
+
+<p>You can see the dynamically created function example that I use below. In<br>addition to the sample function, I am also sharing the &quot;Basic SQL&quot; sentence<br>that returns &quot;character varying (length indeterminate)&quot; data. It also<br>returns the correct result.</p>
+
+<p>I have been trying to solve this seemingly simple problem for a few days.<br>However, I have a special restriction on the Varchar(254) limit in my<br>development environment.</p>
+
+<p>Correctly working SQL script:</p>
+
+<p>-- kodx &gt; returning character varying :: length indeterminate<br> SELECT idx,kodx, guidx   <br>	 ,round(has_toplam::numeric,2) as has<br>	,round(gumus_toplam::numeric,2) as gumus<br>	,round(usd_toplam::numeric,2) as usd<br>	,round(eur_toplam::numeric,2) as eur<br>	,round(trl_toplam::numeric,2) as trl<br>	,round(gbp_toplam::numeric,2) as gbp<br>	,round(chf_toplam::numeric,2) as chf<br>	,round(platin_toplam::numeric,2) as platin<br>	,round(alloy_toplam::numeric,2) as alloy <br>	   FROM crosstab(&#x27; <br>		 SELECT idx, kodx, guidx, bt_kod, toplam_miktar FROM   <br>		 ( <br>		 SELECT cma.company_master_id as idx, bt.kod AS bt_kod, bt.sys_default,<br>SUM(cma.miktar) as toplam_miktar, cm.kod as kodx, cma.company_master_guid as<br>guidx FROM company_master_amounts AS cma  <br>		 	LEFT OUTER JOIN balance_types as bt ON cma.balance_types_guid = bt.guid</p>
+
+<p>		 	LEFT OUTER JOIN company_master as cm ON cm.id = cma.company_master_id <br>		 	WHERE company_master_id = 3<br>		 	GROUP BY cma.company_master_id, bt.kod, bt.sys_default, cm.kod,<br>cma.company_master_guid <br>		 ) ORDER BY idx, sys_default DESC, bt_kod <br>		&#x27;::TEXT, <br>		&#x27; SELECT kod as kodx FROM balance_types ORDER BY sys_default DESC, kod, id<br>&#x27;::TEXT) <br>		crosstab(idx integer, kodx character varying(200), guidx uuid<br>					,has_toplam numeric(22,6),gumus_toplam numeric(22,6)<br>					,usd_toplam numeric(22,6),eur_toplam numeric(22,6)<br>					,trl_toplam numeric(22,6),gbp_toplam numeric(22,6)<br>					,chf_toplam numeric(22,6),platin_toplam numeric(22,6)<br>					,alloy_toplam numeric(22,6))<br> GROUP BY<br>has_toplam,gumus_toplam,usd_toplam,eur_toplam,trl_toplam,gbp_toplam,chf_toplam,platin_toplam,alloy_toplam,kodx,guidx,idx</p>
+
+<p>		  ORDER BY kodx; <br>		  </p>
+
+<p>A function that returns a result of indefinite length in the form of<br>&quot;character varying&quot; instead of &quot;Code ::varchar(200)&quot;. A &quot;Returns Query&quot;<br>function that creates a dynamic SQL script and returns a value in the &quot;Table<br>Type&quot; (second level - needed by the end user):</p>
+
+<p>-- kodx ( field name kod on &quot;return table&quot; ) &gt; returning character varying<br>(200)<br>/* <br>FUNCTION: public.get_balance_pivot_1c(integer)<br>DROP FUNCTION IF EXISTS public.get_balance_pivot_1c(integer);<br>Select * from get_balance_pivot_1c(3) ; <br>*/ <br>CREATE OR REPLACE FUNCTION public.get_balance_pivot_1c(<br>	pintcompany_id integer)<br>    RETURNS TABLE(id integer, kod varchar(200), guid uuid, has numeric,<br>gumus numeric, usd numeric, eur numeric, trl numeric, gbp numeric, chf<br>numeric, platin numeric, alloy numeric) <br>    LANGUAGE &#x27;plpgsql&#x27;<br>    COST 100<br>	STABLE PARALLEL SAFE<br>    ROWS 1000 </p>
+
+<p>AS $BODY$ <br> BEGIN <br> RETURN QUERY </p>
+
+<p> SELECT idx,kodx::varchar(200), guidx   <br>	 ,round(has_toplam::numeric,2) as has<br>	,round(gumus_toplam::numeric,2) as gumus<br>	,round(usd_toplam::numeric,2) as usd<br>	,round(eur_toplam::numeric,2) as eur<br>	,round(trl_toplam::numeric,2) as trl<br>	,round(gbp_toplam::numeric,2) as gbp<br>	,round(chf_toplam::numeric,2) as chf<br>	,round(platin_toplam::numeric,2) as platin<br>	,round(alloy_toplam::numeric,2) as alloy <br>	   FROM crosstab(&#x27; <br>		 SELECT idx, kodx, guidx, bt_kod, toplam_miktar FROM   <br>		 ( <br>		 SELECT cma.company_master_id as idx, bt.kod AS bt_kod, bt.sys_default,<br>SUM(cma.miktar) as toplam_miktar, cm.kod as kodx, cma.company_master_guid as<br>guidx FROM company_master_amounts AS cma  <br>		 	LEFT OUTER JOIN balance_types as bt ON cma.balance_types_guid = bt.guid</p>
+
+<p>		 	LEFT OUTER JOIN company_master as cm ON cm.id = cma.company_master_id <br>		 	WHERE company_master_id = 3<br>		 	GROUP BY cma.company_master_id, bt.kod, bt.sys_default, cm.kod,<br>cma.company_master_guid <br>		 ) ORDER BY idx, sys_default DESC, bt_kod <br>		&#x27;::TEXT, <br>		&#x27; SELECT kod as kodx FROM balance_types ORDER BY sys_default DESC, kod, id<br>&#x27;::TEXT) crosstab(idx integer, kodx character varying(200), guidx uuid,<br>has_toplam numeric(22,6),gumus_toplam numeric(22,6),usd_toplam<br>numeric(22,6),eur_toplam numeric(22,6),trl_toplam numeric(22,6),gbp_toplam<br>numeric(22,6),chf_toplam numeric(22,6),platin_toplam<br>numeric(22,6),alloy_toplam numeric(22,6))<br> GROUP BY<br>has_toplam,gumus_toplam,usd_toplam,eur_toplam,trl_toplam,gbp_toplam,chf_toplam,platin_toplam,alloy_toplam,kodx,guidx,idx</p>
+
+<p>		  ORDER BY kodx; <br>	/* WHERE company_master_id = &#x27; || pintcompany_id || &#x27; */ <br>	/* WHERE company_master_id = &#x27; || &#x27;3&#x27; || &#x27; */ </p>
+
+<p>  END ; <br> <br>$BODY$;</p>
+
+<p>ALTER FUNCTION public.get_balance_pivot_1c(integer)<br>    OWNER TO postgres;</p>
+
+<p>As far as I have determined, the Postgresql database engine somehow returns<br>the varchar(n) - Fixed Length - data type as a &quot;character varying&quot; -<br>indefinite length data type.</p>
+
+<p>I hope this situation, which I observed as a problem, will be fixed as soon<br>as possible.</p>
+
+<p>Best wishes...</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/65eb4d7a46a2759dc2583f274bf50d16811caebe.camel%40cybertec.at">Re: BUG #18793: PLpgSQL Function Returning Type of Table is not
+ match for varchar(n) data type via Return Query</a> at 2025-02-04 15:13:46 from Laurenz Albe
+      </li>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAKFQuwa-R9UdDfbqfYyMBuYLT6dqFRcJAMB26jBgBkgDvBFJtw%40mail.gmail.com">Re: BUG #18793: PLpgSQL Function Returning Type of Table is not match
+ for varchar(n) data type via Return Query</a> at 2025-02-04 15:30:03 from David G. Johnston
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/5e8129efb9f44dbd8ee72323f0ed3f0a%40aktivweb.de">Next Message</a></th>
+            <td>Stöcker Bernhard - aktivweb GmbH</td>
+            <td>2025-02-04 13:57:29</td>
+            <td><a href="/message-id/5e8129efb9f44dbd8ee72323f0ed3f0a%40aktivweb.de">bug report: initdb failure on Microsoft Windows if path to initdb
+ contains special chars</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/OS7PR01MB14968E0B6F45F8BCED2D2A6CFF5F42%40OS7PR01MB14968.jpnprd01.prod.outlook.com">Previous Message</a></th>
+            <td>Hayato Kuroda (Fujitsu)</td>
+            <td>2025-02-04 04:20:38</td>
+            <td><a href="/message-id/OS7PR01MB14968E0B6F45F8BCED2D2A6CFF5F42%40OS7PR01MB14968.jpnprd01.prod.outlook.com">RE: BUG #18789: logical replication slots are deleted after failovers</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

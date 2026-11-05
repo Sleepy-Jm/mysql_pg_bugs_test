@@ -1,0 +1,1301 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17406
+Logged by:          Victor Yegorov
+Email address:      vyegorov(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Ubuntu 18.04.6 LTS (bionic)
+Description:        
+
+
+KVM guest, on Intel(R) Xeon(R) CPU E5-2697 v2.
+
+
+PostgreSQL 12.9 had been upgraded to 14.2 using
+
+
+pg_upgradecluster -k  -m link 12 main /mnt/postgres/14/
+
+
+After that, one of the queries is crashing with Segmentation Fault.
+However, after REINDEX problem will be fixed. I thought I should report
+still.
+
+
+explain
+SELECT r.id, r.name, r.map_center_y, r.map_center_x,
+       COALESCE ((SELECT string_agg(id::TEXT, ',') FROM v3_region AS r2
+WHERE r2.id != r.id AND r2.ltree_path <@ r.ltree_path), '') AS children
+  FROM v3_region AS r;
+                                                 QUERY PLAN
+-------------------------------------------------------------------------------------------------------------
+ Seq Scan on v3_region r  (cost=0.00..3207.31 rows=349 width=580)
+   SubPlan 1
+     ->  Aggregate  (cost=8.17..8.18 rows=1 width=32)
+           ->  Index Scan using region_ltree_path_idx_gist on v3_region r2 
+(cost=0.14..8.16 rows=1 width=4)
+                 Index Cond: (ltree_path <@ r.ltree_path)
+                 Filter: (id <> r.id)
+(6 rows)
+
+
+Here is backtrace:
+#0  __memmove_sse2_unaligned_erms () at
+../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:435
+#1  0x00007f129244c266 in memcpy (__len=<optimized out>,
+__src=0x55bbbd430f4a, __dest=<optimized out>) at
+/usr/include/x86_64-linux-gnu/bits/string_fortified.h:34
+#2  copy_ltree (src=0x55bbbd430f4a) at
+./build/../contrib/ltree/ltree_gist.c:446
+#3  0x00007f129244db51 in gist_ischild (siglen=28, query=0x55bbbd410cb8,
+key=0x55bbbd430f18) at ./build/../contrib/ltree/ltree_gist.c:454
+#4  ltree_consistent (fcinfo=0x7ffdac2e3e20) at
+./build/../contrib/ltree/ltree_gist.c:674
+#5  0x000055bbbb944a5d in FunctionCall5Coll
+(flinfo=flinfo(at)entry=0x55bbbd416b20, collation=<optimized out>,
+arg1=arg1(at)entry=140727492165472, arg2=<optimized out>, arg3=<optimized out>,
+arg4=<optimized out>, arg5=140727492165471)
+    at ./build/../src/backend/utils/fmgr/fmgr.c:1241
+#6  0x000055bbbb4db72d in gistindex_keytest (recheck_distances_p=<synthetic
+pointer>, recheck_p=<synthetic pointer>, offset=4, page=0x7f1293a45180
+"K\313\003", tuple=0x7f1293a47058, scan=0x55bbbd4196c8)
+    at ./build/../src/backend/access/gist/gistget.c:222
+#7  gistScanPage (scan=scan(at)entry=0x55bbbd4196c8,
+pageItem=pageItem(at)entry=0x7ffdac2e3fe0, myDistances=myDistances(at)entry=0x0,
+tbm=tbm(at)entry=0x0, ntids=ntids(at)entry=0x0) at
+./build/../src/backend/access/gist/gistget.c:438
+#8  0x000055bbbb4dbf43 in gistgettuple (scan=0x55bbbd4196c8, dir=<optimized
+out>) at ./build/../src/backend/access/gist/gistget.c:639
+#9  0x000055bbbb50cb05 in index_getnext_tid (scan=0x55bbbd4196c8,
+direction=<optimized out>) at
+./build/../src/backend/access/index/indexam.c:533
+#10 0x000055bbbb50ccbd in index_getnext_slot
+(scan=scan(at)entry=0x55bbbd4196c8,
+direction=direction(at)entry=ForwardScanDirection,
+slot=slot(at)entry=0x55bbbd4057a0) at
+./build/../src/backend/access/index/indexam.c:625
+#11 0x000055bbbb6a3042 in IndexNext (node=node(at)entry=0x55bbbd405500) at
+./build/../src/backend/executor/nodeIndexscan.c:133
+#12 0x000055bbbb688281 in ExecScanFetch (recheckMtd=0x55bbbb6a38a0
+<IndexRecheck>, accessMtd=0x55bbbb6a2fd0 <IndexNext>, node=0x55bbbd405500)
+at ./build/../src/backend/executor/execScan.c:133
+#13 ExecScan (node=0x55bbbd405500, accessMtd=0x55bbbb6a2fd0 <IndexNext>,
+recheckMtd=0x55bbbb6a38a0 <IndexRecheck>) at
+./build/../src/backend/executor/execScan.c:199
+#14 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd405500) at
+./build/../src/backend/executor/execProcnode.c:479
+#15 0x000055bbbb68fb9c in ExecProcNode (node=0x55bbbd405500) at
+./build/../src/include/executor/executor.h:257
+#16 fetch_input_tuple (aggstate=aggstate(at)entry=0x55bbbd404ed8) at
+./build/../src/backend/executor/nodeAgg.c:581
+#17 0x000055bbbb692c19 in agg_retrieve_direct (aggstate=0x55bbbd404ed8) at
+./build/../src/backend/executor/nodeAgg.c:2364
+#18 ExecAgg (pstate=0x55bbbd404ed8) at
+./build/../src/backend/executor/nodeAgg.c:2179
+#19 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd404ed8) at
+./build/../src/backend/executor/execProcnode.c:479
+#20 0x000055bbbb6b14a1 in ExecProcNode (node=0x55bbbd404ed8) at
+./build/../src/include/executor/executor.h:257
+#21 ExecScanSubPlan (isNull=0x55bbbd4153dd, econtext=0x55bbbd414c00,
+node=0x55bbbd415c70) at ./build/../src/backend/executor/nodeSubplan.c:323
+#22 ExecSubPlan (node=node(at)entry=0x55bbbd415c70,
+econtext=econtext(at)entry=0x55bbbd414c00, isNull=0x55bbbd4153dd) at
+./build/../src/backend/executor/nodeSubplan.c:89
+#23 0x000055bbbb678ebd in ExecEvalSubPlan (state=state(at)entry=0x55bbbd4153d8,
+op=op(at)entry=0x55bbbd415618, econtext=econtext(at)entry=0x55bbbd414c00) at
+./build/../src/backend/executor/execExprInterp.c:3932
+#24 0x000055bbbb679b42 in ExecInterpExpr (state=0x55bbbd4153d8,
+econtext=0x55bbbd414c00, isnull=<optimized out>) at
+./build/../src/backend/executor/execExprInterp.c:1564
+#25 0x000055bbbb6883d2 in ExecEvalExprSwitchContext (isNull=0x7ffdac2e4457,
+econtext=0x55bbbd414c00, state=0x55bbbd4153d8) at
+./build/../src/include/executor/executor.h:339
+#26 ExecProject (projInfo=0x55bbbd4153d0) at
+./build/../src/include/executor/executor.h:373
+#27 ExecScan (node=<optimized out>, accessMtd=0x55bbbb6afe20 <SeqNext>,
+recheckMtd=0x55bbbb6afdf0 <SeqRecheck>) at
+./build/../src/backend/executor/execScan.c:238
+#28 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd414af0) at
+./build/../src/backend/executor/execProcnode.c:479
+#29 0x000055bbbb67e34d in ExecProcNode (node=0x55bbbd414af0) at
+./build/../src/include/executor/executor.h:257
+#30 ExecutePlan (execute_once=<optimized out>, dest=0x55bbbbdbf260
+<donothingDR>, direction=<optimized out>, numberTuples=0,
+sendTuples=<optimized out>, operation=CMD_SELECT,
+use_parallel_mode=<optimized out>, planstate=0x55bbbd414af0,
+    estate=0x55bbbd404c58) at
+./build/../src/backend/executor/execMain.c:1551
+#31 standard_ExecutorRun (queryDesc=0x55bbbd4037c8, direction=<optimized
+out>, count=0, execute_once=<optimized out>) at
+./build/../src/backend/executor/execMain.c:361
+#32 0x00007f13269e0595 in pgss_ExecutorRun (queryDesc=0x55bbbd4037c8,
+direction=ForwardScanDirection, count=0, execute_once=<optimized out>) at
+./build/../contrib/pg_stat_statements/pg_stat_statements.c:1003
+#33 0x000055bbbb60c3e8 in ExplainOnePlan
+(plannedstmt=plannedstmt(at)entry=0x55bbbd402018, into=into(at)entry=0x0,
+es=es(at)entry=0x55bbbd2e0f78,
+    queryString=queryString(at)entry=0x55bbbd289148 "explain (analyze, buffers)
+SELECT\n", ' ' <repeats 24 times>, "r.id,\n", ' ' <repeats 24 times>,
+"r.name,\n", ' ' <repeats 24 times>, "r.map_center_y,\n", ' ' <repeats 24
+times>, "r.map_center_x,\n", ' '
+<repeats 24 times>..., params=params(at)entry=0x0, queryEnv=<optimized out>,
+planduration=0x7ffdac2e4700, bufusage=0x7ffdac2e4780) at
+./build/../src/backend/commands/explain.c:593
+#34 0x000055bbbb60c7da in ExplainOneQuery (query=<optimized out>,
+cursorOptions=<optimized out>, into=0x0, es=0x55bbbd2e0f78,
+    queryString=0x55bbbd289148 "explain (analyze, buffers) SELECT\n", ' '
+<repeats 24 times>, "r.id,\n", ' ' <repeats 24 times>, "r.name,\n", ' '
+<repeats 24 times>, "r.map_center_y,\n", ' ' <repeats 24 times>,
+"r.map_center_x,\n", ' ' <repeats 24 times>..., params=0x0, queryEnv=0x0) at
+./build/../src/backend/commands/explain.c:410
+#35 0x000055bbbb60ce7d in ExplainQuery (pstate=pstate(at)entry=0x55bbbd3a0230,
+stmt=stmt(at)entry=0x55bbbd3b7840, params=params(at)entry=0x0,
+dest=dest(at)entry=0x55bbbd3a01a0) at
+./build/../src/backend/commands/explain.c:281
+#36 0x000055bbbb806783 in standard_ProcessUtility
+(pstmt=pstmt(at)entry=0x55bbbd3b7fa8,
+    queryString=queryString(at)entry=0x55bbbd289148 "explain (analyze, buffers)
+SELECT\n", ' ' <repeats 24 times>, "r.id,\n", ' ' <repeats 24 times>,
+"r.name,\n", ' ' <repeats 24 times>, "r.map_center_y,\n", ' ' <repeats 24
+times>, "r.map_center_x,\n", ' '
+<repeats 24 times>..., readOnlyTree=<optimized out>,
+context=context(at)entry=PROCESS_UTILITY_TOPLEVEL, params=params(at)entry=0x0,
+queryEnv=queryEnv(at)entry=0x0, dest=0x55bbbd3a01a0, qc=0x7ffdac2e4c70) at
+./build/../src/backend/tcop/utility.c:862
+#37 0x00007f13269e2221 in pgss_ProcessUtility (pstmt=0x55bbbd3b7fa8,
+    queryString=0x55bbbd289148 "explain (analyze, buffers) SELECT\n", ' '
+<repeats 24 times>, "r.id,\n", ' ' <repeats 24 times>, "r.name,\n", ' '
+<repeats 24 times>, "r.map_center_y,\n", ' ' <repeats 24 times>,
+"r.map_center_x,\n", ' ' <repeats 24 times>..., readOnlyTree=<optimized
+out>, context=PROCESS_UTILITY_TOPLEVEL, params=0x0, queryEnv=0x0,
+dest=0x55bbbd3a01a0, qc=0x7ffdac2e4c70) at
+./build/../contrib/pg_stat_statements/pg_stat_statements.c:1135
+#38 0x000055bbbb804935 in PortalRunUtility
+(portal=portal(at)entry=0x55bbbd373888, pstmt=0x55bbbd3b7fa8,
+isTopLevel=isTopLevel(at)entry=true,
+setHoldSnapshot=setHoldSnapshot(at)entry=true, dest=dest(at)entry=0x55bbbd3a01a0,
+qc=qc(at)entry=0x7ffdac2e4c70)
+    at ./build/../src/backend/tcop/pquery.c:1155
+#39 0x000055bbbb804cab in FillPortalStore
+(portal=portal(at)entry=0x55bbbd373888, isTopLevel=isTopLevel(at)entry=true) at
+./build/../src/backend/tcop/pquery.c:1028
+#40 0x000055bbbb8050bf in PortalRun (portal=portal(at)entry=0x55bbbd373888,
+count=count(at)entry=9223372036854775807, isTopLevel=isTopLevel(at)entry=true,
+run_once=run_once(at)entry=true, dest=dest(at)entry=0x55bbbd3cec48,
+altdest=altdest(at)entry=0x55bbbd3cec48,
+    qc=0x7ffdac2e4e80) at ./build/../src/backend/tcop/pquery.c:760
+#41 0x000055bbbb8008e9 in exec_simple_query (
+    query_string=0x55bbbd289148 "explain (analyze, buffers) SELECT\n", ' '
+<repeats 24 times>, "r.id,\n", ' ' <repeats 24 times>, "r.name,\n", ' '
+<repeats 24 times>, "r.map_center_y,\n", ' ' <repeats 24 times>,
+"r.map_center_x,\n", ' ' <repeats 24 times>...) at
+./build/../src/backend/tcop/postgres.c:1214
+#42 0x000055bbbb802c4c in PostgresMain (argc=argc(at)entry=1,
+argv=argv(at)entry=0x7ffdac2e5340, dbname=<optimized out>, username=<optimized
+out>) at ./build/../src/backend/tcop/postgres.c:4486
+#43 0x000055bbbb775e2a in BackendRun (port=<optimized out>, port=<optimized
+out>) at ./build/../src/backend/postmaster/postmaster.c:4530
+#44 BackendStartup (port=<optimized out>) at
+./build/../src/backend/postmaster/postmaster.c:4252
+#45 ServerLoop () at ./build/../src/backend/postmaster/postmaster.c:1745
+#46 0x000055bbbb776c68 in PostmasterMain (argc=5, argv=0x55bbbd281d90) at
+./build/../src/backend/postmaster/postmaster.c:1417
+#47 0x000055bbbb4af83b in main (argc=5, argv=0x55bbbd281d90) at
+./build/../src/backend/main/main.c:209
+
+
+I can reproduce the issue easily, if you need more details.
+
+
+
+
+
+### MESSAGE 1
+
+
+
+On 2/15/22 18:32, PG Bug reporting form wrote:
+> The following bug has been logged on the website:
+> 
+> Bug reference:      17406
+> Logged by:          Victor Yegorov
+> Email address:      vyegorov(at)gmail(dot)com
+> PostgreSQL version: 14.2
+> Operating system:   Ubuntu 18.04.6 LTS (bionic)
+> Description:
+> 
+> KVM guest, on Intel(R) Xeon(R) CPU E5-2697 v2.
+> 
+> PostgreSQL 12.9 had been upgraded to 14.2 using
+> 
+> pg_upgradecluster -k  -m link 12 main /mnt/postgres/14/
+> 
+> After that, one of the queries is crashing with Segmentation Fault.
+> However, after REINDEX problem will be fixed. I thought I should report
+> still.
+> 
+
+
+Hmm. So I guess there are three options:
+
+
+1) The index was already broken on 12.9, but for some reason (choice of 
+a different plan, ...) it was not causing any issues.
+
+
+2) The index got broken during/after the upgrade, for some reason.
+
+
+3) The index is fine, but there's a newly introduced bug in ltree (or 
+gist in general).
+
+
+Hard to say which it is.
+
+
+How large is the table/index? Are you able to run the query with a 
+custom build (without values optimized out)? Any chance you still have a 
+backup from before the pg_upgrade, on which you might run the query?
+
+
+> explain
+> SELECT r.id, r.name, r.map_center_y, r.map_center_x,
+>         COALESCE ((SELECT string_agg(id::TEXT, ',') FROM v3_region AS r2
+> WHERE r2.id != r.id AND r2.ltree_path <@ r.ltree_path), '') AS children
+>    FROM v3_region AS r;
+>                                                   QUERY PLAN
+> -------------------------------------------------------------------------------------------------------------
+>   Seq Scan on v3_region r  (cost=0.00..3207.31 rows=349 width=580)
+>     SubPlan 1
+>       ->  Aggregate  (cost=8.17..8.18 rows=1 width=32)
+>             ->  Index Scan using region_ltree_path_idx_gist on v3_region r2
+> (cost=0.14..8.16 rows=1 width=4)
+>                   Index Cond: (ltree_path <@ r.ltree_path)
+>                   Filter: (id <> r.id)
+> (6 rows)
+> 
+> Here is backtrace:
+> #0  __memmove_sse2_unaligned_erms () at
+> ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:435
+> #1  0x00007f129244c266 in memcpy (__len=<optimized out>,
+> __src=0x55bbbd430f4a, __dest=<optimized out>) at
+> /usr/include/x86_64-linux-gnu/bits/string_fortified.h:34
+> #2  copy_ltree (src=0x55bbbd430f4a) at
+> ./build/../contrib/ltree/ltree_gist.c:446
+> #3  0x00007f129244db51 in gist_ischild (siglen=28, query=0x55bbbd410cb8,
+> key=0x55bbbd430f18) at ./build/../contrib/ltree/ltree_gist.c:454
+
+
+Interesting. Too bad the memcpy() parameters are optimized out. But 
+clearly src is not NULL, so perhas something is wrong with the dst pointer?
+
+
+> #4  ltree_consistent (fcinfo=0x7ffdac2e3e20) at
+> ./build/../contrib/ltree/ltree_gist.c:674
+> #5  0x000055bbbb944a5d in FunctionCall5Coll
+> (flinfo=flinfo(at)entry=0x55bbbd416b20, collation=<optimized out>,
+> arg1=arg1(at)entry=140727492165472, arg2=<optimized out>, arg3=<optimized out>,
+> arg4=<optimized out>, arg5=140727492165471)
+>      at ./build/../src/backend/utils/fmgr/fmgr.c:1241
+> #6  0x000055bbbb4db72d in gistindex_keytest (recheck_distances_p=<synthetic
+> pointer>, recheck_p=<synthetic pointer>, offset=4, page=0x7f1293a45180
+> "K\313\003", tuple=0x7f1293a47058, scan=0x55bbbd4196c8)
+>      at ./build/../src/backend/access/gist/gistget.c:222
+> #7  gistScanPage (scan=scan(at)entry=0x55bbbd4196c8,
+> pageItem=pageItem(at)entry=0x7ffdac2e3fe0, myDistances=myDistances(at)entry=0x0,
+> tbm=tbm(at)entry=0x0, ntids=ntids(at)entry=0x0) at
+> ./build/../src/backend/access/gist/gistget.c:438
+
+
+Can you print the pageItem->blkno? That should tell us which index page 
+is causing issues. And then you can dump the page using pageinspect [1]. 
+For example if blkno = 100, then this might tell us more:
+
+
+  SELECT * FROM
+  gist_page_opaque_info(get_raw_page('region_ltree_path_idx_gist', 100));
+
+
+  SELECT * FROM
+  gist_page_items(get_raw_page('region_ltree_path_idx_gist', 100),
+                               'region_ltree_path_idx_gist');
+
+
+  SELECT * FROM
+  gist_page_items_bytea(get_raw_page('region_ltree_path_idx_gist', 0));
+
+
+regards
+
+
+-- 
+Tomas Vondra
+EnterpriseDB: http://www.enterprisedb.com
+The Enterprise PostgreSQL Company
+
+
+
+
+
+### MESSAGE 2
+вт, 15 февр. 2022 г. в 22:51, Tomas Vondra <tomas(dot)vondra(at)enterprisedb(dot)com>:
+
+
+> Hmm. So I guess there are three options:
+>
+> 1) The index was already broken on 12.9, but for some reason (choice of
+> a different plan, ...) it was not causing any issues.
+>
+
+
+Nope, index is actively used on 12.9, plan hasn't changed.
+
+
+How large is the table/index? Are you able to run the query with a
+> custom build (without values optimized out)? Any chance you still have a
+> backup from before the pg_upgrade, on which you might run the query?
+>
+
+
+Yes, this is a test DB restored from backup in order to test out 14
+upgrade, production is still running on 12.9.
+v3_region is 2832 kB
+region_ltree_path_idx_gist is 472 kB
+
+
+For custom build I need some time to actually build it.
+What options would you recommend (for configure) me to use here?
+
+
+Can you print the pageItem->blkno? That should tell us which index page
+> is causing issues. And then you can dump the page using pageinspect [1].
+> For example if blkno = 100, then this might tell us more:
+>
+
+
+(gdb) frame 7
+#7  gistScanPage (scan=scan(at)entry=0x55bbbd4196c8,
+pageItem=pageItem(at)entry=0x7ffdac2e3fe0,
+myDistances=myDistances(at)entry=0x0, tbm=tbm(at)entry=0x0, ntids=ntids(at)entry=0x0)
+at ./build/../src/backend/access/gist/gistget.c:438
+438     ./build/../src/backend/access/gist/gistget.c: No such file or
+directory.
+(gdb) p pageItem->blkno
+$1 = 0
+(gdb) p pageItem->data->heap
+$5 = {heapPtr = {ip_blkid = {bi_hi = 0, bi_lo = 0}, ip_posid = 0}, recheck
+= false, recheckDistances = false, recontup = 0x55bbbb96927e <palloc+46>,
+offnum = 38600}
+
+
+This query below also crashes with SegFault:
+SELECT * FROM gist_page_items(get_raw_page('region_ltree_path_idx_gist',
+0), 'region_ltree_path_idx_gist');
+
+
+SELECT * FROM
+  gist_page_items_bytea(get_raw_page('region_ltree_path_idx_gist', 0));
+
+
+ itemoffset |    ctid    | itemlen | dead |
+                                                     key_data
+------------+------------+---------+------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+          1 | (16,65535) |      72 | f    |
+\x00001000ffff48407b00000000ffffffffbfffffff800000000300000003003138300000000400313234300000040031323433000040000000010000000400313933300000000000
+          2 | (7,65535)  |      72 | f    |
+\x00000700ffff48407b00000000fdbf7ffeffdffbff600000000200000003003231330000000400363039390000600000000200000003003233370000000400313335380000000000
+          3 | (13,65535) |      64 | f    |
+\x00000d00ffff40406b00000000fffffffffffeffff60000000020000000400313738350000040031373837000040000000010000000400313836370000000000
+          4 | (8,65535)  |      72 | f    |
+\x00000800ffff48407b00000000df7fbbffffffffff600000000200000003003435360000000300343538000000600000000200000003003438300000000300363438000000000000
+          5 | (12,65535) |      80 | f    |
+\x00000c00ffff50408b00000000bffffbf5fffffffb6000000002000000020032340000000003003733310000008000000003000000030032343900000004003337373000000400333737380000000000
+          6 | (27,65535) |      80 | f    |
+\x00001b00ffff50408b00000000fbefcff3ffffefff6000000002000000030032343900000004003339323500008000000003000000030032363600000004003134343400000400313434350000000000
+          7 | (10,65535) |      72 | f    |
+\x00000a00ffff48407b00000000f7fdfffffffbffff600000000200000003003530330000000300353037000000600000000200000001003600000000000400333430330000000000
+          8 | (3,65535)  |      64 | f    |
+\x00000300ffff40406b00000000f7dffffff7ffffff40000000010000000300313033000000600000000200000003003131390000000300313238000000000000
+          9 | (29,65535) |      80 | f    |
+\x00001d00ffff50408b00000000ffffffffdffff7df6000000002000000030031313900000003003133300000008000000003000000030031363400000004003130373400000400313037350000000000
+         10 | (30,65535) |      64 | f    |
+\x00001e00ffff40406b000000007dfffffffffffffb60000000020000000200313700000000030037313900000040000000010000000400313738350000000000
+         11 | (6,65535)  |      80 | f    |
+\x00000600ffff50408b00000000ffbbef7ef7df7bee8000000003000000020031370000000003003731370000000300373138000000600000000200000003003137330000000400313738300000000000
+         12 | (32,65535) |      80 | f    |
+\x00002000ffff50408b000000001dfff7fbffbff7ff6000000002000000030031373300000004003137383100008000000003000000030031383000000004003132343000000400313234320000000000
+         13 | (17,65535) |      80 | f    |
+\x00001100ffff50408b00000000fdffffffffffffff6000000002000000030031333500000004003130303900008000000003000000030031363400000004003130383600000400313038370000000000
+         14 | (19,65535) |      72 | f    |
+\x00001300ffff48407b00000000fdbffefedfffff7f600000000200000002003430000000000200353100000000600000000200000003003432300000000400343737370000000000
+         15 | (35,65535) |      80 | f    |
+\x00002300ffff50408b0200000080000000030000000300343735000000040036303236000004003630323700008000000003000000020035330000000003003736330000000400323733330000000000
+         16 | (23,65535) |      72 | f    |
+\x00001700ffff48407b020000006000000002000000030033393400000004003436393300008000000003000000030034323000000003003532380000000300353239000000000000
+         17 | (2,65535)  |      72 | f    |
+\x00000200ffff48407b00000000ff7eff9feffdfeff600000000200000003003236360000000400313434360000600000000200000003003238330000000400333134320000000000
+         18 | (37,65535) |      80 | f    |
+\x00002500ffff50408b00000000ffff5ffbfff7bfef6000000002000000030032383300000004003331353100008000000003000000030033323500000004003135333800000400313533390000000000
+         19 | (38,65535) |      88 | f    |
+\x00002600ffff58409b00000000ff6fffffffffffff80000000030000000300343333000000040032313134000004003231333900008000000003000000030034373500000004003539383800000400363130380000000000
+         20 | (34,65535) |      80 | f    |
+\x00002200ffff50408b00000000ffdffefffd7ffffd6000000002000000030034323000000004003438313400008000000003000000030034333300000004003231313600000400323131370000000000
+         21 | (39,65535) |      80 | f    |
+\x00002700ffff50408b00000000fdff7ff87b5e1fe58000000003000000030034333300000004003231313600000400323132300000600000000200000003003434390000000300353634000000000000
+         22 | (18,65535) |      80 | f    |
+\x00001200ffff50408b00000000ffffffffef7ffdff6000000002000000030031363400000004003130383400008000000003000000020031370000000004003237363700000400323830320000000000
+         23 | (40,65535) |      88 | f    |
+\x00002800ffff58409b00000000fffefedffd7ff2ff80000000030000000200313700000000040032373637000004003238323300008000000003000000020031370000000003003731370000000400323831310000000000
+         24 | (4,65535)  |      64 | f    |
+\x00000400ffff40406b00000000febeff7dc7a367d360000000020000000300343439000000030035363800000040000000010000000300343630000000000000
+         25 | (41,65535) |      72 | f    |
+\x00002900ffff48407b00000000dfffbfbd7effedff600000000200000003003436300000000300343632000000600000000200000003003437350000000400363130360000000000
+         26 | (22,65535) |      80 | f    |
+\x00001600ffff50408b00000000d9ffc3ffffffbff68000000003000000030034373500000004003631303600000400363130370000600000000200000003003438360000000300343931000000000000
+         27 | (42,65535) |      72 | f    |
+\x00002a00ffff48407b00000000bf7fbfdaf9f9ffff600000000200000003003438360000000400353032320000600000000200000003003530330000000300353034000000000000
+         28 | (1,65535)  |      80 | f    |
+\x00000100ffff50408b00000000efdfffffffbffffe6000000002000000030031303300000004003139353500008000000003000000030031313300000003003931310000000300393132000000000000
+         29 | (43,65535) |      80 | f    |
+\x00002b00ffff50408b00000000ffffefdfffffffff6000000002000000030031313300000003003931370000008000000003000000030031333500000004003130303600000400313030380000000000
+         30 | (28,65535) |      72 | f    |
+\x00001c00ffff48407b00000000effffeffeffffef7600000000200000001003600000000000400333531370000600000000200000002003730000000000200373100000000000000
+         31 | (44,65535) |      72 | f    |
+\x00002c00ffff48407b00000000f3bfff6fff7fbffc600000000200000002003730000000000200373300000000600000000200000002003837000000000200393100000000000000
+         32 | (45,65535) |      80 | f    |
+\x00002d00ffff50408b0200000080000000030000000300333039000000040033353437000004003335343800008000000003000000030034333300000004003231313400000400323133320000000000
+         33 | (36,65535) |      80 | f    |
+\x00002400ffff50408b00000000feeeffdff876fff36000000002000000030034323000000003003533300000008000000003000000030034333300000004003232313300000400323231370000000000
+         34 | (46,65535) |      80 | f    |
+\x00002e00ffff50408b00000000fec7df33bff7ff6f8000000003000000030034333300000004003232313300000400323233360000600000000200000003003435330000000300353834000000000000
+         35 | (5,65535)  |      88 | f    |
+\x00000500ffff58409b00000000fffef9dd67feefff80000000030000000300323636000000040031343436000004003134343700008000000003000000030032383300000004003330303300000400333030340000000000
+         36 | (47,65535) |      72 | f    |
+\x00002f00ffff48407b000000007eefbfffbfffffff600000000200000003003238330000000400333030350000600000000200000003003330390000000300333133000000000000
+         37 | (20,65535) |      80 | f    |
+\x00001400ffff50408b00000000fbaf67cafdff7aff6000000002000000020037380000000002003739000000008000000003000000020039320000000004003430303100000400343030320000000000
+         38 | (48,65535) |      80 | f    |
+\x00003000ffff50408b00000000ffbffffedbcfeff38000000003000000020039320000000004003430303100000400343030370000600000000200000002003937000000000200393900000000000000
+         39 | (9,65535)  |      80 | f    |
+\x00000900ffff50408b00000000fff5fffd5dfbf3ef6000000002000000030033373100000003003337370000008000000003000000030033383900000004003136383700000400313638380000000000
+         40 | (49,65535) |      80 | f    |
+\x00003100ffff50408b00000000eff7ff7ff9edffab8000000003000000030033383900000004003139373400000400313937350000600000000200000002003430000000000200343800000000000000
+         41 | (25,65535) |      72 | f    |
+\x00001900ffff48407b00000000bfffffffef7f9fff800000000300000002003137000000000300373137000000040032383337000040000000010000000400313839330000000000
+         42 | (50,65535) |      64 | f    |
+\x00003200ffff40406b00000000bfeffe75dbebf7fb40000000010000000400313839340000600000000200000003003231330000000400363038340000000000
+         43 | (14,65535) |      80 | f    |
+\x00000e00ffff50408b00000000ffffffffffbfffff8000000003000000030032313300000004003630383400000400363038350000600000000200000003003234390000000400333838380000000000
+         44 | (51,65535) |      88 | f    |
+\x00003300ffff58409b00000000fffffff6fff6dfbf80000000030000000300323439000000040033383838000004003338383900008000000003000000030033303900000004003334323000000400333531390000000000
+         45 | (15,65535) |      72 | f    |
+\x00000f00ffff48407b00000000cfefe3ff3efdfd6f600000000200000003003332350000000400313534300000600000000200000003003336300000000400313538370000000000
+         46 | (52,65535) |      80 | f    |
+\x00003400ffff50408b00000000ffaeffb88affafdd8000000003000000030033363000000004003135383700000400313538380000600000000200000003003337310000000300333732000000000000
+         47 | (24,65535) |      80 | f    |
+\x00001800ffff50408b00000000af3ffffd7f7ff5ed6000000002000000030033303900000003003331350000008000000003000000030033323700000004003532363800000400353236390000000000
+         48 | (53,65535) |      80 | f    |
+\x00003500ffff50408b00000000ff3ffbfaf8fded7d8000000003000000030033323700000004003532393200000400353239330000600000000200000003003337310000000400313631390000000000
+         49 | (11,65535) |      80 | f    |
+\x00000b00ffff50408b00000000fff5ffffeefbf2af8000000003000000030033373100000004003136323900000400313633300000600000000200000003003338360000000400353134310000000000
+         50 | (54,65535) |      72 | f    |
+\x00003600ffff48407b00000000ffefbffbef7bf3df600000000200000003003338360000000400353138360000600000000200000003003339340000000400343433380000000000
+         51 | (21,65535) |      88 | f    |
+\x00001500ffff58409b00000000cefbbbbbb6fe9ebf80000000030000000300323337000000040031333538000004003133353900008000000003000000030032333900000004003437333300000400343733340000000000
+         52 | (55,65535) |      80 | f    |
+\x00003700ffff50408b00000000fbe1df8fef3fff7d6000000002000000030032333900000004003438333500008000000003000000020032340000000003003732390000000300373330000000000000
+         53 | (33,65535) |      80 | f    |
+\x00002100ffff50408b000000008ffbb9fffffbf7676000000002000000030031363400000004003130383800008000000003000000030031363800000004003437323000000400343732310000000000
+         54 | (56,65535) |      88 | f    |
+\x00003800ffff58409b00000000ffdfff7ffeabfffa80000000030000000300313638000000040034373230000004003437343900008000000003000000020031370000000003003639340000000300363935000000000000
+         55 | (31,65535) |      88 | f    |
+\x00001f00ffff58409b00000000df8dfddefffefbd580000000030000000200353300000000030037363300000004003237353500008000000003000000010036000000000003003638360000000300363837000000000000
+         56 | (57,65535) |      88 | f    |
+\x00003900ffff58409b00000000ef3afffdf4f5f7ff80000000030000000100360000000000030036383800000003003638390000008000000003000000020037380000000003003738340000000300373835000000000000
+         57 | (26,65535) |      80 | f    |
+\x00001a00ffff50408b00000000f37fafbdb1f7afbd6000000002000000030034383000000003003635300000008000000003000000030034393800000004003232303100000400323231310000000000
+         58 | (58,65535) |      88 | f    |
+\x00003a00ffff58409b00000000fffeff9d6f71dbef80000000030000000300343938000000040032323332000004003232333500008000000003000000030035323000000004003630373500000400363130350000000000
+(58 rows)
+
+
+-- 
+Victor Yegorov
+
+
+
+### MESSAGE 3
+On Wed, Feb 16, 2022 at 3:15 PM Victor Yegorov <vyegorov(at)gmail(dot)com> wrote:
+
+
+> For custom build I need some time to actually build it.
+> What options would you recommend (for configure) me to use here?
+
+
+Normally for debug builds you would use something like
+
+
+--enable-cassert \
+--enable-debug \
+CFLAGS="-ggdb -Og -fno-omit-frame-pointer"
+
+
+-Og still performs some optimization (on gcc it's like -O1 but with
+some optimization passes taken out that interfere with debuging), so
+it's somewhat realistic compared to production code. But to make sure
+this argument is visible, you might have to use -O0 (no optimization).
+
+
+-- 
+John Naylor
+EDB: http://www.enterprisedb.com
+
+
+
+
+
+### MESSAGE 4
+
+
+
+On 2/16/22 09:14, Victor Yegorov wrote:
+> вт, 15 февр. 2022 г. в 22:51, Tomas Vondra 
+> <tomas(dot)vondra(at)enterprisedb(dot)com <mailto:tomas(dot)vondra(at)enterprisedb(dot)com>>:
+> 
+>     Hmm. So I guess there are three options:
+> 
+>     1) The index was already broken on 12.9, but for some reason (choice of
+>     a different plan, ...) it was not causing any issues.
+> 
+> 
+> Nope, index is actively used on 12.9, plan hasn't changed.
+> 
+
+
+OK, that's valuable information.
+
+
+>     How large is the table/index? Are you able to run the query with a
+>     custom build (without values optimized out)? Any chance you still
+>     have a
+>     backup from before the pg_upgrade, on which you might run the query?
+> 
+> 
+> Yes, this is a test DB restored from backup in order to test out 14 
+> upgrade, production is still running on 12.9.
+> v3_region is 2832 kB
+> region_ltree_path_idx_gist is 472 kB
+> 
+
+
+That means it should be possible to reproduce the issue elsewhere by 
+copying the files (and schema). Is there any sensitive data that'd 
+prevent handing over this data?
+
+
+> 
+> (gdb) frame 7
+> #7  gistScanPage (scan=scan(at)entry=0x55bbbd4196c8, 
+> pageItem=pageItem(at)entry=0x7ffdac2e3fe0, 
+> myDistances=myDistances(at)entry=0x0, tbm=tbm(at)entry=0x0, 
+> ntids=ntids(at)entry=0x0) at ./build/../src/backend/access/gist/gistget.c:438
+> 438     ./build/../src/backend/access/gist/gistget.c: No such file or 
+> directory.
+> (gdb) p pageItem->blkno
+> $1 = 0
+> (gdb) p pageItem->data->heap
+> $5 = {heapPtr = {ip_blkid = {bi_hi = 0, bi_lo = 0}, ip_posid = 0}, 
+> recheck = false, recheckDistances = false, recontup = 0x55bbbb96927e 
+> <palloc+46>, offnum = 38600}
+> 
+> This query below also crashes with SegFault:
+> SELECT * FROM gist_page_items(get_raw_page('region_ltree_path_idx_gist', 
+> 0), 'region_ltree_path_idx_gist');
+> 
+
+
+Interesting! What's the backtrace from the crash?
+
+
+FWIW when I try that query on the gist index from the ltree example in 
+our documentation, I get this:
+
+
+test=# SELECT * FROM gist_page_items(get_raw_page('path_gist_idx', 0), 
+'path_gist_idx');
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21b4ae0, chunk 0x21b5ff8
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21b4ae0, chunk 0x21b6f20
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21b4ae0, chunk 0x21b7e48
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21b4ae0, chunk 0x21b8db0
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21b4ae0, chunk 0x21b9d18
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21b4ae0, chunk 0x21bac80
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21b0ad0, chunk 0x21b1360
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21b0ad0, chunk 0x21b2288
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21b0ad0, chunk 0x21b31f0
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21b0ad0, chunk 0x21b4158
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21aaab0, chunk 0x21adb20
+WARNING:  problem in alloc set ExprContext: detected write past chunk 
+end in block 0x21aaab0, chunk 0x21ae5c8
+  itemoffset |  ctid  | itemlen | dead |   keys
+------------+--------+---------+------+-----------
+           1 | (0,1)  |      32 | f    | (path)=()
+           2 | (0,2)  |      48 | f    | (path)=()
+           3 | (0,3)  |      64 | f    | (path)=()
+           4 | (0,4)  |      80 | f    | (path)=()
+           5 | (0,5)  |      80 | f    | (path)=()
+           6 | (0,6)  |      48 | f    | (path)=()
+           7 | (0,7)  |      72 | f    | (path)=()
+           8 | (0,8)  |      48 | f    | (path)=()
+           9 | (0,9)  |      64 | f    | (path)=()
+          10 | (0,10) |      80 | f    | (path)=()
+          11 | (0,11) |      88 | f    | (path)=()
+          12 | (0,12) |      96 | f    | (path)=()
+          13 | (0,13) |      96 | f    | (path)=()
+(13 rows)
+
+
+This is on debug build with asserts. On non-assert build it crashes in 
+AllocSetAlloc, but I'd bet the exact place where it crashes just depends 
+on what place we corrupt by writing out of ExprContext. The empty paths 
+seem strange too, of course.
+
+
+But the confusing thing is I get similar issues even on 12.10 (after 
+backporting the pageinspect gist changes) - but only with asserts, and 
+without asserts it works (but the paths are still empty). Perhaps I 
+backported that incorrectly, though.
+
+
+regards
+
+
+-- 
+Tomas Vondra
+EnterpriseDB: http://www.enterprisedb.com
+The Enterprise PostgreSQL Company
+
+
+
+
+
+### MESSAGE 5
+On Wed, Feb 16, 2022 at 4:16 PM Tomas Vondra
+<tomas(dot)vondra(at)enterprisedb(dot)com> wrote:
+> test=# SELECT * FROM gist_page_items(get_raw_page('path_gist_idx', 0),
+> 'path_gist_idx');
+
+
+Maybe this is obvious, but just in case: gist_page_items is *very*
+trusting here. It's necessary to use gist_page_items_bytea() if you're
+not 100% sure about the index definition for the index page you
+provide. The fact that you can display the contents of each tuple
+using the underlying type's own output function is very handy. But
+potentially hazardous.
+
+
+-- 
+Peter Geoghegan
+
+
+
+
+
+### MESSAGE 6
+On 2/17/22 03:52, Peter Geoghegan wrote:
+> On Wed, Feb 16, 2022 at 4:16 PM Tomas Vondra
+> <tomas(dot)vondra(at)enterprisedb(dot)com> wrote:
+>> test=# SELECT * FROM gist_page_items(get_raw_page('path_gist_idx', 0),
+>> 'path_gist_idx');
+> 
+> Maybe this is obvious, but just in case: gist_page_items is *very*
+> trusting here. It's necessary to use gist_page_items_bytea() if you're
+> not 100% sure about the index definition for the index page you
+> provide. The fact that you can display the contents of each tuple
+> using the underlying type's own output function is very handy. But
+> potentially hazardous.
+> 
+
+
+Sure, but I used this to inspect the index from example in our docs:
+
+
+   https://www.postgresql.org/docs/14/ltree.html#id-1.11.7.30.8
+
+
+I doubt we can be even more sure about the index definition.
+
+
+I don't know what the root cause is yet, but the memory corruption 
+happens simply because ltree_out() sees entirely bogus data when 
+executed from gist_page_items.
+
+
+For example it gets 16B varlena, allocates 16B string for it, and starts 
+iterating over the ltree data. The it finds the first element is 60B 
+long and happily copies it "into" the 16B buffer. That can't end well, 
+obviously.
+
+
+Clearly, the ltree values are mangled somehow / somewhere. The funny 
+thing is the bytea always looks 8B longer and with bogus data. So for 
+example if you select this ltree from the table directly
+
+
+   Top.Collections.Pictures.Astronomy.Astronauts
+
+
+then ltree_out sees it as 80B varlena, with 5 levels. But if ltree_out 
+gets called from gist_page_items, then it sees 88B with 1 level, which 
+is completely bogus.
+
+
+And funnily enough, if you do this at the beginning of ltree_out:
+
+
+   in = (ltree *) ((char *) in + 8);
+
+
+then gist_page_items() starts working just fine.
+
+
+So, I guess gist_page_items() is broken/confused in some way. I'm not 
+sure if this is related to the crash reported by Victor or a separate, 
+independent issue.
+
+
+regards
+
+
+-- 
+Tomas Vondra
+EnterpriseDB: http://www.enterprisedb.com
+The Enterprise PostgreSQL Company
+
+
+
+
+
+### MESSAGE 7
+
+
+
+On 2/17/22 13:26, Tomas Vondra wrote:
+> On 2/17/22 03:52, Peter Geoghegan wrote:
+>> On Wed, Feb 16, 2022 at 4:16 PM Tomas Vondra
+>> <tomas(dot)vondra(at)enterprisedb(dot)com> wrote:
+>>> test=# SELECT * FROM gist_page_items(get_raw_page('path_gist_idx', 0),
+>>> 'path_gist_idx');
+>>
+>> Maybe this is obvious, but just in case: gist_page_items is *very*
+>> trusting here. It's necessary to use gist_page_items_bytea() if you're
+>> not 100% sure about the index definition for the index page you
+>> provide. The fact that you can display the contents of each tuple
+>> using the underlying type's own output function is very handy. But
+>> potentially hazardous.
+>>
+> 
+> Sure, but I used this to inspect the index from example in our docs:
+> 
+>   https://www.postgresql.org/docs/14/ltree.html#id-1.11.7.30.8
+> 
+> I doubt we can be even more sure about the index definition.
+> 
+> 
+> I don't know what the root cause is yet, but the memory corruption
+> happens simply because ltree_out() sees entirely bogus data when
+> executed from gist_page_items.
+> 
+> For example it gets 16B varlena, allocates 16B string for it, and starts
+> iterating over the ltree data. The it finds the first element is 60B
+> long and happily copies it "into" the 16B buffer. That can't end well,
+> obviously.
+> 
+> Clearly, the ltree values are mangled somehow / somewhere. The funny
+> thing is the bytea always looks 8B longer and with bogus data. So for
+> example if you select this ltree from the table directly
+> 
+>   Top.Collections.Pictures.Astronomy.Astronauts
+> 
+> then ltree_out sees it as 80B varlena, with 5 levels. But if ltree_out
+> gets called from gist_page_items, then it sees 88B with 1 level, which
+> is completely bogus.
+> 
+> And funnily enough, if you do this at the beginning of ltree_out:
+> 
+>   in = (ltree *) ((char *) in + 8);
+> 
+> then gist_page_items() starts working just fine.
+> 
+> So, I guess gist_page_items() is broken/confused in some way. I'm not
+> sure if this is related to the crash reported by Victor or a separate,
+> independent issue.
+> 
+
+
+I may be wrong, but it seems gist_page_items() is entirely oblivious to
+the fact that GiST does "compression", and fails to decompress the
+values before passing them to out function. So instead of "ltree" it
+extracts "ltree_gist" and passes that to "ltree_out".
+
+
+This is consistent with the 8B offset I mentioned before, because
+ltree_gist has 8B header and then stores the original ltree value.
+
+
+But I may be missing something - this seems like such an obvious gap
+that I don't know how this could have worked with anything but the most
+trivial cases without GiST compression.
+
+
+Furthermore, it seems more like a pageinspect issue, unrelated to the
+original issue reported by Victor.
+
+
+regards
+
+
+-- 
+Tomas Vondra
+EnterpriseDB: http://www.enterprisedb.com
+The Enterprise PostgreSQL Company
+
+
+
+
+
+### MESSAGE 8
+On 2/17/22 01:16, Tomas Vondra wrote:
+>  ...
+>
+>>     How large is the table/index? Are you able to run the query with a
+>>     custom build (without values optimized out)? Any chance you still
+>>     have a
+>>     backup from before the pg_upgrade, on which you might run the query?
+>>
+>>
+>> Yes, this is a test DB restored from backup in order to test out 14
+>> upgrade, production is still running on 12.9.
+>> v3_region is 2832 kB
+>> region_ltree_path_idx_gist is 472 kB
+>>
+> 
+> That means it should be possible to reproduce the issue elsewhere by
+> copying the files (and schema). Is there any sensitive data that'd
+> prevent handing over this data?
+> 
+
+
+Maybe we could also try just dumping the data (the ltree_path column),
+so that we can load it into 12 cluster and do a binary upgrade. That
+would be simpler than trying to copy the existing data files.
+
+
+regards
+
+
+-- 
+Tomas Vondra
+EnterpriseDB: http://www.enterprisedb.com
+The Enterprise PostgreSQL Company
+
+
+
+
+
+### MESSAGE 9
+>
+> Interesting! What's the backtrace from the crash?
+>
+
+
+Here's the backtrace:
+(gdb) bt
+#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:51
+#1  0x00007f1806417921 in __GI_abort () at abort.c:79
+#2  0x00007f1806460967 in __libc_message (action=action(at)entry=do_abort,
+fmt=fmt(at)entry=0x7f180658db0d "%s\n") at ../sysdeps/posix/libc_fatal.c:181
+#3  0x00007f18064679da in malloc_printerr (str=str(at)entry=0x7f180658f818
+"double free or corruption (out)") at malloc.c:5342
+#4  0x00007f180646ef6a in _int_free (have_lock=0, p=0x560a0074ec70,
+av=0x7f18067c2c40 <main_arena>) at malloc.c:4308
+#5  __GI___libc_free (mem=0x560a0074ec80) at malloc.c:3134
+#6  0x00005609ffa661d0 in AllocSetReset (context=0x560a00634d10) at
+./build/../src/backend/utils/mmgr/aset.c:608
+#7  0x00005609ffa6b879 in MemoryContextResetOnly (context=0x560a00634d10)
+at ./build/../src/backend/utils/mmgr/mcxt.c:181
+#8  0x00005609ffa6bae6 in MemoryContextResetOnly (context=<optimized out>)
+at ./build/../src/backend/utils/mmgr/mcxt.c:154
+#9  MemoryContextReset (context=<optimized out>) at
+./build/../src/backend/utils/mmgr/mcxt.c:153
+#10 0x00005609ff78b205 in ExecScan (node=0x560a00633040,
+accessMtd=0x5609ff79c670 <FunctionNext>, recheckMtd=0x5609ff79c640
+<FunctionRecheck>) at ./build/../src/backend/executor/execScan.c:181
+#11 0x00005609ff78134d in ExecProcNode (node=0x560a00633040) at
+./build/../src/include/executor/executor.h:257
+#12 ExecutePlan (execute_once=<optimized out>, dest=0x560a00630608,
+direction=<optimized out>, numberTuples=0, sendTuples=<optimized out>,
+operation=CMD_SELECT, use_parallel_mode=<optimized out>,
+planstate=0x560a00633040, estate=0x560a00632e18)
+    at ./build/../src/backend/executor/execMain.c:1551
+#13 standard_ExecutorRun (queryDesc=0x560a00602448, direction=<optimized
+out>, count=0, execute_once=<optimized out>) at
+./build/../src/backend/executor/execMain.c:361
+#14 0x00007f17fedfa595 in pgss_ExecutorRun (queryDesc=0x560a00602448,
+direction=ForwardScanDirection, count=0, execute_once=<optimized out>) at
+./build/../contrib/pg_stat_statements/pg_stat_statements.c:1003
+#15 0x00005609ff906986 in PortalRunSelect (portal=portal(at)entry=0x560a006c7658,
+forward=forward(at)entry=true, count=0, count(at)entry=9223372036854775807,
+dest=dest(at)entry=0x560a00630608) at ./build/../src/backend/tcop/pquery.c:921
+#16 0x00005609ff907ff8 in PortalRun (portal=portal(at)entry=0x560a006c7658,
+count=count(at)entry=9223372036854775807, isTopLevel=isTopLevel(at)entry=true,
+run_once=run_once(at)entry=true, dest=dest(at)entry=0x560a00630608,
+altdest=altdest(at)entry=0x560a00630608,
+    qc=0x7ffcc729cbf0) at ./build/../src/backend/tcop/pquery.c:765
+#17 0x00005609ff9038e9 in exec_simple_query (query_string=0x560a005de178
+"SELECT * FROM gist_page_items(get_raw_page('region_ltree_path_idx_gist',
+0), 'region_ltree_path_idx_gist');") at
+./build/../src/backend/tcop/postgres.c:1214
+#18 0x00005609ff905c4c in PostgresMain (argc=argc(at)entry=1,
+argv=argv(at)entry=0x7ffcc729d0b0,
+dbname=<optimized out>, username=<optimized out>) at
+./build/../src/backend/tcop/postgres.c:4486
+#19 0x00005609ff878e2a in BackendRun (port=<optimized out>, port=<optimized
+out>) at ./build/../src/backend/postmaster/postmaster.c:4530
+#20 BackendStartup (port=<optimized out>) at
+./build/../src/backend/postmaster/postmaster.c:4252
+#21 ServerLoop () at ./build/../src/backend/postmaster/postmaster.c:1745
+#22 0x00005609ff879c68 in PostmasterMain (argc=5, argv=0x560a005d6dc0) at
+./build/../src/backend/postmaster/postmaster.c:1417
+#23 0x00005609ff5b283b in main (argc=5, argv=0x560a005d6dc0) at
+./build/../src/backend/main/main.c:209
+
+
+Also, I've looked into the database.
+It has ltree in unpackaged state for quite some time, I suppose since 8.*
+times. I've converted into extensions ltree and dblink.
+
+
+Next, I've performed an upgrade again and the issue is still there.
+
+
+I got approval to send a table with its data and index in the subject
+datafile.
+Taken from the v14 database.
+
+
+-- 
+Victor Yegorov
+
+
+
+### MESSAGE 10
+>
+> I got approval to send a table with its data and index in the subject
+> datafile.
+> Taken from the v14 database.
+> 
+
+
+Thanks for the data! I've been able to reproduce the issue (load into
+12, pg_upgrade to 14 and run the query). After bisecting this for a
+while, this seems like a bug in PG13 commit
+
+
+commit 911e70207703799605f5a0e8aad9f06cff067c63 (HEAD)
+Author: Alexander Korotkov <akorotkov(at)postgresql(dot)org>
+Date:   Mon Mar 30 19:17:11 2020 +0300
+
+
+    Implement operator class parameters
+
+
+    ...
+
+
+It works fine when upgrading to an earlier build, and crashes since this
+commit. I haven't investigated this further, but I guess there's some
+thinko in gist_ltree_ops, affecting how we interpret existing indexes.
+
+
+Alexander, any ideas?
+
+
+regards
+
+
+-- 
+Tomas Vondra
+EnterpriseDB: http://www.enterprisedb.com
+The Enterprise PostgreSQL Company
+
+
+
+
+
+### MESSAGE 11
+On 2/23/22 16:36, Tomas Vondra wrote:
+>>
+>> I got approval to send a table with its data and index in the subject
+>> datafile.
+>> Taken from the v14 database.
+>>
+> 
+> Thanks for the data! I've been able to reproduce the issue (load into
+> 12, pg_upgrade to 14 and run the query). After bisecting this for a
+> while, this seems like a bug in PG13 commit
+> 
+> commit 911e70207703799605f5a0e8aad9f06cff067c63 (HEAD)
+> Author: Alexander Korotkov <akorotkov(at)postgresql(dot)org>
+> Date:   Mon Mar 30 19:17:11 2020 +0300
+> 
+>     Implement operator class parameters
+> 
+>     ...
+> 
+> It works fine when upgrading to an earlier build, and crashes since this
+> commit. I haven't investigated this further, but I guess there's some
+> thinko in gist_ltree_ops, affecting how we interpret existing indexes.
+> 
+> Alexander, any ideas?
+> 
+
+
+Sorry, I accidentally used Alexander's old address, so let me CC him
+with the correct/current one.
+
+
+regards
+
+
+-- 
+Tomas Vondra
+EnterpriseDB: http://www.enterprisedb.com
+The Enterprise PostgreSQL Company
+
+
+
+
+
+### MESSAGE 12
+On 2/23/22 16:41, Tomas Vondra wrote:
+> On 2/23/22 16:36, Tomas Vondra wrote:
+>>>
+>>> I got approval to send a table with its data and index in the subject
+>>> datafile.
+>>> Taken from the v14 database.
+>>>
+>>
+>> Thanks for the data! I've been able to reproduce the issue (load into
+>> 12, pg_upgrade to 14 and run the query). After bisecting this for a
+>> while, this seems like a bug in PG13 commit
+>>
+>> commit 911e70207703799605f5a0e8aad9f06cff067c63 (HEAD)
+>> Author: Alexander Korotkov <akorotkov(at)postgresql(dot)org>
+>> Date:   Mon Mar 30 19:17:11 2020 +0300
+>>
+>>     Implement operator class parameters
+>>
+>>     ...
+>>
+>> It works fine when upgrading to an earlier build, and crashes since this
+>> commit. I haven't investigated this further, but I guess there's some
+>> thinko in gist_ltree_ops, affecting how we interpret existing indexes.
+>>
+>> Alexander, any ideas?
+>>
+> 
+> Sorry, I accidentally used Alexander's old address, so let me CC him
+> with the correct/current one.
+> 
+
+
+I tried investigating this a bit further, but my gist-foo is rather
+limited so I haven't made much progress so far. But as Victor already
+mentioned, REINDEX fixes this - so I tried comparing the broken index
+with a new one built on PG13.
+
+
+And the it seems the indexes are mostly the same, with the exception of
+LSN in the page header. The only page that substantially differs is the
+first page, which is also storing less data (the broken version):
+
+
+test=# SELECT * FROM
+page_header(get_raw_page('v3_region_copy_ltree_path_idx', 0));
+    lsn    | checksum | flags | lower | upper | special | pagesize | ...
+----------+----------+-------+-------+-------+---------+----------+- ...
+ 0/1CD80C8 |        0 |     0 |    40 |  7856 |    8176 |     8192 | ...
+  (1 row)
+
+
+test=# SELECT * FROM
+page_header(get_raw_page('v3_region_copy_13_ltree_path_idx', 0));
+    lsn    | checksum | flags | lower | upper | special | pagesize | ...
+-----------+----------+-------+-------+-------+---------+----------+-...
+ 0/7029760 |        0 |     0 |    40 |  7760 |    8176 |     8192 | ...
+(1 row)
+
+
+regards
+
+
+-- 
+Tomas Vondra
+EnterpriseDB: http://www.enterprisedb.com
+The Enterprise PostgreSQL Company
+
+
+
+
+
+### MESSAGE 13
+On 2/24/22 16:18, Tomas Vondra wrote:
+> On 2/23/22 16:41, Tomas Vondra wrote:
+>> On 2/23/22 16:36, Tomas Vondra wrote:
+>>>>
+>>>> I got approval to send a table with its data and index in the subject
+>>>> datafile.
+>>>> Taken from the v14 database.
+>>>>
+>>>
+>>> Thanks for the data! I've been able to reproduce the issue (load into
+>>> 12, pg_upgrade to 14 and run the query). After bisecting this for a
+>>> while, this seems like a bug in PG13 commit
+>>>
+>>> commit 911e70207703799605f5a0e8aad9f06cff067c63 (HEAD)
+>>> Author: Alexander Korotkov <akorotkov(at)postgresql(dot)org>
+>>> Date:   Mon Mar 30 19:17:11 2020 +0300
+>>>
+>>>     Implement operator class parameters
+>>>
+>>>     ...
+>>>
+>>> It works fine when upgrading to an earlier build, and crashes since this
+>>> commit. I haven't investigated this further, but I guess there's some
+>>> thinko in gist_ltree_ops, affecting how we interpret existing indexes.
+>>>
+>>> Alexander, any ideas?
+>>>
+>>
+>> Sorry, I accidentally used Alexander's old address, so let me CC him
+>> with the correct/current one.
+>>
+> 
+> I tried investigating this a bit further, but my gist-foo is rather
+> limited so I haven't made much progress so far. But as Victor already
+> mentioned, REINDEX fixes this - so I tried comparing the broken index
+> with a new one built on PG13.
+> 
+> And the it seems the indexes are mostly the same, with the exception of
+> LSN in the page header. The only page that substantially differs is the
+> first page, which is also storing less data (the broken version):
+> 
+> test=# SELECT * FROM
+> page_header(get_raw_page('v3_region_copy_ltree_path_idx', 0));
+>     lsn    | checksum | flags | lower | upper | special | pagesize | ...
+> ----------+----------+-------+-------+-------+---------+----------+- ...
+>  0/1CD80C8 |        0 |     0 |    40 |  7856 |    8176 |     8192 | ...
+>   (1 row)
+> 
+> test=# SELECT * FROM
+> page_header(get_raw_page('v3_region_copy_13_ltree_path_idx', 0));
+>     lsn    | checksum | flags | lower | upper | special | pagesize | ...
+> -----------+----------+-------+-------+-------+---------+----------+-...
+>  0/7029760 |        0 |     0 |    40 |  7760 |    8176 |     8192 | ...
+> (1 row)
+> 
+
+
+It took me a bit of digging and debugging, but I think I got it. The
+problem is that to determine siglen value, some of the functions use
+
+
+  LTREE_GET_ASIGLEN
+
+
+macro, which inspects the opclass options and returns the value. But if
+there are no explicit options for the particular index (as happens for
+indexes created in older versions), it uses LTREE_ASIGLEN_DEFAULT, which
+is 28 bytes. But that's wrong - this value for ltree[] gist opclass, not
+for plain ltree - that uses just 8B. So we're off by 20B, which messes
+all kinds of stuff, of course.
+
+
+My guess this is a simple mistake, because the macro is in section
+labeled as
+
+
+  /* GiST support for ltree[] */
+
+
+and the "A" in the name probably refers to "array" too.
+
+
+Attached is a patch that fixes this, but I wonder what will happen to
+new indexes created on 13+. Will check.
+
+
+Victor, can you try with this patch applied?
+
+
+regards
+
+
+-- 
+Tomas Vondra
+EnterpriseDB: http://www.enterprisedb.com
+The Enterprise PostgreSQL Company
+
+
+### MESSAGE 14
+On 2/24/22 19:36, Tomas Vondra wrote:
+>
+> ...
+> 
+> Attached is a patch that fixes this, but I wonder what will happen to
+> new indexes created on 13+. Will check.
+> 
+
+
+Unfortunately, the patch fixes indexes built on PG12, but it also breaks
+indexes created after pg_upgrade :-(
+
+
+I'm not sure if a good solution even exists, because we can't really
+distinguish those indexes. It only affects ltree_gist, though, and we
+didn't get any other reports so far, so either few people are using it
+or have not upgraded yet.
+
+
+I've created a thread on pgsql-hackers [1], where it might get more
+attention from other developers. Maybe they'll have a better idea on how
+to fix this.
+
+
+regards
+
+
+[1]
+https://www.postgresql.org/message-id/d80e0a55-6c3e-5b26-53e3-3c4f973f737c%40enterprisedb.com
+
+
+-- 
+Tomas Vondra
+EnterpriseDB: http://www.enterprisedb.com
+The Enterprise PostgreSQL Company
+
+
+

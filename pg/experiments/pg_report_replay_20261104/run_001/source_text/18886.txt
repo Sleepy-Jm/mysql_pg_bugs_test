@@ -1,0 +1,75 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18886
+Logged by:          Gerard Weatherby
+Email address:      gweatherby(at)uchc(dot)edu
+PostgreSQL version: 17.2
+Operating system:   Ubuntu 24
+Description:        
+
+
+I observed this:
+
+
+registry=#  SELECT last_value, is_called FROM performance.vm_load_id_seq;
+ last_value | is_called 
+------------+-----------
+   12935994 | t
+(1 row)
+
+
+registry=# \d performance.vm_load
+                                Table "performance.vm_load"
+  Column   |           Type           | Collation | Nullable |          
+Default        
+-----------+--------------------------+-----------+----------+------------------------------
+ id        | integer                  |           | not null | generated
+always as identity
+ vm_id     | integer                  |           | not null |  
+ load15    | double precision         |           | not null |  
+ idle      | double precision         |           | not null |  
+ stat_time | timestamp with time zone |           | not null |  
+Indexes:
+    "vm_load_pk" PRIMARY KEY, btree (id)
+    "vm_load_id_vm_id_stat_time_index" btree (id, vm_id, stat_time)
+    "vm_load_stat_time_index" btree (stat_time)
+Foreign-key constraints:
+    "vm_load_virtual_machines_id_fk" FOREIGN KEY (vm_id) REFERENCES
+performance.virtual_machines(id) ON UPDATE RESTRICT ON DELETE RESTRICT
+
+
+registry=# INSERT INTO performance.vm_load(vm_id,load15,idle,stat_time)
+values(437,0.0,94.31128026560856,'2025-04-09T22:25:26.326639+00:00'::timestamptz)
+;
+ERROR:  duplicate key value violates unique constraint "vm_load_pk"
+DETAIL:  Key (id)=(1314208) already exists. 
+
+
+Unable to figure out what was going on, I did this, and it seemed to fix the
+issue:
+
+
+-- Step 1: Drop the identity from the id column
+ALTER TABLE performance.vm_load
+ALTER COLUMN id DROP IDENTITY IF EXISTS;
+
+
+-- Step 2: Re-add the identity (you can choose BY DEFAULT or ALWAYS)
+ALTER TABLE performance.vm_load
+ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY;
+
+
+-- Step 3: (Optional but recommended) realign the sequence
+-- In case rows were added manually and the sequence is behind
+SELECT setval(
+  pg_get_serial_sequence('performance.vm_load', 'id'),
+  (SELECT MAX(id) FROM performance.vm_load)
+);
+
+
+Note: at one point the id column was "default" as identity instead of
+"always". I'm not aware of any inserts that tried to set the id explicitly.
+
+
+

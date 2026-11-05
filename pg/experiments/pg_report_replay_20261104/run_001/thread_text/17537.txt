@@ -1,0 +1,175 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17537
+Logged by:          Parachute Parachute
+Email address:      teng_wang13(at)163(dot)com
+PostgreSQL version: 14.2
+Operating system:   Ubuntu 18.04
+Description:        
+
+
+As per the manual,
+statement_timeout (integer)
+Abort any statement that takes more than the specified amount of time. A
+value of zero (the default) disables the timeout. The timeout is measured
+from the time a command arrives at the server until it is completed by the
+server.
+https://www.postgresql.org/docs/14/runtime-config-client.html
+
+
+However, dynamically updating statement_timeout did not affect the insert
+query right now.
+I start up Postgres with statement_timeout set 0, which means disabling the
+timeout. Then I insert 100000000 rows into a table, which finally takes
+166498.487ms. During the insert operation, I consider the operation would
+takes too much time. So I update statement_timeout to 10s in
+postgresql.conf, and "select pg_reload_conf();" in another session to reload
+configuration files.
+
+
+I saw the logs showing the parameter was updated:
+2022-07-03  [4229] LOG:  received SIGHUP, reloading configuration files
+2022-07-03  [4229] LOG:  parameter "statement_timeout" changed to "1000"
+
+
+However, the insert query did not been cancelled, and finally toke about
+166s. I think that updating the timeout parameter should also affect the
+operation in progress. Because an operation may sometimes take too long, but
+it is not safe to interrupt it abruptly.
+
+
+The scenario:
+
+
+postgres=# show statement_timeout;
+ statement_timeout 
+-------------------
+ 0
+(1 row)
+
+
+postgres=# insert into tbl_test select
+generate_series(1,100000000),md5(random()::text),clock_timestamp();
+
+
+2022-07-03 03:25:10.470 UTC [4229] LOG:  received SIGHUP, reloading
+configuration files
+2022-07-03 03:25:10.471 UTC [4229] LOG:  parameter "statement_timeout"
+changed to "1000"
+INSERT 0 100000000
+Time: 166498.487 ms (02:46.498)
+
+
+In another session:(to update parameter "statement_timeout")
+postgres=# select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+
+postgres=# show statement_timeout;
+ statement_timeout 
+-------------------
+ 10s
+(1 row)
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> However, dynamically updating statement_timeout did not affect the insert
+> query right now.
+> I start up Postgres with statement_timeout set 0, which means disabling the
+> timeout. Then I insert 100000000 rows into a table, which finally takes
+> 166498.487ms. During the insert operation, I consider the operation would
+> takes too much time. So I update statement_timeout to 10s in
+> postgresql.conf, and "select pg_reload_conf();" in another session to reload
+> configuration files.
+
+
+This is not a bug.  Active sessions absorb new values from postgresql.conf
+only when idle, not instantaneously mid-query (and I'm pretty sure that is
+documented, though I'm too lazy to search the docs right now).  I think
+trying to do the latter would break far more scenarios than it would
+improve.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+On Saturday, July 2, 2022, PG Bug reporting form <noreply(at)postgresql(dot)org>
+wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17537
+> Logged by:          Parachute Parachute
+> Email address:      teng_wang13(at)163(dot)com
+> PostgreSQL version: 14.2
+> Operating system:   Ubuntu 18.04
+> Description:
+>
+> As per the manual,
+> statement_timeout (integer)
+> Abort any statement that takes more than the specified amount of time. A
+> value of zero (the default) disables the timeout. The timeout is measured
+> from the time a command arrives at the server until it is completed by the
+> server.
+> https://www.postgresql.org/docs/14/runtime-config-client.html
+>
+> However, dynamically updating statement_timeout did not affect the insert
+> query right now.
+> I start up Postgres with statement_timeout set 0, which means disabling the
+> timeout. Then I insert 100000000 rows into a table, which finally takes
+> 166498.487ms. During the insert operation, I consider the operation would
+> takes too much time. So I update statement_timeout to 10s in
+> postgresql.conf, and "select pg_reload_conf();" in another session to
+> reload
+> configuration files.
+>
+> I saw the logs showing the parameter was updated:
+> 2022-07-03  [4229] LOG:  received SIGHUP, reloading configuration files
+> 2022-07-03  [4229] LOG:  parameter "statement_timeout" changed to "1000"
+>
+> However, the insert query did not been cancelled, and finally toke about
+> 166s. I think that updating the timeout parameter should also affect the
+> operation in progress. Because an operation may sometimes take too long,
+> but
+> it is not safe to interrupt it abruptly.
+>
+
+
+Not a bug.
+
+
+Per the documentation:
+
+
+“The configuration file is reread whenever the main server process receives
+a SIGHUP signal; this signal is most easily sent by running pg_ctl reload from
+the command line or by calling the SQL function pg_reload_conf(). The main
+server process also propagates this signal to all currently running server
+processes, so that existing sessions also adopt the new values (this will
+happen after they complete any currently-executing client command).”
+
+
+Note the parenthetical.
+
+
+If you want to cancel a running query you can do so directly
+(pg_cancel_backend function) changing a server default to do so makes no
+sense.
+
+
+David J.
+

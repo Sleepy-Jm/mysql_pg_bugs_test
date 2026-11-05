@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17284: Assert failed in SerialAdd() when the summarize_serial mode is engaged</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17284-c878f548184aae1f%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2021-11-13T12:00:01" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17284: Assert failed in SerialAdd() when the summarize_serial mode is engaged" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="de571b02d07d7b549a90a327c111454c">BUG #17284: Assert failed in SerialAdd() when the summarize_serial mode is engaged</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202111131200">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17284-c878f548184aae1f@postgresql.org"></a>
+<a name="de571b02d07d7b549a90a327c111454c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17284: Assert failed in SerialAdd() when the summarize_serial mode is engaged</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-11-13 12:00:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17284-c878f548184aae1f%40postgresql.org">17284-c878f548184aae1f@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17284-c878f548184aae1f%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17284-c878f548184aae1f%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17284-c878f548184aae1f%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17284-c878f548184aae1f%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202111130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17284<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>When running concurrent installchecks (x100) for src/test/isolation, I&#x27;ve<br>observed the following server crash:<br>Core was generated by `postgres: postgres regress30 127.0.0.1(55840) SEL&#x27;.<br>Program terminated with signal SIGABRT, Aborted.<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>50      ../sysdeps/unix/sysv/linux/raise.c: No such file or directory.<br>(gdb) bt<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>#1  0x00007fd1b69d5535 in __GI_abort () at abort.c:79<br>#2  0x000055d441cc3a02 in ExceptionalCondition (<br>    conditionName=conditionName(at)entry=0x55d441e34cd2<br>&quot;TransactionIdIsValid(tailXid)&quot;, <br>    errorType=errorType(at)entry=0x55d441d1c01d &quot;FailedAssertion&quot;,<br>fileName=fileName(at)entry=0x55d441e34bc9 &quot;predicate.c&quot;, <br>    lineNumber=lineNumber(at)entry=928) at assert.c:67<br>#3  0x000055d441b8e0aa in SerialAdd<br>(minConflictCommitSeqNo=18446744073709551615, xid=95552353) at<br>predicate.c:928<br>#4  SummarizeOldestCommittedSxact () at predicate.c:1540<br>#5  GetSerializableTransactionSnapshotInt (snapshot=0x55d441fad980<br>&lt;CurrentSnapshotData&gt;, <br>    sourcevxid=sourcevxid(at)entry=0x0, sourcepid=sourcepid(at)entry=-1) at<br>predicate.c:1816<br>#6  0x000055d441b90bc6 in GetSerializableTransactionSnapshot<br>(snapshot=&lt;optimized out&gt;) at predicate.c:1710<br>#7  0x000055d441d036f5 in GetTransactionSnapshot () at snapmgr.c:347<br>#8  GetTransactionSnapshot () at snapmgr.c:306<br>#9  0x000055d441b9da4d in exec_simple_query (query_string=0x55d443545990<br>&quot;select id from D2;&quot;) at postgres.c:1128<br>#10 0x000055d441b9f0a9 in PostgresMain (argc=&lt;optimized out&gt;,<br>argv=argv(at)entry=0x55d4435793d8, dbname=&lt;optimized out&gt;, <br>    username=&lt;optimized out&gt;) at postgres.c:4339<br>#11 0x000055d441b1236f in BackendRun (port=0x55d443574c30,<br>port=0x55d443574c30) at postmaster.c:4526<br>#12 BackendStartup (port=0x55d443574c30) at postmaster.c:4210<br>#13 ServerLoop () at postmaster.c:1739<br>#14 0x000055d441b1336c in PostmasterMain (argc=3, argv=0x55d443540330) at<br>postmaster.c:1412<br>#15 0x000055d441824f5b in main (argc=3, argv=0x55d443540330) at main.c:210</p>
+
+<p>test two-ids                      ... FAILED (test process exited with exit<br>code 1)     4193 ms</p>
+
+<p>It can be easily reproduced on the build made with &#x27;CPPFLAGS=&quot;-O0<br>-DTEST_SUMMARIZE_SERIAL&quot;&#x27; by the following script (based on the simplified<br>script by Thomas Munro from bug#17116):<br>concurrency=2<br>output=/tmp/junk<br>rm -rf $output<br>printf &quot;$(printf &quot;test: two-ids\n%.0s&quot; `seq 100`)&quot;<br>&gt;/tmp/isolation_schedule<br>for c in `seq $concurrency`; do<br>mkdir -p $output/results_${c}<br>(EXTRA_REGRESS_OPTS=&quot;--dbname=regress_${c} --outputdir=$output/results_${c}<br>--schedule=/tmp/isolation_schedule&quot; make -C src/test/isolation installcheck)<br>\<br>        &gt; $output/out.${c}.log 2&gt;&amp;1 &amp;<br>done<br>wait<br>coredumpctl --no-pager</p>
+
+<p>(&quot;fsync=off&quot; facilitates the bug reproduction for me.)</p>
+
+<p>Reproduced on REL_13_STABLE..master.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CA+hUKGJO6=XbeGLefwvanfase+FFOkZEriGfjX1PvUBKPeo9Ww@mail.gmail.com"></a>
+<a name="f41ed9403b3dcf970a268adcb481c7ff"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17284: Assert failed in SerialAdd() when the
+ summarize_serial mode is engaged</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-11-13 18:23:48</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CA%2BhUKGJO6%3DXbeGLefwvanfase%2BFFOkZEriGfjX1PvUBKPeo9Ww%40mail.gmail.com">CA+hUKGJO6=XbeGLefwvanfase+FFOkZEriGfjX1PvUBKPeo9Ww@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CA%2BhUKGJO6%3DXbeGLefwvanfase%2BFFOkZEriGfjX1PvUBKPeo9Ww%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CA%2BhUKGJO6%3DXbeGLefwvanfase%2BFFOkZEriGfjX1PvUBKPeo9Ww%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CA%2BhUKGJO6%3DXbeGLefwvanfase%2BFFOkZEriGfjX1PvUBKPeo9Ww%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CA%2BhUKGJO6%3DXbeGLefwvanfase%2BFFOkZEriGfjX1PvUBKPeo9Ww%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202111130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Nov 14, 2021 at 1:35 AM PG Bug reporting form<br>&lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt; It can be easily reproduced on the build made with &#x27;CPPFLAGS=&quot;-O0<br>&gt; -DTEST_SUMMARIZE_SERIAL&quot;&#x27; by the following script (based on the simplified<br>&gt; script by Thomas Munro from bug#17116):</p>
+
+<p>I assume from the separate bug report that this fails even if you<br>apply the patches from that other thread?</p>
+
+<p><a href="https://www.postgresql.org/message-id/flat/17116-d6ca217acc180e30@postgresql.org" rel="nofollow">https://www.postgresql.org/message-id/flat/17116-d6ca217acc180e30%40postgresql.org</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="8583d198-46f2-57db-c7f5-97d285c0e51f@gmail.com"></a>
+<a name="4ff73da9568029492988b4580af957d2"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;,
+ PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17284: Assert failed in SerialAdd() when the
+ summarize_serial mode is engaged</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-11-14 01:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/8583d198-46f2-57db-c7f5-97d285c0e51f%40gmail.com">8583d198-46f2-57db-c7f5-97d285c0e51f@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/8583d198-46f2-57db-c7f5-97d285c0e51f%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/8583d198-46f2-57db-c7f5-97d285c0e51f%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/8583d198-46f2-57db-c7f5-97d285c0e51f%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/8583d198-46f2-57db-c7f5-97d285c0e51f%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202111140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello Thomas,<br>13.11.2021 21:23, Thomas Munro wrote:<br>&gt; On Sun, Nov 14, 2021 at 1:35 AM PG Bug reporting form<br>&gt; &lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;&gt; It can be easily reproduced on the build made with &#x27;CPPFLAGS=&quot;-O0<br>&gt;&gt; -DTEST_SUMMARIZE_SERIAL&quot;&#x27; by the following script (based on the simplified<br>&gt;&gt; script by Thomas Munro from bug#17116):<br>&gt; I assume from the separate bug report that this fails even if you<br>&gt; apply the patches from that other thread?<br>&gt;<br>&gt; <a href="https://www.postgresql.org/message-id/flat/17116-d6ca217acc180e30@postgresql.org" rel="nofollow">https://www.postgresql.org/message-id/flat/17116-d6ca217acc180e30%40postgresql.org</a><br>Yes, applying patches<br>v4-0001-Fix-assert-failures-in-parallel-SERIALIZABLE-READ and<br>v4-0002-Fix-race-in-SERIALIZABLE-READ-ONLY from that thread doesn&#x27;t<br>affect this assert (tested on the master branch).</p>
+
+<p>Best regards,<br>Alexander</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="b4f83df5-215b-7e89-ced1-ebc571de07e4@gmail.com"></a>
+<a name="127535022b9763ed659bdc091bf9c250"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17284: Assert failed in SerialAdd() when the
+ summarize_serial mode is engaged</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-30 19:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/b4f83df5-215b-7e89-ced1-ebc571de07e4%40gmail.com">b4f83df5-215b-7e89-ced1-ebc571de07e4@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/b4f83df5-215b-7e89-ced1-ebc571de07e4%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/b4f83df5-215b-7e89-ced1-ebc571de07e4%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/b4f83df5-215b-7e89-ced1-ebc571de07e4%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/b4f83df5-215b-7e89-ced1-ebc571de07e4%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112300000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello hackers,<br>13.11.2021 15:00, PG Bug reporting form wrote:<br>&gt; When running concurrent installchecks (x100) for src/test/isolation, I&#x27;ve<br>&gt; observed the following server crash:<br>&gt; Core was generated by `postgres: postgres regress30 127.0.0.1(55840) SEL&#x27;.<br>&gt; Program terminated with signal SIGABRT, Aborted.<br>&gt; #0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>&gt; 50      ../sysdeps/unix/sysv/linux/raise.c: No such file or directory.<br>&gt; (gdb) bt<br>&gt; #0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>&gt; #1  0x00007fd1b69d5535 in __GI_abort () at abort.c:79<br>&gt; #2  0x000055d441cc3a02 in ExceptionalCondition (<br>&gt;     conditionName=conditionName(at)entry=0x55d441e34cd2<br>&gt; &quot;TransactionIdIsValid(tailXid)&quot;, <br>&gt;     errorType=errorType(at)entry=0x55d441d1c01d &quot;FailedAssertion&quot;,<br>&gt; fileName=fileName(at)entry=0x55d441e34bc9 &quot;predicate.c&quot;, <br>&gt;     lineNumber=lineNumber(at)entry=928) at assert.c:67<br>&gt; #3  0x000055d441b8e0aa in SerialAdd<br>&gt; (minConflictCommitSeqNo=18446744073709551615, xid=95552353) at<br>&gt; predicate.c:928</p>
+
+<p>The issue is reproduced (on REL_14_STABLE) with the following command<br>sequence (can be replayed with pgreplay):</p>
+
+<p>2021-12-29 18:00:15.000 MSK|postgres|regression|61cc77ff.18af00|LOG: <br>statement:<br>     create table D1 (id int not null);<br>     create table D2 (id int not null);<br>     insert into D1 values (1);<br>     insert into D2 values (1);<br>2021-12-29 18:00:15.100 MSK|postgres|regression|61cc77ff.18af00|LOG: <br>disconnection: session time: 0:00:01.129 user=postgres<br>database=regression host=127.0.0.1 port=46730<br>2021-12-29 18:00:15.200 MSK|postgres|regression|61cc77ff.18af01|LOG: <br>statement: begin isolation level serializable;<br>2021-12-29 18:00:15.300 MSK|postgres|regression|61cc77ff.18af02|LOG: <br>statement: begin isolation level serializable;<br>2021-12-29 18:00:15.400 MSK|postgres|regression|61cc77ff.18af02|LOG: <br>statement: update D2 set id = id + 1;<br>2021-12-29 18:00:15.500 MSK|postgres|regression|61cc77ff.18af02|LOG: <br>statement: commit;<br>2021-12-29 18:00:15.600 MSK|postgres|regression|61cc77ff.18af03|LOG: <br>statement: begin isolation level serializable;<br>2021-12-29 18:00:15.700 MSK|postgres|regression|61cc77ff.18af01|LOG: <br>statement: update D1 set id = id + 1;<br>2021-12-29 18:00:15.800 MSK|postgres|regression|61cc77ff.18af03|LOG: <br>statement: select id from D1;<br>2021-12-29 18:00:15.800 MSK|postgres|regression|61cc77ff.18af01|LOG: <br>disconnection: session time: 0:00:01.000 user=postgres<br>database=regression host=127.0.0.1 port=46731<br>2021-12-29 18:00:15.900 MSK|postgres|regression|61cc77ff.18af02|LOG: <br>statement: select pg_sleep(1);</p>
+
+<p>To ease a reproduction, the following delays can be added to predicate.c:<br>@@ -1502,6 +1507,7 @@ SummarizeOldestCommittedSxact(void)<br> {<br>        SERIALIZABLEXACT *sxact;<br> <br>+       pg_usleep(1000000);<br>        LWLockAcquire(SerializableFinishedListLock, LW_EXCLUSIVE);<br> <br>        /*</p>
+
+<p>@@ -3745,6 +3760,7 @@ ClearOldPredicateLocks(void)<br>        SERIALIZABLEXACT *finishedSxact;<br>        PREDICATELOCK *predlock;<br> <br>+       pg_usleep(2000000);<br>        /*<br>         * Loop through finished transactions. They are in commit order,<br>so we can<br>         * stop as soon as we find one that&#x27;s still interesting.</p>
+
+<p>With these delays and CPPFLAGS=&quot;-DTEST_SUMMARIZE_SERIAL&quot; the assertion<br>failure can be observed just on `make check`.<br>As I can see, on disconnect of session 18af01 the<br>ReleasePredicateLocks() function calls SetNewSxactGlobalXmin() where<br>SerialSetActiveSerXmin(called with PredXact-&gt;SxactGlobalXmin ==<br>InvalidTransactionId) sets serialControl-&gt;tailXid to InvalidTransactionId.<br>Then session 18af03 calls SummarizeOldestCommittedSxact(), that in case<br>!SHMQueueEmpty(FinishedSerializableTransactions) calls SerialAdd() where<br>the check TransactionIdIsValid(serialControl-&gt;tailXid) fails.<br>But if ReleasePredicateLocks() in session 18af01 happens to reach<br>ReleasePredicateLocks(), the FinishedSerializableTransactions queue gets<br>empty, and it would prevent calling SerialAdd() in session 18af03.<br>So there is a small window (that probably can be widened by<br>LWLockAcquire()) between<br>            SetNewSxactGlobalXmin();<br>            needToClear = true;<br>and<br>    if (needToClear)<br>        ClearOldPredicateLocks();<br>where a concurrent transaction can fail in SummarizeOldestCommittedSxact().</p>
+
+<p>Best regards,<br>Alexander</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="9466219a-0c44-4497-97b8-4b5de31bc9d6@iki.fi"></a>
+<a name="81b47e7a23ba4a261d286301bd2a6d9c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Heikki Linnakangas &lt;hlinnaka(at)iki(dot)fi&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17284: Assert failed in SerialAdd() when the
+ summarize_serial mode is engaged</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-11-01 08:36:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/9466219a-0c44-4497-97b8-4b5de31bc9d6%40iki.fi">9466219a-0c44-4497-97b8-4b5de31bc9d6@iki.fi</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/9466219a-0c44-4497-97b8-4b5de31bc9d6%40iki.fi">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/9466219a-0c44-4497-97b8-4b5de31bc9d6%40iki.fi" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/9466219a-0c44-4497-97b8-4b5de31bc9d6%40iki.fi" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/9466219a-0c44-4497-97b8-4b5de31bc9d6%40iki.fi" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202411010000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>This fell through the cracks at the time, but just to close the loop on <br>this thread:</p>
+
+<p>This was reported again at <br><a href="https://www.postgresql.org/message-id/18658-7dab125ec688c70b@postgresql.org" rel="nofollow">https://www.postgresql.org/message-id/18658-7dab125ec688c70b%40postgresql.org</a>, <br>and fixed in commit 1a43de5e0a.</p>
+
+<p>-- <br>Heikki Linnakangas<br>Neon (<a href="https://neon.tech" rel="nofollow">https://neon.tech</a>)</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

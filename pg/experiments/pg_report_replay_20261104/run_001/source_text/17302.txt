@@ -1,0 +1,31 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17302
+Logged by:          Alexander Lakhin
+Email address:      exclusion(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   Ubuntu 20.04
+Description:        
+
+
+The last statement in the following sequence of queries:
+CREATE TABLE point_tbl (f1 point);
+CREATE INDEX gpointind ON point_tbl USING gist (f1);
+INSERT INTO point_tbl SELECT '(0,0)'::point FROM generate_series(1, 1000)
+g;
+INSERT INTO point_tbl VALUES ('(1e-300,-1e-300)'::point);
+produces:
+ERROR:  value out of range: underflow
+(The error occurs inside gist_box_penalty()->box_penalty()->size_box().)
+But the following sequence:
+CREATE TABLE point_tbl (f1 point);
+INSERT INTO point_tbl SELECT '(0,0)'::point FROM generate_series(1, 1000)
+g;
+INSERT INTO point_tbl VALUES ('(1e-300,-1e-300)'::point);
+executes without an error. Moreover, the same index can be created
+successfully after the insertion. The error is also depends on number of the
+points inserted in the first step.
+
+
+

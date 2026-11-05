@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17358-89806e7420797025%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-07T10:38:50" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17358 Logged by: Nazir Bilal Yavuz Email address: byavuz81@gmail.com …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-07 10:38:50</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17358-89806e7420797025%40postgresql.org">17358-89806e7420797025@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17358-89806e7420797025%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17358-89806e7420797025%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17358-89806e7420797025%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17358-89806e7420797025%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17358-89806e7420797025%40postgresql.org" selected="selected">2022-01-07 10:38:50 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="1377833.1641588532%40sss.pgh.pa.us">&nbsp;2022-01-07 20:48:52 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="db547cac-566d-cd32-6143-1d303a67cbdb%40mksoft.nu">&nbsp;&nbsp;2022-01-08 10:28:12 from Mikael Kjellström &lt;mikael(dot)kjellstrom(at)mksoft(dot)nu&gt;</option>
+  <option value="1473621.1641657066%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;2022-01-08 15:51:06 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="1012b5dd-7235-85ed-a890-43deb361f2bd%40mksoft.nu">&nbsp;&nbsp;&nbsp;&nbsp;2022-01-08 19:12:41 from Mikael Kjellström &lt;mikael(dot)kjellstrom(at)mksoft(dot)nu&gt;</option>
+  <option value="20220108194454.kl477tb6km6tyj5r%40alap3.anarazel.de">&nbsp;&nbsp;2022-01-08 19:44:54 from Andres Freund &lt;andres(at)anarazel(dot)de&gt;</option>
+  <option value="1581508.1641671996%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;2022-01-08 19:59:56 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20220108200643.2ufdoxj5gdfvrrdg%40alap3.anarazel.de">&nbsp;&nbsp;&nbsp;&nbsp;2022-01-08 20:06:43 from Andres Freund &lt;andres(at)anarazel(dot)de&gt;</option>
+  <option value="1584605.1641674133%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-01-08 20:35:33 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20220108204528.f7viwyuxamdm2n34%40alap3.anarazel.de">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-01-08 20:45:28 from Andres Freund &lt;andres(at)anarazel(dot)de&gt;</option>
+  <option value="1588971.1641677131%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-01-08 21:25:31 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="1605935.1641688721%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-01-09 00:38:41 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20727828-66c0-19d8-4b75-ce3ff12bf990%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-01-12 11:12:24 from Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17358<br>Logged by:          Nazir Bilal Yavuz<br>Email address:      byavuz81(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   NetBSD 9.2<br>Description:        </p>
+
+<p>Hi, </p>
+
+<p>While installing PostgreSQL from source code, uuid_ossp test fails on NetBSD<br>9.2.<br>The commands I used are:<br>./configure \<br>--with-uuid=bsd \<br>\<br>--with-includes=/usr/pkg/include --with-libs=/usr/pgk/lib &amp;&amp; \<br>gmake -s world-bin &amp;&amp; gmake -s check-world</p>
+
+<p>OS: <br>NetBSD localhost 9.2 NetBSD 9.2 (GENERIC) #0: Wed May 12 13:15:55 UTC 2021 <br>mkrepro(at)mkrepro(dot)NetBSD(dot)org:/usr/src/sys/arch/amd64/compile/GENERIC amd64</p>
+
+<p>Error message: <br>test uuid                         ... ok           11 ms<br>test uuid                         ... ok           12 ms<br>test uuid_ossp                    ... FAILED       11 ms</p>
+
+<p>Diff:<br>diff -U3 /home/postgres/postgres/contrib/uuid-ossp/expected/uuid_ossp.out<br>/home/postgres/postgres/contrib/uuid-ossp/results/uuid_ossp.out<br>--- /home/postgres/postgres/contrib/uuid-ossp/expected/uuid_ossp.out   <br>2022-01-07 09:54:27.613601852 +0000<br>+++ /home/postgres/postgres/contrib/uuid-ossp/results/uuid_ossp.out    <br>2022-01-07 10:02:25.833291382 +0000<br>@@ -59,7 +59,7 @@<br>        uuid_reserved_bits(uuid_generate_v1());<br>  uuid_version_bits | uuid_reserved_bits <br> -------------------+--------------------<br>- 00010000          | 10000000<br>+ 01000000          | 10000000<br> (1 row)<br> <br> -- Although RFC 4122 only requires the multicast bit to be set in V1MC<br>style<br>@@ -70,20 +70,20 @@<br>        uuid_local_admin_bit(uuid_generate_v1mc());<br>  uuid_version_bits | uuid_reserved_bits | uuid_multicast_bit |<br>uuid_local_admin_bit </p>
+
+<p>-------------------+--------------------+--------------------+----------------------<br>- 00010000          | 10000000           | t                  | t<br>+ 01000000          | 10000000           | t                  | t<br> (1 row)<br> <br> -- timestamp+clock sequence should be monotonic increasing in v1<br> SELECT uuid_timestamp_bits(uuid_generate_v1()) &lt;<br>uuid_timestamp_bits(uuid_generate_v1());<br>  ?column? <br> ----------<br>- t<br>+ f<br> (1 row)<br> <br> SELECT uuid_timestamp_bits(uuid_generate_v1mc()) &lt;<br>uuid_timestamp_bits(uuid_generate_v1mc());<br>  ?column? <br> ----------<br>- t<br>+ f<br> (1 row)<br> <br> -- Ideally, the node value is stable in V1 addresses, but OSSP UUID<br>@@ -96,7 +96,7 @@<br>        END;<br>  case <br> ------<br>- t<br>+ f<br> (1 row)<br> <br> -- In any case, V1MC node addresses should be random.</p>
+
+<p>Thanks,<br>Nazir Bilal Yavuz</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/1377833.1641588532%40sss.pgh.pa.us">Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</a> at 2022-01-07 20:48:52 from Tom Lane
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAE3TBxxV6-pSB-F6Js%2BFLOVc4s0%3D5OfoW0qLeK-yASGAtCMD5w%40mail.gmail.com">Next Message</a></th>
+            <td>Pantelis Theodosiou</td>
+            <td>2022-01-07 11:39:18</td>
+            <td><a href="/message-id/CAE3TBxxV6-pSB-F6Js%2BFLOVc4s0%3D5OfoW0qLeK-yASGAtCMD5w%40mail.gmail.com">Re: BUG #17357: When working with the window_function, the Where
+ Clause does not work properly!</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAPmGK16g9M1gBTQc2g6W4mYPcGdVWyJMcTbd%3DMB%2BhuktgZciUg%40mail.gmail.com">Previous Message</a></th>
+            <td>Etsuro Fujita</td>
+            <td>2022-01-07 06:19:46</td>
+            <td><a href="/message-id/CAPmGK16g9M1gBTQc2g6W4mYPcGdVWyJMcTbd%3DMB%2BhuktgZciUg%40mail.gmail.com">Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

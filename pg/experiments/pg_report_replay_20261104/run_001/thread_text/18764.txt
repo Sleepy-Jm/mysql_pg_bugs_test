@@ -1,0 +1,636 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18764
+Logged by:          Jason Smith
+Email address:      dqetool(at)126(dot)com
+PostgreSQL version: 17.2
+Operating system:   Linux
+Description:        
+
+
+Run the following statements and an error is returned.
+
+
+CREATE TABLE t0 (c1 INT, c2 DECIMAL);
+INSERT INTO t0 VALUES (0, NULL);
+INSERT INTO t0 VALUES (8, NULL);
+SELECT c2 AS ca2, c2 AS ca3 FROM t0 UNION SELECT DISTINCT ca8 AS ca5, ca7 AS
+ca6 FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1 JOIN (SELECT c1 AS
+ca10, c1 AS ca11 FROM t0) AS ta2 ON TRUE; -- server closed the connection
+unexpectedly
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> CREATE TABLE t0 (c1 INT, c2 DECIMAL);
+> INSERT INTO t0 VALUES (0, NULL);
+> INSERT INTO t0 VALUES (8, NULL);
+> SELECT c2 AS ca2, c2 AS ca3 FROM t0 UNION SELECT DISTINCT ca8 AS ca5, ca7 AS
+> ca6 FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1 JOIN (SELECT c1 AS
+> ca10, c1 AS ca11 FROM t0) AS ta2 ON TRUE; -- server closed the connection
+> unexpectedly
+
+
+Thanks for the report!  It's crashing here:
+
+
+#0  pg_detoast_datum (datum=0x0) at fmgr.c:1834
+#1  0x0000000000951603 in DatumGetNumeric (X=0)
+    at ../../../../src/include/postgres.h:314
+#2  numeric_fast_cmp (x=0, y=8, ssup=<optimized out>) at numeric.c:2301
+#3  0x0000000000a19019 in ApplySortComparator (datum1=0, isNull1=false, 
+    datum2=8, isNull2=false, ssup=0x1d92f60)
+    at ../../../../src/include/utils/sortsupport.h:224
+#4  0x0000000000a1acc5 in comparetup_heap_tiebreak (a=0x1d98a78, b=0x1d98a90, 
+    state=0x1d92b10) at tuplesortvariants.c:1133
+#5  0x0000000000a1ab1b in comparetup_heap (a=0x1d98a78, b=0x1d98a90, 
+    state=0x1d92b10) at tuplesortvariants.c:1086
+#6  0x0000000000a133e7 in qsort_tuple (data=0x1d98a78, n=2, 
+    compare=0xa1aa99 <comparetup_heap>, arg=0x1d92b10)
+    at ../../../../src/include/lib/sort_template.h:316
+#7  0x0000000000a17cfe in tuplesort_sort_memtuples (state=0x1d92b10)
+    at tuplesort.c:2721
+#8  0x0000000000a15529 in tuplesort_performsort (state=0x1d92b10)
+    at tuplesort.c:1382
+#9  0x0000000000722b13 in ExecSort (pstate=0x1d61db0) at nodeSort.c:160
+#10 0x00000000006f717f in ExecScanFetch (
+    recheckMtd=0x724f30 <SubqueryRecheck>, accessMtd=0x724f40 <SubqueryNext>, 
+    node=0x1d61c10) at execScan.c:131
+
+
+I think what is happening is that the executor thinks the sort column
+is numeric but it's actually integer.  If you EXPLAIN VERBOSE the
+query you see
+
+
+...
+               ->  Subquery Scan on "*SELECT* 2"
+                     Output: "*SELECT* 2".ca5, "*SELECT* 2".ca6
+                     ->  Sort
+                           Output: t0_1.c2, t0_1.c1
+                           Sort Key: t0_1.c2, t0_1.c1 USING <
+                           ->  HashAggregate
+                                 Output: t0_1.c2, t0_1.c1
+...
+
+
+That "USING <" annotation is unexpected.  I'm pretty sure it's
+there because the sort operator doesn't match the default btree
+opclass of the column type, which would be the case if we were
+trying to use numeric_lt to sort the integer "c1" column.
+
+
+git bisect'ing shows that the failure started here:
+
+
+66c0185a3d14bbbf51d0fc9d267093ffec735231 is the first bad commit
+commit 66c0185a3d14bbbf51d0fc9d267093ffec735231
+Author: David Rowley <drowley(at)postgresql(dot)org>
+Date:   Mon Mar 25 14:31:14 2024 +1300
+
+
+    Allow planner to use Merge Append to efficiently implement UNION
+
+
+But it may be that this is a pre-existing problem that just happened
+to be exposed by the change in plan shape following that commit.
+Needs more digging.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+I wrote:
+> Needs more digging.
+
+
+Actually ... why is that Sort there at all?  The whole plan looks like
+
+
+regression=# explain (costs off) 
+SELECT c2 AS ca2, c2 AS ca3 FROM t0
+UNION
+SELECT DISTINCT ca8 AS ca5, ca7 AS ca6
+  FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1
+       JOIN
+       (SELECT c1 AS ca10, c1 AS ca11 FROM t0) AS ta2
+       ON TRUE;
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Unique
+   ->  Sort
+         Sort Key: t0.c2, t0.c2
+         ->  Append
+               ->  Seq Scan on t0
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Sort
+                           Sort Key: t0_1.c2, t0_1.c1 USING <
+                           ->  HashAggregate
+                                 Group Key: t0_1.c2, t0_1.c1
+                                 ->  Nested Loop
+                                       ->  Seq Scan on t0 t0_1
+                                       ->  Materialize
+                                             ->  Seq Scan on t0 t0_2
+(14 rows)
+
+
+There is no value in forcing a sort of the subquery's output,
+and the previous code didn't do so:
+
+
+regression=# explain (costs off) 
+SELECT c2 AS ca2, c2 AS ca3 FROM t0
+UNION
+SELECT DISTINCT ca8 AS ca5, ca7 AS ca6
+  FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1
+       JOIN
+       (SELECT c1 AS ca10, c1 AS ca11 FROM t0) AS ta2
+       ON TRUE;
+                       QUERY PLAN                        
+---------------------------------------------------------
+ HashAggregate
+   Group Key: t0.c2, t0.c2
+   ->  Append
+         ->  Seq Scan on t0
+         ->  Subquery Scan on "*SELECT* 2"
+               ->  HashAggregate
+                     Group Key: t0_1.c2, t0_1.c1
+                     ->  Nested Loop
+                           ->  Seq Scan on t0 t0_1
+                           ->  Materialize
+                                 ->  Seq Scan on t0 t0_2
+(11 rows)
+
+
+I'm not sure if the change from hash to sort-and-unique at the
+top level means anything.  But we surely shouldn't have bothered
+with sorted output from the second UNION arm, even if we were
+generating the right sort keys :-(.
+
+
+Also, I've confirmed by looking at the plan tree that the implicit
+cast of c1 from integer to numeric is done in the targetlist of
+the Subquery Scan node.  (I'm surprised that EXPLAIN VERBOSE hides
+that function call; it's not very helpful that it does so.)
+But the lower Sort node does have
+
+
+	                  :sortOperators ( 1754 1754)
+
+
+so it's trying to apply numeric_lt to both columns even though
+the second one is still integer at that point.
+
+
+I'm thinking at this point that the bug boils down to trying to
+push pathkeys into the subplan without regard for the type
+conversion that occurs at the set-operation level.  Once we've
+done that, the lower level will generate this incorrectly-sorted
+Path, and that probably wins the add_path tournament on the basis
+of being better sorted and fuzzily the same cost as the unsorted
+path.  So that's how come that path gets chosen even though
+the sort is useless in context.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+On Sat, Jan 4, 2025 at 2:58 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> I'm thinking at this point that the bug boils down to trying to
+> push pathkeys into the subplan without regard for the type
+> conversion that occurs at the set-operation level.  Once we've
+> done that, the lower level will generate this incorrectly-sorted
+> Path, and that probably wins the add_path tournament on the basis
+> of being better sorted and fuzzily the same cost as the unsorted
+> path.  So that's how come that path gets chosen even though
+> the sort is useless in context.
+
+
+I've reached the same conclusion.  I'm thinking about whether we
+should refrain from pushing pathkeys into the subplan when type
+conversion occurs at the set-operation level.  Maybe we can do this
+check in generate_setop_child_grouplist, like below.
+
+
+--- a/src/backend/optimizer/plan/planner.c
++++ b/src/backend/optimizer/plan/planner.c
+@@ -8091,6 +8091,9 @@ generate_setop_child_grouplist(SetOperationStmt
+*op, List *targetlist)
+    {
+        TargetEntry *tle = (TargetEntry *) lfirst(lt);
+        SortGroupClause *sgc;
++       Oid         opfamily,
++                   opcintype;
++       int16       strategy;
+
+
+        /* resjunk columns could have sortgrouprefs.  Leave these alone */
+        if (tle->resjunk)
+@@ -8101,6 +8104,18 @@ generate_setop_child_grouplist(SetOperationStmt
+*op, List *targetlist)
+        sgc = (SortGroupClause *) lfirst(lg);
+        lg = lnext(grouplist, lg);
+
+
++       if (!OidIsValid(sgc->sortop))
++           return NIL;
++
++       /* Find the operator in pg_amop --- failure shouldn't happen */
++       if (!get_ordering_op_properties(sgc->sortop,
++                                       &opfamily, &opcintype, &strategy))
++           elog(ERROR, "operator %u is not a valid ordering operator",
++                sgc->sortop);
++
++       if (exprType((Node *) tle->expr) != opcintype)
++           return NIL;
++
+        /* assign a tleSortGroupRef, or reuse the existing one */
+        sgc->tleSortGroupRef = assignSortGroupRef(tle, targetlist);
+    }
+
+
+Thanks
+Richard
+
+
+
+
+
+### MESSAGE 4
+On Sat, Jan 4, 2025 at 2:58 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> Also, I've confirmed by looking at the plan tree that the implicit
+> cast of c1 from integer to numeric is done in the targetlist of
+> the Subquery Scan node.  (I'm surprised that EXPLAIN VERBOSE hides
+> that function call; it's not very helpful that it does so.)
+
+
+Yeah, it seems that we tend to hide function calls that are implicit
+casts.  show_plan_tlist() calls deparse_expression() with showimplicit
+set to false, and get_func_expr() does not display function calls of
+COERCE_IMPLICIT_CAST in this case.
+
+
+Thanks
+Richard
+
+
+
+
+
+### MESSAGE 5
+On Sat, 4 Jan 2025 at 06:58, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> Actually ... why is that Sort there at all?  The whole plan looks like
+>
+> regression=# explain (costs off)
+> SELECT c2 AS ca2, c2 AS ca3 FROM t0
+> UNION
+> SELECT DISTINCT ca8 AS ca5, ca7 AS ca6
+>   FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1
+>        JOIN
+>        (SELECT c1 AS ca10, c1 AS ca11 FROM t0) AS ta2
+>        ON TRUE;
+>                              QUERY PLAN
+> ---------------------------------------------------------------------
+>  Unique
+>    ->  Sort
+>          Sort Key: t0.c2, t0.c2
+>          ->  Append
+>                ->  Seq Scan on t0
+>                ->  Subquery Scan on "*SELECT* 2"
+>                      ->  Sort
+>                            Sort Key: t0_1.c2, t0_1.c1 USING <
+>                            ->  HashAggregate
+>                                  Group Key: t0_1.c2, t0_1.c1
+>                                  ->  Nested Loop
+>                                        ->  Seq Scan on t0 t0_1
+>                                        ->  Materialize
+>                                              ->  Seq Scan on t0 t0_2
+> (14 rows)
+>
+> There is no value in forcing a sort of the subquery's output,
+> and the previous code didn't do so:
+
+
+The reason for the 2nd sort, (ignoring the invalidity of the pathkeys)
+is due to how build_setop_child_paths() tries sorting the
+cheapest_input_path.  The problem is that the sorted path gets added
+to the same RelOptInfo as the cheapest_input_path so if add_path()
+sees they're fuzzily the same cost, the sorted has better pathkeys, so
+the actual cheapest path is thrown away. I think the reason this
+happens in this case is that there are just not that many rows to
+sort, and it's fairly expensive to get those rows.
+
+
+The reason that the planner doesn't end up doing a Merge Append is
+because the sorted path for the first branch of the UNION has the same
+column twice in the targetlist and only needs a single PathKey to
+sort. Later, that causes the get_cheapest_path_for_pathkeys() in
+generate_union_paths() not to find a matching sorted path since
+union_pathkeys has 2 PathKeys. I think that might be fixed by the
+patch I had being toying around with which I posted in [1].  If we had
+something like that then that would make the apparent wasted sort less
+of an issue here.
+
+
+David
+
+
+[1] https://www.postgresql.org/message-id/CAApHDvqo1rV8O4pMU2-22iTASBXgnm4kbHF6A8_VMqiDR3hG8A%40mail.gmail.com
+
+
+
+
+
+### MESSAGE 6
+On Tue, 7 Jan 2025 at 02:14, Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+>
+> On Sat, Jan 4, 2025 at 2:58 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> > I'm thinking at this point that the bug boils down to trying to
+> > push pathkeys into the subplan without regard for the type
+> > conversion that occurs at the set-operation level.  Once we've
+> > done that, the lower level will generate this incorrectly-sorted
+> > Path, and that probably wins the add_path tournament on the basis
+> > of being better sorted and fuzzily the same cost as the unsorted
+> > path.  So that's how come that path gets chosen even though
+> > the sort is useless in context.
+>
+> I've reached the same conclusion.  I'm thinking about whether we
+> should refrain from pushing pathkeys into the subplan when type
+> conversion occurs at the set-operation level.  Maybe we can do this
+> check in generate_setop_child_grouplist, like below.
+
+
+So I guess this must mean that we cannot assume that it's ever safe to
+assume that a type that is implicitly castable to the top setop's type
+sort order matches, so we must ensure we don't generate any
+setop_pathkeys for the subquery in this case.
+
+
+> --- a/src/backend/optimizer/plan/planner.c
+> +++ b/src/backend/optimizer/plan/planner.c
+> @@ -8091,6 +8091,9 @@ generate_setop_child_grouplist(SetOperationStmt
+> *op, List *targetlist)
+>     {
+>         TargetEntry *tle = (TargetEntry *) lfirst(lt);
+>         SortGroupClause *sgc;
+> +       Oid         opfamily,
+> +                   opcintype;
+> +       int16       strategy;
+>
+>         /* resjunk columns could have sortgrouprefs.  Leave these alone */
+>         if (tle->resjunk)
+> @@ -8101,6 +8104,18 @@ generate_setop_child_grouplist(SetOperationStmt
+> *op, List *targetlist)
+>         sgc = (SortGroupClause *) lfirst(lg);
+>         lg = lnext(grouplist, lg);
+>
+> +       if (!OidIsValid(sgc->sortop))
+> +           return NIL;
+> +
+> +       /* Find the operator in pg_amop --- failure shouldn't happen */
+> +       if (!get_ordering_op_properties(sgc->sortop,
+> +                                       &opfamily, &opcintype, &strategy))
+> +           elog(ERROR, "operator %u is not a valid ordering operator",
+> +                sgc->sortop);
+> +
+> +       if (exprType((Node *) tle->expr) != opcintype)
+> +           return NIL;
+> +
+>         /* assign a tleSortGroupRef, or reuse the existing one */
+>         sgc->tleSortGroupRef = assignSortGroupRef(tle, targetlist);
+>     }
+
+
+Can't you just look up the setop's type from op->colTypes instead of
+looking the type up via the sortop? i.e. the attached?
+
+
+David
+
+
+
+### MESSAGE 7
+David Rowley <dgrowleyml(at)gmail(dot)com> writes:
+> On Tue, 7 Jan 2025 at 02:14, Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+>> I've reached the same conclusion.  I'm thinking about whether we
+>> should refrain from pushing pathkeys into the subplan when type
+>> conversion occurs at the set-operation level.  Maybe we can do this
+>> check in generate_setop_child_grouplist, like below.
+
+
+> So I guess this must mean that we cannot assume that it's ever safe to
+> assume that a type that is implicitly castable to the top setop's type
+> sort order matches, so we must ensure we don't generate any
+> setop_pathkeys for the subquery in this case.
+
+
+The mere fact that there's an implicit cast sure doesn't make it safe.
+We have implicit casts that cross sort-order behaviors (such as
+integer to oid), and those would be just as big a hazard as this
+example where the datatypes aren't physically compatible.
+
+
+We could imagine detecting whether the subquery's datatype belongs
+to the same btree opfamily as the outer query is using, and if so
+adapting the pathkeys to that type.  But I'm dubious that it's
+worth the trouble: if this were a common case we'd have discovered
+this bug sooner.  So I'm for just not pushing down the pathkeys if
+there's a type mismatch.
+
+
+Didn't study the code, so have no opinion right now on the details
+of how to check that.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 8
+David Rowley <dgrowleyml(at)gmail(dot)com> writes:
+> On Sat, 4 Jan 2025 at 06:58, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+>> There is no value in forcing a sort of the subquery's output,
+>> and the previous code didn't do so:
+
+
+> The reason for the 2nd sort, (ignoring the invalidity of the pathkeys)
+> is due to how build_setop_child_paths() tries sorting the
+> cheapest_input_path.  The problem is that the sorted path gets added
+> to the same RelOptInfo as the cheapest_input_path so if add_path()
+> sees they're fuzzily the same cost, the sorted has better pathkeys, so
+> the actual cheapest path is thrown away. I think the reason this
+> happens in this case is that there are just not that many rows to
+> sort, and it's fairly expensive to get those rows.
+
+
+Yeah, same conclusion Richard and I came to.  It's not that big a
+problem (aside from the validity issue) because this path would only
+win if the sorting cost is estimated to be insignificant relative
+to the subquery's other costs.  So while it might be nice to improve
+that in future, I'm not very concerned about it now.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 9
+On Thu, Jan 9, 2025 at 12:44 PM David Rowley <dgrowleyml(at)gmail(dot)com> wrote:
+> On Tue, 7 Jan 2025 at 02:14, Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+> > --- a/src/backend/optimizer/plan/planner.c
+> > +++ b/src/backend/optimizer/plan/planner.c
+> > @@ -8091,6 +8091,9 @@ generate_setop_child_grouplist(SetOperationStmt
+> > *op, List *targetlist)
+> >     {
+> >         TargetEntry *tle = (TargetEntry *) lfirst(lt);
+> >         SortGroupClause *sgc;
+> > +       Oid         opfamily,
+> > +                   opcintype;
+> > +       int16       strategy;
+> >
+> >         /* resjunk columns could have sortgrouprefs.  Leave these alone */
+> >         if (tle->resjunk)
+> > @@ -8101,6 +8104,18 @@ generate_setop_child_grouplist(SetOperationStmt
+> > *op, List *targetlist)
+> >         sgc = (SortGroupClause *) lfirst(lg);
+> >         lg = lnext(grouplist, lg);
+> >
+> > +       if (!OidIsValid(sgc->sortop))
+> > +           return NIL;
+> > +
+> > +       /* Find the operator in pg_amop --- failure shouldn't happen */
+> > +       if (!get_ordering_op_properties(sgc->sortop,
+> > +                                       &opfamily, &opcintype, &strategy))
+> > +           elog(ERROR, "operator %u is not a valid ordering operator",
+> > +                sgc->sortop);
+> > +
+> > +       if (exprType((Node *) tle->expr) != opcintype)
+> > +           return NIL;
+> > +
+> >         /* assign a tleSortGroupRef, or reuse the existing one */
+> >         sgc->tleSortGroupRef = assignSortGroupRef(tle, targetlist);
+> >     }
+>
+> Can't you just look up the setop's type from op->colTypes instead of
+> looking the type up via the sortop? i.e. the attached?
+
+
+Yeah, right.  Using SetOperationStmt.colTypes is more convenient here.
+
+
+Thanks
+Richard
+
+
+
+
+
+### MESSAGE 10
+On Thu, 9 Jan 2025 at 20:38, Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+>
+> On Thu, Jan 9, 2025 at 12:44 PM David Rowley <dgrowleyml(at)gmail(dot)com> wrote:
+> > Can't you just look up the setop's type from op->colTypes instead of
+> > looking the type up via the sortop? i.e. the attached?
+>
+> Yeah, right.  Using SetOperationStmt.colTypes is more convenient here.
+
+
+I pushed a revised patch. I removed the check for the sortop. I first
+also thought I'd overlooked that, but it turned out that's fine as it
+was as standard_qp_callback() handles checking for un-sortable
+SortGroupClauses.
+
+
+Jason, you can expect a fix for this in 17.3. In the meantime, you
+could add an explicit cast to numeric in the subquery, e.g:
+
+
+SELECT c2 AS ca2, c2 AS ca3
+FROM t0
+UNION
+SELECT DISTINCT ca8 AS ca5, ca7::numeric AS ca6
+FROM (
+SELECT c1 AS ca7, c2 AS ca8 FROM t0
+) AS ta1 JOIN (
+SELECT c1 AS ca10, c1 AS ca11
+FROM t0
+) AS ta2 ON TRUE;
+
+
+Thanks for the report.
+
+
+David
+
+
+
+
+
+### MESSAGE 11
+Thanks for the quick fix and detailed explanation.
+
+
+Jason
+---- Replied Message ----
+| From | David Rowley<dgrowleyml(at)gmail(dot)com> |
+| Date | 1/10/2025 09:36 |
+| To | Richard Guo<guofenglinux(at)gmail(dot)com> |
+| Cc | Tom Lane<tgl(at)sss(dot)pgh(dot)pa(dot)us>,
+<dqetool(at)126(dot)com>,
+<pgsql-bugs(at)lists(dot)postgresql(dot)org> |
+| Subject | Re: BUG #18764: server closed the connection unexpectedly |
+On Thu, 9 Jan 2025 at 20:38, Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+
+
+On Thu, Jan 9, 2025 at 12:44 PM David Rowley <dgrowleyml(at)gmail(dot)com> wrote:
+Can't you just look up the setop's type from op->colTypes instead of
+looking the type up via the sortop? i.e. the attached?
+
+
+Yeah, right.  Using SetOperationStmt.colTypes is more convenient here.
+
+
+I pushed a revised patch. I removed the check for the sortop. I first
+also thought I'd overlooked that, but it turned out that's fine as it
+was as standard_qp_callback() handles checking for un-sortable
+SortGroupClauses.
+
+
+Jason, you can expect a fix for this in 17.3. In the meantime, you
+could add an explicit cast to numeric in the subquery, e.g:
+
+
+SELECT c2 AS ca2, c2 AS ca3
+FROM t0
+UNION
+SELECT DISTINCT ca8 AS ca5, ca7::numeric AS ca6
+FROM (
+SELECT c1 AS ca7, c2 AS ca8 FROM t0
+) AS ta1 JOIN (
+SELECT c1 AS ca10, c1 AS ca11
+FROM t0
+) AS ta2 ON TRUE;
+
+
+Thanks for the report.
+
+
+David
+

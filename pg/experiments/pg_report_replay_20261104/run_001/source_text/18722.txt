@@ -1,0 +1,84 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18722
+Logged by:          Alexander Lakhin
+Email address:      exclusion(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Ubuntu 22.04
+Description:        
+
+
+The following script:
+CREATE FUNCTION make_ia() RETURNS int[] LANGUAGE plpgsql AS
+  'declare x int[]; begin x := array[0]; return x; end';
+CREATE FUNCTION ia_eq(int[], int[]) RETURNS boolean LANGUAGE plpgsql AS
+'begin return array_eq($1, $2); end'; 
+CREATE OPERATOR = (procedure = ia_eq, leftarg = int[], rightarg = int[]);
+SELECT NULLIF(make_ia(), array[1]::int[]);
+
+
+fails with:
+ERROR:  cache lookup failed for type 2139062143
+
+
+Also,
+SELECT NULLIF(make_ia(), array[1]::int[]) = NULL;
+
+
+fails with:
+ERROR:  invalid memory alloc request size 18446744073642179576
+
+
+The backtrace of the latter error is:
+...
+#6  0x000055b75ff0a96e in MemoryContextSizeFailure (context=0x55b760787d70,
+size=18446744073642179576, flags=0) at mcxt.c:1170
+#7  0x000055b75fefb4ec in MemoryContextCheckSize (context=0x55b760787d70,
+size=18446744073642179576, flags=0) at
+../../../../src/include/utils/memutils_internal.h:172
+#8  0x000055b75fefc087 in AllocSetAllocLarge (context=0x55b760787d70,
+size=18446744073642179576, flags=0) at aset.c:705
+#9  0x000055b75fefc6c0 in AllocSetAlloc (context=0x55b760787d70,
+size=18446744073642179576, flags=0) at aset.c:986
+#10 0x000055b75ff0aa40 in MemoryContextAlloc (context=0x55b760787d70,
+size=18446744073642179576) at mcxt.c:1200
+#11 0x000055b75fd04a64 in copy_byval_expanded_array (eah=0x55b760787e70,
+oldeah=0x55b760787e70) at array_expanded.c:197
+#12 0x000055b75fd047d7 in expand_array (arraydatum=94246085885576,
+parentcontext=0x55b7607b0cd0, metacache=0x7ffd548c2cc0) at
+array_expanded.c:106
+#13 0x00007f0094e5888f in plpgsql_exec_function (func=0x55b7606f2fb0,
+fcinfo=0x55b7607992a8, simple_eval_estate=0x0, simple_eval_resowner=0x0,
+procedure_resowner=0x0, atomic=true) at pl_exec.c:564
+#14 0x00007f0094e75728 in plpgsql_call_handler (fcinfo=0x55b7607992a8) at
+pl_handler.c:276
+#15 0x000055b75f9dcd47 in ExecInterpExpr (state=0x55b760799150,
+econtext=0x55b760798ef8, isnull=0x7ffd548c32df) at execExprInterp.c:746
+...
+
+
+(gdb) f 12
+#12 0x000055b75fd047d7 in expand_array (arraydatum=94246085885576,
+parentcontext=0x55b7607b0cd0, metacache=0x7ffd548c2cc0) at
+array_expanded.c:106
+106                             copy_byval_expanded_array(eah, oldeah);
+(gdb) p/x *oldeah
+$1 = {hdr = {vl_len_ = 0xffffffff, eoh_methods = 0x55b7602d8f80, eoh_context
+= 0x55b760787d70, eoh_rw_ptr = {0x1, 0x3, 0x70, 0x7e, 0x78, 0x60, 0xb7,
+0x55, 0x0, 0x0}, eoh_ro_ptr = {0x1, 0x2, 0x70, 0x7e, 0x78, 0x60, 0xb7, 0x55,
+0x0, 
+      0x0}}, ea_magic = 0x29170a59, ndims = 0x7f7f7f7f, dims =
+0x7f7f7f7f7f7f7f7f, lbound = 0x7f7f7f7f7f7f7f7f, element_type = 0x7f7f7f7f,
+typlen = 0x7f7f, typbyval = 0x7f, typalign = 0x7f, dvalues =
+0x7f7f7f7f7f7f7f7f, 
+  dnulls = 0x7f7f7f7f7f7f7f7f, dvalueslen = 0x7f7f7f7f, nelems = 0x7f7f7f7f,
+flat_size = 0x7f7f7f7f7f7f7f7f, fvalue = 0x7f7f7f7f7f7f7f7f, fstartptr =
+0x7f7f7f7f7f7f7f7f, fendptr = 0x7f7f7f7f7f7f7f7f}
+
+
+I discovered this issue with SQLsmith.
+Reproduced starting from 1dc5ebc90.
+
+
+

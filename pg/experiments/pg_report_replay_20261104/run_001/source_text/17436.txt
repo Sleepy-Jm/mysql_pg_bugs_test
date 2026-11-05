@@ -1,0 +1,54 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17436
+Logged by:          Dustin Keate
+Email address:      dkeate(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Docker/Raspberry Pi OS 64 bit
+Description:        
+
+
+Dockerfile contents:
+
+
+FROM postgres
+USER postgres
+RUN initdb
+RUN pg_ctl -D /var/lib/postgresql/data -l /var/lib/postgresql/data/logfile
+start
+RUN pg_restore --dbname=dvdrental --create --verbose /var/dvdrental.tar
+
+
+executing 'docker build .' throws the following error:
+
+
+Step 4/5 : RUN pg_ctl -D /var/lib/postgresql/data -l
+/var/lib/postgresql/data/logfile start
+ ---> Running in 8561ab2addbe
+pg_ctl: directory "/var/lib/postgresql/data" is not a database cluster
+directory
+
+
+However, starting a new container and running identical commands works.
+
+
+docker run -it postgres sh
+gosu postgres sh
+initdb
+pg_ctl -D /var/lib/postgresql/data -l /var/lib/postgresql/data/logfile
+start
+waiting for server to start.... done
+server started
+
+
+To me, these are identical processes, but I may be wrong because docker is
+docker. 
+
+
+There are no volumes attached. These are the only instructions and I
+couldn't distill this problem any farther. These are the only commands I am
+giving. Something is changing in the intermediate images, somehow.
+
+
+

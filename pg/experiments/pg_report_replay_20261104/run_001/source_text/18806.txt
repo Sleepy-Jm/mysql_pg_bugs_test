@@ -1,0 +1,79 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18806
+Logged by:          lingbin meng
+Email address:      m_lingbin(at)126(dot)com
+PostgreSQL version: 17.2
+Operating system:   CentOS Linux release 7.9.2009 (Core)
+Description:        
+
+
+After upgrading PG17.2, testing found that when enable_rartitionwise_join is
+set to ON, when executing a query, if the main query and subquery have the
+same table, the query will report an error.
+
+
+The database log shows the following error:
+LOG:  server process (PID 24796) was terminated by signal 6: Aborted
+DETAIL:  Failed process was running: select * from test t join orders o on
+t.order_id =o.order_id where t.order_id in (select order_id from orders);
+LOG:  terminating any other active server processes
+
+
+The table structure is as follows, all of which are empty tables:
+demo=# \d+ test
+Table "bookings.test"
+Column  |       Type        | Collation | Nullable | Default | Storage  |
+Compression | Stats target | Description
+----------+-------------------+-----------+----------+---------+----------+-------------+--------------+-------------
+order_id | integer           |           |          |         | plain    |  
+          |              |
+name     | character varying |           |          |         | extended |  
+          |              |
+Access method: heap
+demo=# \d+ orders
+Partitioned table "bookings.orders"
+Column  |         Type          | Collation | Nullable | Default | Storage 
+| Compression | Stats target | Description
+----------+-----------------------+-----------+----------+---------+----------+-------------+--------------+-------------
+order_id | integer               |           |          |         | plain   
+|             |              |
+name     | character varying(10) |           |          |         | extended
+|             |              |
+Partition key: HASH (order_id)
+Partitions: orders_p1 FOR VALUES WITH (modulus 32, remainder 0),
+orders_p10 FOR VALUES WITH (modulus 32, remainder 9),
+orders_p11 FOR VALUES WITH (modulus 32, remainder 10),
+orders_p12 FOR VALUES WITH (modulus 32, remainder 11),
+orders_p13 FOR VALUES WITH (modulus 32, remainder 12),
+orders_p14 FOR VALUES WITH (modulus 32, remainder 13),
+orders_p15 FOR VALUES WITH (modulus 32, remainder 14),
+orders_p16 FOR VALUES WITH (modulus 32, remainder 15),
+orders_p17 FOR VALUES WITH (modulus 32, remainder 16),
+orders_p18 FOR VALUES WITH (modulus 32, remainder 17),
+orders_p19 FOR VALUES WITH (modulus 32, remainder 18),
+orders_p2 FOR VALUES WITH (modulus 32, remainder 1),
+orders_p20 FOR VALUES WITH (modulus 32, remainder 19),
+orders_p21 FOR VALUES WITH (modulus 32, remainder 20),
+orders_p22 FOR VALUES WITH (modulus 32, remainder 21),
+orders_p23 FOR VALUES WITH (modulus 32, remainder 22),
+orders_p24 FOR VALUES WITH (modulus 32, remainder 23),
+orders_p25 FOR VALUES WITH (modulus 32, remainder 24),
+orders_p26 FOR VALUES WITH (modulus 32, remainder 25),
+orders_p28 FOR VALUES WITH (modulus 32, remainder 27),
+orders_p29 FOR VALUES WITH (modulus 32, remainder 28),
+orders_p3 FOR VALUES WITH (modulus 32, remainder 2),
+orders_p30 FOR VALUES WITH (modulus 32, remainder 29),
+orders_p31 FOR VALUES WITH (modulus 32, remainder 30),
+orders_p32 FOR VALUES WITH (modulus 32, remainder 31),
+orders_p4 FOR VALUES WITH (modulus 32, remainder 3),
+orders_p5 FOR VALUES WITH (modulus 32, remainder 4),
+orders_p6 FOR VALUES WITH (modulus 32, remainder 5),
+orders_p7 FOR VALUES WITH (modulus 32, remainder 6),
+orders_p8 FOR VALUES WITH (modulus 32, remainder 7),
+orders_p9 FOR VALUES WITH (modulus 32, remainder 8)
+demo=#
+
+
+

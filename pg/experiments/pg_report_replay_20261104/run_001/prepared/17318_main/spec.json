@@ -1,0 +1,32 @@
+{
+  "report_id": "17318",
+  "scenario_id": "17318_main",
+  "target_version": "14.1",
+  "source_url": "https://www.postgresql.org/message-id/17318-2eb65a3a611d2368%40postgresql.org",
+  "parts": [
+    {
+      "text": "WITH RECURSIVE x ( x ) AS\n  ( SELECT 1\n    UNION ALL\n    SELECT x FROM\n    (\n      SELECT 4 AS x\n      UNION ALL\n      SELECT x FROM x\n    ) AS x\n  )\nCYCLE x SET b USING v\nSELECT * FROM x\n;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\17318.txt",
+      "start_offset": 5228,
+      "end_offset": 5420,
+      "start_line": 122,
+      "end_line": 137,
+      "excerpt_sha256": "c390a7c92e5bae7fc1d9a4a88dbb6a5b85bf293eb0edae5fa130570853aff738",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    }
+  ],
+  "mode": "psql",
+  "oracle": {
+    "kind": "crash",
+    "pattern": "terminated by signal (?:6|11)",
+    "reported_phenomenon": "递归 CTE/CYCLE 嵌套 UNION 导致崩溃",
+    "author_expected_behavior": "不崩溃，可正常拒绝不支持的语法"
+  },
+  "config": {},
+  "notes": "使用官方讨论中 Tom Lane 给出的简化 SQL，保留来源，不使用无关后续 INSERT。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "spec_sha256": "570121e20f3febc88e715b4fde6f51094c907a9863afd9babd1bac9c0136262d"
+}

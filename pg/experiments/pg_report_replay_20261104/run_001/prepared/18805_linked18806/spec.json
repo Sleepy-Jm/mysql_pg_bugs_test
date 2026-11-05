@@ -1,0 +1,82 @@
+{
+  "report_id": "18805",
+  "scenario_id": "18805_linked18806",
+  "target_version": "17.2",
+  "source_url": "https://www.postgresql.org/message-id/18805-2477a1f983db961e%40postgresql.org",
+  "parts": [
+    {
+      "text": "create table test(order_id int, name varchar);",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18806.txt",
+      "start_offset": 11850,
+      "end_offset": 11896,
+      "start_line": 289,
+      "end_line": 289,
+      "excerpt_sha256": "8e1ea50caa592c144461fb8c64624bfce39792650a7650f15e4b37ae3db0659d",
+      "transformations": []
+    },
+    {
+      "text": "create table orders(order_id int, name char(10)) partition by hash\n(order_id);",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18806.txt",
+      "start_offset": 11897,
+      "end_offset": 11975,
+      "start_line": 290,
+      "end_line": 291,
+      "excerpt_sha256": "f293d3bf311234ba53dbb0b1a202f3f1479452be7b531277b35e68125fbe3072",
+      "transformations": []
+    },
+    {
+      "text": "set enable_partitionwise_join = on;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18806.txt",
+      "start_offset": 12013,
+      "end_offset": 12048,
+      "start_line": 294,
+      "end_line": 294,
+      "excerpt_sha256": "497cd204a4721c8b2cdcdced64d4e1368ec02295ddba18002d378228631b791d",
+      "transformations": []
+    },
+    {
+      "text": "create table orders_p1 partition of orders for values with (\nmodulus 32, remainder 0);",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18806.txt",
+      "start_offset": 12064,
+      "end_offset": 12150,
+      "start_line": 296,
+      "end_line": 297,
+      "excerpt_sha256": "f6b766b77706b1a882f893ec49173cba2cf619bb68700f57815fbc60c0d3d58b",
+      "transformations": []
+    },
+    {
+      "text": "explain select * from test t join orders o on\nt.order_id =o.order_id where t.order_id in (select order_id from orders);",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18806.txt",
+      "start_offset": 12175,
+      "end_offset": 12294,
+      "start_line": 299,
+      "end_line": 300,
+      "excerpt_sha256": "502152206f993a8cde0631b8912129ee3012d100fc1ef451a878667d44fc0707",
+      "transformations": []
+    }
+  ],
+  "mode": "psql",
+  "oracle": {
+    "kind": "crash",
+    "pattern": "terminated by signal (?:6|11)",
+    "reported_phenomenon": "partitionwise join 查询导致断言/崩溃",
+    "author_expected_behavior": "正常完成规划"
+  },
+  "config": {},
+  "notes": "官方18805回复明确链接18806同一项目场景；重放18806官方简化例，不声称复现原XFS损坏，不计独立根因。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "linked_source_evidence": {
+    "text": "It is the same project scenario as the issue below ( BUG 18806）.\n\n\nhttps://www.postgresql.org/message-id/18806-d70b0c9fdf63dcbf%40postgresql.org￼",
+    "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18805.txt",
+    "start_offset": 3637,
+    "end_offset": 3783,
+    "start_line": 100,
+    "end_line": 104,
+    "excerpt_sha256": "a8008a0c4e4cbfa7e4c3b56781b51a9221bb3bc4512401be6c1c8d7e37b4c5f8",
+    "transformations": [
+      "trim outer whitespace"
+    ]
+  },
+  "spec_sha256": "4290fe0fc837428157ff317edf87211ddbaf733af753836272e590f6f6a5471c"
+}

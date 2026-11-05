@@ -1,0 +1,77 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18531
+Logged by:          Dzmitry Jachnik
+Email address:      dzja112(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   x86_64 GNU/Linux
+Description:        
+
+
+I tried using 'current of' syntax (like doc. 43.7.3.3.)
+and had have ERROR: cursor "bulk_collection_cur" is held from a previous
+transaction
+
+
+If using regular ` WHERE id = l_rec.id; ` I hadn't any error
+
+
+EXAMPLE:
+```
+
+
+CREATE OR REPLACE PROCEDURE crm_import.etlp_deals(IN i_id bigint DEFAULT
+NULL::bigint, IN i_limit integer DEFAULT null)
+ LANGUAGE plpgsql
+AS $procedure$ 
+DECLARE
+
+
+  result jsonb;
+  COUNTER int := 0;
+ 
+  bulk_collection_cur CURSOR FOR
+  		SELECT *
+          FROM crm_import.deals dew
+         WHERE COALESCE(dew.etl_stage,'NOT_LOADED') not IN ('LOADED',
+'IGNORE')
+--           AND dew.id = any(l_id)
+           AND (dew.id = i_id OR i_id IS null)
+         ORDER BY dew.load_date, dew.dt
+           FOR UPDATE ;
+begin
+
+
+	<<COLLECTION>>
+	BEGIN 
+		FOR l_rec IN bulk_collection_cur
+		LOOP 
+	    	COUNTER := COUNTER + 1;
+			RESULT := crm_import.etl_deals(row_to_json(l_rec.*)::jsonb);
+		     
+	    	UPDATE crm_import.deals dsp
+	           SET etl_protocol = RESULT
+	        -------------------
+	        --v.1 SQL Error [24000]: ERROR: cursor "bulk_collection_cur" is
+held from a previous transaction
+	    	WHERE CURRENT OF bulk_collection_cur;
+	        --v.2 WITHOUT ERROR
+	        --WHERE id = l_rec.id; 					
+			-------------------
+	    	RAISE NOTICE 'counter= %', counter;
+			IF mod(counter, i_limit) = 0 THEN
+				RAISE NOTICE 'COMMIT';
+		    	COMMIT;
+		    END IF;
+		END LOOP;
+	END COLLECTION;
+
+
+end $procedure$
+;
+```
+That combine 'current of' and 'commit' at one loop is bad idea?
+
+
+

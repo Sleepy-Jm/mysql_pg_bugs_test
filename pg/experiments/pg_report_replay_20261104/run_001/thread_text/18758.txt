@@ -1,0 +1,62 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18758
+Logged by:          Pisces Mar.
+Email address:      vectorplanck(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   window10
+Description:        
+
+
+create table t1 (c1 char(50));
+create table t2 (c1 integer);
+select  t1.c1 from t2, t1 group by rollup(t1.c1); -- actual: {null},
+expected: {}
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> create table t1 (c1 char(50));
+> create table t2 (c1 integer);
+> select  t1.c1 from t2, t1 group by rollup(t1.c1); -- actual: {null},
+> expected: {}
+
+
+This is the correct result AFAICS.  Per [1], ROLLUP(t1.c1) is a
+shorthand for
+
+
+GROUPING SETS (
+    ( t1.c1 ),
+    ( )
+)
+
+
+So first you get the output that would correspond to GROUP BY t1.c1,
+and with no values of t1.c1 that output is indeed empty.  But then
+you get the output for an empty grouping set, which is defined in the
+same place as
+
+
+    An empty grouping set means that all rows are aggregated down to a
+    single group (which is output even if no input rows were present),
+    as described above for the case of aggregate functions with no
+    GROUP BY clause.
+
+
+So a single row with a null value for t1.c1 is expected, even when
+the FROM clause produces no rows.
+
+
+			regards, tom lane
+
+
+[1] https://www.postgresql.org/docs/current/queries-table-expressions.html#QUERIES-GROUPING-SETS
+
+
+

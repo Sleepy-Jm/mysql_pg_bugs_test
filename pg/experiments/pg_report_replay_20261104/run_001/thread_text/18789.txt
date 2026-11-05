@@ -1,0 +1,564 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18789
+Logged by:          Sachin Konde-Deshmukh
+Email address:      sachinkonde3(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Oracle Linux 8.9
+Description:        
+
+
+We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.
+When I do failover 2nd or third time or more than once, it fails to transfer
+or move logical replication slot to new Primary.
+postgres=# select slot_name,slot_type, failover,
+synced,confirmed_flush_lsn,active from pg_replication_slots;
+     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+active
+--------------------+-----------+----------+--------+---------------------+--------
+psoel89pgcluster01 | physical  | f        | f      |                     |
+t
+mysub              | logical   | t        | t      | 0/4000AB8           |
+t
+(2 rows)
+After First Failover -->
+postgres=# select slot_name,slot_type, failover,
+synced,confirmed_flush_lsn,active from pg_replication_slots;
+     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+active
+--------------------+-----------+----------+--------+---------------------+--------
+psoel89pgcluster02 | physical  | f        | f      |                     |
+t
+mysub              | logical   | f        | f      | 0/50001E0           |
+t
+(2 rows)
+After 2nd Failover -->
+select slot_name,slot_type, failover, synced,confirmed_flush_lsn,active from
+pg_replication_slots;
+     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+active
+--------------------+-----------+----------+--------+---------------------+--------
+psoel89pgcluster01 | physical  | f        | f      |                     |
+t
+mysub              | logical   | f        | f      | 0/60002B0           |
+t
+After 3rd failover -->
+postgres=# select slot_name,slot_type, failover,
+synced,confirmed_flush_lsn,active from pg_replication_slots;
+     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+active
+--------------------+-----------+----------+--------+---------------------+--------
+psoel89pgcluster02 | physical  | f        | f      |                     |
+t
+(1 row)
+has context menu
+
+
+has context menu
+
+
+
+
+
+### MESSAGE 1
+On Wed, Jan 29, 2025 at 7:01 AM PG Bug reporting form
+<noreply(at)postgresql(dot)org> wrote:
+>
+> The following bug has been logged on the website:
+>
+> Bug reference:      18789
+> Logged by:          Sachin Konde-Deshmukh
+> Email address:      sachinkonde3(at)gmail(dot)com
+> PostgreSQL version: 17.2
+> Operating system:   Oracle Linux 8.9
+> Description:
+>
+> We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.
+> When I do failover 2nd or third time or more than once, it fails to transfer
+> or move logical replication slot to new Primary.
+> postgres=# select slot_name,slot_type, failover,
+> synced,confirmed_flush_lsn,active from pg_replication_slots;
+>      slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+> active
+> --------------------+-----------+----------+--------+---------------------+--------
+> psoel89pgcluster01 | physical  | f        | f      |                     |
+> t
+> mysub              | logical   | t        | t      | 0/4000AB8           |
+> t
+> (2 rows)
+
+
+I guess that this is the list of slots on the primary.
+
+
+> After First Failover -->
+> postgres=# select slot_name,slot_type, failover,
+> synced,confirmed_flush_lsn,active from pg_replication_slots;
+>      slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+> active
+> --------------------+-----------+----------+--------+---------------------+--------
+> psoel89pgcluster02 | physical  | f        | f      |                     |
+> t
+> mysub              | logical   | f        | f      | 0/50001E0           |
+> t
+> (2 rows)
+
+
+I guess that this is the list of slots on the new primary after a
+failover. It seems that a subscriber is receiving logical replication
+changes from the new primary by using the 'mysub' slot, which makes
+sense. However, a problem I can see is that its 'failover' and
+'synced' fields were false. Was the slot sync worker running on the
+standby before the first failover?
+
+
+Regards,
+
+
+-- 
+Masahiko Sawada
+Amazon Web Services: https://aws.amazon.com
+
+
+
+
+
+### MESSAGE 2
+Dear Sachin,
+> 
+> We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.
+> When I do failover 2nd or third time or more than once, it fails to transfer
+> or move logical replication slot to new Primary.
+
+
+For better understanding, can you clarify 1) network configuration you created
+and 2) actual nodes queries were run?
+Four instances are needed to do a failover third time, but not sure how they connected.
+
+
+----------
+Best regards,
+Haato Kuroda
+
+
+
+
+
+### MESSAGE 3
+On Thu, Jan 30, 2025 at 12:44 AM Masahiko Sawada <sawada(dot)mshk(at)gmail(dot)com> wrote:
+>
+> On Wed, Jan 29, 2025 at 7:01 AM PG Bug reporting form
+> <noreply(at)postgresql(dot)org> wrote:
+> >
+> > The following bug has been logged on the website:
+> >
+> > Bug reference:      18789
+> > Logged by:          Sachin Konde-Deshmukh
+> > Email address:      sachinkonde3(at)gmail(dot)com
+> > PostgreSQL version: 17.2
+> > Operating system:   Oracle Linux 8.9
+> > Description:
+> >
+> > We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.
+> > When I do failover 2nd or third time or more than once, it fails to transfer
+> > or move logical replication slot to new Primary.
+> > postgres=# select slot_name,slot_type, failover,
+> > synced,confirmed_flush_lsn,active from pg_replication_slots;
+> >      slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+> > active
+> > --------------------+-----------+----------+--------+---------------------+--------
+> > psoel89pgcluster01 | physical  | f        | f      |                     |
+> > t
+> > mysub              | logical   | t        | t      | 0/4000AB8           |
+> > t
+> > (2 rows)
+>
+> I guess that this is the list of slots on the primary.
+>
+> > After First Failover -->
+> > postgres=# select slot_name,slot_type, failover,
+> > synced,confirmed_flush_lsn,active from pg_replication_slots;
+> >      slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+> > active
+> > --------------------+-----------+----------+--------+---------------------+--------
+> > psoel89pgcluster02 | physical  | f        | f      |                     |
+> > t
+> > mysub              | logical   | f        | f      | 0/50001E0           |
+> > t
+> > (2 rows)
+>
+> I guess that this is the list of slots on the new primary after a
+> failover.
+>
+
+
+This data appears suspicious to me because we shouldn't be changing
+the 'failover' property of the slot. Also, note that physical slot
+names are different in the above two results. Either the user has
+changed the 'failover' property of the slot or the above data is from
+completely two different clusters one where the 'failover' property
+for the slot is enabled and another where it is not enabled.
+
+
+-- 
+With Regards,
+Amit Kapila.
+
+
+
+
+
+### MESSAGE 4
+Hi  Hayato,
+
+
+For better understanding, can you clarify 1) network configuration you
+created
+and 2) actual nodes queries were run?
+Four instances are needed to do a failover third time, but not sure how
+they connected.
+
+
+Only 2 nodes are in cluster,
+
+
+I am using Patroni on these two nodes.
+
+
+Below is the configuration in patroni.yml file
+-------------------------------------------------
+patrony.yml -->
+
+
+namespace: PostgreSQL_Cluster
+scope: postgresHA
+name: psoel89pgcluster01
+
+
+restapi:
+   listen: 0.0.0.0:8008
+   connect_address: 10.3.82.14:8008
+
+
+etcd3:
+   hosts: 10.3.82.14:2379,10.3.82.15:2379,10.3.82.16:2379
+
+
+bootstrap:
+# this section will be written into Etcd:/<namespace>/<scope>/config after
+initializing new cluster
+dcs:
+     ttl: 30
+     loop_wait: 10
+     retry_timeout: 10
+     maximum_lag_on_failover: 1048576
+
+
+     postgresql:
+         use_pg_rewind: true
+         use_slots: true
+         slots:
+           mysub:
+             type: logical
+             database: postgres
+             plugin: pgoutput
+             failover: true
+             synced: true
+         parameters:
+             wal_level: logical
+             hot_standby: 'on'
+             wal_keep_segments: 10
+             max_wal_senders: 5
+             max_replication_slots: 10
+             wal_log_hints: 'on'
+             sync_replication_slots: 'on'
+             hot_standby_feedback: 'on'
+             max_logical_replication_workers: 20
+             logging_collector: 'on'
+             max_wal_size: '10GB'
+             archive_mode: 'on'
+             archive_timeout: 600s
+             archive_command: cp -f %p /home/postgres/archived/%f
+             shared_preload_libraries: 'pg_failover_slots'
+# some desired options for 'initdb'
+initdb: # Note: It needs to be a list (some options need values, others are
+switches)
+     - encoding: UTF8
+     - data-checksums
+
+
+pg_hba: # Add following lines to pg_hba.conf after running 'initdb'
+     - host replication replicator 127.0.0.1/32 trust
+     - host replication replicator 0.0.0.0/0 trust
+     - host all all 0.0.0.0/0 trust
+     - host all all ::0/0 trust
+
+
+# Some additional users which needs to be created after initializing new
+cluster
+users:
+     admin:
+         password: ******
+         options:
+             - createrole
+             - createdb
+     splex:
+         password: *****
+         options:
+             - createrole
+             - createdb
+postgresql:
+   listen: 0.0.0.0:5432
+   connect_address: 10.3.82.14:5432
+   data_dir: /u02/app/postgres/17/data
+   bin_dir: /usr/pgsql-17/bin
+   pgpass: /tmp/pgpass0
+   authentication:
+       replication:
+           username: replicator
+           password: **********
+       superuser:
+           username: postgres
+           password: ********
+   parameters:
+       unix_socket_directories: /var/run/postgresql/
+       primary_conninfo: 'host=10.3.82.15 port=5432 user=replicator
+password=******* dbname=postgres application_name=%p'
+   create_replica_methods:
+       - basebackup
+   basebackup:
+       checkpoint: 'fast'
+#    replication:
+   slots:
+     mysub:
+       type: logical
+       database: postgres
+       plugin: pgoutput
+       failover: true
+       synced: true
+tags:
+   nofailover: false
+   noloadbalance: false
+   clonefrom: false
+   nosync: false
+hooks:
+on_failover: "/etc/patroni/set_all_logical_slot_status.sh"
+on_switchover: "/etc/patroni/set_all_logical_slot_status.sh"
+on_start: "/etc/patroni/set_all_logical_slot_status.sh"
+on_stop: "/etc/patroni/set_all_logical_slot_status.sh"
+-------------------------------------
+/etc/patroni/set_all_logical_slot_status.sh
+#!/bin/bash
+
+
+# PostgreSQL host and credentials (if needed)
+
+
+PG_HOST="10.3.82.17"
+PG_PORT="5000"
+PG_USER="postgres"
+
+
+# Connect to PostgreSQL and list all logical replication slots
+SLOT_LIST=$(psql -U $PG_USER -h $PG_HOST -p $PG_PORT -t -c "SELECT
+slot_name, active, pg_is_in_recovery() FROM pg_replication_slots;")
+
+
+# Loop through each slot and update the failover and synced status if
+necessary
+while IFS='|' read -r slot_name active is_in_recovery; do
+   # Check if the slot is active and if the failover and synced status
+needs to be updated
+   if [[ "$active" == "t" && "$is_in_recovery" == "f" ]]; then
+       echo "Checking slot: $slot_name"
+       # Check if the failover and synced status is false (we are assuming
+you have custom logic for this)
+       # Update the status if necessary, example query to update
+       psql -U $PG_USER -h $PG_HOST -p $PG_PORT -c "SELECT
+pg_create_logical_replication_slot('$slot_name', 'pgoutput', true);"
+       echo "Updated slot $slot_name to TRUE for failover and synced"
+   fi
+done <<< "$SLOT_LIST"
+
+
+exit 0
+
+
+--------------------------------------------------
+I have added the script *set_all_logical_slot_status.sh* later to update
+the status of slot but its not helping as well.
+
+
+Hi Amit,
+
+
+This data appears suspicious to me because we shouldn't be changing
+the 'failover' property of the slot. Also, note that physical slot
+names are different in the above two results. Either the user has
+changed the 'failover' property of the slot or the above data is from
+completely two different clusters one where the 'failover' property
+for the slot is enabled and another where it is not enabled.
+
+
+We are not changing the property explicitly. This is getting changed after
+2/3 failover operations.
+For very first attempt it works as expected.
+
+
+In my cluster setup we only have two nodes. Primary and Standby.
+The other VM which is subscriber is not part of cluster setup.
+
+
+*-------------------------------------------------------------------Sachin
+Konde*
+
+
+*9762777853*
+
+
+On Sat, Feb 1, 2025 at 11:05 AM Amit Kapila <amit(dot)kapila16(at)gmail(dot)com> wrote:
+
+
+> On Thu, Jan 30, 2025 at 12:44 AM Masahiko Sawada <sawada(dot)mshk(at)gmail(dot)com>
+> wrote:
+> >
+> > On Wed, Jan 29, 2025 at 7:01 AM PG Bug reporting form
+> > <noreply(at)postgresql(dot)org> wrote:
+> > >
+> > > The following bug has been logged on the website:
+> > >
+> > > Bug reference:      18789
+> > > Logged by:          Sachin Konde-Deshmukh
+> > > Email address:      sachinkonde3(at)gmail(dot)com
+> > > PostgreSQL version: 17.2
+> > > Operating system:   Oracle Linux 8.9
+> > > Description:
+> > >
+> > > We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.
+> > > When I do failover 2nd or third time or more than once, it fails to
+> transfer
+> > > or move logical replication slot to new Primary.
+> > > postgres=# select slot_name,slot_type, failover,
+> > > synced,confirmed_flush_lsn,active from pg_replication_slots;
+> > >      slot_name      | slot_type | failover | synced |
+> confirmed_flush_lsn |
+> > > active
+> > >
+> --------------------+-----------+----------+--------+---------------------+--------
+> > > psoel89pgcluster01 | physical  | f        | f      |
+>    |
+> > > t
+> > > mysub              | logical   | t        | t      | 0/4000AB8
+>    |
+> > > t
+> > > (2 rows)
+> >
+> > I guess that this is the list of slots on the primary.
+> >
+> > > After First Failover -->
+> > > postgres=# select slot_name,slot_type, failover,
+> > > synced,confirmed_flush_lsn,active from pg_replication_slots;
+> > >      slot_name      | slot_type | failover | synced |
+> confirmed_flush_lsn |
+> > > active
+> > >
+> --------------------+-----------+----------+--------+---------------------+--------
+> > > psoel89pgcluster02 | physical  | f        | f      |
+>    |
+> > > t
+> > > mysub              | logical   | f        | f      | 0/50001E0
+>    |
+> > > t
+> > > (2 rows)
+> >
+> > I guess that this is the list of slots on the new primary after a
+> > failover.
+> >
+>
+> This data appears suspicious to me because we shouldn't be changing
+> the 'failover' property of the slot. Also, note that physical slot
+> names are different in the above two results. Either the user has
+> changed the 'failover' property of the slot or the above data is from
+> completely two different clusters one where the 'failover' property
+> for the slot is enabled and another where it is not enabled.
+>
+> --
+> With Regards,
+> Amit Kapila.
+>
+
+
+
+### MESSAGE 5
+Dear Sachin,
+
+
+Thanks for the reply!
+
+
+> Only 2 nodes are in cluster,
+
+
+Hmm, how did you do failover more than once with only two nodes? Did you run swtichover?
+If so, did you update parameters accordingly? Also, where did you execute each query?
+
+
+> I am using Patroni on these two nodes.
+> Below is the configuration in patroni.yml file
+
+
+Note that we are not familiar with the patroni.yml because this is a PostgreSQL
+community.
+
+
+> slots:
+>   mysub:
+>     type: logical
+>     database: postgres
+>     plugin: pgoutput
+>     failover: true
+>     synced: true
+
+
+I grepped "failover" and "synced" on the Patroni docs, but could not find.
+
+
+> parameters:
+> ...
+>      sync_replication_slots: 'on'
+> ...
+>      shared_preload_libraries: 'pg_failover_slots'
+
+
+This part seems suspicious for me. pg_failover_slots is an external project of our
+community and sync_replication_slots is also set.
+
+
+> -------------------------------------
+> /etc/patroni/set_all_logical_slot_status.sh
+
+
+> PG_HOST="10.3.82.17"
+
+
+Hmm, the IP address cannot be found in yml.
+
+
+> # Loop through each slot and update the failover and synced status if necessary
+
+
+This line is also suspicious. Users shouldn't update the failver/synced status by
+themselves. 
+
+
+Overall, I think this issue needs to be broken down more. I think Patroni itself may
+have the slot-failover features, so we can't say that this is a bug-candidate of PostgreSQL.
+Please try to reproduce without Patronie, i.e., vanilla PostgreSQL. Then we can help you.
+
+
+Best regards,
+Hayato Kuroda
+FUJITSU LIMITED
+

@@ -1,0 +1,512 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17479
+Logged by:          Michael J. Sullivan
+Email address:      sully(at)msully(dot)net
+PostgreSQL version: 14.2
+Operating system:   Linux
+Description:        
+
+
+The following query produces "plan should not reference subplan's
+variable"
+
+
+create table Card (id uuid);
+
+
+SELECT
+    -- This line causes "variable not found in subplan target list"
+    -- grouping(res.cnt)
+    -- This line causes "plan should not reference subplan's variable"
+   (SELECT grouping(res.cnt))
+FROM Card
+CROSS JOIN LATERAL
+(SELECT
+    (SELECT Card.id) AS cnt
+) AS res
+GROUP BY
+    res.cnt
+
+
+As the comment says, a slight change instead errors with "variable not found
+in subplan target list".
+
+
+
+
+
+### MESSAGE 1
+On Tue, May 10, 2022 at 2:12 PM PG Bug reporting form <
+noreply(at)postgresql(dot)org> wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17479
+> Logged by:          Michael J. Sullivan
+> Email address:      sully(at)msully(dot)net
+> PostgreSQL version: 14.2
+> Operating system:   Linux
+> Description:
+>
+> The following query produces "plan should not reference subplan's
+> variable"
+>
+> create table Card (id uuid);
+>
+> SELECT
+>     -- This line causes "variable not found in subplan target list"
+>     -- grouping(res.cnt)
+>     -- This line causes "plan should not reference subplan's variable"
+>    (SELECT grouping(res.cnt))
+> FROM Card
+> CROSS JOIN LATERAL
+> (SELECT
+>     (SELECT Card.id) AS cnt
+> ) AS res
+> GROUP BY
+>     res.cnt
+>
+> As the comment says, a slight change instead errors with "variable not
+> found
+> in subplan target list".
+>
+
+
+Reproduced this issue on HEAD:
+
+
+# explain (verbose, costs off)
+SELECT grouping(res.cnt) FROM Card CROSS JOIN LATERAL (SELECT (SELECT
+Card.id) AS cnt) AS res GROUP BY res.cnt;
+ERROR:  variable not found in subplan target list
+
+
+For this query, initially it has two TargetEntrys and both referencing
+the RangeTblEntry of the subquery.
+
+
+   {TARGETENTRY
+   :expr
+      {GROUPINGFUNC
+      :args (
+         {VAR
+         :varno 2
+         :varattno 1
+
+
+AND
+
+
+   {TARGETENTRY
+   :expr
+      {VAR
+      :varno 2
+      :varattno 1
+
+
+More specifically, they are both referencing the first TargetEntry from
+the subquery. And the first TargetEntry of the subquery is of type
+EXPR SubLink. So after we pull up this subquery, the two TargetEntrys
+become:
+
+
+   {TARGETENTRY
+   :expr
+      {GROUPINGFUNC
+      :args (
+         {SUBLINK
+         :subLinkType 4
+         :subLinkId 0
+
+
+AND
+
+
+   {TARGETENTRY
+   :expr
+      {SUBLINK
+      :subLinkType 4
+      :subLinkId 0
+
+
+Actually the two SubLink expressions are totally the same. But we did
+not check that and proceeded to expand them to two SubPlans.
+
+
+  {TARGETENTRY
+   :expr
+      {GROUPINGFUNC
+      :args (
+         {SUBPLAN
+         :subLinkType 4
+         :testexpr <>
+         :paramIds <>
+         :plan_id 1
+         :plan_name SubPlan\ 1
+
+
+AND
+
+
+   {TARGETENTRY
+   :expr
+      {SUBPLAN
+      :subLinkType 4
+      :testexpr <>
+      :paramIds <>
+      :plan_id 2
+      :plan_name SubPlan\ 2
+
+
+The two SubPlans are assigned with different plan_ids/plan_names.
+That's why when we fix up the GROUPINGFUNC target entry we failed to
+match the whole SubPlan expression, i.e. we failed to match 'SubPlan 1'
+against 'SubPlan 2'.
+
+
+Thanks
+Richard
+
+
+
+### MESSAGE 2
+On Tue, May 10, 2022 at 6:07 PM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+
+
+>
+> On Tue, May 10, 2022 at 2:12 PM PG Bug reporting form <
+> noreply(at)postgresql(dot)org> wrote:
+>
+>> The following bug has been logged on the website:
+>>
+>> Bug reference:      17479
+>> Logged by:          Michael J. Sullivan
+>> Email address:      sully(at)msully(dot)net
+>> PostgreSQL version: 14.2
+>> Operating system:   Linux
+>> Description:
+>>
+>> The following query produces "plan should not reference subplan's
+>> variable"
+>>
+>> create table Card (id uuid);
+>>
+>> SELECT
+>>     -- This line causes "variable not found in subplan target list"
+>>     -- grouping(res.cnt)
+>>     -- This line causes "plan should not reference subplan's variable"
+>>    (SELECT grouping(res.cnt))
+>> FROM Card
+>> CROSS JOIN LATERAL
+>> (SELECT
+>>     (SELECT Card.id) AS cnt
+>> ) AS res
+>> GROUP BY
+>>     res.cnt
+>>
+>> As the comment says, a slight change instead errors with "variable not
+>> found
+>> in subplan target list".
+>>
+>
+> Reproduced this issue on HEAD:
+>
+> # explain (verbose, costs off)
+> SELECT grouping(res.cnt) FROM Card CROSS JOIN LATERAL (SELECT (SELECT
+> Card.id) AS cnt) AS res GROUP BY res.cnt;
+> ERROR:  variable not found in subplan target list
+>
+> For this query, initially it has two TargetEntrys and both referencing
+> the RangeTblEntry of the subquery.
+>
+>    {TARGETENTRY
+>    :expr
+>       {GROUPINGFUNC
+>       :args (
+>          {VAR
+>          :varno 2
+>          :varattno 1
+>
+>
+> AND
+>
+>    {TARGETENTRY
+>    :expr
+>       {VAR
+>       :varno 2
+>       :varattno 1
+>
+> More specifically, they are both referencing the first TargetEntry from
+> the subquery. And the first TargetEntry of the subquery is of type
+> EXPR SubLink. So after we pull up this subquery, the two TargetEntrys
+> become:
+>
+>    {TARGETENTRY
+>    :expr
+>       {GROUPINGFUNC
+>       :args (
+>          {SUBLINK
+>          :subLinkType 4
+>          :subLinkId 0
+>
+> AND
+>
+>    {TARGETENTRY
+>    :expr
+>       {SUBLINK
+>       :subLinkType 4
+>       :subLinkId 0
+>
+>
+> Actually the two SubLink expressions are totally the same. But we did
+> not check that and proceeded to expand them to two SubPlans.
+>
+>   {TARGETENTRY
+>    :expr
+>       {GROUPINGFUNC
+>       :args (
+>          {SUBPLAN
+>          :subLinkType 4
+>          :testexpr <>
+>          :paramIds <>
+>          :plan_id 1
+>          :plan_name SubPlan\ 1
+>
+> AND
+>
+>    {TARGETENTRY
+>    :expr
+>       {SUBPLAN
+>       :subLinkType 4
+>       :testexpr <>
+>       :paramIds <>
+>       :plan_id 2
+>       :plan_name SubPlan\ 2
+>
+> The two SubPlans are assigned with different plan_ids/plan_names.
+> That's why when we fix up the GROUPINGFUNC target entry we failed to
+> match the whole SubPlan expression, i.e. we failed to match 'SubPlan 1'
+> against 'SubPlan 2'.
+>
+
+
+When we generate PathTarget for initial input to grouping nodes in
+make_group_input_target(), for non-grouping columns we would pull out
+all the Vars they mention with the help of pull_var_clause(), and add
+them to the input target. But this ignores the Vars included inside
+GroupingFunc node, even with flag PVC_RECURSE_AGGREGATES.
+
+
+If we change that and include the Vars inside GroupingFunc node, we
+would be able to fix up the GROUPINGFUNC target entry correctly by
+walking into the GroupingFunc->args and matching the Vars there.
+
+
+--- a/src/backend/optimizer/util/var.c
++++ b/src/backend/optimizer/util/var.c
+@@ -661,13 +661,7 @@ pull_var_clause_walker(Node *node,
+pull_var_clause_context *context)
+                }
+                else if (context->flags & PVC_RECURSE_AGGREGATES)
+                {
+-                       /*
+-                        * We do NOT descend into the contained expression,
+even if the
+-                        * caller asked for it, because we never actually
+evaluate it -
+-                        * the result is driven entirely off the associated
+GROUP BY
+-                        * clause, so we never need to extract the actual
+Vars here.
+-                        */
+-                       return false;
++                       /* fall through to recurse into the GroupingFunc's
+arguments */
+                }
+                else
+                        elog(ERROR, "GROUPING found where not expected");
+
+
+Can we change that to fix this issue?
+
+
+Thanks
+Richard
+
+
+
+### MESSAGE 3
+Richard Guo <guofenglinux(at)gmail(dot)com> writes:
+>> Actually the two SubLink expressions are totally the same. But we did
+>> not check that and proceeded to expand them to two SubPlans.
+
+
+Right.  It'd be good to improve on that situation somehow, but I doubt
+that that line of thought will lead to anything backpatchable.
+
+
+> When we generate PathTarget for initial input to grouping nodes in
+> make_group_input_target(), for non-grouping columns we would pull out
+> all the Vars they mention with the help of pull_var_clause(), and add
+> them to the input target. But this ignores the Vars included inside
+> GroupingFunc node, even with flag PVC_RECURSE_AGGREGATES.
+> If we change that and include the Vars inside GroupingFunc node, we
+> would be able to fix up the GROUPINGFUNC target entry correctly by
+> walking into the GroupingFunc->args and matching the Vars there.
+
+
+At first I didn't like this solution at all, but on reflection I think
+it's okay.  The existing comment there is wrong because it neglects
+the fact that whatever's inside the GROUPING construct has to be amenable
+to later processing by setrefs.c and possibly EXPLAIN.  So we cannot
+have Vars there that aren't output by the lower plan nodes, which is the
+optimization the comment is incorrectly thinking can work.  This code
+has accidentally worked so far because whatever's inside GROUPING must
+duplicate a GROUP BY clause elsewhere, which'll result in the same Vars
+getting propagated up the tree as far as the plan node responsible for
+grouping.  But once you phrase it that way, the fragility become obvious:
+what if the GROUPING construct is placed above whatever node does the
+grouping?  I think it might be possible to break it today, even without
+using SubPlans; and if you can't, it's only because the planner is leaving
+money on the table by not aggressively pruning the output tlists for upper
+plan nodes.
+
+
+So I now agree that the thing to do is make this logic work the same for
+GroupingFunc as it does for Aggref (and incidentally make the comment
+about that less wishy-washy).  The apparent savings of not pulling the
+contained references is illusory, because we'll end up with exactly
+the same plan tree --- or else a broken plan tree.
+
+
+We may have more to do here, though, because with this patch I get
+
+
+explain verbose
+SELECT
+    grouping(res.cnt)
+FROM Card
+CROSS JOIN LATERAL
+(SELECT
+    (SELECT Card.id) AS cnt
+) AS res
+GROUP BY
+    res.cnt;
+
+
+ HashAggregate  (cost=67.38..71.88 rows=200 width=8)
+   Output: GROUPING((SubPlan 1)), ((SubPlan 2))
+   Group Key: (SubPlan 2)
+   ->  Seq Scan on public.card  (cost=0.00..61.00 rows=2550 width=8)
+         Output: (SubPlan 2), card.id
+         SubPlan 2
+           ->  Result  (cost=0.00..0.01 rows=1 width=4)
+                 Output: card.id
+
+
+What became of SubPlan 1?  Maybe this is fine but it looks a little
+shaky.  We should at least run down why that's happening and make
+sure we're not leaving dangling pointers anywhere.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 4
+On Thu, May 12, 2022 at 7:11 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> We may have more to do here, though, because with this patch I get
+>
+> explain verbose
+> SELECT
+>     grouping(res.cnt)
+> FROM Card
+> CROSS JOIN LATERAL
+> (SELECT
+>     (SELECT Card.id) AS cnt
+> ) AS res
+> GROUP BY
+>     res.cnt;
+>
+>  HashAggregate  (cost=67.38..71.88 rows=200 width=8)
+>    Output: GROUPING((SubPlan 1)), ((SubPlan 2))
+>    Group Key: (SubPlan 2)
+>    ->  Seq Scan on public.card  (cost=0.00..61.00 rows=2550 width=8)
+>          Output: (SubPlan 2), card.id
+>          SubPlan 2
+>            ->  Result  (cost=0.00..0.01 rows=1 width=4)
+>                  Output: card.id
+>
+> What became of SubPlan 1?  Maybe this is fine but it looks a little
+> shaky.  We should at least run down why that's happening and make
+> sure we're not leaving dangling pointers anywhere.
+>
+
+
+I did some debug on this. The 'SubPlan 1' is not explained because its
+SubPlanState is not created and added to AggState->subPlan.
+
+
+When we compile each tlist column for the agg node, the GroupingFunc
+expressions would not be collected to AggState->args, because only
+Aggref nodes are expected there. As a result, the 'SubPlan 1', as the
+arg of the GroupingFunc node, does not have a chance to be initialized
+by ExecInitSubPlan() and added to AggState->subPlan when evaluating
+arguments to aggregate function in ExecBuildAggTrans().
+
+
+Not sure if this is fine or not.
+
+
+Thanks
+Richard
+
+
+
+### MESSAGE 5
+Richard Guo <guofenglinux(at)gmail(dot)com> writes:
+> On Thu, May 12, 2022 at 7:11 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+>> What became of SubPlan 1?  Maybe this is fine but it looks a little
+>> shaky.  We should at least run down why that's happening and make
+>> sure we're not leaving dangling pointers anywhere.
+
+
+> I did some debug on this. The 'SubPlan 1' is not explained because its
+> SubPlanState is not created and added to AggState->subPlan.
+
+
+Yeah, concur: there are two subplans in the plan tree, so no dangling
+pointers.
+
+
+> Not sure if this is fine or not.
+
+
+It seems cosmetic.  We could somehow force initialization of the
+GroupingFunc's argument tree, but that would just be wasted cycles
+in non-EXPLAIN cases, and it seems semantically wrong anyway given
+that evaluation of the argument is not supposed to happen.  (Right
+now that's hypothetical, but what if ExecInitExpr started to
+pre-evaluate some things?)
+
+
+Given the history of this thing, maybe we will find something that
+depends on such initialization happening.  But without evidence
+for that I'm not inclined to add code for it.
+
+
+I'll run with the patch as you suggested.
+
+
+			regards, tom lane
+
+
+

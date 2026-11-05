@@ -1,0 +1,163 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18829
+Logged by:          Armand
+Email address:      armandnortjee(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Windows 10
+Description:        
+
+
+In PostgreSQL 17.2, when using the RAISE NOTICE command with a string
+variable, the output incorrectly appends an extra 's' to the string value.
+This issue does not occur when running the same code in earlier PostgreSQL
+versions (e.g., PostgreSQL 16).
+
+
+DO $$
+DECLARE
+    my_var TEXT := 'garth';
+BEGIN
+    RAISE NOTICE '%s is slim', my_var;
+END
+$$;
+
+
+Expected Result:
+The output should be:
+NOTICE:  garth is slim
+
+
+Actual Result:
+The output incorrectly shows:
+NOTICE:  garths is slim
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> In PostgreSQL 17.2, when using the RAISE NOTICE command with a string
+> variable, the output incorrectly appends an extra 's' to the string value.
+
+
+The substitution marker in plpgsql RAISE strings is just "%", not
+"%s" as it is in C, so this output is expected.  That wasn't the best
+design perhaps, but it's impossible to change it now.
+
+
+> This issue does not occur when running the same code in earlier PostgreSQL
+> versions (e.g., PostgreSQL 16).
+
+
+You are quite mistaken about that.  It's been like this since the
+beginning of plpgsql.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+
+On 2025-03-02 Su 9:18 AM, PG Bug reporting form wrote:
+> The following bug has been logged on the website:
+>
+> Bug reference:      18829
+> Logged by:          Armand
+> Email address:armandnortjee(at)gmail(dot)com
+> PostgreSQL version: 17.2
+> Operating system:   Windows 10
+> Description:
+>
+> In PostgreSQL 17.2, when using the RAISE NOTICE command with a string
+> variable, the output incorrectly appends an extra 's' to the string value.
+> This issue does not occur when running the same code in earlier PostgreSQL
+> versions (e.g., PostgreSQL 16).
+>
+> DO $$
+> DECLARE
+>      my_var TEXT := 'garth';
+> BEGIN
+>      RAISE NOTICE '%s is slim', my_var;
+> END
+> $$;
+>
+> Expected Result:
+> The output should be:
+> NOTICE:  garth is slim
+>
+> Actual Result:
+> The output incorrectly shows:
+> NOTICE:  garths is slim
+>
+
+
+This is not a bug, it's working as documented.
+
+
+The 's' is there because you told it to be there. The docs say: "Inside 
+the format string, |%| is replaced by the string representation of the 
+next optional argument's value."
+
+
+This is not a printf style format string, as you appear to think it is.
+
+
+cheers
+
+
+andrew
+
+
+--
+Andrew Dunstan
+EDB:https://www.enterprisedb.com
+
+
+
+### MESSAGE 3
+On Sun, Mar 2, 2025 at 11:09 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+>
+> PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> > In PostgreSQL 17.2, when using the RAISE NOTICE command with a string
+> > variable, the output incorrectly appends an extra 's' to the string value.
+>
+> The substitution marker in plpgsql RAISE strings is just "%", not
+> "%s" as it is in C, so this output is expected.  That wasn't the best
+> design perhaps, but it's impossible to change it now.
+>
+> > This issue does not occur when running the same code in earlier PostgreSQL
+> > versions (e.g., PostgreSQL 16).
+>
+> You are quite mistaken about that.  It's been like this since the
+> beginning of plpgsql.
+>
+
+
+While Tom is certainly right about this, I have seen the following
+plpgsql code style which looks like the behavior the OP is suggesting,
+so they could be mis-remembering.
+
+
+pagila=# DO $$
+DECLARE
+    my_var TEXT := 'garth';
+BEGIN
+    RAISE NOTICE USING message = format('%s is slim', my_var);
+END
+$$;
+NOTICE:  garth is slim
+DO
+
+
+Robert Treat
+https://xzilla.net
+
+
+

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17356: hunspell-hu dictionary processing error</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17356-1979672d506f80d7%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-06T08:50:32" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17356: hunspell-hu dictionary processing error" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17356 Logged by: László Zsolt Nagy Email address: nagylzs@gmail.com …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17356: hunspell-hu dictionary processing error</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>nagylzs(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17356: hunspell-hu dictionary processing error</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-06 08:50:32</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17356-1979672d506f80d7%40postgresql.org">17356-1979672d506f80d7@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17356-1979672d506f80d7%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17356-1979672d506f80d7%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17356-1979672d506f80d7%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17356-1979672d506f80d7%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17356-1979672d506f80d7%40postgresql.org" selected="selected">2022-01-06 08:50:32 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17356<br>Logged by:          László Zsolt Nagy<br>Email address:      nagylzs(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Debian Linux<br>Description:        </p>
+
+<p>How to reproduce:</p>
+
+<p># Start minimal virgin system<br>docker run -it --rm debian bash<br>apt update<br>apt install -y acl ca-certificates curl gzip libbsd0 libbz2-1.0 libc6<br>libedit2 libffi7 libnettle8 libicu67 libreadline8 libgcc1 libgmp10<br>libgnutls30 libhogweed6  libidn2-0 libldap-2.4-2 liblz4-1 liblzma5<br>libncurses6  libp11-kit0 libpcre3  libsasl2-2 libsqlite3-0 libssl1.1<br>libstdc++6 libtasn1-6 libtinfo6 libunistring2 libuuid1 libxml2 libxslt1.1<br>libzstd1 locales procps tar zlib1g gnupg dumb-init curl</p>
+
+<p># Install hunspell-hu and PostgreSQL<br>apt install -y hunspell hunspell-hu<br>curl -s<br><a href="https://salsa.debian.org/postgresql/postgresql-common/raw/master/pgdg/apt.postgresql.org.sh" rel="nofollow">https://salsa.debian.org/postgresql/postgresql-common/raw/master/pgdg/apt.postgresql.org.sh</a><br>| bash<br>apt update<br>apt install -y postgresql-14</p>
+
+<p>The above procedure gives this error during the last step:</p>
+
+<p>Building PostgreSQL dictionaries from installed myspell/hunspell<br>packages...<br>  hu_hu<br>iconv: illegal input sequence at position 131<br>ERROR: Conversion of /usr/share/hunspell/hu_HU.aff failed</p>
+
+<p>It happens when pg_updatedicts is executed.</p>
+
+<p>I&#x27;m not sure where the problem is. It may be in hunspell, or hunspell-hu, or<br>iconv or postgresql. I have tried to find the root cause, but I falied. At<br>least it seems that it is NOT a bug in hunspell or hunspell-hu, because the<br>author of hunspell wrote this comment in 2018 at<br><a href="https://github.com/hunspell/hunspell/issues/559#issuecomment-446335091" rel="nofollow">https://github.com/hunspell/hunspell/issues/559#issuecomment-446335091</a> </p>
+
+<p>&gt; Not a bug: Hunspell&#x27;s file format is not an UTF-8 encoded text file in the<br>case of SET UTF-8 with the default 8-bit FLAG.</p>
+
+<p>That hunspell issue is only open because &quot;it is a valid request&quot;, but it is<br>not a bug nonetheless (according to the author).</p>
+
+<p>So it might be iconv, or it might be pg_updatedicts that calls iconv with<br>the wrong parameters. I do not know enough to tell...</p>
+
+<p>I think that this bug has been around for years now, and it makes impossible<br>to use tsearch2 with Hungarian spelling.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAPmGK14vYHWFLg%3DLninw8W37gRsEzuwteemZfzkXqV8%2Bg_qJ8A%40mail.gmail.com">Next Message</a></th>
+            <td>Etsuro Fujita</td>
+            <td>2022-01-06 09:56:01</td>
+            <td><a href="/message-id/CAPmGK14vYHWFLg%3DLninw8W37gRsEzuwteemZfzkXqV8%2Bg_qJ8A%40mail.gmail.com">Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/17355-de8e362eb7001a96%40postgresql.org">Previous Message</a></th>
+            <td>PG Bug reporting form</td>
+            <td>2022-01-06 08:00:00</td>
+            <td><a href="/message-id/17355-de8e362eb7001a96%40postgresql.org">BUG #17355: Server crashes on ExecReScanForeignScan in postgres_fdw when accessing foreign partition</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

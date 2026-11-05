@@ -1,0 +1,277 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17387
+Logged by:          James Inform
+Email address:      james(dot)inform(at)pharmapp(dot)de
+PostgreSQL version: 14.1
+Operating system:   Mac and Linux (Ubuntu)
+Description:        
+
+
+While the following sql works under PG13:
+
+
+with q_data as (
+  select '1' as testa, 1 as testb 
+  union
+  select '2' as testa, 2 as testb 
+  union
+  select '3' as testa, 3 as testb 
+  union
+  select '4' as testa, 4 as testb 
+)
+select array_agg(q) || array_agg(q) from q_data q;
+
+
+and results in:
+ {"(3,3)","(1,1)","(4,4)","(2,2)","(3,3)","(1,1)","(4,4)","(2,2)"}
+
+
+the same SQL on PG14.1 fails with:
+
+
+ERROR:  operator is not unique: record[] || record[]
+LINE 10: select array_agg(q) || array_agg(q) from q_data q;
+                                               ^
+HINT:  Could not choose a best candidate operator. You might need to add
+explicit type casts.
+
+
+Let's not discuss if such an sql makes sense.
+But question is: Why is PG14 giving an error while PG13 works?
+
+
+Cheers,
+James
+
+
+
+
+
+### MESSAGE 1
+Hi
+
+
+> Let's not discuss if such an sql makes sense.
+> But question is: Why is PG14 giving an error while PG13 works?
+>
+
+
+Probably it is side effect of this patch
+
+
+https://github.com/postgres/postgres/commit/9e38c2bb5093ceb0c04d6315ccd8975bd17add66#diff-e2a931f90073b784e341960c6fe1f48aaea4b5d57eb4388143534eec3863477b
+
+
+The array_append, array_cat, array_prepend changed input types from any*
+kind of polymorphic types to anycompatible* kind of polymorphic types
+
+
+Regards
+
+
+Pavel Stehule
+
+
+> Cheers,
+> James
+>
+>
+
+
+
+### MESSAGE 2
+pá 28. 1. 2022 v 21:19 odesílatel Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com>
+napsal:
+
+
+> Hi
+>
+>
+>> Let's not discuss if such an sql makes sense.
+>> But question is: Why is PG14 giving an error while PG13 works?
+>>
+>
+> Probably it is side effect of this patch
+>
+>
+> https://github.com/postgres/postgres/commit/9e38c2bb5093ceb0c04d6315ccd8975bd17add66#diff-e2a931f90073b784e341960c6fe1f48aaea4b5d57eb4388143534eec3863477b
+>
+> The array_append, array_cat, array_prepend changed input types from any*
+> kind of polymorphic types to anycompatible* kind of polymorphic types
+>
+
+
+anycompatible* types are less sensitive to different data types, but it
+increases a risk of possibility of errors when more than one function can
+be detected for execution on analysis of function's signatures.
+
+
+> Regards
+>
+> Pavel Stehule
+>
+>
+>
+>> Cheers,
+>> James
+>>
+>>
+
+
+
+### MESSAGE 3
+Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com> writes:
+> pá 28. 1. 2022 v 21:19 odesílatel Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com>
+> napsal:
+>> Probably it is side effect of this patch
+>> https://github.com/postgres/postgres/commit/9e38c2bb5093ceb0c04d6315ccd8975bd17add66#diff-e2a931f90073b784e341960c6fe1f48aaea4b5d57eb4388143534eec3863477b
+
+
+> anycompatible* types are less sensitive to different data types, but it
+> increases a risk of possibility of errors when more than one function can
+> be detected for execution on analysis of function's signatures.
+
+
+Hmm.  We have
+
+
+regression=# \do ||
+                                                   List of operators
+   Schema   | Name |   Left arg type    |   Right arg type   |    Result type     |             Description             
+------------+------+--------------------+--------------------+--------------------+-------------------------------------
+ pg_catalog | ||   | anycompatible      | anycompatiblearray | anycompatiblearray | prepend element onto front of array
+ pg_catalog | ||   | anycompatiblearray | anycompatible      | anycompatiblearray | append element onto end of array
+ pg_catalog | ||   | anycompatiblearray | anycompatiblearray | anycompatiblearray | concatenate
+ ...
+
+
+where before it was
+
+
+ pg_catalog | ||   | anyelement    | anyarray       | anyarray    | prepend element onto front of array
+ pg_catalog | ||   | anyarray      | anyelement     | anyarray    | append element onto end of array
+ pg_catalog | ||   | anyarray      | anyarray       | anyarray    | concatenate
+
+
+which was non-ambiguous because in this usage, anyelement
+wouldn't match an array type.  I wonder why that's not
+happening with the anycompatible family?
+
+
+We could s/anycompatible/anycompatiblenonarray/ in the
+catalog entries, but it seems like we shouldn't have to.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 4
+I wrote:
+> ... which was non-ambiguous because in this usage, anyelement
+> wouldn't match an array type.  I wonder why that's not
+> happening with the anycompatible family?
+
+
+Poking further, this case still works:
+
+
+regression=# select array[1] || array[2];
+ ?column? 
+----------
+ {1,2}
+(1 row)
+
+
+so we didn't break it completely (I rather imagine we have
+regression tests that would have noticed that).  Also,
+you can still concatenate arrays of known composite types:
+
+
+regression=# select array_agg(t) || array_agg(t) from int8_tbl t;
+                                                                                
+                                                        ?column?                
+                                                                                
+                                         
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-----------------------------------------
+ {"(123,456)","(123,4567890123456789)","(4567890123456789,123)","(45678901234567
+89,4567890123456789)","(4567890123456789,-4567890123456789)","(123,456)","(123,4
+567890123456789)","(4567890123456789,123)","(4567890123456789,4567890123456789)"
+,"(4567890123456789,-4567890123456789)"}
+(1 row)
+
+
+So it seems like this is specific to type record[] somehow.
+Odd.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 5
+I wrote:
+> So it seems like this is specific to type record[] somehow.
+
+
+Ah, no, I found it: the callers of select_common_type_from_oids
+assume that its result is guaranteed valid, which is not so.
+We need to explicitly check can_coerce_type.  This oversight
+allows check_generic_type_consistency to succeed when it should
+not, which in turn allows us to decide that record and record[]
+are OK as matches to all three of those operators.
+
+
+This apparently escaped notice before because we've only tested
+cases in which incompatible arguments were of different typcategory.
+record and record[] are both of category 'P', which might be a
+dumb idea.  But this would be a bug anyway.
+
+
+We need something like the attached, but I'm going to nose
+around for other oversights.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 6
+I wrote:
+> We need something like the attached, but I'm going to nose
+> around for other oversights.
+
+
+Sure enough, transformAExprIn has a related bug: if all the IN
+arguments are of the same typcategory, it will try to stuff them
+all into an array, whether or not they're actually coercible
+to a common type.  We should fall back to the x = v1 OR x = v2 ...
+interpretation when that's not possible.  I failed to come up
+with a simple example in which that leads to success; odds are
+that there's no suitable = operators either.  But it's probably
+possible with some weird set of user-defined types.  In any
+case, the intent of the existing code is clearly that this
+should happen.
+
+
+That bug is ancient, more than 10 years old.  Given the lack
+of field complaints I'm not terribly worried about back-patching,
+but I suppose it can go into v14 along with the regression fix.
+
+
+			regards, tom lane
+
+
+

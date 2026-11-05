@@ -1,0 +1,32 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18778
+Logged by:          Alexander Lakhin
+Email address:      exclusion(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Ubuntu 24.04
+Description:        
+
+
+The following script:
+CREATE TABLE t (id int, PRIMARY KEY (id)) PARTITION BY RANGE (id);
+CREATE TABLE t0 PARTITION OF t FOR VALUES FROM (0) TO (1);
+CREATE TABLE t1 PARTITION OF t FOR VALUES FROM (1) TO (2);
+
+
+SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM
+t0 t00) r, t
+WHERE t.id > CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;
+
+
+fails with:
+ERROR:  XX000: unrecognized node type: 24
+LOCATION:  ExecInitExprRec, execExpr.c:2657
+
+
+The first bad commit for this anomaly (discovered with SQLsmith) is
+41efb8340.
+
+
+

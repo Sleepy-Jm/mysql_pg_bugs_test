@@ -1,0 +1,336 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18751
+Logged by:          Dmytro Lysai
+Email address:      pingw33n(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Debian 12
+Description:        
+
+
+-- PostgreSQL 17.2 (Debian 17.2-1.pgdg120+1) on aarch64-unknown-linux-gnu,
+compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+select version();
+
+
+create table t1(t timestamptz primary key, v text);
+create table t2(t timestamptz primary key, v text);
+
+
+insert into t1(t, v)
+select to_timestamp(i * 3600), i::text
+from generate_series(0, 24 * 7 - 1) as t(i);
+
+
+insert into t2(t, v)
+select to_timestamp(i * 3600), i::text
+from generate_series(24 * 7, 100000) as t(i);
+
+
+explain analyze select * from (
+(select * from t1)
+union all
+(select * from t2)
+)
+order by t
+limit 10;
+/* Good:
+Limit  (cost=0.45..0.86 rows=10 width=13) (actual time=0.257..0.260 rows=10
+loops=1)
+  ->  Merge Append  (cost=0.45..4155.47 rows=100001 width=13) (actual
+time=0.256..0.258 rows=10 loops=1)
+        Sort Key: t1.t
+        ->  Index Scan using t1_pkey on t1  (cost=0.14..14.66 rows=168
+width=11) (actual time=0.142..0.143 rows=10 loops=1)
+        ->  Index Scan using t2_pkey on t2  (cost=0.29..3140.79 rows=99833
+width=13) (actual time=0.112..0.112 rows=1 loops=1)
+Planning Time: 0.132 ms
+Execution Time: 0.289 ms
+*/
+
+
+explain analyze select * from (
+(select * from t1)
+union all
+(select * from t2 where true) -- Not just `true`, any condition here
+)
+order by t
+limit 10;
+/* Bad:
+Limit  (cost=3649.09..3650.25 rows=10 width=13) (actual
+time=101.379..110.060 rows=10 loops=1)
+  ->  Gather Merge  (cost=3649.09..13372.06 rows=83334 width=13) (actual
+time=101.378..110.058 rows=10 loops=1)
+        Workers Planned: 2
+        Workers Launched: 2
+        ->  Sort  (cost=2649.06..2753.23 rows=41667 width=13) (actual
+time=17.794..17.795 rows=3 loops=3)
+              Sort Key: t2.t
+              Sort Method: top-N heapsort  Memory: 25kB
+              Worker 0:  Sort Method: quicksort  Memory: 25kB
+              Worker 1:  Sort Method: quicksort  Memory: 25kB
+              ->  Parallel Append  (cost=0.00..1748.65 rows=41667 width=13)
+(actual time=0.120..11.686 rows=33334 loops=3)
+                    ->  Seq Scan on t2  (cost=0.00..1538.33 rows=99833
+width=13) (actual time=0.136..29.043 rows=99833 loops=1)
+                    ->  Parallel Seq Scan on t1  (cost=0.00..1.99 rows=99
+width=11) (actual time=0.350..0.360 rows=168 loops=1)
+Planning Time: 0.866 ms
+Execution Time: 110.219 ms
+ */
+
+
+
+
+
+### MESSAGE 1
+On Mon, 23 Dec 2024 at 15:57, PG Bug reporting form
+<noreply(at)postgresql(dot)org> wrote:
+>
+> The following bug has been logged on the website:
+>
+> Bug reference:      18751
+> Logged by:          Dmytro Lysai
+> Email address:      pingw33n(at)gmail(dot)com
+> PostgreSQL version: 17.2
+> Operating system:   Debian 12
+> Description:
+>
+> -- PostgreSQL 17.2 (Debian 17.2-1.pgdg120+1) on aarch64-unknown-linux-gnu,
+> compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+> select version();
+>
+> create table t1(t timestamptz primary key, v text);
+> create table t2(t timestamptz primary key, v text);
+>
+>
+> insert into t1(t, v)
+> select to_timestamp(i * 3600), i::text
+> from generate_series(0, 24 * 7 - 1) as t(i);
+>
+> insert into t2(t, v)
+> select to_timestamp(i * 3600), i::text
+> from generate_series(24 * 7, 100000) as t(i);
+>
+> explain analyze select * from (
+> (select * from t1)
+> union all
+> (select * from t2)
+> )
+> order by t
+> limit 10;
+> /* Good:
+> Limit  (cost=0.45..0.86 rows=10 width=13) (actual time=0.257..0.260 rows=10
+> loops=1)
+>   ->  Merge Append  (cost=0.45..4155.47 rows=100001 width=13) (actual
+> time=0.256..0.258 rows=10 loops=1)
+>         Sort Key: t1.t
+>         ->  Index Scan using t1_pkey on t1  (cost=0.14..14.66 rows=168
+> width=11) (actual time=0.142..0.143 rows=10 loops=1)
+>         ->  Index Scan using t2_pkey on t2  (cost=0.29..3140.79 rows=99833
+> width=13) (actual time=0.112..0.112 rows=1 loops=1)
+> Planning Time: 0.132 ms
+> Execution Time: 0.289 ms
+> */
+>
+> explain analyze select * from (
+> (select * from t1)
+> union all
+> (select * from t2 where true) -- Not just `true`, any condition here
+> )
+> order by t
+> limit 10;
+> /* Bad:
+> Limit  (cost=3649.09..3650.25 rows=10 width=13) (actual
+> time=101.379..110.060 rows=10 loops=1)
+>   ->  Gather Merge  (cost=3649.09..13372.06 rows=83334 width=13) (actual
+> time=101.378..110.058 rows=10 loops=1)
+>         Workers Planned: 2
+>         Workers Launched: 2
+>         ->  Sort  (cost=2649.06..2753.23 rows=41667 width=13) (actual
+> time=17.794..17.795 rows=3 loops=3)
+>               Sort Key: t2.t
+>               Sort Method: top-N heapsort  Memory: 25kB
+>               Worker 0:  Sort Method: quicksort  Memory: 25kB
+>               Worker 1:  Sort Method: quicksort  Memory: 25kB
+>               ->  Parallel Append  (cost=0.00..1748.65 rows=41667 width=13)
+> (actual time=0.120..11.686 rows=33334 loops=3)
+>                     ->  Seq Scan on t2  (cost=0.00..1538.33 rows=99833
+> width=13) (actual time=0.136..29.043 rows=99833 loops=1)
+>                     ->  Parallel Seq Scan on t1  (cost=0.00..1.99 rows=99
+> width=11) (actual time=0.350..0.360 rows=168 loops=1)
+> Planning Time: 0.866 ms
+> Execution Time: 110.219 ms
+>  */
+>
+
+
+Hi!
+I reproduced this on REL_16_STABLE, HEAD & REL_13_STABLE, so this is
+not really a bug, just a missing optimization?
+Did you experienced regression after PostgreSQL major upgrade or just
+discovered sub-optimal query?
+
+
+-- 
+Best regards,
+Kirill Reshke
+
+
+
+
+
+### MESSAGE 2
+Kirill Reshke <reshkekirill(at)gmail(dot)com> writes:
+> I reproduced this on REL_16_STABLE, HEAD & REL_13_STABLE, so this is
+> not really a bug, just a missing optimization?
+
+
+Yeah.  I believe what is happening is that the addition of the WHERE
+clause forces the second sub-SELECT to be planned as an independent
+query.  And that level of planning has no idea that it might be
+useful to produce a result ordered by "t", so it doesn't generate
+a sub-plan that can do that.  Then the best that the outer level
+can do is sort after-the-fact.
+
+
+You could work around this by writing the second sub-SELECT like
+
+
+	(select * from t2 where ... order by t)
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+On 12/23/24 22:18, Tom Lane wrote:
+> Kirill Reshke <reshkekirill(at)gmail(dot)com> writes:
+>> I reproduced this on REL_16_STABLE, HEAD & REL_13_STABLE, so this is
+>> not really a bug, just a missing optimization?
+> 
+> Yeah.  I believe what is happening is that the addition of the WHERE
+> clause forces the second sub-SELECT to be planned as an independent
+> query.  And that level of planning has no idea that it might be
+> useful to produce a result ordered by "t", so it doesn't generate
+> a sub-plan that can do that.  Then the best that the outer level
+> can do is sort after-the-fact.
+I didn't discover the case deeply yet, but it looks similar to your 
+improvement of CTEs in a65724d.
+BTW, SQL Server also uses bad variant of the plan for this query, or I 
+just don't know how to cook that soup properly.
+
+
+-- 
+regards, Andrei Lepikhov
+
+
+
+
+
+### MESSAGE 4
+Andrei Lepikhov <lepihov(at)gmail(dot)com> writes:
+> On 12/23/24 22:18, Tom Lane wrote:
+>> Yeah.  I believe what is happening is that the addition of the WHERE
+>> clause forces the second sub-SELECT to be planned as an independent
+>> query.  And that level of planning has no idea that it might be
+>> useful to produce a result ordered by "t", so it doesn't generate
+>> a sub-plan that can do that.  Then the best that the outer level
+>> can do is sort after-the-fact.
+
+
+> I didn't discover the case deeply yet, but it looks similar to your 
+> improvement of CTEs in a65724d.
+
+
+No, that was about passing information the other way: from the
+subquery's planning results out to the outer level.  We would
+need to do that, sure, but first we have to pass info down to
+the subquery to say "results sorted like this could be useful".
+
+
+As of v17 there is some mechanism to do that (see the setops
+argument to subquery_planner), but I now realize that that
+was designed in a really short-sighted fashion: it *only*
+works with SetOperation nodes.  We'd have to refactor that
+so that what the upper query passes down is desired pathkeys,
+or at least something closer to a pathkey than a SetOperation.
+
+
+Another thing that's going on here is that the reason the
+WHERE clause makes a difference is that it prevents flattening
+the sub-query, per is_safe_append_member():
+
+
+     * Also, the child can't have any WHERE quals because there's no place to
+     * put them in an appendrel.  (This is a bit annoying...)
+
+
+I've never been entirely sure whether it is worth improving that.
+Doing so would fix this particular issue, but there are plenty
+of other un-flattenable sub-queries, so the other thing has a
+potential for improving matters more widely.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 5
+On 12/24/24 10:46, Tom Lane wrote:
+> Andrei Lepikhov <lepihov(at)gmail(dot)com> writes:
+>> On 12/23/24 22:18, Tom Lane wrote:
+> As of v17 there is some mechanism to do that (see the setops
+> argument to subquery_planner), but I now realize that that
+> was designed in a really short-sighted fashion: it *only*
+> works with SetOperation nodes.  We'd have to refactor that
+> so that what the upper query passes down is desired pathkeys,
+> or at least something closer to a pathkey than a SetOperation.
+I have waited for such a proposal for years!
+It would be beneficial, of course. I may imagine an implementation that 
+will consider LIMIT statements or grouping columns because they exist in 
+the parse tree.
+But sometimes I have seen examples where MergeJoin or IncrementalSort 
+could bring speedup in case of sorted subquery output. But without 
+planning, we don't realise we need this type of sorting.
+
+
+For example:
+------------
+
+
+CREATE TABLE test (x int PRIMARY KEY);
+INSERT INTO test SELECT gs FROM generate_series(1,1E4) AS gs;
+VACUUM ANALYZE;
+
+
+SET enable_nestloop = f;
+SET enable_hashjoin = f;
+EXPLAIN (COSTS OFF)
+SELECT q1.x FROM
+   (SELECT t1.x FROM test t1 LIMIT 10) AS q1, test t2
+WHERE q1.x=t2.x LIMIT 10;
+/*
+  Limit
+    ->  Merge Join
+          Merge Cond: (t2.x = t1.x)
+          ->  Index Only Scan using test_pkey on test t2
+          ->  Sort
+                Sort Key: t1.x
+                ->  Limit
+                      ->  Seq Scan on test t1
+*/
+
+
+-- 
+regards, Andrei Lepikhov
+
+
+

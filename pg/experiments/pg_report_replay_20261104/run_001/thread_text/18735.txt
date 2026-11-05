@@ -1,0 +1,1048 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18735
+Logged by:          Koichi Suzuki
+Email address:      koichi(dot)dbms(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Windows 10, Japanese language version
+Description:        
+
+
+In psql for Windows 10, version 17.2, some multibyte character in the file
+path of psql command causes error such as:
+=======
+Server [localhost]:
+Database [postgres]:
+Port [5432]:
+Username [postgres]:
+Client Encoding [SJIS]:
+ユーザー postgres のパスワード:
+psql (17.2)
+"help"でヘルプを表示します。
+
+
+postgres=# \cd 'c:/work/09_環境構築'
+postgres=# \o 'c:/work/09_環境構築/work.out'
+postgres=# select * from pg_database;
+postgres=# \o
+postgres=# \! type c:\work\09_環境構築\work.out
+ oid |  datname  | datdba | encoding | datlocprovider | datistemplate |
+datallowconn | dathasloginevt | datconnlimit | datfrozenxid | datminmxid |
+dattablespace |     datcollate     |      datctype      | datlocale |
+daticurules | datcollversion |               datacl
+-----+-----------+--------+----------+----------------+---------------+--------------+----------------+--------------+--------------+------------+---------------+--------------------+--------------------+-----------+-------------+----------------+-------------------------------------
+   5 | postgres  |     10 |        6 | c              | f             | t   
+        | f              |           -1 |          731 |          1 |       
+  1663 | Japanese_Japan.932 | Japanese_Japan.932 |           |             |
+               |
+   1 | template1 |     10 |        6 | c              | t             | t   
+        | f              |           -1 |          731 |          1 |       
+  1663 | Japanese_Japan.932 | Japanese_Japan.932 |           |             |
+               | {=c/postgres,postgres=CTc/postgres}
+   4 | template0 |     10 |        6 | c              | t             | f   
+        | f              |           -1 |          731 |          1 |       
+  1663 | Japanese_Japan.932 | Japanese_Japan.932 |           |             |
+               | {=c/postgres,postgres=CTc/postgres}
+(3 行)
+
+
+postgres=#
+postgres=# \i 'c:/work/09_環境構築/sqmple.sql'
+c:/work/09_環境穀z/sqmple.sql: No such file or directory
+postgres=# copy pg_database to 'c:/work/09_環境構築/database.out'
+postgres-# \copy pg_database to 'c:/work/09_環境構築/database.csv' with (format
+csv, header)
+c:/work/09_環境・築/database.csv: No such file or directory
+=====
+
+
+Analysis:
+* Latter byte valueof the character in question is same as '\' (backslash). 
+  It looks that this byte value is handled as escape characters.   This
+happns SHIFT JIS client encoding.
+* The issue happens in \i, \ir and \copy but does not happen in \cd, \o and
+\! command.
+* The similar issue may happen if the latter byte value of a multibyte
+character is same as '/' (directory delimiter).
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> Analysis:
+> * Latter byte valueof the character in question is same as '\' (backslash). 
+>   It looks that this byte value is handled as escape characters.   This
+> happns SHIFT JIS client encoding.
+> * The issue happens in \i, \ir and \copy but does not happen in \cd, \o and
+> \! command.
+
+
+I imagine what is happening here is that canonicalize_path() interprets
+the backslash bytes as directory separators.
+
+
+The only thing I can think of to improve that is to make
+canonicalize_path() encoding-aware and have it skip over multibyte
+characters.  Unfortunately, I fear that would introduce as many
+misbehaviors as it would remove, because we don't always know the
+relevant encoding.  We might be able to limit the hazard by
+confining the encoding-awareness to the initial Windows-only
+conversion of '\' to '/', but it'd still be pretty squishy.
+
+
+> * The similar issue may happen if the latter byte value of a multibyte
+> character is same as '/' (directory delimiter).
+
+
+I don't believe Shift-JIS uses '/' as part of multibyte characters,
+so it should be sufficient to consider '\'.
+
+
+BTW, according to wikipedia[1], backslash is not even part of the
+Shift-JIS character set:
+
+
+    The single-byte characters 0x00 to 0x7F match the ASCII encoding,
+    except for a yen sign (U+00A5) at 0x5C and an overline (U+203E) at
+    0x7E in place of the ASCII character set's backslash and tilde
+    respectively (these deviations from ASCII align with JIS X
+    0201). The single-byte characters from 0xA1 to 0xDF map to the
+    half-width katakana characters found in JIS X 0201.
+
+
+    For double-byte characters, the first byte is always in the range
+    0x81 to 0x9F or the range 0xE0 to 0xEF (these ranges are
+    unassigned in JIS X 0201). If the first byte is odd, the second
+    byte must be in the range 0x40 to 0x9E (but cannot be 0x7F); if
+    the first byte is even, the second byte must in the range 0x9F to
+    0xFC.
+
+
+This might mean that it'd be okay to just skip the backslash-to-slash
+conversion loops altogether if we think the encoding is Shift-JIS.
+
+
+There's still the question of how we determine the relevant encoding.
+I don't think client_encoding is what to use (and we won't have that
+at hand anyway, in programs other than psql).  What we want to know
+is what fopen and related system calls will do with the path: they
+must have different behavior for Shift-JIS than other encodings,
+else none of your examples could work at all.  I assume there's
+a way to find out what they think the relevant encoding is.
+
+
+make_native_path() adds even more fun: when should we convert '/'
+back to '\'?  From the comments, this function is concerned with
+producing something that will be accepted as a command-line
+argument by other programs, so I wonder if we can even know what
+to do with any certainty.
+
+
+(In case it's not clear, I'm not volunteering to write or test
+any of this.)
+
+
+			regards, tom lane
+
+
+[1] https://en.wikipedia.org/wiki/Shift_JIS
+
+
+
+
+
+### MESSAGE 2
+Hello;
+
+
+Very short response.
+
+
+Lexical analysis of backshash commands in psql is handled
+by psqlscanslash.l and this module scans iput byte-by-byte, not
+character-by-character.   I'm afraid that the cause of the bug is in
+this part..   Is there any way to make this flex syntax local-dependent?
+
+
+We need to analyze the behavior of this flex module to get practical idea
+for fix.
+
+
+Regards;
+---
+Koichi Suzuki
+https://www.linkedin.com/in/koichidbms
+
+
+2024年12月6日(金) 3:50 Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>:
+
+
+> PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> > Analysis:
+> > * Latter byte valueof the character in question is same as '\'
+> (backslash).
+> >   It looks that this byte value is handled as escape characters.   This
+> > happns SHIFT JIS client encoding.
+> > * The issue happens in \i, \ir and \copy but does not happen in \cd, \o
+> and
+> > \! command.
+>
+> I imagine what is happening here is that canonicalize_path() interprets
+> the backslash bytes as directory separators.
+>
+> The only thing I can think of to improve that is to make
+> canonicalize_path() encoding-aware and have it skip over multibyte
+> characters.  Unfortunately, I fear that would introduce as many
+> misbehaviors as it would remove, because we don't always know the
+> relevant encoding.  We might be able to limit the hazard by
+> confining the encoding-awareness to the initial Windows-only
+> conversion of '\' to '/', but it'd still be pretty squishy.
+>
+> > * The similar issue may happen if the latter byte value of a multibyte
+> > character is same as '/' (directory delimiter).
+>
+> I don't believe Shift-JIS uses '/' as part of multibyte characters,
+> so it should be sufficient to consider '\'.
+>
+> BTW, according to wikipedia[1], backslash is not even part of the
+> Shift-JIS character set:
+>
+>     The single-byte characters 0x00 to 0x7F match the ASCII encoding,
+>     except for a yen sign (U+00A5) at 0x5C and an overline (U+203E) at
+>     0x7E in place of the ASCII character set's backslash and tilde
+>     respectively (these deviations from ASCII align with JIS X
+>     0201). The single-byte characters from 0xA1 to 0xDF map to the
+>     half-width katakana characters found in JIS X 0201.
+>
+>     For double-byte characters, the first byte is always in the range
+>     0x81 to 0x9F or the range 0xE0 to 0xEF (these ranges are
+>     unassigned in JIS X 0201). If the first byte is odd, the second
+>     byte must be in the range 0x40 to 0x9E (but cannot be 0x7F); if
+>     the first byte is even, the second byte must in the range 0x9F to
+>     0xFC.
+>
+> This might mean that it'd be okay to just skip the backslash-to-slash
+> conversion loops altogether if we think the encoding is Shift-JIS.
+>
+> There's still the question of how we determine the relevant encoding.
+> I don't think client_encoding is what to use (and we won't have that
+> at hand anyway, in programs other than psql).  What we want to know
+> is what fopen and related system calls will do with the path: they
+> must have different behavior for Shift-JIS than other encodings,
+> else none of your examples could work at all.  I assume there's
+> a way to find out what they think the relevant encoding is.
+>
+> make_native_path() adds even more fun: when should we convert '/'
+> back to '\'?  From the comments, this function is concerned with
+> producing something that will be accepted as a command-line
+> argument by other programs, so I wonder if we can even know what
+> to do with any certainty.
+>
+> (In case it's not clear, I'm not volunteering to write or test
+> any of this.)
+>
+>                         regards, tom lane
+>
+> [1] https://en.wikipedia.org/wiki/Shift_JIS
+>
+
+
+
+### MESSAGE 3
+Koichi Suzuki <koichi(dot)dbms(at)gmail(dot)com> writes:
+> Lexical analysis of backshash commands in psql is handled
+> by psqlscanslash.l and this module scans iput byte-by-byte, not
+> character-by-character.   I'm afraid that the cause of the bug is in
+> this part..   Is there any way to make this flex syntax local-dependent?
+
+
+I think you're mistaken: see the "safe_encoding" hackery in
+psqlscan.l (which does also operate for the rules in psqlscanslash.l).
+Now it could be that psqlscan.l has been misinformed about the
+encoding that's in use, but that wouldn't be its fault.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 4
+> I don't believe Shift-JIS uses '/' as part of multibyte characters,
+
+
+Correct.
+
+
+> so it should be sufficient to consider '\'.
+
+
+Agreed.
+
+
+> BTW, according to wikipedia[1], backslash is not even part of the
+> Shift-JIS character set:
+> 
+>     The single-byte characters 0x00 to 0x7F match the ASCII encoding,
+>     except for a yen sign (U+00A5) at 0x5C and an overline (U+203E) at
+>     0x7E in place of the ASCII character set's backslash and tilde
+>     respectively (these deviations from ASCII align with JIS X
+>     0201). The single-byte characters from 0xA1 to 0xDF map to the
+>     half-width katakana characters found in JIS X 0201.
+> 
+>     For double-byte characters, the first byte is always in the range
+>     0x81 to 0x9F or the range 0xE0 to 0xEF (these ranges are
+>     unassigned in JIS X 0201). If the first byte is odd, the second
+>     byte must be in the range 0x40 to 0x9E (but cannot be 0x7F); if
+>     the first byte is even, the second byte must in the range 0x9F to
+>     0xFC.
+> 
+> This might mean that it'd be okay to just skip the backslash-to-slash
+> conversion loops altogether if we think the encoding is Shift-JIS.
+
+
+I suggest to not do so because majority of Shift-JIS users treat 0x5C
+as a backslash. They understand that a 0x5C means a backslash in
+Shift-JIS files if the files are for programming (source code) or for
+the technical documentations and so on.
+
+
+Best reagards,
+--
+Tatsuo Ishii
+SRA OSS K.K.
+English: http://www.sraoss.co.jp/index_en/
+Japanese:http://www.sraoss.co.jp
+
+
+
+
+
+### MESSAGE 5
+2024年12月6日(金) 14:21 Tatsuo Ishii <ishii(at)postgresql(dot)org>:
+
+
+> > I don't believe Shift-JIS uses '/' as part of multibyte characters,
+>
+> Correct.
+>
+> > so it should be sufficient to consider '\'.
+>
+> Agreed.
+>
+> > BTW, according to wikipedia[1], backslash is not even part of the
+> > Shift-JIS character set:
+> >
+> >     The single-byte characters 0x00 to 0x7F match the ASCII encoding,
+> >     except for a yen sign (U+00A5) at 0x5C and an overline (U+203E) at
+> >     0x7E in place of the ASCII character set's backslash and tilde
+> >     respectively (these deviations from ASCII align with JIS X
+> >     0201). The single-byte characters from 0xA1 to 0xDF map to the
+> >     half-width katakana characters found in JIS X 0201.
+> >
+> >     For double-byte characters, the first byte is always in the range
+> >     0x81 to 0x9F or the range 0xE0 to 0xEF (these ranges are
+> >     unassigned in JIS X 0201). If the first byte is odd, the second
+> >     byte must be in the range 0x40 to 0x9E (but cannot be 0x7F); if
+> >     the first byte is even, the second byte must in the range 0x9F to
+> >     0xFC.
+> >
+> > This might mean that it'd be okay to just skip the backslash-to-slash
+> > conversion loops altogether if we think the encoding is Shift-JIS.
+>
+> I suggest to not do so because majority of Shift-JIS users treat 0x5C
+> as a backslash. They understand that a 0x5C means a backslash in
+> Shift-JIS files if the files are for programming (source code) or for
+> the technical documentations and so on.
+>
+
+
+Better way is to treat 'backslash' byte value in the latter byte of
+SJIS-encoded character as is, not treat this byte as escape character.
+
+
+I'm not sure if we can fix src/fe_utils/psqlscan.l and/or
+src/bin/psql/psqlscanslash.l for this.  Needs some more investigqation.
+
+
+> Best reagards,
+> --
+> Tatsuo Ishii
+> SRA OSS K.K.
+> English: http://www.sraoss.co.jp/index_en/
+> Japanese:http://www.sraoss.co.jp
+
+
+All the best and thanks to all the kind inputs.
+
+
+---
+Koichi Suzuki
+https://www.linkedin.com/in/koichidbms
+
+
+
+### MESSAGE 6
+Tatsuo Ishii <ishii(at)postgresql(dot)org> writes:
+>> This might mean that it'd be okay to just skip the backslash-to-slash
+>> conversion loops altogether if we think the encoding is Shift-JIS.
+
+
+> I suggest to not do so because majority of Shift-JIS users treat 0x5C
+> as a backslash. They understand that a 0x5C means a backslash in
+> Shift-JIS files if the files are for programming (source code) or for
+> the technical documentations and so on.
+
+
+Sure, we can do it that way.  I think the hard part is figuring
+out whether Windows thinks the file names are in Shift-JIS.
+Do you have any idea about finding that out?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 7
+Koichi Suzuki <koichi(dot)dbms(at)gmail(dot)com> writes:
+> I'm not sure if we can fix src/fe_utils/psqlscan.l and/or
+> src/bin/psql/psqlscanslash.l for this.  Needs some more investigqation.
+
+
+I don't believe the theory that the fault lies there.  If the flex
+rules were taking the backslash-embedded-in-a-shift-JIS-character
+as a backslash, they would think it is the start of a new backslash
+command, with the result being that the filename argument gets
+truncated there.  That doesn't match the reported symptoms: we
+see more of the filename than that echoed back in the error message.
+So I think the filename is getting through that part just fine,
+and then we're messing it up in canonicalize_path or adjacent
+processing.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 8
+In the Japanese version of Windows, file names are in Shift-JIS.
+
+
+For sure, we need to check client_encoding.
+
+
+Regards;
+---
+Koichi Suzuki
+https://www.linkedin.com/in/koichidbms
+
+
+2024年12月6日(金) 14:44 Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>:
+
+
+> Tatsuo Ishii <ishii(at)postgresql(dot)org> writes:
+> >> This might mean that it'd be okay to just skip the backslash-to-slash
+> >> conversion loops altogether if we think the encoding is Shift-JIS.
+>
+> > I suggest to not do so because majority of Shift-JIS users treat 0x5C
+> > as a backslash. They understand that a 0x5C means a backslash in
+> > Shift-JIS files if the files are for programming (source code) or for
+> > the technical documentations and so on.
+>
+> Sure, we can do it that way.  I think the hard part is figuring
+> out whether Windows thinks the file names are in Shift-JIS.
+> Do you have any idea about finding that out?
+>
+>                         regards, tom lane
+>
+
+
+
+### MESSAGE 9
+Hello;
+
+
+We need to investigate how backslash in the latter byte of Shift-JIS
+encoded string is handled in psql.
+---
+Koichi Suzuki
+https://www.linkedin.com/in/koichidbms
+
+
+2024年12月6日(金) 15:11 Koichi Suzuki <koichi(dot)dbms(at)gmail(dot)com>:
+
+
+> In the Japanese version of Windows, file names are in Shift-JIS.
+>
+> For sure, we need to check client_encoding.
+>
+> Regards;
+> ---
+> Koichi Suzuki
+> https://www.linkedin.com/in/koichidbms
+>
+>
+>
+> 2024年12月6日(金) 14:44 Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>:
+>
+>> Tatsuo Ishii <ishii(at)postgresql(dot)org> writes:
+>> >> This might mean that it'd be okay to just skip the backslash-to-slash
+>> >> conversion loops altogether if we think the encoding is Shift-JIS.
+>>
+>> > I suggest to not do so because majority of Shift-JIS users treat 0x5C
+>> > as a backslash. They understand that a 0x5C means a backslash in
+>> > Shift-JIS files if the files are for programming (source code) or for
+>> > the technical documentations and so on.
+>>
+>> Sure, we can do it that way.  I think the hard part is figuring
+>> out whether Windows thinks the file names are in Shift-JIS.
+>> Do you have any idea about finding that out?
+>>
+>>                         regards, tom lane
+>>
+>
+
+
+
+### MESSAGE 10
+> Tatsuo Ishii <ishii(at)postgresql(dot)org> writes:
+>>> This might mean that it'd be okay to just skip the backslash-to-slash
+>>> conversion loops altogether if we think the encoding is Shift-JIS.
+> 
+>> I suggest to not do so because majority of Shift-JIS users treat 0x5C
+>> as a backslash. They understand that a 0x5C means a backslash in
+>> Shift-JIS files if the files are for programming (source code) or for
+>> the technical documentations and so on.
+> 
+> Sure, we can do it that way.  I think the hard part is figuring
+> out whether Windows thinks the file names are in Shift-JIS.
+> Do you have any idea about finding that out?
+
+
+I am not familiar with Windows and have no idea, but from the original
+report:
+
+
+postgres=# \cd 'c:/work/09_環境構築'
+
+
+it seems the KANJI characters are shown properly even if a part of the
+KANJI characters include a backslash. This could indicate Windows
+thinks the file names are in Shift-JIS.
+
+
+Best reagards,
+--
+Tatsuo Ishii
+SRA OSS K.K.
+English: http://www.sraoss.co.jp/index_en/
+Japanese:http://www.sraoss.co.jp
+
+
+
+
+
+### MESSAGE 11
+> I don't believe the theory that the fault lies there.  If the flex
+> rules were taking the backslash-embedded-in-a-shift-JIS-character
+> as a backslash, they would think it is the start of a new backslash
+> command, with the result being that the filename argument gets
+> truncated there.  That doesn't match the reported symptoms: we
+> see more of the filename than that echoed back in the error message.
+> So I think the filename is getting through that part just fine,
+> and then we're messing it up in canonicalize_path or adjacent
+> processing.
+
+
+I have looked into canonicalize_path() and found this:
+
+
+#ifdef WIN32
+
+
+	/*
+	 * The Windows command processor will accept suitably quoted paths with
+	 * forward slashes, but barfs badly with mixed forward and back slashes.
+	 */
+	for (p = path; *p; p++)
+	{
+		if (*p == '\\')
+			*p = '/';
+	}
+
+
+Here "path" is the filename encoded in Shift-JIS I think.  It seems
+canonicalize_path() unconditionaly replaces a backslash with a slash.
+For me this seems to break any Shift-JIS KANJI characters that a
+backslash in the second byte.
+
+
+Best reagards,
+--
+Tatsuo Ishii
+SRA OSS K.K.
+English: http://www.sraoss.co.jp/index_en/
+Japanese:http://www.sraoss.co.jp
+
+
+
+
+
+### MESSAGE 12
+Tatsuo Ishii <ishii(at)postgresql(dot)org> writes:
+> I have looked into canonicalize_path() and found this:
+
+
+> 		if (*p == '\\')
+> 			*p = '/';
+
+
+Right, that's where the trouble is.  It'd be easy enough to make
+that loop (and the similar one in cleanup_path) encoding-aware,
+if we knew what encoding applies.  Deciding that is the sticky part.
+
+
+After sleeping on it, I'm coming around to the opinion that
+client_encoding (pset.encoding) is what to use in psql, for
+two reasons:
+* we already do our best to set that correctly, and the user
+is able to change it if it's wrong;
+* as previously noted, psqlscan.l will do the wrong things
+if it's not set correctly, so you're probably already hosed
+if working in a non-server-safe encoding with the wrong
+setting of client_encoding.
+
+
+However, there are a bunch of callers of canonicalize_path()
+that are not in psql, and those arguments don't apply to them;
+in fact places like initdb and pg_ctl don't really have a
+concept of client encoding at all.  So what to do?
+
+
+After looking through the callers I think we might not be in as bad
+shape as this sounds, because all of the other callers are dealing
+with Postgres installation paths or data directory-related paths that
+are also dealt with by the server.  So it's not unreasonable to
+require that those paths must be written in server-safe encodings.
+If they're not, you're going to have trouble with stuff like
+"show data_directory".
+
+
+I wonder whether we ought to try to enforce that.  It'd be feasible
+I think for initdb to verify that the selected paths are validly
+encoded according to whatever encoding it's about to set the server
+up with.  If we were feeling draconian we could insist that
+the installation path and data directory path be all-ASCII, which
+is the only way to be sure that you won't have issues if you later
+create a database that uses some other encoding.  But I think we'd
+likely get pushback from that.  (This ties into the nearby
+discussion about encoding of shared-catalog names [1], which is
+more or less the same problem --- maybe the path encoding checks
+could vary depending on how we're setting that up?)
+
+
+Anyway, what I'm now thinking is that we can have two variants
+of canonicalize_path:
+	extern void canonicalize_path(char *path);
+	extern void canonicalize_path_enc(char *path, int encoding);
+The first one assumes a server-safe encoding, the second doesn't,
+and at least to start with only psql would bother with the second.
+
+
+It looks like we don't need cleanup_path_enc, not yet anyway,
+since that's only applied to installation paths.
+
+
+I am also guessing that we don't need an encoding-aware variant
+of make_native_path: since it only changes '/' it can't create
+an incorrectly encoded path, assuming the input is OK.  However,
+this is assuming that it's okay to use '\' as a Windows directory
+separator even in shift-JIS, which I'm not too sure about.
+
+
+			regards, tom lane
+
+
+[1] https://www.postgresql.org/message-id/CA%2BhUKGKDC7tKMZ1v0JGH5D23F-%3DADf-3UfcriVepqoi7Q_SKgQ%40mail.gmail.com
+
+
+
+
+
+### MESSAGE 13
+I wrote:
+> Anyway, what I'm now thinking is that we can have two variants
+> of canonicalize_path:
+> 	extern void canonicalize_path(char *path);
+> 	extern void canonicalize_path_enc(char *path, int encoding);
+> The first one assumes a server-safe encoding, the second doesn't,
+> and at least to start with only psql would bother with the second.
+
+
+I thought that part would be trivial, but there's a small annoying
+problem.  The obvious way to write the encoding-aware version of
+the de-backslashing loop is to use pg_encoding_mblen_bounded().
+However, that function is in src/common/wchar.c while path.c
+is in src/port/ --- and I believe we have a rule that libpgport
+can't depend on libpgcommon.  (The dependencies go the other way,
+instead.)
+
+
+Now it's pretty dubious that path.c is in src/port/ at all, because
+it does not meet the expectation that that directory is for
+functions that replace missing system-library functionality.
+(We've trodden pretty hard on that expectation over the years,
+but whatever.)  So one reasonable fix could be to move path.c
+to src/common, but I'm concerned that that would be unsafe to
+back-patch.  Also, we'd really want to move the externs for
+path.c out of port.h, which would cause additional code churn
+for callers.
+
+
+Another way, given that we only really need this to work for
+SJIS, is to hard-wire the logic into path.c --- it's not like
+pg_sjis_mblen is either long or likely to change.  That's
+ugly but would be a lot less invasive and safer to back-patch.
+
+
+I'm leaning a bit to the second way, mainly because of the
+extern-relocation annoyance.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 14
+> Tatsuo Ishii <ishii(at)postgresql(dot)org> writes:
+>> I have looked into canonicalize_path() and found this:
+> 
+>> 		if (*p == '\\')
+>> 			*p = '/';
+> 
+> Right, that's where the trouble is.  It'd be easy enough to make
+> that loop (and the similar one in cleanup_path) encoding-aware,
+> if we knew what encoding applies.  Deciding that is the sticky part.
+> 
+> After sleeping on it, I'm coming around to the opinion that
+> client_encoding (pset.encoding) is what to use in psql, for
+> two reasons:
+> * we already do our best to set that correctly, and the user
+> is able to change it if it's wrong;
+> * as previously noted, psqlscan.l will do the wrong things
+> if it's not set correctly, so you're probably already hosed
+> if working in a non-server-safe encoding with the wrong
+> setting of client_encoding.
+
+
+I think the encoding we need to supply to canonicalize_path() is not
+necessarily the same as client_encoding. For example we could set
+client_encoding to UTF-8 but use a file which has Shift-JIS encode
+file name.  I think what we really need to supply to
+canonicalize_path() is the "file system encoding", not
+client_encoding.
+
+
+Among the file system encodings, the only problematic one is
+Shift-JIS. As far as I know, currently there's no OS except Windows
+which uses Shift-JIS as the file system encoding. So probably we can
+safely assume that if the OS is Windows for Japanese, we can assume
+that the file system encoding is Shift-JIS. If we know how to
+determine the OS is Windows for Japanese inside the
+canonicalize_path(), we don't need to change the API of it.
+
+
+Quick gooling found this page (sorry, in Japanese)
+https://tarenagashi.hatenablog.jp/entry/2023/07/17/160149
+and it says:
+
+
+- In Windows "system locale" represents the language/country used.
+
+
+- The code for system locale is called "LCID" and it's 1041 (decimal)
+  for Japanese/Japan.
+
+
+- There are some APIs to obtain LCID (GetSystemDefaultLocaleName etc.)
+
+
+As I am not familiar with Windows and I cannot test these. Can someone
+confirm?
+
+
+Best reagards,
+--
+Tatsuo Ishii
+SRA OSS K.K.
+English: http://www.sraoss.co.jp/index_en/
+Japanese:http://www.sraoss.co.jp
+
+
+
+
+
+### MESSAGE 15
+Tatsuo Ishii <ishii(at)postgresql(dot)org> writes:
+> I think the encoding we need to supply to canonicalize_path() is not
+> necessarily the same as client_encoding. For example we could set
+> client_encoding to UTF-8 but use a file which has Shift-JIS encode
+> file name.  I think what we really need to supply to
+> canonicalize_path() is the "file system encoding", not
+> client_encoding.
+
+
+That was what I was thinking yesterday, but seems to me it could
+not really work to have client_encoding set to UTF-8 while you're
+trying to type an SJIS file name.  Even if your terminal program
+doesn't mangle anything, it's likely that psqlscan.l will.
+
+
+I suppose if we think that's the situation, we could try to translate
+the file path names from UTF8 to SJIS.  But that's a chunk of
+functionality that doesn't exist right now, plus I'm afraid it'd
+often make things worse not better.  We don't have nearly as much
+certainty as we could wish about which encoding incoming data is in.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 16
+> That was what I was thinking yesterday, but seems to me it could
+> not really work to have client_encoding set to UTF-8 while you're
+> trying to type an SJIS file name.  Even if your terminal program
+> doesn't mangle anything, it's likely that psqlscan.l will.
+
+
+Ok. So if the client encoding is not a "safe" encoding like Shift-JIS,
+we have to use the same encoding for both the client encoding and the
+file system encoding. I don't think this is an unreasonable
+limitation.
+
+
+> I suppose if we think that's the situation, we could try to translate
+> the file path names from UTF8 to SJIS.  But that's a chunk of
+> functionality that doesn't exist right now, plus I'm afraid it'd
+> often make things worse not better.  We don't have nearly as much
+> certainty as we could wish about which encoding incoming data is in.
+
+
+Yes. Also in PostgreSQL encoding conversion is extensible and the
+feature is only available in backend.
+
+
+Best reagards,
+--
+Tatsuo Ishii
+SRA OSS K.K.
+English: http://www.sraoss.co.jp/index_en/
+Japanese:http://www.sraoss.co.jp
+
+
+
+
+
+### MESSAGE 17
+> Another way, given that we only really need this to work for
+> SJIS, is to hard-wire the logic into path.c --- it's not like
+> pg_sjis_mblen is either long or likely to change.  That's
+> ugly but would be a lot less invasive and safer to back-patch.
+> 
+> I'm leaning a bit to the second way, mainly because of the
+> extern-relocation annoyance.
+
+
++1. I believe the logic of detecting byte length in Shift-JIS will not
+be changed.
+
+
+Best reagards,
+--
+Tatsuo Ishii
+SRA OSS K.K.
+English: http://www.sraoss.co.jp/index_en/
+Japanese:http://www.sraoss.co.jp
+
+
+
+
+
+### MESSAGE 18
+Tatsuo Ishii <ishii(at)postgresql(dot)org> writes:
+>> Another way, given that we only really need this to work for
+>> SJIS, is to hard-wire the logic into path.c --- it's not like
+>> pg_sjis_mblen is either long or likely to change.  That's
+>> ugly but would be a lot less invasive and safer to back-patch.
+>> I'm leaning a bit to the second way, mainly because of the
+>> extern-relocation annoyance.
+
+
+> +1. I believe the logic of detecting byte length in Shift-JIS will not
+> be changed.
+
+
+OK.  I know I said I wasn't going to write this, but here's a draft
+patch that assumes we need only touch psql and can rely on its idea
+of client_encoding.
+
+
+I'm not in a position to test this.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 19
+Hello Here;
+
+
+My colleagues in EDB kindly built PG 17.2 test installer for WIndows with
+Tom's patch.   I ran this in my Windows environment and the patch looks to
+work fine.   Anybody can download this package from
+https://get.enterprisedb.com/test-installers/postgresql-17.2-0.0snapshot12926810582.1090.1.7c5fded.3-windows-x64.exe
+for test.
+
+
+Hope this is helpful.   If possible, I'd like to ask to commit Tom's patch,
+not only to the latest major but also to older majors.
+
+
+Regards;
+---
+*Koichi Suzuki*
+Senior Principal Support Engineer
+
+
+On Mon, Dec 9, 2024 at 5:33 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Tatsuo Ishii <ishii(at)postgresql(dot)org> writes:
+> >> Another way, given that we only really need this to work for
+> >> SJIS, is to hard-wire the logic into path.c --- it's not like
+> >> pg_sjis_mblen is either long or likely to change.  That's
+> >> ugly but would be a lot less invasive and safer to back-patch.
+> >> I'm leaning a bit to the second way, mainly because of the
+> >> extern-relocation annoyance.
+>
+> > +1. I believe the logic of detecting byte length in Shift-JIS will not
+> > be changed.
+>
+> OK.  I know I said I wasn't going to write this, but here's a draft
+> patch that assumes we need only touch psql and can rely on its idea
+> of client_encoding.
+>
+> I'm not in a position to test this.
+>
+>                         regards, tom lane
+>
+>
+
+
+
+### MESSAGE 20
+Koichi Suzuki <koichi(dot)suzuki(at)enterprisedb(dot)com> writes:
+> Hope this is helpful.   If possible, I'd like to ask to commit Tom's patch,
+> not only to the latest major but also to older majors.
+
+
+If there are not objections, I will get that done before the
+upcoming releases.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 21
+Hello Tom;
+
+
+Thank you very much.
+---
+Koichi Suzuki
+https://www.linkedin.com/in/koichidbms
+
+
+2025年1月28日(火) 16:00 Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>:
+
+
+> Koichi Suzuki <koichi(dot)suzuki(at)enterprisedb(dot)com> writes:
+> > Hope this is helpful.   If possible, I'd like to ask to commit Tom's
+> patch,
+> > not only to the latest major but also to older majors.
+>
+> If there are not objections, I will get that done before the
+> upcoming releases.
+>
+>                         regards, tom lane
+>
+
+
+
+### MESSAGE 22
+I wrote:
+> Koichi Suzuki <koichi(dot)suzuki(at)enterprisedb(dot)com> writes:
+>> Hope this is helpful.   If possible, I'd like to ask to commit Tom's patch,
+>> not only to the latest major but also to older majors.
+
+
+> If there are not objections, I will get that done before the
+> upcoming releases.
+
+
+And done.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 23
+Great! I found patch committed to all major/master branches.
+
+
+Thank you very much.
+---
+Koichi Suzuki
+https://www.linkedin.com/in/koichidbms
+
+
+2025年1月30日(木) 4:27 Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>:
+
+
+> I wrote:
+> > Koichi Suzuki <koichi(dot)suzuki(at)enterprisedb(dot)com> writes:
+> >> Hope this is helpful.   If possible, I'd like to ask to commit Tom's
+> patch,
+> >> not only to the latest major but also to older majors.
+>
+> > If there are not objections, I will get that done before the
+> > upcoming releases.
+>
+> And done.
+>
+>                         regards, tom lane
+>
+

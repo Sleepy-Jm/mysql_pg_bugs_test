@@ -1,0 +1,81 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18754
+Logged by:          S.A.N
+Email address:      ua(dot)san(dot)alex(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   MacOS
+Description:        
+
+
+Logical replication cannot restart if the client sent a copyDone, because
+the streamingDoneReceiving variable is not reassigned to false in function
+StartLogicalReplication, this only happens when physical replication in
+function StartReplication
+https://github.com/postgres/postgres/blob/master/src/backend/replication/walsender.c#L906
+
+
+I am writing a logical replication client, sometimes I need to exit copy
+mode to send simple SQL queries.
+
+
+I send copyDone, everything works correctly, I can perform SQL queries, but
+then I need to return to replication mode, the START_REPLICATION command
+will always completed immediately, because the streamingDoneReceiving
+backend variable remains in true, I think it should be redefined in false
+when starting logical replication.
+
+
+Thanks.
+
+
+
+
+
+### MESSAGE 1
+On Fri, 27 Dec 2024 at 20:44, PG Bug reporting form
+<noreply(at)postgresql(dot)org> wrote:
+>
+> The following bug has been logged on the website:
+>
+> Bug reference:      18754
+> Logged by:          S.A.N
+> Email address:      ua(dot)san(dot)alex(at)gmail(dot)com
+> PostgreSQL version: 17.2
+> Operating system:   MacOS
+> Description:
+>
+> Logical replication cannot restart if the client sent a copyDone, because
+> the streamingDoneReceiving variable is not reassigned to false in function
+> StartLogicalReplication, this only happens when physical replication in
+> function StartReplication
+> https://github.com/postgres/postgres/blob/master/src/backend/replication/walsender.c#L906
+>
+> I am writing a logical replication client, sometimes I need to exit copy
+> mode to send simple SQL queries.
+>
+> I send copyDone, everything works correctly, I can perform SQL queries, but
+> then I need to return to replication mode, the START_REPLICATION command
+> will always completed immediately, because the streamingDoneReceiving
+> backend variable remains in true, I think it should be redefined in false
+> when starting logical replication.
+
+
+In logical replication, however, the process exits after
+streamingDoneReceiving is set to true (this happens when sending the
+PqMsg_CopyDone message from libpqrcv_endstreaming), so the issue will
+not happen in logical replication.
+Could you share the client you're using(if it can be shared), along
+with the steps you are following when encountering the issue? This
+will help us better understand the scenario and potentially create a
+test case to reproduce the issue, or at least validate if setting
+'streamingDoneReceiving' to false is sufficient.
+
+
+Regards,
+Vignesh
+
+
+

@@ -1,0 +1,251 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17478
+Logged by:          Stefan Pastrilov
+Email address:      spastrilov(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   Ubuntu 20.04
+Description:        
+
+
+Hello,
+
+
+We’re observing a strange bug, according to me. We’ve got native logical
+replication where the master host is running on PostgreSQL 13.3 and the
+logical replica host is running on PostgreSQL 14.1. And the problem is:
+  when we start to reindex concurrently the primary key of an 800M heavily
+inserted/updated(on the master)table on the logical replica database,
+several documents that have been inserted and existing in the master
+database during the index rebuild on the replica, are missing from the index
+structure on the replica host. What do I mean? If you try to search them by
+where id = 5 the index returns no records, but when you force a sequential
+scan (where id + 0 = 5)the row is returned. Usually, we’re messing around
+10-100 documents from the index after each concurrent re-index. When we
+rebuild the index again, they are found by an index look-up, but a new set
+of ids are missing. So the problem is easily reproducible, but you should
+have a heavily loaded table. Do you have any ideas about this? The newly
+created index is valid and fully functional, with no signs of a corrupted
+one…
+
+
+To be clear, the index rebuild is done on the subscribed table(slave
+host).
+
+
+master host:
+PostgreSQL 13.3 (Ubuntu 13.3-1.pgdg20.04+1) on x86_64-pc-linux-gnu, compiled
+by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit
+slave host:
+PostgreSQL 14.1 (Ubuntu 14.1-2.pgdg20.04+1) on x86_64-pc-linux-gnu, compiled
+by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit
+
+
+
+
+
+### MESSAGE 1
+On Mon, May 9, 2022 at 5:58 PM PG Bug reporting form <noreply(at)postgresql(dot)org>
+wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17478
+> Logged by:          Stefan Pastrilov
+> Email address:      spastrilov(at)gmail(dot)com
+> PostgreSQL version: 14.1
+> Operating system:   Ubuntu 20.04
+> Description:
+>
+> Hello,
+>
+> We’re observing a strange bug, according to me. We’ve got native logical
+> replication where the master host is running on PostgreSQL 13.3 and the
+> logical replica host is running on PostgreSQL 14.1. And the problem is:
+>   when we start to reindex concurrently the primary key of an 800M heavily
+> inserted/updated(on the master)table on the logical replica database,
+> several documents that have been inserted and existing in the master
+> database during the index rebuild on the replica, are missing from the
+> index
+> structure on the replica host. What do I mean? If you try to search them by
+> where id = 5 the index returns no records, but when you force a sequential
+> scan (where id + 0 = 5)the row is returned. Usually, we’re messing around
+> 10-100 documents from the index after each concurrent re-index. When we
+> rebuild the index again, they are found by an index look-up, but a new set
+> of ids are missing. So the problem is easily reproducible, but you should
+> have a heavily loaded table. Do you have any ideas about this? The newly
+> created index is valid and fully functional, with no signs of a corrupted
+> one…
+>
+> To be clear, the index rebuild is done on the subscribed table(slave
+> host).
+>
+> master host:
+> PostgreSQL 13.3 (Ubuntu 13.3-1.pgdg20.04+1) on x86_64-pc-linux-gnu,
+> compiled
+> by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit
+> slave host:
+> PostgreSQL 14.1 (Ubuntu 14.1-2.pgdg20.04+1) on x86_64-pc-linux-gnu,
+> compiled
+> by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit
+>
+>
+Hi Stefan,
+
+
+Please try to upgrade your slave to 14.2 where this problem was fixed (at
+least it fixed the same issue for me).
+
+
+-- 
+Maxim Boguk
+Senior Postgresql DBA
+https://dataegret.com/
+
+
+Phone RU: +7  985 433 0000
+Phone UA: +380 99 143 0000
+Phone AU: +61  45 218 5678
+
+
+LinkedIn: http://www.linkedin.com/pub/maksym-boguk/80/b99/b1b
+Skype: maxim.boguk
+
+
+"Доктор, вы мне советовали так не делать, но почему мне по-прежнему больно
+когда я так делаю ещё раз?"
+
+
+
+### MESSAGE 2
+Maxim Boguk <maxim(dot)boguk(at)gmail(dot)com> writes:
+> On Mon, May 9, 2022 at 5:58 PM PG Bug reporting form <noreply(at)postgresql(dot)org>
+> wrote:
+>> We’re observing a strange bug, according to me. We’ve got native logical
+>> replication where the master host is running on PostgreSQL 13.3 and the
+>> logical replica host is running on PostgreSQL 14.1. And the problem is:
+>> when we start to reindex concurrently the primary key of an 800M heavily
+>> inserted/updated(on the master)table on the logical replica database,
+>> several documents that have been inserted and existing in the master
+>> database during the index rebuild on the replica, are missing from the
+>> index
+>> structure on the replica host.
+
+
+> Please try to upgrade your slave to 14.2 where this problem was fixed (at
+> least it fixed the same issue for me).
+
+
+13.6 might do as well, and would be a lot closer to a drop-in upgrade.
+
+
+The 13.5 and 13.6 release notes both mention problems with REINDEX
+CONCURRENTLY.  Given the existence of those fixed bugs, nobody is
+likely to look too closely at this report unless you can still reproduce
+it on a current minor release.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+Hello,
+
+
+Thank you for your answers.
+
+
+I've upgraded the slave database to 14.2 and after rebuilding the primary
+key concurrently, sadly but I have missing documents again.
+The missing documents are created in the master within the time interval
+while reindex is taking place in the slave, the table is big and it takes
+around an hour to be rebuilt.
+
+
+The same documents are visible in the table through other indexes:
+For example the query:
+
+
+SELECT * FROM table_name WHERE id = 5 and user_id = 1
+UNION ALL
+SELECT * FROM table_name WHERE id + 0 = 5 and user_id = 1
+
+
+returns only one row(it must return 2):
+ the first query uses the primary key and does not find anything
+ the second query uses the index by user_id and finds the document with id=5
+
+
+Tom, fixes in 13.5 and 13.6 are included in 14.2, aren't they? In my
+opinion, the problem is in the slave host, which is running 14, not in the
+master.
+
+
+Thank you in advance!
+
+
+Regards,
+Stefan
+
+
+On Mon, May 9, 2022 at 7:32 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Maxim Boguk <maxim(dot)boguk(at)gmail(dot)com> writes:
+> > On Mon, May 9, 2022 at 5:58 PM PG Bug reporting form <
+> noreply(at)postgresql(dot)org>
+> > wrote:
+> >> We’re observing a strange bug, according to me. We’ve got native logical
+> >> replication where the master host is running on PostgreSQL 13.3 and the
+> >> logical replica host is running on PostgreSQL 14.1. And the problem is:
+> >> when we start to reindex concurrently the primary key of an 800M heavily
+> >> inserted/updated(on the master)table on the logical replica database,
+> >> several documents that have been inserted and existing in the master
+> >> database during the index rebuild on the replica, are missing from the
+> >> index
+> >> structure on the replica host.
+>
+> > Please try to upgrade your slave to 14.2 where this problem was fixed (at
+> > least it fixed the same issue for me).
+>
+> 13.6 might do as well, and would be a lot closer to a drop-in upgrade.
+>
+> The 13.5 and 13.6 release notes both mention problems with REINDEX
+> CONCURRENTLY.  Given the existence of those fixed bugs, nobody is
+> likely to look too closely at this report unless you can still reproduce
+> it on a current minor release.
+>
+>                         regards, tom lane
+>
+
+
+
+### MESSAGE 4
+
+
+
+> On 10 May 2022, at 23:17, Stefan Pastrilov <spastrilov(at)gmail(dot)com> wrote:
+> 
+> fixes in 13.5 and 13.6 are included in 14.2, aren't they? 
+
+
+Yes, fixes are there.
+Would it be troublesome to try 13.6 too?
+
+
+The thing is we fixed several CIC bugs in 13.5 and 14.1. But maybe introduced another bug in 14+. This is investigated in bug #17485.
+
+
+Thank you!
+
+
+Best regards, Andrey Borodin.
+
+
+

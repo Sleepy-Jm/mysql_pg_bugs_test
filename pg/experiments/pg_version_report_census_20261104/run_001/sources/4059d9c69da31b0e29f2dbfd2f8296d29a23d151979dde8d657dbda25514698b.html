@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18806: When enable_rartitionwise_join is set to ON, the database shuts down abnormally</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/18806-d70b0c9fdf63dcbf%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-02-12T07:01:42" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18806: When enable_rartitionwise_join is set to ON, the database shuts down abnormally" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 18806 Logged by: lingbin meng Email address: m_lingbin@126.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #18806: When enable_rartitionwise_join is set to ON, the database shuts down abnormally</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>m_lingbin(at)126(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18806: When enable_rartitionwise_join is set to ON, the database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 07:01:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18806-d70b0c9fdf63dcbf%40postgresql.org">18806-d70b0c9fdf63dcbf@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18806-d70b0c9fdf63dcbf%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18806-d70b0c9fdf63dcbf%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18806-d70b0c9fdf63dcbf%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18806-d70b0c9fdf63dcbf%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="18806-d70b0c9fdf63dcbf%40postgresql.org" selected="selected">2025-02-12 07:01:42 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel%40cybertec.at">&nbsp;2025-02-12 07:38:34 from Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</option>
+  <option value="2d3c6fe3.662a.194f95ee4f0.Coremail.m_lingbin%40126.com">&nbsp;&nbsp;2025-02-12 08:55:33 from 孟令彬 &lt;m_lingbin(at)126(dot)com&gt;</option>
+  <option value="CAHewXNmUpmoqacgq40_s5sEfxtHVN3rndOSwkAtr5%3DdMQYzQLA%40mail.gmail.com">&nbsp;&nbsp;2025-02-12 09:48:53 from Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</option>
+  <option value="CAHewXNnK5imuT9UkWwzXUTZUnpgorDBMBq3c8UuwGh_%3Dr1bR_Q%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2025-02-12 11:48:12 from Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="CAHewXNkLdNrDcp7%2BJkEZSc%2BqQUpFuyPM8f8nZg%2BN-dnDaf%3D1eg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2025-02-12 12:11:28 from Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="CAExHW5unrwcyrV7K77OR36EqWDp33furQ_-MWeeev%3DG4Qwa6OA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-12 12:20:41 from Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</option>
+  <option value="CAHewXNn5d9eK31k_hfc-NJV0OGivySvgS9%2BvHUKQ-j%2B8tt1jDQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-12 12:33:30 from Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</option>
+  <option value="CAExHW5ty%3DyQtMdTCRFj0JXnfdns5jME_%2B-wVpmsTAH8T%2B4O6aQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-12 14:04:07 from Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</option>
+  <option value="CAMbWs4_-oUBh7_iybfeCNxFHZf8ADws_zMiSc70jWzoYpSeBYQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-12 14:30:15 from Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</option>
+  <option value="CA%2BHiwqFfeX%3Drec0-Ohvd%2BqPJrE0gQj2j3B7HSN4Bv0Qd72Ri%2Bg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-13 02:39:08 from Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</option>
+  <option value="CAMbWs48bPCDiuRDq%2By9jCC3dm4vPGYx%2BVeqwSbrrX1SthFQh_A%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-13 03:14:21 from Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="CAExHW5ufD2uZExQKX9ap1TRwqMERKV6VsZ-YkWoa36cxBwNU4Q%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-13 04:55:19 from Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</option>
+  <option value="CA%2BHiwqF%2BjxS4DHPS7vu4BG-LsY9dyGXZ7DnQFfmCSkrikgg-yA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-18 02:53:20 from Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</option>
+  <option value="CAExHW5utdzy8V9pwcXf3ogCh5EcucCzWc0F-2xQWK5mJHOaqCA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-18 04:22:02 from Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</option>
+  <option value="CAHewXNmg76kEy9hscMDeSxBOE5GrPTRVmoOab5h%3DLNA7ZjVqOQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-13 07:25:43 from Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</option>
+  <option value="CA%2BHiwqHxA4Ru28fEyY6arTh0vAU9knKGbBMJ_gdeckWuodWjUg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-18 05:03:16 from Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</option>
+  <option value="CAMbWs4-j8CUc%2B4e4uUPBO6NoUQpE2kfVQCnjyjjGQEJZSWTP-w%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-18 06:52:01 from Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</option>
+  <option value="CAMbWs4-WyUZxcH1SdZs6hCdvrn0x_67BfeeYQAGaKk3qCCh2WA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-19 02:28:42 from Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</option>
+  <option value="CA%2BHiwqFz-sWg6RFd6Y9PAPZe0ETO%2BP4cDpBfmq-zm7cNzV0dng%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-19 02:42:44 from Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</option>
+  <option value="CAExHW5sjrsHd7%2BciUJ861iA075NP7Br%2BA0v3x%2BMvuZmsMNewvA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2025-02-19 04:59:03 from Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</option>
+  <option value="CAMbWs4_BF-WB858BLn5yG72RQdibdi7%3DyGHYMRTGxJe5cDmW7w%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2025-02-12 13:55:43 from Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18806<br>Logged by:          lingbin meng<br>Email address:      m_lingbin(at)126(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   CentOS Linux release 7.9.2009 (Core)<br>Description:        </p>
+
+<p>After upgrading PG17.2, testing found that when enable_rartitionwise_join is<br>set to ON, when executing a query, if the main query and subquery have the<br>same table, the query will report an error.</p>
+
+<p>The database log shows the following error:<br>LOG:  server process (PID 24796) was terminated by signal 6: Aborted<br>DETAIL:  Failed process was running: select * from test t join orders o on<br>t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>LOG:  terminating any other active server processes</p>
+
+<p>The table structure is as follows, all of which are empty tables:<br>demo=# \d+ test<br>Table &quot;bookings.test&quot;<br>Column  |       Type        | Collation | Nullable | Default | Storage  |<br>Compression | Stats target | Description<br>----------+-------------------+-----------+----------+---------+----------+-------------+--------------+-------------<br>order_id | integer           |           |          |         | plain    |  <br>          |              |<br>name     | character varying |           |          |         | extended |  <br>          |              |<br>Access method: heap<br>demo=# \d+ orders<br>Partitioned table &quot;bookings.orders&quot;<br>Column  |         Type          | Collation | Nullable | Default | Storage <br>| Compression | Stats target | Description<br>----------+-----------------------+-----------+----------+---------+----------+-------------+--------------+-------------<br>order_id | integer               |           |          |         | plain   <br>|             |              |<br>name     | character varying(10) |           |          |         | extended<br>|             |              |<br>Partition key: HASH (order_id)<br>Partitions: orders_p1 FOR VALUES WITH (modulus 32, remainder 0),<br>orders_p10 FOR VALUES WITH (modulus 32, remainder 9),<br>orders_p11 FOR VALUES WITH (modulus 32, remainder 10),<br>orders_p12 FOR VALUES WITH (modulus 32, remainder 11),<br>orders_p13 FOR VALUES WITH (modulus 32, remainder 12),<br>orders_p14 FOR VALUES WITH (modulus 32, remainder 13),<br>orders_p15 FOR VALUES WITH (modulus 32, remainder 14),<br>orders_p16 FOR VALUES WITH (modulus 32, remainder 15),<br>orders_p17 FOR VALUES WITH (modulus 32, remainder 16),<br>orders_p18 FOR VALUES WITH (modulus 32, remainder 17),<br>orders_p19 FOR VALUES WITH (modulus 32, remainder 18),<br>orders_p2 FOR VALUES WITH (modulus 32, remainder 1),<br>orders_p20 FOR VALUES WITH (modulus 32, remainder 19),<br>orders_p21 FOR VALUES WITH (modulus 32, remainder 20),<br>orders_p22 FOR VALUES WITH (modulus 32, remainder 21),<br>orders_p23 FOR VALUES WITH (modulus 32, remainder 22),<br>orders_p24 FOR VALUES WITH (modulus 32, remainder 23),<br>orders_p25 FOR VALUES WITH (modulus 32, remainder 24),<br>orders_p26 FOR VALUES WITH (modulus 32, remainder 25),<br>orders_p28 FOR VALUES WITH (modulus 32, remainder 27),<br>orders_p29 FOR VALUES WITH (modulus 32, remainder 28),<br>orders_p3 FOR VALUES WITH (modulus 32, remainder 2),<br>orders_p30 FOR VALUES WITH (modulus 32, remainder 29),<br>orders_p31 FOR VALUES WITH (modulus 32, remainder 30),<br>orders_p32 FOR VALUES WITH (modulus 32, remainder 31),<br>orders_p4 FOR VALUES WITH (modulus 32, remainder 3),<br>orders_p5 FOR VALUES WITH (modulus 32, remainder 4),<br>orders_p6 FOR VALUES WITH (modulus 32, remainder 5),<br>orders_p7 FOR VALUES WITH (modulus 32, remainder 6),<br>orders_p8 FOR VALUES WITH (modulus 32, remainder 7),<br>orders_p9 FOR VALUES WITH (modulus 32, remainder 8)<br>demo=#</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel%40cybertec.at">Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</a> at 2025-02-12 07:38:34 from Laurenz Albe
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel%40cybertec.at">Next Message</a></th>
+            <td>Laurenz Albe</td>
+            <td>2025-02-12 07:38:34</td>
+            <td><a href="/message-id/8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel%40cybertec.at">Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/18805-2477a1f983db961e%40postgresql.org">Previous Message</a></th>
+            <td>PG Bug reporting form</td>
+            <td>2025-02-12 03:53:43</td>
+            <td><a href="/message-id/18805-2477a1f983db961e%40postgresql.org">BUG #18805: A specific query on a hash partitioned table always causes a &quot;signal 11: Segmentation fault&quot; error.</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

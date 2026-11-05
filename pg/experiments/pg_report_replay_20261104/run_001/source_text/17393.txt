@@ -1,0 +1,94 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17393
+Logged by:          Christopher Lorenz
+Email address:      christopher(dot)lorenz(at)zit-bb(dot)brandenburg(dot)de
+PostgreSQL version: 14.1
+Operating system:   RHEL 7, RHEL 8, Ubuntu
+Description:        
+
+
+Hello,
+
+
+a recovery from a basebackup and PIT-recovery after a acccedently DROP
+DATABASE before the deletion, the database is listed in list of database,
+but if I try to connect, the files and directory for that database are
+missing. 
+
+
+Reproduce:
+0. configure postgresql to backup pg_wal
+1. Create a database (e.g. test)
+2. make a backup with pg_basebackup
+3. save the current timestamp (at 14:01:31)
+4. drop the database (at 14:01:37)
+5. Save all pg_wal with pg_switch_wal()
+6. Restore the basebackup to $PGDATA
+7. Starting point in time recovery to 14:01:31
+8. Wait and check the database 
+ a. database is show with \l in psql => OK
+ b. connection shows error that the directory in PGDATA/base is missing =>
+Not OK
+
+
+Expected:
+Recovery stops before DROP DATABASE command. The list of database shows my
+delete database and all files are existing as in given PIT timestamp.
+
+
+Logfile:
+2022-02-03 14:01:47.073 CET [5526] LOG:  starting point-in-time recovery to
+2022-02-03 14:01:31+01
+2022-02-03 14:01:47.093 CET [5526] LOG:  restored log file
+"000000010000000000000002" from archive
+2022-02-03 14:01:47.148 CET [5526] LOG:  redo starts at 0/2000028
+2022-02-03 14:01:47.156 CET [5526] LOG:  consistent recovery state reached
+at 0/2000100
+2022-02-03 14:01:47.156 CET [5524] LOG:  database system is ready to accept
+read only connections
+2022-02-03 14:01:47.175 CET [5526] LOG:  restored log file
+"000000010000000000000003" from archive
+2022-02-03 14:01:47.224 CET [5526] LOG:  recovery stopping before commit of
+transaction 486, time 2022-02-03 14:01:37.011667+01
+2022-02-03 14:01:47.224 CET [5526] LOG:  pausing at the end of recovery
+2022-02-03 14:01:47.224 CET [5526] HINT:  Execute pg_wal_replay_resume() to
+promote.
+2022-02-03 14:01:52.199 CET [5546] FATAL:  database "test" does not exist
+2022-02-03 14:01:52.199 CET [5546] DETAIL:  The database subdirectory
+"base/16384" is missing.
+
+
+Steps in script:
+psql -c 'CREATE DATABASE test'
+# basebackup
+pg_basebackup -D $backup_dir/0
+sleep 5
+rec_pit=`date +'%Y-%m-%d %H:%M:%S'`
+sleep 5
+# drop db
+psql -c 'DROP DATABASE test'
+# save backup
+psql -c 'SELECT pg_switch_wal()'
+sleep 5
+# Stop db
+pg_ctl -D $PGDATAstop
+# recovery
+rm -rf $PGDATA/*
+cp -r $backup_dir/0/* $PGDATA/
+touch $PGDATA/recovery.signal
+echo "recovery_target_time='$rec_pit'" >> $inst_dir/postgresql.conf
+# start
+pg_ctl -D $PGDATA -l ${log_dir}/pgsql.log start
+sleep 5
+echo "\c test" | psql
+
+
+Notes:
+ - Before stating the database and recovery process the files in base
+exists
+ - I also have the same behaviour In version 12 to 14
+
+
+

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when calling `grouping` on result of subquery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17479-6260deceaf0ad304%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-05-10T01:02:35" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when calling `grouping` on result of subquery" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17479 Logged by: Michael J. Sullivan Email address: sully@msully.net …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when calling `grouping` on result of subquery</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sully(at)msully(dot)net</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when calling `grouping` on result of subquery</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-10 01:02:35</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17479-6260deceaf0ad304%40postgresql.org">17479-6260deceaf0ad304@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17479-6260deceaf0ad304%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17479-6260deceaf0ad304%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17479-6260deceaf0ad304%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17479-6260deceaf0ad304%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17479-6260deceaf0ad304%40postgresql.org" selected="selected">2022-05-10 01:02:35 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="CAMbWs4-AmKNFMKwpc1AsJWPUskuaJ3EAJ9-ymV%3Dqe%3DJQx_e3qA%40mail.gmail.com">&nbsp;2022-05-10 10:07:58 from Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</option>
+  <option value="CAMbWs48m-p46J7-mWn3xZwstbo9HCq9oEom1usbKYb7EeGnTog%40mail.gmail.com">&nbsp;&nbsp;2022-05-10 11:05:10 from Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</option>
+  <option value="218738.1652310685%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;2022-05-11 23:11:25 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAMbWs49peoSCckCr4ZtWxJ3-gTOL7kPof%2B492aDMocGEwGtJ4g%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2022-05-12 07:51:01 from Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</option>
+  <option value="327116.1652367082%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-05-12 14:51:22 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17479<br>Logged by:          Michael J. Sullivan<br>Email address:      sully(at)msully(dot)net<br>PostgreSQL version: 14.2<br>Operating system:   Linux<br>Description:        </p>
+
+<p>The following query produces &quot;plan should not reference subplan&#x27;s<br>variable&quot;</p>
+
+<p>create table Card (id uuid);</p>
+
+<p>SELECT<br>    -- This line causes &quot;variable not found in subplan target list&quot;<br>    -- grouping(res.cnt)<br>    -- This line causes &quot;plan should not reference subplan&#x27;s variable&quot;<br>   (SELECT grouping(res.cnt))<br>FROM Card<br>CROSS JOIN LATERAL<br>(SELECT<br>    (SELECT Card.id) AS cnt<br>) AS res<br>GROUP BY<br>    res.cnt</p>
+
+<p>As the comment says, a slight change instead errors with &quot;variable not found<br>in subplan target list&quot;.</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAMbWs4-AmKNFMKwpc1AsJWPUskuaJ3EAJ9-ymV%3Dqe%3DJQx_e3qA%40mail.gmail.com">Re: BUG #17479: &quot;plan should not reference subplan&#x27;s variable&quot; when
+ calling `grouping` on result of subquery</a> at 2022-05-10 10:07:58 from Richard Guo
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/17480-1c9d73565bb28e90%40postgresql.org">Next Message</a></th>
+            <td>PG Bug reporting form</td>
+            <td>2022-05-10 08:21:02</td>
+            <td><a href="/message-id/17480-1c9d73565bb28e90%40postgresql.org">BUG #17480: Assertion failure in parse_relation.c</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/d4.wBKh.7WBaDbIyNTm.1YUQCP%40scif.cz">Previous Message</a></th>
+            <td>Miloš Urbánek</td>
+            <td>2022-05-09 23:26:17</td>
+            <td><a href="/message-id/d4.wBKh.7WBaDbIyNTm.1YUQCP%40scif.cz">Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

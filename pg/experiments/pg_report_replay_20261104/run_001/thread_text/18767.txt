@@ -1,0 +1,698 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18767
+Logged by:          Philippe BEAUDOIN
+Email address:      phb(dot)emaj(at)free(dot)fr
+PostgreSQL version: 17.2
+Operating system:   Linux
+Description:        
+
+
+I use GET DIAGNOSTICS PG_CONTEXT in some sensitive plpgsql functions that
+are declared SECURITY DEFINER in order to be sure that the caller belongs to
+a list of known callers. The returned stack contains the list of called
+functions, with their schema prefix and their parameters format.
+But I discovered that when the schema holding these functions is created
+while it is in the user's search_path, the returned stack doesn't contain
+the schema prefix anymore for the caller functions.
+Here is a small test case that reproduces the issue.
+
+
+A psql script :
+select version();
+drop schema if exists tst cascade;
+create schema tst;
+create function tst.caller1() returns text language plpgsql as 
+$$ BEGIN return tst.caller2(); END; $$;
+create function tst.caller2() returns text language plpgsql as 
+$$ BEGIN return tst.called(); END; $$;
+CREATE OR REPLACE FUNCTION tst.called()
+RETURNS text LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS
+$$
+  DECLARE
+    v_stack                  TEXT;
+  BEGIN
+    GET DIAGNOSTICS v_stack = PG_CONTEXT;
+    IF v_stack NOT LIKE '%tst.caller2()%' THEN
+      RAISE WARNING 'Beware: the calling function is not the expected
+one!';
+    END IF;
+    RETURN v_stack;
+  END;
+$$;
+set search_path = tst;
+show search_path;
+select caller1() as stack_in_called;
+reset search_path;
+show search_path;
+select tst.caller1() as stack_in_called;
+
+
+A simple shell script :
+echo "=========================================================="
+echo "                    The standart run"
+echo "=========================================================="
+psql  -a -f test_stack.sql
+echo "=========================================================="
+echo "The issue: a search_path is set before creating structures"
+echo "=========================================================="
+psql  -a -c "SET search_path = tst;" -f test_stack.sql
+
+
+And the output result :
+==========================================================
+                    The standart run
+==========================================================
+select version();
+                                                version                     
+                          
+-------------------------------------------------------------------------------------------------------
+ PostgreSQL 17.2 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu
+13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+(1 row)
+
+
+drop schema if exists tst cascade;
+psql:test_stack.sql:2: NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to function tst.caller1()
+drop cascades to function tst.caller2()
+drop cascades to function tst.called()
+DROP SCHEMA
+create schema tst;
+CREATE SCHEMA
+create function tst.caller1() returns text language plpgsql as 
+$$ BEGIN return tst.caller2(); END; $$;
+CREATE FUNCTION
+create function tst.caller2() returns text language plpgsql as 
+$$ BEGIN return tst.called(); END; $$;
+CREATE FUNCTION
+CREATE OR REPLACE FUNCTION tst.called()
+RETURNS text LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS
+$$
+  DECLARE
+    v_stack                  TEXT;
+  BEGIN
+    GET DIAGNOSTICS v_stack = PG_CONTEXT;
+    IF v_stack NOT LIKE '%tst.caller2()%' THEN
+      RAISE WARNING 'Beware: the calling function is not the expected
+one!';
+    END IF;
+    RETURN v_stack;
+  END;
+$$;
+CREATE FUNCTION
+set search_path = tst;
+SET
+show search_path;
+ search_path 
+-------------
+ tst
+(1 row)
+
+
+select caller1() as stack_in_called;
+                     stack_in_called                      
+----------------------------------------------------------
+ PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+
+ PL/pgSQL function tst.caller2() line 1 at RETURN        +
+ PL/pgSQL function tst.caller1() line 1 at RETURN
+(1 row)
+
+
+reset search_path;
+RESET
+show search_path;
+   search_path   
+-----------------
+ "$user", public
+(1 row)
+
+
+select tst.caller1() as stack_in_called;
+                     stack_in_called                      
+----------------------------------------------------------
+ PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+
+ PL/pgSQL function tst.caller2() line 1 at RETURN        +
+ PL/pgSQL function tst.caller1() line 1 at RETURN
+(1 row)
+
+
+==========================================================
+The issue: a search_path is set before creating structures
+==========================================================
+SET search_path = tst;
+SET
+select version();
+                                                version                     
+                          
+-------------------------------------------------------------------------------------------------------
+ PostgreSQL 17.2 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu
+13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+(1 row)
+
+
+drop schema if exists tst cascade;
+psql:test_stack.sql:2: NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to function caller1()
+drop cascades to function caller2()
+drop cascades to function called()
+DROP SCHEMA
+create schema tst;
+CREATE SCHEMA
+create function tst.caller1() returns text language plpgsql as 
+$$ BEGIN return tst.caller2(); END; $$;
+CREATE FUNCTION
+create function tst.caller2() returns text language plpgsql as 
+$$ BEGIN return tst.called(); END; $$;
+CREATE FUNCTION
+CREATE OR REPLACE FUNCTION tst.called()
+RETURNS text LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS
+$$
+  DECLARE
+    v_stack                  TEXT;
+  BEGIN
+    GET DIAGNOSTICS v_stack = PG_CONTEXT;
+    IF v_stack NOT LIKE '%tst.caller2()%' THEN
+      RAISE WARNING 'Beware: the calling function is not the expected
+one!';
+    END IF;
+    RETURN v_stack;
+  END;
+$$;
+CREATE FUNCTION
+set search_path = tst;
+SET
+show search_path;
+ search_path 
+-------------
+ tst
+(1 row)
+
+
+select caller1() as stack_in_called;
+psql:test_stack.sql:24: WARNING:  Beware: the calling function is not the
+expected one!
+                     stack_in_called                      
+----------------------------------------------------------
+ PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+
+ PL/pgSQL function caller2() line 1 at RETURN            +
+ PL/pgSQL function caller1() line 1 at RETURN
+(1 row)
+
+
+reset search_path;
+RESET
+show search_path;
+   search_path   
+-----------------
+ "$user", public
+(1 row)
+
+
+select tst.caller1() as stack_in_called;
+psql:test_stack.sql:27: WARNING:  Beware: the calling function is not the
+expected one!
+                     stack_in_called                      
+----------------------------------------------------------
+ PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+
+ PL/pgSQL function caller2() line 1 at RETURN            +
+ PL/pgSQL function caller1() line 1 at RETURN
+(1 row)
+
+
+
+
+
+### MESSAGE 1
+Hi
+
+
+It is not a bug. GET DIAGNOSTICS PG_CONTEXT returns error context
+
+
+Error context is generated by the function plpgsql_exec_error_callback.
+This function uses estate->func->fn_signature string
+and this string is generated by function format_procedure. This function
+hides schema when function is visible from current search_path
+
+
+(2025-01-06 17:01:05) postgres=# create schema test;
+CREATE SCHEMA
+(2025-01-06 17:01:26) postgres=# create function public.fx(a int) returns
+void as $$ begin end $$ language plpgsql;
+CREATE FUNCTION
+(2025-01-06 17:01:47) postgres=# create function test.fx(a int) returns
+void as $$ begin end $$ language plpgsql;
+CREATE FUNCTION
+
+
+(2025-01-06 17:02:16) postgres=# select 'test.fx'::regproc;
+┌─────────┐
+│ regproc │
+╞═════════╡
+│ test.fx │
+└─────────┘
+(1 row)
+
+
+(2025-01-06 17:02:22) postgres=# select 'test.fx'::regproc::regprocedure;
+┌──────────────────┐
+│   regprocedure   │
+╞══════════════════╡
+│ test.fx(integer) │
+└──────────────────┘
+(1 row)
+
+
+(2025-01-06 17:02:27) postgres=# select 'public.fx'::regproc::regprocedure;
+┌──────────────┐
+│ regprocedure │
+╞══════════════╡
+│ fx(integer)  │
+└──────────────┘
+(1 row)
+
+
+This is mostly used for displaying functions in error messages.
+
+
+Unfortunately it is not possible to change it without a compatibility
+break. This was designed more than 20 years ago.
+
+
+If you want to track function calls exactly you need own extension based on
+pl debug api like https://github.com/EnterpriseDB/pldebugger
+
+
+Regards
+
+
+Pavel
+
+
+
+### MESSAGE 2
+Thanks a lot Pavel and Tom for your reply.
+
+
+Le 06/01/2025 à 17:24, Pavel Stehule a écrit :
+> Hi
+>
+> It is not a bug. GET DIAGNOSTICS PG_CONTEXT returns error context
+>
+> Error context is generated by the function 
+> plpgsql_exec_error_callback. This function uses 
+> estate->func->fn_signature string
+> and this string is generated by function format_procedure. This 
+> function hides schema when function is visible from current search_path
+>
+> (2025-01-06 17:01:05) postgres=# create schema test;
+> CREATE SCHEMA
+> (2025-01-06 17:01:26) postgres=# create function public.fx(a int) 
+> returns void as $$ begin end $$ language plpgsql;
+> CREATE FUNCTION
+> (2025-01-06 17:01:47) postgres=# create function test.fx(a int) 
+> returns void as $$ begin end $$ language plpgsql;
+> CREATE FUNCTION
+>
+> (2025-01-06 17:02:16) postgres=# select 'test.fx'::regproc;
+> ┌─────────┐
+> │ regproc │
+> ╞═════════╡
+> │ test.fx │
+> └─────────┘
+> (1 row)
+>
+> (2025-01-06 17:02:22) postgres=# select 'test.fx'::regproc::regprocedure;
+> ┌──────────────────┐
+> │   regprocedure   │
+> ╞══════════════════╡
+> │ test.fx(integer) │
+> └──────────────────┘
+> (1 row)
+>
+> (2025-01-06 17:02:27) postgres=# select 
+> 'public.fx'::regproc::regprocedure;
+> ┌──────────────┐
+> │ regprocedure │
+> ╞══════════════╡
+> │ fx(integer)  │
+> └──────────────┘
+> (1 row)
+>
+> This is mostly used for displaying functions in error messages.
+>
+> Unfortunately it is not possible to change it without a compatibility 
+> break. This was designed more than 20 years ago.
+
+
+I aggree to not break the compatibility. All the more that there are 
+probably good security arguments for the current behaviour.
+
+
+But there is something not clear to me.
+
+
+All sub-function calls use the schema-qualified function names. When the 
+functions have been created with a search_path set to tst, I get :
+
+
+select 'tst.caller1'::regproc::regprocedure;
+  regprocedure
+--------------
+  caller1()
+(1 row)
+
+
+select 'tst.called'::regproc::regprocedure;
+  regprocedure
+--------------
+  called()
+(1 row)
+
+
+select 'caller1'::regproc::regprocedure;
+  regprocedure
+--------------
+  caller1()
+(1 row)
+
+
+select 'called'::regproc::regprocedure;
+  regprocedure
+--------------
+  called()
+(1 row)
+
+
+This totaly corresponds to the behaviour your explained : the tst schema 
+is into the path, so it is not returned.
+
+
+Then when the search_path is reset, I get :
+
+
+show search_path;
+    search_path
+-----------------
+  "$user", public
+(1 row)
+
+
+select 'tst.caller1'::regproc::regprocedure;
+
+
+  regprocedure
+---------------
+  tst.caller1()
+(1 row)
+
+
+select 'tst.called'::regproc::regprocedure;
+  regprocedure
+--------------
+  tst.called()
+(1 row)
+
+
+... which is also expected. But then (and keeping the same search_path), 
+the stack in the called() function looks like exactly as when the 
+search_path is set to tst:
+
+
+select tst.caller1() as stack_in_called;
+psql:test_stack.sql:39: WARNING:  Beware: the calling function is not 
+the expected one!
+                      stack_in_called
+----------------------------------------------------------
+  PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+
+  PL/pgSQL function caller2() line 1 at RETURN            +
+  PL/pgSQL function caller1() line 1 at RETURN
+(1 row)
+
+
+To get all schema qualified function calls in the returned stack, the 
+functions must have been *created* without the schema in the path. So it 
+looks to me that what matter is the search_path sometimes at the 
+functions call times and sometimes at the functions creation time. That 
+is the unconsistency I wrote about. But I probably miss something.
+
+
+>
+> If you want to track function calls exactly you need own extension 
+> based on pl debug api like https://github.com/EnterpriseDB/pldebugger
+
+
+OK. Thanks for the pointer.
+
+
+I will probably change the functions architecture, by moving back the 
+sensitive pieces of code into calling functions and set them SECURITY 
+DEFINER. I am not very fan of having more SECURITY DEFINER functions, 
+but I don't see other not too complex solution.
+
+
+Regards. Philippe.
+
+
+>
+>
+> Regards
+>
+> Pavel
+>
+>
+>
+>
+
+
+
+### MESSAGE 3
+út 7. 1. 2025 v 11:32 odesílatel Philippe BEAUDOIN <phb(dot)emaj(at)free(dot)fr>
+napsal:
+
+
+> Thanks a lot Pavel and Tom for your reply.
+>
+> Le 06/01/2025 à 17:24, Pavel Stehule a écrit :
+>
+> Hi
+>
+> It is not a bug. GET DIAGNOSTICS PG_CONTEXT returns error context
+>
+> Error context is generated by the function plpgsql_exec_error_callback.
+> This function uses estate->func->fn_signature string
+> and this string is generated by function format_procedure. This function
+> hides schema when function is visible from current search_path
+>
+> (2025-01-06 17:01:05) postgres=# create schema test;
+> CREATE SCHEMA
+> (2025-01-06 17:01:26) postgres=# create function public.fx(a int) returns
+> void as $$ begin end $$ language plpgsql;
+> CREATE FUNCTION
+> (2025-01-06 17:01:47) postgres=# create function test.fx(a int) returns
+> void as $$ begin end $$ language plpgsql;
+> CREATE FUNCTION
+>
+> (2025-01-06 17:02:16) postgres=# select 'test.fx'::regproc;
+> ┌─────────┐
+> │ regproc │
+> ╞═════════╡
+> │ test.fx │
+> └─────────┘
+> (1 row)
+>
+> (2025-01-06 17:02:22) postgres=# select 'test.fx'::regproc::regprocedure;
+> ┌──────────────────┐
+> │   regprocedure   │
+> ╞══════════════════╡
+> │ test.fx(integer) │
+> └──────────────────┘
+> (1 row)
+>
+> (2025-01-06 17:02:27) postgres=# select 'public.fx'::regproc::regprocedure
+> ;
+> ┌──────────────┐
+> │ regprocedure │
+> ╞══════════════╡
+> │ fx(integer)  │
+> └──────────────┘
+> (1 row)
+>
+> This is mostly used for displaying functions in error messages.
+>
+> Unfortunately it is not possible to change it without a compatibility
+> break. This was designed more than 20 years ago.
+>
+> I aggree to not break the compatibility. All the more that there are
+> probably good security arguments for the current behaviour.
+>
+> But there is something not clear to me.
+>
+> All sub-function calls use the schema-qualified function names. When the
+> functions have been created with a search_path set to tst, I get :
+>
+> select 'tst.caller1'::regproc::regprocedure;
+>  regprocedure
+> --------------
+>  caller1()
+> (1 row)
+>
+> select 'tst.called'::regproc::regprocedure;
+>  regprocedure
+> --------------
+>  called()
+> (1 row)
+>
+> select 'caller1'::regproc::regprocedure;
+>  regprocedure
+> --------------
+>  caller1()
+> (1 row)
+>
+> select 'called'::regproc::regprocedure;
+>  regprocedure
+> --------------
+>  called()
+> (1 row)
+>
+> This totaly corresponds to the behaviour your explained : the tst schema
+> is into the path, so it is not returned.
+>
+> Then when the search_path is reset, I get :
+> show search_path;
+>    search_path
+> -----------------
+>  "$user", public
+> (1 row)
+>
+> select 'tst.caller1'::regproc::regprocedure;
+>  regprocedure
+> ---------------
+>  tst.caller1()
+> (1 row)
+>
+> select 'tst.called'::regproc::regprocedure;
+>  regprocedure
+> --------------
+>  tst.called()
+> (1 row)
+>
+>
+> ... which is also expected. But then (and keeping the same search_path),
+> the stack in the called() function looks like exactly as when the
+> search_path is set to tst:
+> select tst.caller1() as stack_in_called;
+> psql:test_stack.sql:39: WARNING:  Beware: the calling function is not the
+> expected one!
+>                      stack_in_called
+> ----------------------------------------------------------
+>  PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+
+>  PL/pgSQL function caller2() line 1 at RETURN            +
+>  PL/pgSQL function caller1() line 1 at RETURN
+> (1 row)
+>
+>
+> To get all schema qualified function calls in the returned stack, the
+> functions must have been *created* without the schema in the path. So it
+> looks to me that what matter is the search_path sometimes at the functions
+> call times and sometimes at the functions creation time. That is the
+> unconsistency I wrote about. But I probably miss something.
+>
+>
+> If you want to track function calls exactly you need own extension based
+> on pl debug api like https://github.com/EnterpriseDB/pldebugger
+>
+> OK. Thanks for the pointer.
+>
+> I will probably change the functions architecture, by moving back the
+> sensitive pieces of code into calling functions and set them SECURITY
+> DEFINER. I am not very fan of having more SECURITY DEFINER functions, but I
+> don't see other not too complex solution.
+>
+> Regards. Philippe.
+>
+If you want to understand to these details, you should to look to source
+code
+
+
+https://github.com/postgres/postgres/tree/master/src/pl/plpgsql/src
+
+
+fn_signature is calculated in compile time - this is when the function is
+first time executed in session. Until the end of session or function
+change, the interpreter uses already compiled AST from cache and doesn't
+try to call the compiler (or more correctly named - parser). So the
+behavior depends on the state when the function was executed the first
+time. It can be more complex when a function uses polymorphic parameters,
+because then there can be cached more instances of one function.
+
+
+The reason why signature is calculated only at compile time is just
+performance. Any access to the system catalog has its own cost, and you
+don't want to execute it again and again when the function is started. It
+cannot be executed at exception time (when it is usually used), because at
+this time it is impossible to access the system catalog.
+
+
+Regards
+
+
+Pavel
+
+
+>
+>
+> Regards
+>
+> Pavel
+>
+>
+>
+>
+>
+>
+
+
+
+### MESSAGE 4
+Le 07/01/2025 à 12:27, Pavel Stehule a écrit :
+> If you want to understand to these details, you should to look to 
+> source code
+>
+> https://github.com/postgres/postgres/tree/master/src/pl/plpgsql/src
+>
+> fn_signature is calculated in compile time - this is when the function 
+> is first time executed in session. Until the end of session or 
+> function change, the interpreter uses already compiled AST from cache 
+> and doesn't try to call the compiler (or more correctly named - 
+> parser). So the behavior depends on the state when the function was 
+> executed the first time. It can be more complex when a function uses 
+> polymorphic parameters, because then there can be cached more 
+> instances of one function.
+>
+> The reason why signature is calculated only at compile time is just 
+> performance. Any access to the system catalog has its own cost, and 
+> you don't want to execute it again and again when the function is 
+> started. It cannot be executed at exception time (when it is usually 
+> used), because at this time it is impossible to access the system catalog.
+>
+>
+> Regards
+>
+> Pavel
+>
+Ah, this clearly explains the strange to me things I noted. Thanks a lot 
+for the explanation.
+
+
+This closes the issue.
+
+
+Regards. Philippe.
+

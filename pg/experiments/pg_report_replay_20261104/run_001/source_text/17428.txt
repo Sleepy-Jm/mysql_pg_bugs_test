@@ -1,0 +1,57 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17428
+Logged by:          Glen Edmonds
+Email address:      glen(dot)edmonds(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   MacOS Monterey 12.2.1
+Description:        
+
+
+For a freshly defined sequence, the following:
+
+
+select last_value from mytable_id_seq
+
+
+should return 0, but returns 1.
+
+
+Reasoning: In every case except the uninitialised case, last_value is the
+same as the current value of the sequence, which is the same as the number
+of rows in the table (assuming no deletions). Logically, if there are no
+rows in the table, last_value should return 0 to be consistent.
+
+
+To reproduce:
+
+
+create table mytable (
+    id serial,
+    other int
+);
+select (select count(*) from mytable), last_value from mytable_id_seq; -- 0,
+1
+insert into mytable (other) values (0);
+select (select count(*) from mytable), last_value from mytable_id_seq; -- 1,
+1
+insert into mytable (other) values (0);
+select (select count(*) from mytable), last_value from mytable_id_seq; -- 2,
+2
+insert into mytable (other) values (0);
+select (select count(*) from mytable), last_value from mytable_id_seq; -- 3,
+3
+-- etc
+
+
+As you can see, only the first row returns different results for the same
+expression.
+
+
+This isn't just theoretical. I was writing some DB units tests and this
+caused my code to break, but was also a surprise.
+IMHO this is a bug.
+
+
+

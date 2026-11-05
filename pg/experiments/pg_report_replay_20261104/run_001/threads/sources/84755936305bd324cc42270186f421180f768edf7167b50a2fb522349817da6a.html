@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17437: time spent in JIT is also attributed to function scan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17437-612ed7f2c30d2ec5%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-03-13T18:10:19" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17437: time spent in JIT is also attributed to function scan" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="2b9a87edcf944a5b3d14c828b2039877">BUG #17437: time spent in JIT is also attributed to function scan</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202203131810">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17437-612ed7f2c30d2ec5@postgresql.org"></a>
+<a name="2b9a87edcf944a5b3d14c828b2039877"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>jeff(dot)janes(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17437: time spent in JIT is also attributed to function scan</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-13 18:10:19</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17437-612ed7f2c30d2ec5%40postgresql.org">17437-612ed7f2c30d2ec5@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17437-612ed7f2c30d2ec5%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17437-612ed7f2c30d2ec5%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17437-612ed7f2c30d2ec5%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17437-612ed7f2c30d2ec5%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17437<br>Logged by:          Jeff Janes<br>Email address:      jeff(dot)janes(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Linux<br>Description:        </p>
+
+<p>While looking into a stack overflow question:<br><a href="https://stackoverflow.com/questions/71456871/new-aggregation-code-performs-worse-despite-using-1000x-less-data-with-postgres/71458545#71458545" rel="nofollow">https://stackoverflow.com/questions/71456871/new-aggregation-code-performs-worse-despite-using-1000x-less-data-with-postgres/71458545#71458545</a></p>
+
+<p>I found a bug where time spent in setting up JIT is also attributed to<br>something else (the function scan over generate_series)</p>
+
+<p>I can replicate the error (although not quite as dramatically--the problem<br>is obvious, but only a small fraction of the overall time unlike in the<br>original problem) using pgbench -i -s20 schema.</p>
+
+<p>explain analyze select aid from generate_series(&#x27;2022-02-25<br>14:00:00&#x27;::timestamp, &#x27;2022-02-25 15:00:00&#x27;::timestamp, interval &#x27;5min&#x27;)<br>f(t) join pgbench_accounts on extract(epoch from (now()-t))*1000 &lt; aid;</p>
+
+<p>                                                                            <br>   QUERY PLAN                                                               <br>                 <br>---------------------------------------------------------------------------------------------------------------------------------------------------------------------------<br> Nested Loop  (cost=0.43..67869958.43 rows=666666667 width=4) (actual<br>time=16825.375..16825.378 rows=0 loops=1)<br>   Join Filter: ((date_part(&#x27;epoch&#x27;::text, (now() - (f.t)::timestamp with<br>time zone)) * &#x27;1000&#x27;::double precision) &lt; (pgbench_accounts.aid)::double<br>precision)<br>   Rows Removed by Join Filter: 26000000<br>   -&gt;  Function Scan on generate_series f  (cost=0.00..10.00 rows=1000<br>width=8) (actual time=1060.859..1060.881 rows=13 loops=1)<br>   -&gt;  Materialize  (cost=0.43..69761.43 rows=2000000 width=4) (actual<br>time=0.009..395.611 rows=2000000 loops=13)<br>         -&gt;  Index Only Scan using pgbench_accounts_pkey on pgbench_accounts<br> (cost=0.43..51948.43 rows=2000000 width=4) (actual time=0.043..447.145<br>rows=2000000 loops=1)<br>               Heap Fetches: 0<br> Planning Time: 0.157 ms<br> JIT:<br>   Functions: 8<br>   Options: Inlining true, Optimization true, Expressions true, Deforming<br>true<br>   Timing: Generation 7.150 ms, Inlining 257.488 ms, Optimization 439.004<br>ms, Emission 352.708 ms, Total 1056.350 ms<br> Execution Time: 17662.690 ms<br>(13 rows)</p>
+
+<p>That it takes a second for generate_series to generate 13 rows is of course<br>ridiculous, and the time is suspiciously similar to the reported JIT time. <br>If I turn off jit, then the time reported in generate_series drops to<br>negligible.  This example is from v12, but I also replicated in v14 and<br>v15dev.  The exact timings differ, but the time attributed to the<br>generate_series is always very close to that attributed to JIT.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

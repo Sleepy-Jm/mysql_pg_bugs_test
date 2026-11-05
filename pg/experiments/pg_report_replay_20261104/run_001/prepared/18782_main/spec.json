@@ -1,0 +1,45 @@
+{
+  "report_id": "18782",
+  "scenario_id": "18782_main",
+  "target_version": "17.2",
+  "source_url": "https://www.postgresql.org/message-id/18782-c189e15f237f27d6%40postgresql.org",
+  "parts": [
+    {
+      "text": "CREATE USER app_user;\nCREATE TABLE no_rls_table\n(\n    id BIGSERIAL PRIMARY KEY,\n    should_not_duplicate uuid\n);\nGRANT SELECT, INSERT, DELETE ON TABLE no_rls_table to app_user;\nGRANT USAGE, SELECT ON SEQUENCE no_rls_table_id_seq to app_user;\nCREATE TABLE rls_table\n(\n    id BIGSERIAL PRIMARY KEY,\n    team_id uuid,\n    should_not_duplicate uuid\n);\nGRANT SELECT, INSERT, DELETE ON TABLE rls_table to app_user;\nGRANT USAGE, SELECT ON SEQUENCE rls_table_id_seq to app_user;\n\n\nCREATE POLICY rls_table_policy\n    ON rls_table\n    TO app_user\n    USING (\n        team_id = current_setting('team.team_id') :: uuid\n        )\n    WITH CHECK (\n        team_id = current_setting('team.team_id') :: uuid\n    );\n\n\nALTER TABLE rls_table ENABLE ROW LEVEL SECURITY;\nCREATE OR REPLACE FUNCTION ensure_not_duplicated_on_rls_table() RETURNS\nTRIGGER AS\n$$\n    BEGIN\n        IF EXISTS (\n            SELECT 1\n            FROM rls_table\n            WHERE rls_table.should_not_duplicate =\nNEW.should_not_duplicate\n        )\n        THEN\n            RAISE EXCEPTION 'This value should not be duplicated between the\ntwo tables';\n        END IF;\n\n\n        RETURN NEW;\n    END;\n$$ LANGUAGE plpgsql;\n\n\nCREATE TRIGGER check_not_duplicated_on_rls_table\n    BEFORE INSERT OR UPDATE ON no_rls_table\n    FOR EACH ROW\nEXECUTE PROCEDURE ensure_not_duplicated_on_rls_table();\nBEGIN;\nSET ROLE app_user;\nSET LOCAL team.team_id = '6a43cea8-4a5c-4989-bae2-ef5a77d92620';\nINSERT INTO no_rls_table (should_not_duplicate) VALUES (\ngen_random_uuid());\nCOMMIT;\nBEGIN;\nSET ROLE app_user;\nINSERT INTO no_rls_table (should_not_duplicate) VALUES (\ngen_random_uuid());\nCOMMIT;\nBEGIN;\nSET ROLE app_user;\nSET LOCAL team.team_id = '6a43cea8-4a5c-4989-bae2-ef5a77d92620';\nINSERT INTO no_rls_table (should_not_duplicate) VALUES (\ngen_random_uuid());\nINSERT INTO no_rls_table (should_not_duplicate) VALUES (\ngen_random_uuid());\nINSERT INTO no_rls_table (should_not_duplicate) VALUES (\ngen_random_uuid());\nINSERT INTO no_rls_table (should_not_duplicate) VALUES (\ngen_random_uuid());\nINSERT INTO no_rls_table (should_not_duplicate) VALUES (\ngen_random_uuid());\nINSERT INTO no_rls_table (should_not_duplicate) VALUES (\ngen_random_uuid());\nCOMMIT;\nBEGIN;\nSET ROLE app_user;\nINSERT INTO no_rls_table (should_not_duplicate) VALUES (\ngen_random_uuid());\nCOMMIT;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18782.txt",
+      "start_offset": 2852,
+      "end_offset": 5907,
+      "start_line": 72,
+      "end_line": 190,
+      "excerpt_sha256": "b61ca025a5b24fadcf82cda68eabc47a6773b7ca21ea492afe32706013960714",
+      "transformations": [
+        "trim outer whitespace",
+        "remove display-wrapped narrative comments and enumerated continuation lines; preserve SQL strings including exception text"
+      ]
+    }
+  ],
+  "mode": "psql",
+  "oracle": {
+    "kind": "output",
+    "pattern": "(?s)ROLLBACK.*INSERT 0 1.*INSERT 0 1\\nCOMMIT\\s*$",
+    "reported_phenomenon": "第2步 UUID 转换报错，但6次成功 INSERT 后第4步无异常",
+    "author_expected_behavior": "作者期望第4步仍然抛 UUID 转换异常"
+  },
+  "config": {},
+  "notes": "同一 psql 会话完成4个阶段；判据同时要求恰好一次来源预期的 UUID 错误。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "additional_oracle_checks": [
+    {
+      "stream": "stderr",
+      "pattern": "ERROR:.*invalid input syntax for type uuid",
+      "count": 1
+    },
+    {
+      "stream": "stderr",
+      "pattern": "ERROR:",
+      "count": 1
+    }
+  ],
+  "spec_sha256": "207224e9b79f0880a7c3dd9e444a514a5eaaa58c96df6b26ff723b6782ddccbd"
+}

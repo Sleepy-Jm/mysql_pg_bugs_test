@@ -1,0 +1,77 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17457
+Logged by:          Christopher Bruhy
+Email address:      cbruhy(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   CentOS 8.4.2105
+Description:        
+
+
+We run a 2 server setup with one (1) Primary streaming updates to one (1)
+Replica.
+On both, the log files on a separate volume with a soft-link from the
+original $PGDATA/log to this new location.
+    $ ln -s /some/other/location/log $PGDATA/log
+
+
+The path itself to the log is the same on both servers, but is not the same
+physical volume.
+
+
+postgresql.conf is modified with:
+    log_directory = '/some/other/location/log'
+
+
+Simulating a failover event, the Primary is stopped and the Replica is
+promoted, no problem.
+Then simulating damage to the Primary's WAL directory, we deleted all WAL
+files.
+
+
+On recovery of the original Primary to become a new Replica, we run:
+    $ ./bin/pg_rewind --target-pgdata $PGDATA --source-server 
+'application_name=standby_1 host=<primaryHostName> port=<primaryPgPort>
+user=<replicatorUser> dbname=postgres sslmode=prefer' --progress  
+
+
+pg_rewind fails with exit code 1 reporting
+    INFO  pg_rewind: connected to server
+    INFO  pg_rewind: servers diverged at WAL location BBD/FF0000A0 on
+timeline 3
+    INFO  pg_rewind: rewinding from last common checkpoint at BBD/FF000028
+on timeline 3
+    INFO  pg_rewind: reading source file list
+    INFO  pg_rewind: reading target file list
+    INFO  pg_rewind: reading WAL in target
+    INFO  pg_rewind: fatal: file "log" is of different type in source and
+target
+
+
+Unfortunately, this foils our attempt to automate failover using
+pg_rewind.
+
+
+Can pg_rewind ignore the fact that this is a soft-link and push forward?
+
+
+Also applies to PostgreSQL 12 & 13.
+
+
+System Info:
+Linux version 4.18.0-305.3.1.el8.x86_64 (mockbuild(at)kbuilder(dot)bsys(dot)centos(dot)org)
+(gcc version 8.4.1 20200928 (Red Hat 8.4.1-1) (GCC))
+Intel Xeon-Gold 5120
+54 GB RAM
+
+
+postgresql14-server-14.2-1PGDG.rhel8.x86_64
+postgresql14-contrib-14.2-1PGDG.rhel8.x86_64
+postgresql14-libs-14.2-1PGDG.rhel8.x86_64
+postgresql14-14.2-1PGDG.rhel8.x86_64
+postgresql14-devel-14.2-1PGDG.rhel8.x86_64
+
+
+

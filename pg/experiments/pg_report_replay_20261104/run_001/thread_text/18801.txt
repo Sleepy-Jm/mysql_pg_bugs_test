@@ -1,0 +1,452 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18801
+Logged by:          Ilya Gladyshev
+Email address:      foxido(at)foxido(dot)dev
+PostgreSQL version: 17.2
+Operating system:   arch linux
+Description:        
+
+
+Hi! I've noticed that for custom aggregation function jit (re)compiles same
+code for every row.
+
+
+Consider this code sample:
+```
+create table test(a float, b float);
+insert into test select a, a % 10 from generate_series(1, 10000) a;
+
+
+create function custom_max(float8, float8) returns float8 as
+$$
+  select case when $1 > $2 then $1 else $2 end
+$$
+language sql;
+
+
+create aggregate custom_agg_max(float8)
+(
+    sfunc = custom_max,
+    stype = float8,
+    initcond = 0
+);
+
+
+set jit = on;
+set jit_above_cost = 0;
+set jit_dump_bitcode = on;
+explain analyze select custom_agg_max(a)  from
+test;
+```
+
+
+This query runs ~8 seconds ([1]) and generates 10001 llvm bytecode files in
+data directory. For comparison, built-in `select max(a) from test` runs
+~50ms and generates 2 bytecode files.
+
+
+And all bytecode files are same, with only difference between them is
+function names [2].
+
+
+What i tested so far:
+— bug disappears if sfunc in aggregate is built-in (for example if
+custom_agg is [3])
+— bug still present if function is marked as pure as possible (parallel
+safe, leakproof, immutable, etc), but even for inpure functions jit 
+shouldn't recompile for each row
+
+
+Also notice that JIT runtime counters are incorrect, actually ~90% time is
+spent inside llvm (FPPass), according to perf.
+
+
+Bug is present on 17.2 and master (9926f85)
+
+
+[1]
+```
+                                                          QUERY PLAN        
+                                                 
+------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=2655.00..2655.01 rows=1 width=8) (actual
+time=8154.805..8154.806 rows=1 loops=1)
+   Buffers: shared hit=69
+   ->  Seq Scan on test  (cost=0.00..155.00 rows=10000 width=8) (actual
+time=0.033..3.371 rows=10000 loops=1)
+         Buffers: shared hit=55
+ Planning:
+   Buffers: shared hit=23
+ Planning Time: 0.240 ms
+ JIT:
+   Functions: 3
+   Options: Inlining false, Optimization false, Expressions true, Deforming
+true
+   Timing: Generation 0.193 ms (Deform 0.056 ms), Inlining 0.000 ms,
+Optimization 0.175 ms, Emission 3.290 ms, Total 3.658 ms
+ Execution Time: 8172.018 ms
+(12 rows)
+```
+
+
+[2]
+```
+< ; ModuleID = '397491.986.bc'
+---
+> ; ModuleID = '397491.611.bc'
+15c15
+< define noundef i64 @evalexpr_986_0(ptr nocapture noundef writeonly %0, ptr
+%1, ptr %2) #0 {
+---
+> define noundef i64 @evalexpr_611_0(ptr nocapture noundef writeonly %0, ptr
+%1, ptr %2) #0 {
+```
+
+
+[3]
+```
+CREATE AGGREGATE custom_agg_avg (float8)
+(
+    sfunc = float8_accum,
+    stype = float8[],
+    finalfunc = float8_avg,
+    initcond = '{0,0,0}'
+);
+```
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form писал(а) 2025-02-10 00:46:
+Hi,
+
+
+  From my point of view, it works as it was asked: you wrote query, that 
+call function
+for every row of the table, this function has 1 select statement, you 
+set GUCs
+to compile every SELECT to jit and store compile result to the file. As 
+result
+you have 10000 files for tables with 10000 rows.
+
+
+  If you write the same function without SELECT statement (change to IF 
+ELSE ENDIF),
+you would not have 10000 files: no query, no jit. If you include 2 
+SELECTs into the function, you
+would have 20000 files.
+
+
+  What is wrong in this behaviour? If you expect to have only 1 
+compilation for
+exactly the same (or similar) queries, it does not exist in the moment. 
+I am
+working with jit cache now, it would help, if SELECT query is stored in 
+plan
+cache (it is used for queries in plpgsql, not SQL language functions).
+
+
+> The following bug has been logged on the website:
+> 
+> Bug reference:      18801
+> Logged by:          Ilya Gladyshev
+> Email address:      foxido(at)foxido(dot)dev
+> PostgreSQL version: 17.2
+> Operating system:   arch linux
+> Description:
+> 
+> Hi! I've noticed that for custom aggregation function jit (re)compiles 
+> same
+> code for every row.
+> 
+> Consider this code sample:
+> ```
+> create table test(a float, b float);
+> insert into test select a, a % 10 from generate_series(1, 10000) a;
+> 
+> create function custom_max(float8, float8) returns float8 as
+> $$
+>   select case when $1 > $2 then $1 else $2 end
+> $$
+> language sql;
+> 
+> create aggregate custom_agg_max(float8)
+> (
+>     sfunc = custom_max,
+>     stype = float8,
+>     initcond = 0
+> );
+> 
+> set jit = on;
+> set jit_above_cost = 0;
+> set jit_dump_bitcode = on;
+> explain analyze select custom_agg_max(a)  from
+> test;
+> ```
+> 
+> This query runs ~8 seconds ([1]) and generates 10001 llvm bytecode 
+> files in
+> data directory. For comparison, built-in `select max(a) from test` runs
+> ~50ms and generates 2 bytecode files.
+> 
+> And all bytecode files are same, with only difference between them is
+> function names [2].
+> 
+> What i tested so far:
+> — bug disappears if sfunc in aggregate is built-in (for example if
+> custom_agg is [3])
+> — bug still present if function is marked as pure as possible (parallel
+> safe, leakproof, immutable, etc), but even for inpure functions jit
+> shouldn't recompile for each row
+> 
+> Also notice that JIT runtime counters are incorrect, actually ~90% time 
+> is
+> spent inside llvm (FPPass), according to perf.
+> 
+> Bug is present on 17.2 and master (9926f85)
+> 
+> [1]
+> ```
+>                                                           QUERY PLAN
+> 
+> ------------------------------------------------------------------------------------------------------------------------------
+>  Aggregate  (cost=2655.00..2655.01 rows=1 width=8) (actual
+> time=8154.805..8154.806 rows=1 loops=1)
+>    Buffers: shared hit=69
+>    ->  Seq Scan on test  (cost=0.00..155.00 rows=10000 width=8) (actual
+> time=0.033..3.371 rows=10000 loops=1)
+>          Buffers: shared hit=55
+>  Planning:
+>    Buffers: shared hit=23
+>  Planning Time: 0.240 ms
+>  JIT:
+>    Functions: 3
+>    Options: Inlining false, Optimization false, Expressions true, 
+> Deforming
+> true
+>    Timing: Generation 0.193 ms (Deform 0.056 ms), Inlining 0.000 ms,
+> Optimization 0.175 ms, Emission 3.290 ms, Total 3.658 ms
+>  Execution Time: 8172.018 ms
+> (12 rows)
+> ```
+> 
+> [2]
+> ```
+> < ; ModuleID = '397491.986.bc'
+> ---
+>> ; ModuleID = '397491.611.bc'
+> 15c15
+> < define noundef i64 @evalexpr_986_0(ptr nocapture noundef writeonly 
+> %0, ptr
+> %1, ptr %2) #0 {
+> ---
+>> define noundef i64 @evalexpr_611_0(ptr nocapture noundef writeonly %0, 
+>> ptr
+> %1, ptr %2) #0 {
+> ```
+> 
+> [3]
+> ```
+> CREATE AGGREGATE custom_agg_avg (float8)
+> (
+>     sfunc = float8_accum,
+>     stype = float8[],
+>     finalfunc = float8_avg,
+>     initcond = '{0,0,0}'
+> );
+> ```
+
+
+-- 
+Best regards,
+
+
+Vladlen Popolitov.
+
+
+
+
+
+### MESSAGE 2
+10.02.2025 11:25, Vladlen Popolitov wrote:
+> PG Bug reporting form писал(а) 2025-02-10 00:46:
+> Hi,
+> 
+>   From my point of view, it works as it was asked: you wrote query, that 
+> call function
+> for every row of the table, this function has 1 select statement, you 
+> set GUCs
+> to compile every SELECT to jit and store compile result to the file. As 
+> result
+> you have 10000 files for tables with 10000 rows.
+> 
+>   If you write the same function without SELECT statement (change to IF 
+> ELSE ENDIF),
+> you would not have 10000 files: no query, no jit.
+
+
+'sql' function can not have raw IF ELSE ENDIF.
+'plpgsql' can.
+
+
+> If you include 2 
+> SELECTs into the function, you
+> would have 20000 files.
+
+
+'sql' function can not have 2 SELECTs.
+'plpgsql' fujnction have.
+
+
+>   What is wrong in this behaviour? If you expect to have only 1 
+> compilation for
+> exactly the same (or similar) queries, it does not exist in the moment. 
+> I am
+> working with jit cache now, it would help, if SELECT query is stored in 
+> plan
+> cache (it is used for queries in plpgsql, not SQL language functions).
+
+
+'sql' functions are typically inlined into query, so they are jit compiled
+as part of query.
+
+
+But looks like it is not a case for functions called as aggregate.
+It is strictly not expected.
+
+
+Recompilling aggregate function for every call is dumb and very slow (since
+JIT compilation is very slow).
+
+
+Either JIT compilation should be disabled for aggregate 'sql' functions, or
+they should be prepared to not recompile on every row.
+
+
+I believe, they are not only JIT compilled on every row, but also analyzed
+and planned, aren't they? If so, then preparing is single right option here.
+
+
+>> The following bug has been logged on the website:
+>>
+>> Bug reference:      18801
+>> Logged by:          Ilya Gladyshev
+>> Email address:      foxido(at)foxido(dot)dev
+>> PostgreSQL version: 17.2
+>> Operating system:   arch linux
+>> Description:
+>>
+>> Hi! I've noticed that for custom aggregation function jit (re)compiles 
+>> same
+>> code for every row.
+>>
+>> Consider this code sample:
+>> ```
+>> create table test(a float, b float);
+>> insert into test select a, a % 10 from generate_series(1, 10000) a;
+>>
+>> create function custom_max(float8, float8) returns float8 as
+>> $$
+>>   select case when $1 > $2 then $1 else $2 end
+>> $$
+>> language sql;
+>>
+>> create aggregate custom_agg_max(float8)
+>> (
+>>     sfunc = custom_max,
+>>     stype = float8,
+>>     initcond = 0
+>> );
+>>
+>> set jit = on;
+>> set jit_above_cost = 0;
+>> set jit_dump_bitcode = on;
+>> explain analyze select custom_agg_max(a)  from
+>> test;
+>> ```
+>>
+>> This query runs ~8 seconds ([1]) and generates 10001 llvm bytecode 
+>> files in
+>> data directory. For comparison, built-in `select max(a) from test` runs
+>> ~50ms and generates 2 bytecode files.
+>>
+>> And all bytecode files are same, with only difference between them is
+>> function names [2].
+>>
+>> What i tested so far:
+>> — bug disappears if sfunc in aggregate is built-in (for example if
+>> custom_agg is [3])
+>> — bug still present if function is marked as pure as possible (parallel
+>> safe, leakproof, immutable, etc), but even for inpure functions jit
+>> shouldn't recompile for each row
+>>
+>> Also notice that JIT runtime counters are incorrect, actually ~90% time 
+>> is
+>> spent inside llvm (FPPass), according to perf.
+>>
+>> Bug is present on 17.2 and master (9926f85)
+>>
+>> [1]
+>> ```
+>>                                                           QUERY PLAN
+>>
+>> ------------------------------------------------------------------------------------------------------------------------------
+>>  Aggregate  (cost=2655.00..2655.01 rows=1 width=8) (actual
+>> time=8154.805..8154.806 rows=1 loops=1)
+>>    Buffers: shared hit=69
+>>    ->  Seq Scan on test  (cost=0.00..155.00 rows=10000 width=8) (actual
+>> time=0.033..3.371 rows=10000 loops=1)
+>>          Buffers: shared hit=55
+>>  Planning:
+>>    Buffers: shared hit=23
+>>  Planning Time: 0.240 ms
+>>  JIT:
+>>    Functions: 3
+>>    Options: Inlining false, Optimization false, Expressions true, 
+>> Deforming
+>> true
+>>    Timing: Generation 0.193 ms (Deform 0.056 ms), Inlining 0.000 ms,
+>> Optimization 0.175 ms, Emission 3.290 ms, Total 3.658 ms
+>>  Execution Time: 8172.018 ms
+>> (12 rows)
+>> ```
+>>
+>> [2]
+>> ```
+>> < ; ModuleID = '397491.986.bc'
+>> ---
+>>> ; ModuleID = '397491.611.bc'
+>> 15c15
+>> < define noundef i64 @evalexpr_986_0(ptr nocapture noundef writeonly 
+>> %0, ptr
+>> %1, ptr %2) #0 {
+>> ---
+>>> define noundef i64 @evalexpr_611_0(ptr nocapture noundef writeonly %0, 
+>>> ptr
+>> %1, ptr %2) #0 {
+>> ```
+>>
+>> [3]
+>> ```
+>> CREATE AGGREGATE custom_agg_avg (float8)
+>> (
+>>     sfunc = float8_accum,
+>>     stype = float8[],
+>>     finalfunc = float8_avg,
+>>     initcond = '{0,0,0}'
+>> );
+>> ```
+> 
+
+
+-- 
+regards
+Yura Sokolov aka funny-falcon
+
+
+

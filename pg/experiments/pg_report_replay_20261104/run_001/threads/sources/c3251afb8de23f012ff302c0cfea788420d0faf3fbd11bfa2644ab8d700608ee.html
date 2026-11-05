@@ -1,0 +1,1367 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17462: Invalid memory access in heapam_tuple_lock</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17462-9c98a0f00df9bd36%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-04-11T07:46:41" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17462: Invalid memory access in heapam_tuple_lock" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="6b19f927144105e64bd7075447da4052">BUG #17462: Invalid memory access in heapam_tuple_lock</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202204110746">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17462-9c98a0f00df9bd36@postgresql.org"></a>
+<a name="6b19f927144105e64bd7075447da4052"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 07:46:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17462-9c98a0f00df9bd36%40postgresql.org">17462-9c98a0f00df9bd36@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17462-9c98a0f00df9bd36%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17462-9c98a0f00df9bd36%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17462-9c98a0f00df9bd36%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17462-9c98a0f00df9bd36%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17462<br>Logged by:          Daniil Anisimov<br>Email address:      anisimow(dot)d(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Ubuntu 20.04.4 LTS<br>Description:        </p>
+
+<p>When running parallel queries using pgbench with valgrind-enabled server:<br>pgbench -i -s 1<br>pgbench -t 1000 -c 10 -j 10</p>
+
+<p>I get:<br>==00:00:03:09.642 456530== Invalid read of size 2<br>==00:00:03:09.642 456530==    at 0x23820E: heapam_tuple_lock<br>(heapam_handler.c:509)<br>==00:00:03:09.642 456530==    by 0x41B07F: table_tuple_lock<br>(tableam.h:1554)<br>==00:00:03:09.642 456530==    by 0x41B07F: ExecUpdate<br>(nodeModifyTable.c:1851)<br>==00:00:03:09.642 456530==    by 0x41C7DA: ExecModifyTable<br>(nodeModifyTable.c:2594)<br>==00:00:03:09.642 456530==    by 0x3EF0AE: ExecProcNodeFirst<br>(execProcnode.c:463)<br>==00:00:03:09.642 456530==    by 0x3E7278: ExecProcNode (executor.h:257)<br>==00:00:03:09.642 456530==    by 0x3E7278: ExecutePlan (execMain.c:1551)<br>==00:00:03:09.642 456530==    by 0x3E7E90: standard_ExecutorRun<br>(execMain.c:361)<br>==00:00:03:09.642 456530==    by 0x3E7F5E: ExecutorRun (execMain.c:305)<br>==00:00:03:09.642 456530==    by 0x5A7CAD: ProcessQuery (pquery.c:160)<br>==00:00:03:09.642 456530==    by 0x5A888B: PortalRunMulti (pquery.c:1274)<br>==00:00:03:09.642 456530==    by 0x5A8E3C: PortalRun (pquery.c:788)<br>==00:00:03:09.642 456530==    by 0x5A5029: exec_simple_query<br>(postgres.c:1214)<br>==00:00:03:09.642 456530==    by 0x5A6FEF: PostgresMain (postgres.c:4496)<br>==00:00:03:09.642 456530==  Address 0x6ea7f74 is in a rw- anonymous<br>segment<br>==00:00:03:09.642 456530==<br>{<br>   &lt;insert_a_suppression_name_here&gt;<br>   Memcheck:Addr2<br>   fun:heapam_tuple_lock<br>   fun:table_tuple_lock<br>   fun:ExecUpdate<br>   fun:ExecModifyTable<br>   fun:ExecProcNodeFirst<br>   fun:ExecProcNode<br>   fun:ExecutePlan<br>   fun:standard_ExecutorRun<br>   fun:ExecutorRun<br>   fun:ProcessQuery<br>   fun:PortalRunMulti<br>   fun:PortalRun<br>   fun:exec_simple_query<br>   fun:PostgresMain<br>}<br>==00:00:03:09.642 456530==<br>==00:00:03:09.642 456530== Exit program on first error<br>(--exit-on-first-error=yes)</p>
+
+<p>This starts happening at commit 1e0dfd166b3fa7fc79e4fad73b6fae056bab598a</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="286748.1649692519@sss.pgh.pa.us"></a>
+<a name="c577e04f24c2be430576eeab1f68e270"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 15:55:19</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/286748.1649692519%40sss.pgh.pa.us">286748.1649692519@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/286748.1649692519%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/286748.1649692519%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/286748.1649692519%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/286748.1649692519%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; When running parallel queries using pgbench with valgrind-enabled server:<br>&gt; pgbench -i -s 1<br>&gt; pgbench -t 1000 -c 10 -j 10<br>&gt; I get:<br>&gt; ==00:00:03:09.642 456530== Invalid read of size 2</p>
+
+<p>Reproduced here.  It&#x27;s surprising that nobody noticed this before,<br>because AFAICS the bug is pretty old: it dates to somebody foolishly<br>deciding that heap_fetch didn&#x27;t need its keep_buf argument, which<br>evidently happened in v12 (didn&#x27;t track down the exact commit yet).<br>As you say, valgrind would not have caught this problem before<br>1e0dfd166, but that&#x27;s not so new anymore either.</p>
+
+<p>In principle, this is showing an actual bug, because once we drop<br>the buffer pin somebody could replace the page before we get done<br>examining the tuple.  I&#x27;m not sure what the odds are of that happening<br>in the field, but they&#x27;re probably mighty low because a just-accessed<br>buffer should not be high priority for replacement.</p>
+
+<p>My inclination for a fix is to revert the removal of the keep_buf argument<br>and go back to having heapam_tuple_lock and other callers release the<br>buffer after they are done.  However, that&#x27;s problematic in released<br>branches, because it seems likely that there are outside callers of<br>heap_fetch.  Can we get away with only fixing this in HEAD?</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="288544.1649693991@sss.pgh.pa.us"></a>
+<a name="638d7c3385158c19628f93dff0b7ea87"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 16:19:51</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/288544.1649693991%40sss.pgh.pa.us">288544.1649693991@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/288544.1649693991%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/288544.1649693991%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/288544.1649693991%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/288544.1649693991%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I wrote:<br>&gt; Reproduced here.  It&#x27;s surprising that nobody noticed this before,<br>&gt; because AFAICS the bug is pretty old: it dates to somebody foolishly<br>&gt; deciding that heap_fetch didn&#x27;t need its keep_buf argument, which<br>&gt; evidently happened in v12 (didn&#x27;t track down the exact commit yet).</p>
+
+<p>The blame falls on Andres&#x27; commit 5db6df0c0.  There is no commentary<br>there justifying this change, and I judge the amount of thought that<br>went into it by noting that that commit removed the argument without<br>removing the header comment explaining it.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAH2-Wzmsm4sBXM+bdG_U48sWq8R5XY=fF=ZqnL5vKeqDK4X0bA@mail.gmail.com"></a>
+<a name="a083f278aec0e8f9fdc7948a5725899b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 16:25:48</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAH2-Wzmsm4sBXM%2BbdG_U48sWq8R5XY%3DfF%3DZqnL5vKeqDK4X0bA%40mail.gmail.com">CAH2-Wzmsm4sBXM+bdG_U48sWq8R5XY=fF=ZqnL5vKeqDK4X0bA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAH2-Wzmsm4sBXM%2BbdG_U48sWq8R5XY%3DfF%3DZqnL5vKeqDK4X0bA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAH2-Wzmsm4sBXM%2BbdG_U48sWq8R5XY%3DfF%3DZqnL5vKeqDK4X0bA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAH2-Wzmsm4sBXM%2BbdG_U48sWq8R5XY%3DfF%3DZqnL5vKeqDK4X0bA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAH2-Wzmsm4sBXM%2BbdG_U48sWq8R5XY%3DfF%3DZqnL5vKeqDK4X0bA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Apr 11, 2022 at 8:55 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; In principle, this is showing an actual bug, because once we drop<br>&gt; the buffer pin somebody could replace the page before we get done<br>&gt; examining the tuple.  I&#x27;m not sure what the odds are of that happening<br>&gt; in the field, but they&#x27;re probably mighty low because a just-accessed<br>&gt; buffer should not be high priority for replacement.</p>
+
+<p>I imagine that the greater risk comes from concurrent opportunistic<br>pruning. The other backend&#x27;s page defragmentation step (from pruning)<br>would render our backend&#x27;s HeapTuple pointer invalid. Presumably it<br>would just look like an invalid/non-matching xmin in our backend, at<br>the point of control flow that Valgrind complains about<br>(heapam_handler.c:509).</p>
+
+<p>-- <br>Peter Geoghegan</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="290412.1649694952@sss.pgh.pa.us"></a>
+<a name="2fcd236c4353eeece163f24221d00afa"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 16:35:52</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/290412.1649694952%40sss.pgh.pa.us">290412.1649694952@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/290412.1649694952%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/290412.1649694952%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/290412.1649694952%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/290412.1649694952%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt; writes:<br>&gt; On Mon, Apr 11, 2022 at 8:55 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; In principle, this is showing an actual bug, because once we drop<br>&gt;&gt; the buffer pin somebody could replace the page before we get done<br>&gt;&gt; examining the tuple.  I&#x27;m not sure what the odds are of that happening<br>&gt;&gt; in the field, but they&#x27;re probably mighty low because a just-accessed<br>&gt;&gt; buffer should not be high priority for replacement.</p>
+
+<p>&gt; I imagine that the greater risk comes from concurrent opportunistic<br>&gt; pruning.</p>
+
+<p>Good point.  I&#x27;m afraid that means we need a back-branch fix, which<br>I guess requires an alternate entry point.</p>
+
+<p>&gt; The other backend&#x27;s page defragmentation step (from pruning)<br>&gt; would render our backend&#x27;s HeapTuple pointer invalid. Presumably it<br>&gt; would just look like an invalid/non-matching xmin in our backend, at<br>&gt; the point of control flow that Valgrind complains about<br>&gt; (heapam_handler.c:509).</p>
+
+<p>Right, but there are other accesses below, and in any case match<br>failure isn&#x27;t necessarily the right thing.  What that code is<br>trying to do is chain up to the latest version of the tuple, and<br>the likely end result would be to incorrectly conclude that there<br>isn&#x27;t one, resulting in failure to update a tuple that should<br>have been updated.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAH2-Wzmxcidt0u4_7pfXZ_ExEOKa_Epb-b3vAcM_D899WAO2rA@mail.gmail.com"></a>
+<a name="2725ae81924c3be79e54df1b17f01bdc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 16:48:51</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAH2-Wzmxcidt0u4_7pfXZ_ExEOKa_Epb-b3vAcM_D899WAO2rA%40mail.gmail.com">CAH2-Wzmxcidt0u4_7pfXZ_ExEOKa_Epb-b3vAcM_D899WAO2rA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAH2-Wzmxcidt0u4_7pfXZ_ExEOKa_Epb-b3vAcM_D899WAO2rA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAH2-Wzmxcidt0u4_7pfXZ_ExEOKa_Epb-b3vAcM_D899WAO2rA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAH2-Wzmxcidt0u4_7pfXZ_ExEOKa_Epb-b3vAcM_D899WAO2rA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAH2-Wzmxcidt0u4_7pfXZ_ExEOKa_Epb-b3vAcM_D899WAO2rA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Apr 11, 2022 at 9:35 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt; The other backend&#x27;s page defragmentation step (from pruning)<br>&gt; &gt; would render our backend&#x27;s HeapTuple pointer invalid. Presumably it<br>&gt; &gt; would just look like an invalid/non-matching xmin in our backend, at<br>&gt; &gt; the point of control flow that Valgrind complains about<br>&gt; &gt; (heapam_handler.c:509).<br>&gt;<br>&gt; Right, but there are other accesses below, and in any case match<br>&gt; failure isn&#x27;t necessarily the right thing.</p>
+
+<p>That&#x27;s what I meant -- it very likely would have been a match if the<br>same scenario played out, but without any concurrent pruning. With a<br>concurrent prune, xmin won&#x27;t ever be a match (barring a<br>near-miraculous coincidence). That behavior is definitely wrong, but<br>also quite subtle (compared to what might happen if we got past the<br>xmin/xmax check). I think that that explains why it took this long to<br>notice the bug.</p>
+
+<p>-- <br>Peter Geoghegan</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220411173417.ocwjn5xrkqqjiysl@alap3.anarazel.de"></a>
+<a name="9ac896b9e5089ff1cef17725c3fbfc3d"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 17:34:17</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220411173417.ocwjn5xrkqqjiysl%40alap3.anarazel.de">20220411173417.ocwjn5xrkqqjiysl@alap3.anarazel.de</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220411173417.ocwjn5xrkqqjiysl%40alap3.anarazel.de">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220411173417.ocwjn5xrkqqjiysl%40alap3.anarazel.de" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220411173417.ocwjn5xrkqqjiysl%40alap3.anarazel.de" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220411173417.ocwjn5xrkqqjiysl%40alap3.anarazel.de" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On 2022-04-11 12:19:51 -0400, Tom Lane wrote:<br>&gt; I wrote:<br>&gt; &gt; Reproduced here.  It&#x27;s surprising that nobody noticed this before,<br>&gt; &gt; because AFAICS the bug is pretty old: it dates to somebody foolishly<br>&gt; &gt; deciding that heap_fetch didn&#x27;t need its keep_buf argument, which<br>&gt; &gt; evidently happened in v12 (didn&#x27;t track down the exact commit yet).<br>&gt; <br>&gt; The blame falls on Andres&#x27; commit 5db6df0c0.  There is no commentary<br>&gt; there justifying this change, and I judge the amount of thought that<br>&gt; went into it by noting that that commit removed the argument without<br>&gt; removing the header comment explaining it.</p>
+
+<p>I&#x27;ve only just had a first coffee, so I&#x27;m a bit foggy still. There were a few<br>different attempts at making tuple locking fit into some form abstraction, not<br>making it easy to remember...</p>
+
+<p>Hm. It looks like the problem only can happen when the tuple is filtered out<br>by the snapshot. We don&#x27;t need the xmin in line 509 from the tuple, we have it<br>in SnapshotDirty. The problem is we need t_ctid too.</p>
+
+<p>Ah. I dimly recall that for a while the patchset had a ctid in SnapshotData<br>too, for SnapshotDirty purposes. That might be the origin of the problem.</p>
+
+<p>One way to address it in a way not requiring an API break would be to pass<br>SnapshotAny to heap_fetch and then do an explicit visibility check &quot;ourselves&quot;<br>in heapam_lock_tuple().</p>
+
+<p>Greetings,</p>
+
+<p>Andres Freund</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="352840.1649699498@sss.pgh.pa.us"></a>
+<a name="bfba4f3f2f2d109f2f833958a7fef96d"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 17:51:38</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/352840.1649699498%40sss.pgh.pa.us">352840.1649699498@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/352840.1649699498%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/352840.1649699498%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/352840.1649699498%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/352840.1649699498%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; One way to address it in a way not requiring an API break would be to pass<br>&gt; SnapshotAny to heap_fetch and then do an explicit visibility check &quot;ourselves&quot;<br>&gt; in heapam_lock_tuple().</p>
+
+<p>I&#x27;m not really interested in fixing this without an API break (going<br>forward anyway), because as it stands heap_fetch is just an invitation<br>to make this same mistake again.  It should never return a tuple pointer<br>if we don&#x27;t keep the pin on the associated buffer.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220411190042.o5ebdhc5qsejleff@alap3.anarazel.de"></a>
+<a name="1c4c30a814c39b0ecd04a5f370195dc3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 19:00:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220411190042.o5ebdhc5qsejleff%40alap3.anarazel.de">20220411190042.o5ebdhc5qsejleff@alap3.anarazel.de</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220411190042.o5ebdhc5qsejleff%40alap3.anarazel.de">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220411190042.o5ebdhc5qsejleff%40alap3.anarazel.de" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220411190042.o5ebdhc5qsejleff%40alap3.anarazel.de" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220411190042.o5ebdhc5qsejleff%40alap3.anarazel.de" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On 2022-04-11 13:51:38 -0400, Tom Lane wrote:<br>&gt; Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; &gt; One way to address it in a way not requiring an API break would be to pass<br>&gt; &gt; SnapshotAny to heap_fetch and then do an explicit visibility check &quot;ourselves&quot;<br>&gt; &gt; in heapam_lock_tuple().<br>&gt; <br>&gt; I&#x27;m not really interested in fixing this without an API break (going<br>&gt; forward anyway), because as it stands heap_fetch is just an invitation<br>&gt; to make this same mistake again.</p>
+
+<p>My suggestion was about the back branch situation... But it seems viable going<br>forward as well, if we we reset tuple-&gt;t_data in the !valid case. As you say:</p>
+
+<p>&gt; It should never return a tuple pointer if we don&#x27;t keep the pin on the<br>&gt; associated buffer.</p>
+
+<p>Agreed. If tuple-&gt;t_data were reset in the !valid case, not just the<br>!ItemIdIsNormal() case, bug would have been noticed immediately (isolation<br>tests do fail, I checked).</p>
+
+<p>Another approach is to extend the SatisfiesDirty approach and store the tid of<br>the next tuple version in addition the xmin/xmax we already store. And have<br>heap_fetch() always set t_data to NULL if the snapshot check fails.</p>
+
+<p>Greetings,</p>
+
+<p>Andres Freund</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="496872.1649705112@sss.pgh.pa.us"></a>
+<a name="09c407c1022b2acadc8371281c86933c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 19:25:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/496872.1649705112%40sss.pgh.pa.us">496872.1649705112@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/496872.1649705112%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/496872.1649705112%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/496872.1649705112%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/496872.1649705112%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; Another approach is to extend the SatisfiesDirty approach and store the tid of<br>&gt; the next tuple version in addition the xmin/xmax we already store. And have<br>&gt; heap_fetch() always set t_data to NULL if the snapshot check fails.</p>
+
+<p>That seems like a fairly clean idea, although I think we can&#x27;t use it<br>in the back branches without an ABI break.  We&#x27;re not going to find a<br>TID&#x27;s worth of padding space in struct SnapshotData.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220411194051.sovwssdawxoh4m5h@alap3.anarazel.de"></a>
+<a name="6d30081e04a18bd6510f0a02a7e20747"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 19:40:51</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220411194051.sovwssdawxoh4m5h%40alap3.anarazel.de">20220411194051.sovwssdawxoh4m5h@alap3.anarazel.de</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220411194051.sovwssdawxoh4m5h%40alap3.anarazel.de">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220411194051.sovwssdawxoh4m5h%40alap3.anarazel.de" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220411194051.sovwssdawxoh4m5h%40alap3.anarazel.de" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220411194051.sovwssdawxoh4m5h%40alap3.anarazel.de" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On 2022-04-11 15:25:12 -0400, Tom Lane wrote:<br>&gt; Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; &gt; Another approach is to extend the SatisfiesDirty approach and store the tid of<br>&gt; &gt; the next tuple version in addition the xmin/xmax we already store. And have<br>&gt; &gt; heap_fetch() always set t_data to NULL if the snapshot check fails.<br>&gt;<br>&gt; That seems like a fairly clean idea, although I think we can&#x27;t use it<br>&gt; in the back branches without an ABI break.  We&#x27;re not going to find a<br>&gt; TID&#x27;s worth of padding space in struct SnapshotData.</p>
+
+<p>Right. There&#x27;s enough space on x86-64, just not contiuous. But not on 32bit<br>x86, so even if we were willing to live with the ugliness of splitting<br>ItemPointerData across fields temporarily (which I don&#x27;t think we would)...</p>
+
+<p>I guess we could put members of SnapshotData into a union with ItemPointerData<br>that aren&#x27;t used by InitDirtySnapshot()/HeapTupleSatisfiesDirty().</p>
+
+<p>E.g. ph_node - which fairly fundamentally won&#x27;t be used by dirty snapshots,<br>and seems unlikely to be used by any extensions? And even if, it&#x27;d cause a<br>compile-time breakage for such extensions, not a silent ABI breakage...</p>
+
+<p>Greetings,</p>
+
+<p>Andres Freund</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="530434.1649707170@sss.pgh.pa.us"></a>
+<a name="c379a937f017e8adc5edd14a4214cd35"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 19:59:30</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/530434.1649707170%40sss.pgh.pa.us">530434.1649707170@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/530434.1649707170%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/530434.1649707170%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/530434.1649707170%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/530434.1649707170%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; On 2022-04-11 15:25:12 -0400, Tom Lane wrote:<br>&gt;&gt; That seems like a fairly clean idea, although I think we can&#x27;t use it<br>&gt;&gt; in the back branches without an ABI break.  We&#x27;re not going to find a<br>&gt;&gt; TID&#x27;s worth of padding space in struct SnapshotData.</p>
+
+<p>&gt; I guess we could put members of SnapshotData into a union with ItemPointerData<br>&gt; that aren&#x27;t used by InitDirtySnapshot()/HeapTupleSatisfiesDirty().</p>
+
+<p>Yeah, that could work.  You want to draft a patch, or shall I?</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220411203203.avlrzwy526j4yfas@alap3.anarazel.de"></a>
+<a name="a0cc13ba2e3a95b3675fc77773490d6e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 20:32:03</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220411203203.avlrzwy526j4yfas%40alap3.anarazel.de">20220411203203.avlrzwy526j4yfas@alap3.anarazel.de</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220411203203.avlrzwy526j4yfas%40alap3.anarazel.de">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220411203203.avlrzwy526j4yfas%40alap3.anarazel.de" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220411203203.avlrzwy526j4yfas%40alap3.anarazel.de" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220411203203.avlrzwy526j4yfas%40alap3.anarazel.de" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On 2022-04-11 15:59:30 -0400, Tom Lane wrote:<br>&gt; Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; &gt; On 2022-04-11 15:25:12 -0400, Tom Lane wrote:<br>&gt; &gt;&gt; That seems like a fairly clean idea, although I think we can&#x27;t use it<br>&gt; &gt;&gt; in the back branches without an ABI break.  We&#x27;re not going to find a<br>&gt; &gt;&gt; TID&#x27;s worth of padding space in struct SnapshotData.<br>&gt; <br>&gt; &gt; I guess we could put members of SnapshotData into a union with ItemPointerData<br>&gt; &gt; that aren&#x27;t used by InitDirtySnapshot()/HeapTupleSatisfiesDirty().<br>&gt; <br>&gt; Yeah, that could work.  You want to draft a patch, or shall I?</p>
+
+<p>If you would, I&#x27;d appreciate it.  I&#x27;ve to finish a talk I&#x27;m giving tomorrow,<br>and I want to fix the recovery conflict bug - it&#x27;s triggering the bug like<br>half the time on CI...</p>
+
+<p>Greetings,</p>
+
+<p>Andres Freund</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="708918.1649718451@sss.pgh.pa.us"></a>
+<a name="7a4d296940999f77eb7846bd57775fc3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 23:07:31</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/708918.1649718451%40sss.pgh.pa.us">708918.1649718451@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/708918.1649718451%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/708918.1649718451%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/708918.1649718451%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/708918.1649718451%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; On 2022-04-11 15:59:30 -0400, Tom Lane wrote:<br>&gt;&gt; Yeah, that could work.  You want to draft a patch, or shall I?</p>
+
+<p>&gt; If you would, I&#x27;d appreciate it.</p>
+
+<p>I abandoned that idea after noticing that heapam_tuple_lock needs<br>not only the tuple&#x27;s xmin and ctid, but usually also the result of<br>HeapTupleHeaderGetUpdateXid, which is expensive (it can require a<br>multixact lookup).  I do not think it&#x27;s a great idea to expect<br>HeapTupleSatisfiesDirty to compute that.  So the attached patch goes back<br>to my original idea of reverting the removal of the keep_buf argument.<br>This worked out pretty cleanly, with minimal code changes.  In HEAD,<br>we might want to avoid the extra heap_fetch_extended layer by<br>adding that argument back to heap_fetch, but having the extra layer<br>avoids an API break for the back branches.</p>
+
+<p>As written here, even though there&#x27;s no obvious API break, there is<br>a subtle change: heap_fetch will now return tuple-&gt;t_data = NULL after<br>a snapshot failure.  I&#x27;m of two minds whether to back-patch that part<br>(not doing so would require more changes in heapam_tuple_lock, though).<br>I&#x27;m concerned that some caller might be using that legitimately, say<br>by testing for pointer nullness without actually dereferencing it.<br>And even if they are unsafely dereferencing it, I&#x27;m not sure people<br>would thank us for converting a subtle low-probability failure into a<br>subtle higher-probability one.  Thoughts?</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/133213/fix-unsafe-buffer-reference-after-heap_fetch-wip.patch">fix-unsafe-buffer-reference-after-heap_fetch-wip.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>5.0 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="995052.1649799605@sss.pgh.pa.us"></a>
+<a name="7c7223b9dfc1e66b8defa8e77919ba98"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-12 21:40:05</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/995052.1649799605%40sss.pgh.pa.us">995052.1649799605@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/995052.1649799605%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/995052.1649799605%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/995052.1649799605%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/995052.1649799605%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I wrote:<br>&gt; As written here, even though there&#x27;s no obvious API break, there is<br>&gt; a subtle change: heap_fetch will now return tuple-&gt;t_data = NULL after<br>&gt; a snapshot failure.  I&#x27;m of two minds whether to back-patch that part<br>&gt; (not doing so would require more changes in heapam_tuple_lock, though).</p>
+
+<p>After further thought I think we shouldn&#x27;t back-patch that part: it<br>could easily break code that&#x27;s functionally correct today, and there<br>isn&#x27;t any case that it makes better without caller-code changes.</p>
+
+<p>(I&#x27;m not sure what made me think it&#x27;d affect heapam_tuple_lock; that<br>function only cares about the behavior with keep_buf = true.)</p>
+
+<p>Hence, I end up with two different patches for HEAD and the back branches.<br>In HEAD, we explicitly break heap_fetch compatibility by adding a new<br>argument, and we can make the commit message note the more subtle change<br>too.  In the back branches, the behavior of heap_fetch is unchanged<br>and heapam_tuple_lock has to use heap_fetch_extended.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/133261/heap_fetch-fix-HEAD.patch">heap_fetch-fix-HEAD.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>5.5 KB</td>
+        </tr>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/133262/heap_fetch-fix-v14.patch">heap_fetch-fix-v14.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>5.2 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

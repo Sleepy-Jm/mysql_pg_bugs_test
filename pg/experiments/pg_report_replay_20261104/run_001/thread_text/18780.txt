@@ -1,0 +1,401 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18780
+Logged by:          Viktr
+Email address:      vik(at)notexi(dot)st
+PostgreSQL version: 17.2
+Operating system:   Linux d2c635331de7 6.10.14-linuxkit #1 SMP PREEMPT
+Description:        
+
+
+Hi there,
+
+
+Actual discussion is here: https://github.com/pgjdbc/pgjdbc/issues/3482
+In brief: I do understand that "select 1 as one, 2 as two, 3 as three" might
+have lack of type info. But I suppose, in case these values are used in the
+assignment, the type could be taken from the corresponding column type. Like
+for "insert into sometable(one, two, three) select 1 as one, 2 as two, 3 as
+three" it is obvious that types should match.
+
+
+
+
+
+### MESSAGE 1
+On Sunday, January 19, 2025, PG Bug reporting form <noreply(at)postgresql(dot)org>
+wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      18780
+> Logged by:          Viktr
+> Email address:      vik(at)notexi(dot)st
+> PostgreSQL version: 17.2
+> Operating system:   Linux d2c635331de7 6.10.14-linuxkit #1 SMP PREEMPT
+> Description:
+>
+> Hi there,
+>
+> Actual discussion is here: https://github.com/pgjdbc/pgjdbc/issues/3482
+> In brief: I do understand that "select 1 as one, 2 as two, 3 as three"
+> might
+> have lack of type info. But I suppose, in case these values are used in the
+> assignment, the type could be taken from the corresponding column type.
+> Like
+> for "insert into sometable(one, two, three) select 1 as one, 2 as two, 3 as
+> three" it is obvious that types should match.
+>
+>
+A bug report should be self-contained.  Only pointing to a 40 message long
+thread isn’t helping get the bug (well, feature) fixed.
+
+
+The crux of that thread is your driver is sending along a text data typed
+value because it cannot decide whether timestamp or timestamptz is needed.
+Implicitly casting text to something else isn’t going to happen.
+
+
+This falls into a feature request, one that comes up from time-to-time, and
+doesn’t ever seem to meet anyone’s benefit/cost threshold for working on;
+or at least get pushed over the edge.
+
+
+The underlying feature, I think, is you want the parse to be able to say
+“let the server decide the type” and the server reply with type info for
+unspecified parameters.  Or maybe accept the pseudo-type “unknown” at the
+API level.  In any case a thread to discuss a patch for such a change and
+how JDBC would leverage it to solve this problem would be the next step.
+Searching the mailing lists for existing discussions may yield fruit too
+though I don;t know for certain.
+
+
+David J.
+
+
+
+### MESSAGE 2
+"David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> On Sunday, January 19, 2025, PG Bug reporting form <noreply(at)postgresql(dot)org>
+> wrote:
+>> Actual discussion is here: https://github.com/pgjdbc/pgjdbc/issues/3482
+>> In brief: I do understand that "select 1 as one, 2 as two, 3 as three"
+>> might
+>> have lack of type info. But I suppose, in case these values are used in the
+>> assignment, the type could be taken from the corresponding column type.
+>> Like
+>> for "insert into sometable(one, two, three) select 1 as one, 2 as two, 3 as
+>> three" it is obvious that types should match.
+
+
+> A bug report should be self-contained.  Only pointing to a 40 message long
+> thread isn’t helping get the bug (well, feature) fixed.
+
+
+Indeed.  It's pretty discourteous to expect us to go read a discussion
+somewhere else and try to infer what you're on about.
+
+
+> The underlying feature, I think, is you want the parse to be able to say
+> “let the server decide the type” and the server reply with type info for
+> unspecified parameters.
+
+
+It will do that, to some extent.  For example (using PREPARE as a
+convenient proxy for what would happen in extended query mode):
+
+
+regression=# create table foo (f1 timestamptz);
+CREATE TABLE
+regression=# prepare foo as insert into foo select $1;
+PREPARE
+regression=# table pg_prepared_statements;
+ name |                 statement                 |         prepare_time          |       parameter_types        | result_types | from_sql | generic_plans | custom_plans 
+------+-------------------------------------------+-------------------------------+------------------------------+--------------+----------+---------------+--------------
+ foo  | prepare foo as insert into foo select $1; | 2025-01-20 10:21:30.777687-05 | {"timestamp with time zone"} |              | t        |             0 |            0
+(1 row)
+
+
+From the bug title I suspect that the complaint is that this doesn't
+happen every time.  But it doesn't, and we're unlikely to try to make
+it do so, not least because doing so would change the behavior of a
+lot of cases that people are depending on.
+
+
+The case that works as the submitter desires is where we still haven't
+resolved a type for the parameter symbol (or untyped literal string)
+at completion of parsing of the SELECT part.  But sometimes we have
+to choose a type sooner.  For instance consider
+
+
+regression=# prepare foo2 as insert into foo select $1 group by 1;
+ERROR:  column "f1" is of type timestamp with time zone but expression is of type text
+HINT:  You will need to rewrite or cast the expression.
+
+
+What's happened here is that in order to ascribe semantics to the
+GROUP BY clause, we have to know the type of the column being
+grouped by.  In the information vacuum we have here, we default to
+deciding that $1 has type "text".  (IIRC, we used to just throw an
+error, but that made even fewer people happy.)  When we're done
+parsing the SELECT, we try to coerce the output columns to foo's
+column types, and now we fail because text->timestamptz isn't
+permitted as an implicit cast.
+
+
+You could imagine trying to pass foo's column types down into
+parsing of the SELECT, but that feels very action-at-a-distance-y
+and would probably break as many cases that work today as fix
+cases that don't.  I doubt we'd ever accept a patch for that.
+
+
+> Searching the mailing lists for existing discussions may yield fruit too
+> though I don;t know for certain.
+
+
+Yeah, we've been around on this (many times) before.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+Sorry, I thought that it would be easier to read the thread on the pg-jdbc github than copypasting it in the report.
+
+
+Well, I run a query through jdbc:
+
+
+Table:
+
+
+create table test
+(
+    id     bigint primary key,
+    ts     timestamp with time zone,
+    amount integer
+);
+
+
+Query:
+
+
+    private static final String MERGE_QUERY = """
+                        merge into test as dst
+            using (select ? as id,
+                          ? as ts,
+                          ? as amount) src
+            on dst.id=?
+            when matched then
+                update
+                set ts=src.ts,
+                    amount=src.amount
+            when not matched then
+                insert ("id", "ts", "amount")
+                values (src.id, src.ts, src.amount)
+            """;
+
+
+    @Test
+    public void test()
+    {
+        try (Connection conn = dataSource.getConnection())
+        {
+            log.info("Driver version {}", conn.getMetaData().getDriverVersion());
+            PreparedStatement ps = conn.prepareStatement(MERGE_QUERY);
+
+
+            Integer id = 2;
+            Timestamp ts = Timestamp.valueOf(LocalDateTime.now());
+            Integer amount = 123;
+
+
+            ps.setObject(1, id);
+            ps.setObject(2, ts);
+            ps.setObject(3, amount);
+            ps.setObject(4, id);
+
+
+            ps.executeUpdate();
+        } catch (Exception e)
+        {
+            log.error(e.getMessage(), e);
+        }
+    }
+
+
+And I am getting the error:
+
+
+2025-01-17T17:58:32.798+02:00 ERROR 4696 --- [           main] st.notexi.springtest.DbTest              : ERROR: column "ts" is of type timestamp with time zone but expression is of type text
+  Hint: You will need to rewrite or cast the expression.
+  Position: 169
+
+
+I do not expect server to DECIDE what type. There IS the same type information as, for example, in the "insert into test(id, ts, amount) values(?, ?, ?)". So, I expect server just takes it and executes query.
+I filed a bug to the jdbc driver and got a response that it is server's problem and that I have to report it here.
+So, I'd like to understand, where the problem actually is. As for me it looks like a bug.
+
+
+Thank you
+
+
+Kind regards,
+Viktor
+
+
+On 20 Jan 2025, at 17:18, David G. Johnston <david(dot)g(dot)johnston(at)gmail(dot)com> wrote:
+
+
+On Sunday, January 19, 2025, PG Bug reporting form <noreply(at)postgresql(dot)org<mailto:noreply(at)postgresql(dot)org>> wrote:
+The following bug has been logged on the website:
+
+
+Bug reference:      18780
+Logged by:          Viktr
+Email address:      vik(at)notexi(dot)st<mailto:vik(at)notexi(dot)st>
+PostgreSQL version: 17.2
+Operating system:   Linux d2c635331de7 6.10.14-linuxkit #1 SMP PREEMPT
+Description:
+
+
+Hi there,
+
+
+Actual discussion is here: https://github.com/pgjdbc/pgjdbc/issues/3482
+In brief: I do understand that "select 1 as one, 2 as two, 3 as three" might
+have lack of type info. But I suppose, in case these values are used in the
+assignment, the type could be taken from the corresponding column type. Like
+for "insert into sometable(one, two, three) select 1 as one, 2 as two, 3 as
+three" it is obvious that types should match.
+
+
+A bug report should be self-contained.  Only pointing to a 40 message long thread isn’t helping get the bug (well, feature) fixed.
+
+
+The crux of that thread is your driver is sending along a text data typed value because it cannot decide whether timestamp or timestamptz is needed.  Implicitly casting text to something else isn’t going to happen.
+
+
+This falls into a feature request, one that comes up from time-to-time, and doesn’t ever seem to meet anyone’s benefit/cost threshold for working on; or at least get pushed over the edge.
+
+
+The underlying feature, I think, is you want the parse to be able to say “let the server decide the type” and the server reply with type info for unspecified parameters.  Or maybe accept the pseudo-type “unknown” at the API level.  In any case a thread to discuss a patch for such a change and how JDBC would leverage it to solve this problem would be the next step.  Searching the mailing lists for existing discussions may yield fruit too though I don;t know for certain.
+
+
+David J.
+
+
+
+
+
+### MESSAGE 4
+Viktor Remennik <vik(at)etogo(dot)net> writes:
+>     private static final String MERGE_QUERY = """
+>                         merge into test as dst
+>             using (select ? as id,
+>                           ? as ts,
+>                           ? as amount) src
+>             on dst.id=?
+>             when matched then
+>                 update
+>                 set ts=src.ts,
+>                     amount=src.amount
+>             when not matched then
+>                 insert ("id", "ts", "amount")
+>                 values (src.id, src.ts, src.amount)
+>             """;
+
+
+That is never going to work, and you can complain all you want
+but we're not going to accept it as a bug.  The sub-select has
+to decide on its output column types before parsing can proceed.
+There is way too much semantic distance between there and where
+it might be possible to discover that the output columns are
+going to be assigned to particular target columns; furthermore,
+the outer query might have other references to the sub-select's
+columns that do not provide usable context for resolving their
+types, or that provide conflicting hints.
+
+
+The only cases like this that we support are
+
+
+insert into sometable values (?)
+insert into sometable select ?
+update sometable set somecolumn = ?
+
+
+where there is basically not anything between the unlabeled
+parameter and its single use as an assignment source.  (Even
+these are undesirably messy internally.)
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 5
+Ok, I understand, pg is just a simple opensource db, not a kinda "free oracle", and types processing after parsing is too much. Good.
+But is it at least possible to throw an error then? Because currently such a queries are processed as they're "good". It's a bit inconsistent - either DB should process them or reject them. Now it is processing them sometimes with unpredictable results. Like, sometime it is working fine according to the standards, and sometimes it throws the exception I mentioned before. Like, "src.id<http://src.id>, src.ts, src.amount are unknown" or something of that sort.
+
+
+Kind regards,
+Viktor
+
+
+On 20 Jan 2025, at 21:26, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+Viktor Remennik <vik(at)etogo(dot)net> writes:
+   private static final String MERGE_QUERY = """
+                       merge into test as dst
+           using (select ? as id,
+                         ? as ts,
+                         ? as amount) src
+           on dst.id=?
+           when matched then
+               update
+               set ts=src.ts,
+                   amount=src.amount
+           when not matched then
+               insert ("id", "ts", "amount")
+               values (src.id, src.ts, src.amount)
+           """;
+
+
+That is never going to work, and you can complain all you want
+but we're not going to accept it as a bug.  The sub-select has
+to decide on its output column types before parsing can proceed.
+There is way too much semantic distance between there and where
+it might be possible to discover that the output columns are
+going to be assigned to particular target columns; furthermore,
+the outer query might have other references to the sub-select's
+columns that do not provide usable context for resolving their
+types, or that provide conflicting hints.
+
+
+The only cases like this that we support are
+
+
+insert into sometable values (?)
+insert into sometable select ?
+update sometable set somecolumn = ?
+
+
+where there is basically not anything between the unlabeled
+parameter and its single use as an assignment source.  (Even
+these are undesirably messy internally.)
+
+
+regards, tom lane
+
+
+

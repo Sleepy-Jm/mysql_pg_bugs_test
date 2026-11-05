@@ -1,0 +1,56 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17438
+Logged by:          Sergey Belyashov
+Email address:      sergey(dot)belyashov(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Debian 11, GNU/Linux x86_64
+Description:        
+
+
+Master DB has few tables: A (few inserts per second, about 200 updates per
+second, ~100 deletes each 5 minutes), B (~100 inserts each 5 minutes), C
+(~200 inserts and ~200 updates per second). B and C are large partitioned by
+range tables (36 and 12 partitions). A is small table about 10K entries
+(often updates). Table A has publications for inserts and deletes. Table B
+has publication for all operations except truncate via root.
+
+
+I do some maintenance work. I stop production load on DB and do some high
+load operations with table C (for example: "insert into D select * from C").
+After completion replications for A and B freezes and loads CPU for 50-99%
+without actual data transmission. I try to disable/enable/refresh
+subscription, but no effect. I try to restart master - no result. Only
+drop/create of subscriptions helps me.
+
+
+Publisher logs many messages like following:
+2022-03-14 19:57:02.907 MSK [1771976] user(at)DB ERROR:  replication slot
+"A_sub" is active for PID 1766849
+2022-03-14 19:57:02.907 MSK [1771976] user(at)DB STATEMENT:  START_REPLICATION
+SLOT "A_sub" LOGICAL 28C/60150F50 (proto_version '2', publication_names
+'"A_pub"')
+2022-03-14 19:57:02.909 MSK [1771977] user(at)DB ERROR:  replication slot
+"B_sub" is active for PID 1766828
+2022-03-14 19:57:02.909 MSK [1771977] user(at)DB STATEMENT:  START_REPLICATION
+SLOT "B_sub" LOGICAL 28C/AE2B7D8 (proto_version '2', 
+publication_names '"B_pub"')
+
+
+Subscriber logs many messages like following:
+2022-03-14 19:56:52.709 MSK [3266082] LOG:  logical replication apply worker
+for subscription "B_sub" has started
+2022-03-14 19:56:52.710 MSK [993] LOG:  background worker "logical
+replication worker" (PID 3266080) exited with exit code 1
+2022-03-14 19:56:52.814 MSK [3266081] ERROR:  could not start WAL streaming:
+ERROR:  replication slot "A_sub" is active for PID 1766849
+2022-03-14 19:56:52.815 MSK [993] LOG:  background worker "logical
+replication worker" (PID 3266081) exited with exit code 1
+2022-03-14 19:56:52.818 MSK [3266082] ERROR:  could not start WAL streaming:
+ERROR:  replication slot "B_sub" is active for PID 1766828
+2022-03-14 19:56:52.819 MSK [993] LOG:  background worker "logical
+replication worker" (PID 3266082) exited with exit code 1
+
+
+

@@ -1,0 +1,1 @@
+ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;

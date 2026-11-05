@@ -1,0 +1,133 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17546
+Logged by:          Su Sinodan
+Email address:      su(dot)sinodan(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Windows Server 2016 (10.0.14393 Build 1439)
+Description:        
+
+
+When a certain number (p, s) with a fractional part (specific examples -
+1.11 and 69.96) is multiplied by a power (10, N), the resulting value is
+distorted.
+However, if the power(10, N) is manually converted to an integer, the
+resulting value is correct.
+It looks like there is some kind of problem with the automatic type
+conversion of the power() function.
+
+
+Test query:
+with w_degree as (
+                   select 0::integer as degree union all
+                   select 1::integer as degree union all
+                   select 2::integer as degree union all
+                   select 3::integer as degree union all
+                   select 4::integer as degree union all
+                   select 5::integer as degree union all
+                   select 6::integer as degree union all
+                   select 7::integer as degree union all
+                   select 8::integer as degree union all
+                   select 9::integer as degree
+                 )
+select
+  power(10, w.degree::integer)                                  as
+"power()"
+, 1.11::numeric(20, 5) * power(10, w.degree::integer)           as " 1.11 *
+power()"
+, 1.11::numeric(20, 5) * power(10, w.degree::integer)::integer  as " 1.11 *
+power()::integer"
+, 69.96::numeric(20, 5) * power(10, w.degree::integer)          as "69.96 *
+power()"
+, 69.96::numeric(20, 5) * power(10, w.degree::integer)::integer as "69.96 *
+power()::integer"
+from w_degree w;
+
+
+Result:
+  power()   |   1.11 * power()   |  1.11 * power()::integer |  69.96 *
+power()  | 69.96 * power()::integer
+------------+--------------------+--------------------------+-------------------+--------------------------
+          1 |               1.11 |                  1.11000 |            
+69.96 |                 69.96000
+         10 | 11.100000000000001 |                 11.10000 |
+699.5999999999999 |                699.60000
+        100 | 111.00000000000001 |                111.00000 |
+6995.999999999999 |               6996.00000
+       1000 |               1110 |               1110.00000 |            
+69960 |              69960.00000
+      10000 | 11100.000000000002 |              11100.00000 |
+699599.9999999999 |             699600.00000
+     100000 | 111000.00000000001 |             111000.00000 |
+6995999.999999999 |            6996000.00000
+    1000000 |            1110000 |            1110000.00000 |         
+69960000 |           69960000.00000
+   10000000 | 11100000.000000002 |           11100000.00000 |
+699599999.9999999 |          699600000.00000
+  100000000 | 111000000.00000001 |          111000000.00000 |
+6995999999.999999 |         6996000000.00000
+ 1000000000 |         1110000000 |         1110000000.00000 |      
+69960000000 |        69960000000.00000
+(10 rows)
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> When a certain number (p, s) with a fractional part (specific examples -
+> 1.11 and 69.96) is multiplied by a power (10, N), the resulting value is
+> distorted.
+> However, if the power(10, N) is manually converted to an integer, the
+> resulting value is correct.
+> It looks like there is some kind of problem with the automatic type
+> conversion of the power() function.
+
+
+Your query is invoking the float8 variant of power(), which is
+necessarily of limited precision.  If I change "w.degree::integer"
+to "w.degree::numeric", then it invokes the numeric variant of
+power(), and I get correctly rounded results (much more slowly
+unfortunately :-().  So I don't see any bug here.
+
+
+It might be surprising that the parser prefers float8 over numeric
+when the given function arguments don't exactly match either one.
+But that's a very ancient decision that we're not going to change.
+There is support for it in the SQL standard, which directs
+implementations to prefer inexact numeric types over exact ones
+when they have to make a choice.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+<div>Is there any chance that you will reflect this in the documentation?</div><div>Thank you.</div><div> </div><div>11.07.2022, 18:49, "Tom Lane" &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;:</div><blockquote><p>PG Bug reporting form &lt;<a href="mailto:noreply(at)postgresql(dot)org" rel="noopener noreferrer">noreply(at)postgresql(dot)org</a>&gt; writes:</p><blockquote> When a certain number (p, s) with a fractional part (specific examples -<br /> 1.11 and 69.96) is multiplied by a power (10, N), the resulting value is<br /> distorted.<br /> However, if the power(10, N) is manually converted to an integer, the<br /> resulting value is correct.<br /> It looks like there is some kind of problem with the automatic type<br /> conversion of the power() function.</blockquote><p><br />Your query is invoking the float8 variant of power(), which is<br />necessarily of limited precision. If I change "w.degree::integer"<br />to "w.degree::numeric", then it invokes the numeric variant of<br />power(), and I get correctly rounded results (much more slowly<br />unfortunately :-(). So I don't see any bug here.<br /><br />It might be surprising that the parser prefers float8 over numeric<br />when the given function arguments don't exactly match either one.<br />But that's a very ancient decision that we're not going to change.<br />There is support for it in the SQL standard, which directs<br />implementations to prefer inexact numeric types over exact ones<br />when they have to make a choice.<br /><br />                        regards, tom lane</p></blockquote>
+
+
+### MESSAGE 3
+=?utf-8?B?0JDQvdGC0L7QvSDQn9C+0YLQsNC/0L7Qsg==?= <su(dot)sinodan(at)gmail(dot)com> writes:
+> Is there any chance that you will reflect this in the documentation?
+
+
+It is documented --- see under
+	https://www.postgresql.org/docs/current/datatype-numeric.html
+and
+	https://www.postgresql.org/docs/current/typeconv.html
+(particularly example 10.3, which points out that float8 is
+considered a preferred type).  We are not going to repeat all that
+material under every single affected function, if that's what
+you're asking for.
+
+
+			regards, tom lane
+
+
+

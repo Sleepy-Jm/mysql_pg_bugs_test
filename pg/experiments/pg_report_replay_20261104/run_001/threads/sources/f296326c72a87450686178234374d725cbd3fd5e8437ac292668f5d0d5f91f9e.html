@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17320: A SEGV in optimizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17320-70e37868182512ab%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2021-12-06T06:42:57" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17320: A SEGV in optimizer" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="eb70c1a8960c42bded68e4e27307f730">BUG #17320: A SEGV in optimizer</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202112060642">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17320-70e37868182512ab@postgresql.org"></a>
+<a name="eb70c1a8960c42bded68e4e27307f730"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>253540651(at)qq(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17320: A SEGV in optimizer</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-06 06:42:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17320-70e37868182512ab%40postgresql.org">17320-70e37868182512ab@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17320-70e37868182512ab%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17320-70e37868182512ab%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17320-70e37868182512ab%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17320-70e37868182512ab%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17320<br>Logged by:          Zhiyong Wu<br>Email address:      253540651(at)qq(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Linux version 5.13.0-1-MANJARO (builduser(at)LEGION)<br>Description:        </p>
+
+<p>PoC:<br>WITH RECURSIVE x ( x ) AS ( SELECT 4 UNION ( WITH x AS ( SELECT 5 UNION (<br>WITH TIMESTAMP AS ( SELECT 2 UNION ( WITH x ( x ) AS ( SELECT 1 UNION ( WITH<br>x AS ( SELECT 6 FROM ( VALUES ( ROW ( 1 , 2 ) ) , ( ROW ( 1 , 4 ) ) ) x ( x<br>) UNION ( WITH x AS ( SELECT 7 ) SELECT * FROM x ) ) SELECT * FROM x UNION<br>SELECT * FROM x ) ) SELECT * FROM x ) ) SELECT * FROM ( SELECT * FROM x<br>WHERE x = x ) x ) ) SELECT * FROM x ) ) SEARCH BREADTH FIRST BY x SET NCHAR<br>SELECT * FROM x WHERE x BETWEEN 0 AND 1000000 ;<br> COPY x FROM STDIN WHERE x IN ( x ( 1 , 5 ) ) ;<br> CREATE OR REPLACE TEMP VIEW x AS SELECT x , x ( x ) OVER ( ORDER BY x ROWS<br>BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE NO OTHERS ) AS x FROM x ( 1 , 10<br>) x ;<br> EXECUTE x ( &#x27;-9223372036854775800&#x27; ) ;</p>
+
+<p>Asan LoG:<br>=================================================================<br>==4218==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000008 (pc<br>0x000000da215c bp 0x000000000001 sp 0x7ffd39de1d50 T0)<br>==4218==The signal is caused by a READ memory access.<br>==4218==Hint: address points to the zero page.<br>    #0 0xda215c in bms_add_members<br>/root/postgres/bld/../src/backend/nodes/bitmapset.c:806:9<br>    #1 0xf25518 in add_vars_to_targetlist<br>/root/postgres/bld/../src/backend/optimizer/plan/initsplan.c:259:30<br>    #2 0xf250c7 in build_base_rel_tlists<br>/root/postgres/bld/../src/backend/optimizer/plan/initsplan.c:192:3<br>    #3 0xf32c45 in query_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planmain.c:178:2<br>    #4 0xf3f24e in grouping_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1448:17<br>    #5 0xf394a7 in subquery_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2<br>    #6 0xe859a6 in set_subquery_pathlist<br>/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:2229:17<br>    #7 0xe859a6 in set_rel_size<br>/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:423:5<br>    #8 0xe7a0cb in set_base_rel_sizes<br>/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:324:3<br>    #9 0xe7a0cb in make_one_rel<br>/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:186:2<br>    #10 0xf32cd2 in query_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planmain.c:276:14<br>    #11 0xf3f24e in grouping_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1448:17<br>    #12 0xf394a7 in subquery_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2<br>    #13 0xfa116c in recurse_set_operations<br>/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:239:28<br>    #14 0xfa04ea in generate_recursion_path<br>/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:469:9<br>    #15 0xfa04ea in plan_set_operations<br>/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:156:15<br>    #16 0xf3c035 in grouping_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1286:17<br>    #17 0xf394a7 in subquery_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2<br>    #18 0xf790cd in SS_process_ctes<br>/root/postgres/bld/../src/backend/optimizer/plan/subselect.c:980:13<br>    #19 0xf3552c in subquery_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:650:3<br>    #20 0xf33304 in standard_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:406:9<br>    #21 0xf32fa8 in planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:277:12<br>    #22 0x13379c7 in pg_plan_query<br>/root/postgres/bld/../src/backend/tcop/postgres.c:847:9<br>    #23 0x13379c7 in pg_plan_queries<br>/root/postgres/bld/../src/backend/tcop/postgres.c:939:11<br>    #24 0x1345487 in exec_simple_query<br>/root/postgres/bld/../src/backend/tcop/postgres.c:1133:19<br>    #25 0x133da73 in PostgresMain<br>/root/postgres/bld/../src/backend/tcop/postgres.c<br>    #26 0x1094d63 in BackendRun<br>/root/postgres/bld/../src/backend/postmaster/postmaster.c:4584:2<br>    #27 0x109333d in BackendStartup<br>/root/postgres/bld/../src/backend/postmaster/postmaster.c:4312:3<br>    #28 0x109333d in ServerLoop<br>/root/postgres/bld/../src/backend/postmaster/postmaster.c:1801:7<br>    #29 0x10898e3 in PostmasterMain<br>/root/postgres/bld/../src/backend/postmaster/postmaster.c:1473:11<br>    #30 0xd9d463 in main<br>/root/postgres/bld/../src/backend/main/main.c:198:3<br>    #31 0x7f9a9f2ce0b2 in __libc_start_main<br>/build/glibc-eX1tMB/glibc-2.31/csu/../csu/libc-start.c:308:16<br>    #32 0x49bc1d in _start (/usr/local/pgsql/bin/postgres+0x49bc1d)</p>
+
+<p>AddressSanitizer can not provide additional info.<br>SUMMARY: AddressSanitizer: SEGV<br>/root/postgres/bld/../src/backend/nodes/bitmapset.c:806:9 in<br>bms_add_members<br>==4218==ABORTING</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20211207.172546.1329872704555357126.horikyota.ntt@gmail.com"></a>
+<a name="3069471b79b02a9779efc824f50500ae"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>253540651(at)qq(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17320: A SEGV in optimizer</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-07 08:25:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20211207.172546.1329872704555357126.horikyota.ntt%40gmail.com">20211207.172546.1329872704555357126.horikyota.ntt@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20211207.172546.1329872704555357126.horikyota.ntt%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20211207.172546.1329872704555357126.horikyota.ntt%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20211207.172546.1329872704555357126.horikyota.ntt%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20211207.172546.1329872704555357126.horikyota.ntt%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>At Mon, 06 Dec 2021 06:42:57 +0000, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; wrote in <br>&gt; The following bug has been logged on the website:<br>&gt; <br>&gt; Bug reference:      17320<br>&gt; Logged by:          Zhiyong Wu<br>&gt; Email address:      253540651(at)qq(dot)com<br>&gt; PostgreSQL version: 14.1<br>&gt; Operating system:   Linux version 5.13.0-1-MANJARO (builduser(at)LEGION)<br>&gt; Description:        <br>&gt; <br>&gt; PoC:<br>&gt; WITH RECURSIVE x ( x ) AS ( SELECT 4 UNION ( WITH x AS ( SELECT 5 UNION (<br>&gt; WITH TIMESTAMP AS ( SELECT 2 UNION ( WITH x ( x ) AS ( SELECT 1 UNION ( WITH<br>&gt; x AS ( SELECT 6 FROM ( VALUES ( ROW ( 1 , 2 ) ) , ( ROW ( 1 , 4 ) ) ) x ( x<br>&gt; ) UNION ( WITH x AS ( SELECT 7 ) SELECT * FROM x ) ) SELECT * FROM x UNION<br>&gt; SELECT * FROM x ) ) SELECT * FROM x ) ) SELECT * FROM ( SELECT * FROM x<br>&gt; WHERE x = x ) x ) ) SELECT * FROM x ) ) SEARCH BREADTH FIRST BY x SET NCHAR<br>&gt; SELECT * FROM x WHERE x BETWEEN 0 AND 1000000 ;<br>&gt;  COPY x FROM STDIN WHERE x IN ( x ( 1 , 5 ) ) ;<br>&gt;  CREATE OR REPLACE TEMP VIEW x AS SELECT x , x ( x ) OVER ( ORDER BY x ROWS<br>&gt; BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE NO OTHERS ) AS x FROM x ( 1 , 10<br>&gt; ) x ;<br>&gt;  EXECUTE x ( &#x27;-9223372036854775800&#x27; ) ;<br>..<br>&gt;     #0 0xda215c in bms_add_members<br>&gt; /root/postgres/bld/../src/backend/nodes/bitmapset.c:806:9<br>&gt;     #1 0xf25518 in add_vars_to_targetlist<br>&gt; /root/postgres/bld/../src/backend/optimizer/plan/initsplan.c:259:30<br>&gt;     #2 0xf250c7 in build_base_rel_tlists</p>
+
+<p>I had the following assertion failure from the original query by<br>master head.</p>
+
+<p>&gt; TRAP: FailedAssertion(&quot;attno &gt;= rel-&gt;min_attr &amp;&amp; attno &lt;= rel-&gt;max_attr&quot;, File: &quot;initsplan.c&quot;, Line: 249, PID: 25862)</p>
+
+<p>max_attr is 1 and attno is 2 here.  I could reduce the query like this.</p>
+
+<p>WITH RECURSIVE x ( x ) AS<br> (SELECT 1<br>  UNION<br>  (WITH x AS<br>    (WITH TIMESTAMP AS (SELECT 2)<br>     SELECT * FROM x)<br>   SELECT * FROM x)<br> ) SEARCH BREADTH FIRST BY x SET NCHAR<br>SELECT * FROM x;</p>
+
+<p>If I tried to execute the following query, I got the follwoing<br>error. This looks like rooted from the same mistake.</p>
+
+<p>WITH RECURSIVE x ( x ) AS<br> (SELECT 1<br>  UNION<br>  (WITH x AS (SELECT * FROM x)<br>   SELECT * FROM x)<br> ) SEARCH BREADTH FIRST BY x SET NCHAR<br>SELECT * FROM x;</p>
+
+<p>&gt; ERROR:  could not find attribute 2 in subquery targetlist</p>
+
+<p>The outmost query tries to access nchar that the second level query<br>doesn&#x27;t have. The implicit column is not surfaced through the<br>upper-level CTEs.</p>
+
+<p>By the way, if I executed the following query, I get the following<br>another assertion failure.</p>
+
+<p>WITH RECURSIVE x ( x ) AS<br> (SELECT 1<br>  UNION<br>  (WITH y AS (SELECT * FROM x)<br>   SELECT * FROM y)<br> ) SEARCH BREADTH FIRST BY x SET NCHAR<br>SELECT * FROM x;</p>
+
+<p>&gt; TRAP: FailedAssertion(&quot;cte_rtindex &gt; 0&quot;, File: &quot;rewriteSearchCycle.c&quot;, Line: 398, PID: 31288)</p>
+
+<p>This looks a bit different but rooted from the same issue.</p>
+
+<p>The most simple way to avoid such assertion failures or internal erors<br>is to reject indirecto references to CTEs that have SEARCH or CYCLE<br>clause.  I&#x27;m not sure it&#x27;s worth the trouble somehow allowing such<br>references.</p>
+
+<p>I&#x27;m not confident that it is the right fix, but the attached catches<br>the original problem query and the above reduced queries as syntax<br>error.</p>
+
+<p>regards.</p>
+
+<p>-- <br>Kyotaro Horiguchi<br>NTT Open Source Software Center<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/128802/0001-Reject-indirect-reference-to-CTEs-with-SEARCH-or-CYC.patch">0001-Reject-indirect-reference-to-CTEs-with-SEARCH-or-CYC.patch</a>
+            
+          </th>
+          <td>text/x-patch</td>
+          <td>3.4 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3774893.1650663823@sss.pgh.pa.us"></a>
+<a name="6d783bfad9fd9966758cd66a6ab692c2"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>253540651(at)qq(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org,
+        Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17320: A SEGV in optimizer</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-22 21:43:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3774893.1650663823%40sss.pgh.pa.us">3774893.1650663823@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3774893.1650663823%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3774893.1650663823%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3774893.1650663823%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3774893.1650663823%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>[ this&#x27;d been on my to-do list for a long time, I finally got to it ]</p>
+
+<p>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt; writes:<br>&gt; If I tried to execute the following query, I got the follwoing<br>&gt; error. This looks like rooted from the same mistake.</p>
+
+<p>&gt; WITH RECURSIVE x ( x ) AS<br>&gt;  (SELECT 1<br>&gt;   UNION<br>&gt;   (WITH x AS (SELECT * FROM x)<br>&gt;    SELECT * FROM x)<br>&gt;  ) SEARCH BREADTH FIRST BY x SET NCHAR<br>&gt; SELECT * FROM x;</p>
+
+<p>&gt; ERROR:  could not find attribute 2 in subquery targetlist</p>
+
+<p>&gt; By the way, if I executed the following query, I get the following<br>&gt; another assertion failure.</p>
+
+<p>&gt; WITH RECURSIVE x ( x ) AS<br>&gt;  (SELECT 1<br>&gt;   UNION<br>&gt;   (WITH y AS (SELECT * FROM x)<br>&gt;    SELECT * FROM y)<br>&gt;  ) SEARCH BREADTH FIRST BY x SET NCHAR<br>&gt; SELECT * FROM x;</p>
+
+<p>&gt; TRAP: FailedAssertion(&quot;cte_rtindex &gt; 0&quot;, File: &quot;rewriteSearchCycle.c&quot;, Line: 398, PID: 31288)</p>
+
+<p>This is pretty remarkable, because those two queries *should* be<br>semantically identical.  I guessed that something is getting confused<br>by the duplicated CTE name, and it didn&#x27;t take long to see what:<br>rewriteSearchAndCycle() is failing to check ctelevelsup while looking<br>for a match to the recursive CTE&#x27;s name.  Thus, it thinks that the<br>reference to the lower WITH item (either &quot;x&quot; or &quot;y&quot; in these two<br>examples) is the recursive reference it seeks, which it ain&#x27;t.</p>
+
+<p>Eventually perhaps we should support this, since a recursive query<br>of this form is allowed in other contexts.  But I&#x27;m content to<br>throw error for now, as per the attached patch.  This catches all<br>the cases shown in this thread, as well as the seemingly unrelated<br>error shown in bug #17318.</p>
+
+<p>(I looked for other places that might be carelessly matching on<br>ctename without checking levelsup, and found none.)</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/133508/detect-incorrect-recursive-ref-in-SEARCH-and-CYCLE.patch">detect-incorrect-recursive-ref-in-SEARCH-and-CYCLE.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>3.3 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

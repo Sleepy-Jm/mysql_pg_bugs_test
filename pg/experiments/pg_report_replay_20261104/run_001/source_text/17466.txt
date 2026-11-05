@@ -1,0 +1,38 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17466
+Logged by:          xavier
+Email address:      wysunxavier(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   CentOS 7.9
+Description:        
+
+
+Hello,
+When I try to specify some compilation options in CFLAGS, such as compiling
+with macros, when I execute “./configure CFLAGS='-DUSE_TOOLS'”,it will use
+'-O0' to compile by default, which is easy to miscompile into a debug
+version. I wonder if it is possible to supplement the judgment conditions in
+the postgresql source code: If the compilation option is not specified in
+CFLAGS, '-O2' is used by default to avoid compiling the wrong debug
+version.
+I tried making modifications to the configure.ac of master branch.
+diff --git a/configure.ac b/configure.ac
+index 44d35e1..36e3fc5 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -427,6 +427,10 @@ else
+   fi
+ fi
+ 
++if [[[ ! $CFLAGS[(at)] =~ "-O" ]]]; then
++  CFLAGS="$CFLAGS -O2"
++fi
++
+ if test "$ac_env_CXXFLAGS_set" = set; then
+   CXXFLAGS=$ac_env_CXXFLAGS_value
+ elif test "${CXXFLAGS+set}" = set; then
+
+
+

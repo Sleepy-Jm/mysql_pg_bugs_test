@@ -1,0 +1,265 @@
+CREATE OR REPLACE VIEW bmk.vw_ftrucf_index
+ AS
+ SELECT s.source_id,
+    s.src_name,
+    m.index_id,
+    d.as_of_date,
+    dp.as_of_date AS prior_date,
+    ica_mk_usd.currency_id AS mv_currency_id,
+    c_usd.code AS mv_currency_code,
+    a_mk.attribute_id AS mv_attribute_id,
+    a_mk.code AS mv_attribute_code,
+    ica_mk_usd.nvalue AS mv,
+    c_usd.currency_id AS return_currency_id,
+    c_usd.code AS return_currency_code,
+    ( SELECT c.attribute_id
+           FROM bmk.attributes c
+          WHERE c.code::text = 'PI'::text AND c.attribute_type_id = 1::numeric) AS pi_attribute_id,
+    'PI'::text AS pi_attribute_code,
+    ica_pi_usd.nvalue / p_ica_pi_usd.nvalue - 1::numeric AS pr,
+    p_ica_pi_usd.nvalue AS p_wi_t0,
+    ica_pi_usd.nvalue AS p_wi_t1,
+    ( SELECT c.attribute_id
+           FROM bmk.attributes c
+          WHERE c.code::text = 'GI'::text AND c.attribute_type_id = 1::numeric) AS gi_attribute_id,
+    'GI'::text AS gi_attribute_code,
+    ica_gi_usd.nvalue / p_ica_gi_usd.nvalue - 1::numeric AS gr,
+    p_ica_gi_usd.nvalue AS g_wi_t0,
+    ica_gi_usd.nvalue AS g_wi_t1,
+    ( SELECT c.attribute_id
+           FROM bmk.attributes c
+          WHERE c.code::text = 'NI'::text AND c.attribute_type_id = 1::numeric) AS ni_attribute_id,
+    'NI'::text AS ni_attribute_code,
+    ica_ni_usd.nvalue / p_ica_ni_usd.nvalue - 1::numeric AS nr,
+    p_ica_ni_usd.nvalue AS n_wi_t0,
+    ica_ni_usd.nvalue AS n_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgrjpy_attribute_id,
+    'HGI'::text AS hgrjpy_attribute_code,
+    ica_hgi_jpy.nvalue / p_ica_hgi_jpy.nvalue - 1::numeric AS hgrjpy,
+    p_ica_hgi_jpy.nvalue AS hgrjpy_wi_t0,
+    ica_hgi_jpy.nvalue AS hgrjpy_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgrnzd_attribute_id,
+    'HGI'::text AS hgrnzd_attribute_code,
+    ica_hgi_nzd.nvalue / p_ica_hgi_nzd.nvalue - 1::numeric AS hgrnzd,
+    p_ica_hgi_nzd.nvalue AS hgrnzd_wi_t0,
+    ica_hgi_nzd.nvalue AS hgrnzd_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnrgbp_attribute_id,
+    'HNI'::text AS hnrgbp_attribute_code,
+    ica_hni_gbp.nvalue / p_ica_hni_gbp.nvalue - 1::numeric AS hnrgbp,
+    p_ica_hni_gbp.nvalue AS hnrgbp_wi_t0,
+    ica_hni_gbp.nvalue AS hnrgbp_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnrnzd_attribute_id,
+    'HNI'::text AS hnrnzd_attribute_code,
+    ica_hni_nzd.nvalue / p_ica_hni_nzd.nvalue - 1::numeric AS hnrnzd,
+    p_ica_hni_nzd.nvalue AS hnrnzd_wi_t0,
+    ica_hni_nzd.nvalue AS hnrnzd_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgreur_attribute_id,
+    'HGI'::text AS hgreur_attribute_code,
+    ica_hgi_eur.nvalue / p_ica_hgi_eur.nvalue - 1::numeric AS hgreur,
+    p_ica_hgi_eur.nvalue AS hgreur_wi_t0,
+    ica_hgi_eur.nvalue AS hgreur_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgrgbp_attribute_id,
+    'HGI'::text AS hgrgbp_attribute_code,
+    ica_hgi_gbp.nvalue / p_ica_hgi_gbp.nvalue - 1::numeric AS hgrgbp,
+    p_ica_hgi_gbp.nvalue AS hgrgbp_wi_t0,
+    ica_hgi_gbp.nvalue AS hgrgbp_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgrhkd_attribute_id,
+    'HGI'::text AS hgrhkd_attribute_code,
+    ica_hgi_hkd.nvalue / p_ica_hgi_hkd.nvalue - 1::numeric AS hgrhkd,
+    p_ica_hgi_hkd.nvalue AS hgrhkd_wi_t0,
+    ica_hgi_hkd.nvalue AS hgrhkd_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgrchf_attribute_id,
+    'HGI'::text AS hgrchf_attribute_code,
+    ica_hgi_chf.nvalue / p_ica_hgi_chf.nvalue - 1::numeric AS hgrchf,
+    p_ica_hgi_chf.nvalue AS hgrchf_wi_t0,
+    ica_hgi_chf.nvalue AS hgrchf_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgrzar_attribute_id,
+    'HGI'::text AS hgrzar_attribute_code,
+    ica_hgi_zar.nvalue / p_ica_hgi_zar.nvalue - 1::numeric AS hgrzar,
+    p_ica_hgi_zar.nvalue AS hgrzar_wi_t0,
+    ica_hgi_zar.nvalue AS hgrzar_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnreur_attribute_id,
+    'HNI'::text AS hnreur_attribute_code,
+    ica_hni_eur.nvalue / p_ica_hni_eur.nvalue - 1::numeric AS hnreur,
+    p_ica_hni_eur.nvalue AS hnreur_wi_t0,
+    ica_hni_eur.nvalue AS hnreur_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgrusd_attribute_id,
+    'HGI'::text AS hgrusd_attribute_code,
+    ica_hgi_usd.nvalue / p_ica_hgi_usd.nvalue - 1::numeric AS hgrusd,
+    p_ica_hgi_usd.nvalue AS hgrusd_wi_t0,
+    ica_hgi_usd.nvalue AS hgrusd_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgrcad_attribute_id,
+    'HGI'::text AS hgrcad_attribute_code,
+    ica_hgi_cad.nvalue / p_ica_hgi_cad.nvalue - 1::numeric AS hgrcad,
+    p_ica_hgi_cad.nvalue AS hgrcad_wi_t0,
+    ica_hgi_cad.nvalue AS hgrcad_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnrcad_attribute_id,
+    'HNI'::text AS hnrcad_attribute_code,
+    ica_hni_cad.nvalue / p_ica_hni_cad.nvalue - 1::numeric AS hnrcad,
+    p_ica_hni_cad.nvalue AS hnrcad_wi_t0,
+    ica_hni_cad.nvalue AS hnrcad_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnrhkd_attribute_id,
+    'HNI'::text AS hnrhkd_attribute_code,
+    ica_hni_hkd.nvalue / p_ica_hni_hkd.nvalue - 1::numeric AS hnrhkd,
+    p_ica_hni_hkd.nvalue AS hnrhkd_wi_t0,
+    ica_hni_hkd.nvalue AS hnrhkd_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnrsgd_attribute_id,
+    'HNI'::text AS hnrsgd_attribute_code,
+    ica_hni_sgd.nvalue / p_ica_hni_sgd.nvalue - 1::numeric AS hnrsgd,
+    p_ica_hni_sgd.nvalue AS hnrsgd_wi_t0,
+    ica_hni_sgd.nvalue AS hnrsgd_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnrusd_attribute_id,
+    'HNI'::text AS hnrusd_attribute_code,
+    ica_hni_usd.nvalue / p_ica_hni_usd.nvalue - 1::numeric AS hnrusd,
+    p_ica_hni_usd.nvalue AS hnrusd_wi_t0,
+    ica_hni_usd.nvalue AS hnrusd_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgrsgd_attribute_id,
+    'HGI'::text AS hgrsgd_attribute_code,
+    ica_hgi_sgd.nvalue / p_ica_hgi_sgd.nvalue - 1::numeric AS hgrsgd,
+    p_ica_hgi_sgd.nvalue AS hgrsgd_wi_t0,
+    ica_hgi_sgd.nvalue AS hgrsgd_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnraud_attribute_id,
+    'HNI'::text AS hnraud_attribute_code,
+    ica_hni_aud.nvalue / p_ica_hni_aud.nvalue - 1::numeric AS hnraud,
+    p_ica_hni_aud.nvalue AS hnraud_wi_t0,
+    ica_hni_aud.nvalue AS hnraud_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnrjpy_attribute_id,
+    'HNI'::text AS hnrjpy_attribute_code,
+    ica_hni_jpy.nvalue / p_ica_hni_jpy.nvalue - 1::numeric AS hnrjpy,
+    p_ica_hni_jpy.nvalue AS hnrjpy_wi_t0,
+    ica_hni_jpy.nvalue AS hnrjpy_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HGI'::text AND a.attribute_type_id = 1::numeric) AS hgraud_attribute_id,
+    'HGI'::text AS hgraud_attribute_code,
+    ica_hgi_aud.nvalue / p_ica_hgi_aud.nvalue - 1::numeric AS hgraud,
+    p_ica_hgi_aud.nvalue AS hgraud_wi_t0,
+    ica_hgi_aud.nvalue AS hgraud_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnrchf_attribute_id,
+    'HNI'::text AS hnrchf_attribute_code,
+    ica_hni_chf.nvalue / p_ica_hni_chf.nvalue - 1::numeric AS hnrchf,
+    p_ica_hni_chf.nvalue AS hnrchf_wi_t0,
+    ica_hni_chf.nvalue AS hnrchf_wi_t1,
+    ( SELECT a.attribute_id
+           FROM bmk.attributes a
+          WHERE a.code::text = 'HNI'::text AND a.attribute_type_id = 1::numeric) AS hnrzar_attribute_id,
+    'HNI'::text AS hnrzar_attribute_code,
+    ica_hni_zar.nvalue / p_ica_hni_zar.nvalue - 1::numeric AS hnrzar,
+    p_ica_hni_zar.nvalue AS hnrzar_wi_t0,
+    ica_hni_zar.nvalue AS hnrzar_wi_t1
+   FROM bmk.sources s
+     JOIN bmk.dates d ON d.as_of_date = d.as_of_date
+     JOIN bmk.dates dp ON d.as_of_date > dp.as_of_date
+     JOIN bmk.index_main m ON s.source_id = m.source_id AND d.as_of_date = m.as_of_date
+     JOIN bmk.attribute_types att_idx ON att_idx.att_typ_name::text = 'INDEX'::text
+     JOIN bmk.currencies c_eur ON c_eur.code::text = 'EUR'::text
+     JOIN bmk.currencies c_zar ON c_zar.code::text = 'ZAR'::text
+     JOIN bmk.currencies c_nzd ON c_nzd.code::text = 'NZD'::text
+     JOIN bmk.currencies c_cny ON c_cny.code::text = 'CNY'::text
+     JOIN bmk.currencies c_gbp ON c_gbp.code::text = 'GBP'::text
+     JOIN bmk.currencies c_jpy ON c_jpy.code::text = 'JPY'::text
+     JOIN bmk.currencies c_sgd ON c_sgd.code::text = 'SGD'::text
+     JOIN bmk.currencies c_chf ON c_chf.code::text = 'CHF'::text
+     JOIN bmk.currencies c_hkd ON c_hkd.code::text = 'HKD'::text
+     JOIN bmk.currencies c_loc ON c_loc.code::text = 'LOC'::text
+     JOIN bmk.currencies c_usd ON c_usd.code::text = 'USD'::text
+     JOIN bmk.currencies c_aud ON c_aud.code::text = 'AUD'::text
+     JOIN bmk.currencies c_cad ON c_cad.code::text = 'CAD'::text
+     JOIN bmk.attributes a_gi ON a_gi.code::text = 'GI'::text AND a_gi.attribute_type_id = att_idx.attribute_type_id
+     JOIN bmk.attributes a_ni ON a_ni.code::text = 'NI'::text AND a_ni.attribute_type_id = att_idx.attribute_type_id
+     JOIN bmk.attributes a_hgi ON a_hgi.code::text = 'HGI'::text AND a_hgi.attribute_type_id = att_idx.attribute_type_id
+     JOIN bmk.attributes a_mk ON a_mk.code::text = 'MK'::text AND a_mk.attribute_type_id = att_idx.attribute_type_id
+     JOIN bmk.attributes a_hni ON a_hni.code::text = 'HNI'::text AND a_hni.attribute_type_id = att_idx.attribute_type_id
+     JOIN bmk.attributes a_pi ON a_pi.code::text = 'PI'::text AND a_pi.attribute_type_id = att_idx.attribute_type_id
+     LEFT JOIN bmk.index_curr_analytics ica_gi_usd ON ica_gi_usd.as_of_date = d.as_of_date AND ica_gi_usd.source_id = s.source_id AND ica_gi_usd.index_id = m.index_id AND ica_gi_usd.attribute_id = a_gi.attribute_id AND ica_gi_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_gi_usd ON p_ica_gi_usd.as_of_date = dp.as_of_date AND p_ica_gi_usd.source_id = s.source_id AND p_ica_gi_usd.index_id = m.index_id AND p_ica_gi_usd.attribute_id = a_gi.attribute_id AND p_ica_gi_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_pi_usd ON ica_pi_usd.as_of_date = d.as_of_date AND ica_pi_usd.source_id = s.source_id AND ica_pi_usd.index_id = m.index_id AND ica_pi_usd.attribute_id = a_pi.attribute_id AND ica_pi_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_pi_usd ON p_ica_pi_usd.as_of_date = dp.as_of_date AND p_ica_pi_usd.source_id = s.source_id AND p_ica_pi_usd.index_id = m.index_id AND p_ica_pi_usd.attribute_id = a_pi.attribute_id AND p_ica_pi_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_ni_usd ON ica_ni_usd.as_of_date = d.as_of_date AND ica_ni_usd.source_id = s.source_id AND ica_ni_usd.index_id = m.index_id AND ica_ni_usd.attribute_id = a_ni.attribute_id AND ica_ni_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_ni_usd ON p_ica_ni_usd.as_of_date = dp.as_of_date AND p_ica_ni_usd.source_id = s.source_id AND p_ica_ni_usd.index_id = m.index_id AND p_ica_ni_usd.attribute_id = a_ni.attribute_id AND p_ica_ni_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_mk_usd ON ica_mk_usd.as_of_date = d.as_of_date AND ica_mk_usd.source_id = s.source_id AND ica_mk_usd.index_id = m.index_id AND ica_mk_usd.attribute_id = a_mk.attribute_id AND ica_mk_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_cad ON ica_hni_cad.as_of_date = d.as_of_date AND ica_hni_cad.source_id = s.source_id AND ica_hni_cad.index_id = m.index_id AND ica_hni_cad.attribute_id = a_hni.attribute_id AND ica_hni_cad.currency_id = c_cad.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_cad ON p_ica_hni_cad.as_of_date = dp.as_of_date AND p_ica_hni_cad.source_id = s.source_id AND p_ica_hni_cad.index_id = m.index_id AND p_ica_hni_cad.attribute_id = a_hni.attribute_id AND p_ica_hni_cad.currency_id = c_cad.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_chf ON ica_hni_chf.as_of_date = d.as_of_date AND ica_hni_chf.source_id = s.source_id AND ica_hni_chf.index_id = m.index_id AND ica_hni_chf.attribute_id = a_hni.attribute_id AND ica_hni_chf.currency_id = c_chf.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_chf ON p_ica_hni_chf.as_of_date = dp.as_of_date AND p_ica_hni_chf.source_id = s.source_id AND p_ica_hni_chf.index_id = m.index_id AND p_ica_hni_chf.attribute_id = a_hni.attribute_id AND p_ica_hni_chf.currency_id = c_chf.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_eur ON ica_hni_eur.as_of_date = d.as_of_date AND ica_hni_eur.source_id = s.source_id AND ica_hni_eur.index_id = m.index_id AND ica_hni_eur.attribute_id = a_hni.attribute_id AND ica_hni_eur.currency_id = c_eur.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_eur ON p_ica_hni_eur.as_of_date = dp.as_of_date AND p_ica_hni_eur.source_id = s.source_id AND p_ica_hni_eur.index_id = m.index_id AND p_ica_hni_eur.attribute_id = a_hni.attribute_id AND p_ica_hni_eur.currency_id = c_eur.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_gbp ON ica_hni_gbp.as_of_date = d.as_of_date AND ica_hni_gbp.source_id = s.source_id AND ica_hni_gbp.index_id = m.index_id AND ica_hni_gbp.attribute_id = a_hni.attribute_id AND ica_hni_gbp.currency_id = c_gbp.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_gbp ON p_ica_hni_gbp.as_of_date = dp.as_of_date AND p_ica_hni_gbp.source_id = s.source_id AND p_ica_hni_gbp.index_id = m.index_id AND p_ica_hni_gbp.attribute_id = a_hni.attribute_id AND p_ica_hni_gbp.currency_id = c_gbp.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_sgd ON ica_hni_sgd.as_of_date = d.as_of_date AND ica_hni_sgd.source_id = s.source_id AND ica_hni_sgd.index_id = m.index_id AND ica_hni_sgd.attribute_id = a_hni.attribute_id AND ica_hni_sgd.currency_id = c_sgd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_sgd ON p_ica_hni_sgd.as_of_date = dp.as_of_date AND p_ica_hni_sgd.source_id = s.source_id AND p_ica_hni_sgd.index_id = m.index_id AND p_ica_hni_sgd.attribute_id = a_hni.attribute_id AND p_ica_hni_sgd.currency_id = c_sgd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_usd ON ica_hni_usd.as_of_date = d.as_of_date AND ica_hni_usd.source_id = s.source_id AND ica_hni_usd.index_id = m.index_id AND ica_hni_usd.attribute_id = a_hni.attribute_id AND ica_hni_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_usd ON p_ica_hni_usd.as_of_date = dp.as_of_date AND p_ica_hni_usd.source_id = s.source_id AND p_ica_hni_usd.index_id = m.index_id AND p_ica_hni_usd.attribute_id = a_hni.attribute_id AND p_ica_hni_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_aud ON ica_hni_aud.as_of_date = d.as_of_date AND ica_hni_aud.source_id = s.source_id AND ica_hni_aud.index_id = m.index_id AND ica_hni_aud.attribute_id = a_hni.attribute_id AND ica_hni_aud.currency_id = c_aud.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_aud ON p_ica_hni_aud.as_of_date = dp.as_of_date AND p_ica_hni_aud.source_id = s.source_id AND p_ica_hni_aud.index_id = m.index_id AND p_ica_hni_aud.attribute_id = a_hni.attribute_id AND p_ica_hni_aud.currency_id = c_aud.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_jpy ON ica_hni_jpy.as_of_date = d.as_of_date AND ica_hni_jpy.source_id = s.source_id AND ica_hni_jpy.index_id = m.index_id AND ica_hni_jpy.attribute_id = a_hni.attribute_id AND ica_hni_jpy.currency_id = c_jpy.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_jpy ON p_ica_hni_jpy.as_of_date = dp.as_of_date AND p_ica_hni_jpy.source_id = s.source_id AND p_ica_hni_jpy.index_id = m.index_id AND p_ica_hni_jpy.attribute_id = a_hni.attribute_id AND p_ica_hni_jpy.currency_id = c_jpy.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_zar ON ica_hni_zar.as_of_date = d.as_of_date AND ica_hni_zar.source_id = s.source_id AND ica_hni_zar.index_id = m.index_id AND ica_hni_zar.attribute_id = a_hni.attribute_id AND ica_hni_zar.currency_id = c_zar.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_zar ON p_ica_hni_zar.as_of_date = dp.as_of_date AND p_ica_hni_zar.source_id = s.source_id AND p_ica_hni_zar.index_id = m.index_id AND p_ica_hni_zar.attribute_id = a_hni.attribute_id AND p_ica_hni_zar.currency_id = c_zar.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_hkd ON ica_hni_hkd.as_of_date = d.as_of_date AND ica_hni_hkd.source_id = s.source_id AND ica_hni_hkd.index_id = m.index_id AND ica_hni_hkd.attribute_id = a_hni.attribute_id AND ica_hni_hkd.currency_id = c_hkd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_hkd ON p_ica_hni_hkd.as_of_date = dp.as_of_date AND p_ica_hni_hkd.source_id = s.source_id AND p_ica_hni_hkd.index_id = m.index_id AND p_ica_hni_hkd.attribute_id = a_hni.attribute_id AND p_ica_hni_hkd.currency_id = c_hkd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hni_nzd ON ica_hni_nzd.as_of_date = d.as_of_date AND ica_hni_nzd.source_id = s.source_id AND ica_hni_nzd.index_id = m.index_id AND ica_hni_nzd.attribute_id = a_hni.attribute_id AND ica_hni_nzd.currency_id = c_nzd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hni_nzd ON p_ica_hni_nzd.as_of_date = dp.as_of_date AND p_ica_hni_nzd.source_id = s.source_id AND p_ica_hni_nzd.index_id = m.index_id AND p_ica_hni_nzd.attribute_id = a_hni.attribute_id AND p_ica_hni_nzd.currency_id = c_nzd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_cad ON ica_hgi_cad.as_of_date = d.as_of_date AND ica_hgi_cad.source_id = s.source_id AND ica_hgi_cad.index_id = m.index_id AND ica_hgi_cad.attribute_id = a_hgi.attribute_id AND ica_hgi_cad.currency_id = c_cad.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_cad ON p_ica_hgi_cad.as_of_date = dp.as_of_date AND p_ica_hgi_cad.source_id = s.source_id AND p_ica_hgi_cad.index_id = m.index_id AND p_ica_hgi_cad.attribute_id = a_hgi.attribute_id AND p_ica_hgi_cad.currency_id = c_cad.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_chf ON ica_hgi_chf.as_of_date = d.as_of_date AND ica_hgi_chf.source_id = s.source_id AND ica_hgi_chf.index_id = m.index_id AND ica_hgi_chf.attribute_id = a_hgi.attribute_id AND ica_hgi_chf.currency_id = c_chf.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_chf ON p_ica_hgi_chf.as_of_date = dp.as_of_date AND p_ica_hgi_chf.source_id = s.source_id AND p_ica_hgi_chf.index_id = m.index_id AND p_ica_hgi_chf.attribute_id = a_hgi.attribute_id AND p_ica_hgi_chf.currency_id = c_chf.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_eur ON ica_hgi_eur.as_of_date = d.as_of_date AND ica_hgi_eur.source_id = s.source_id AND ica_hgi_eur.index_id = m.index_id AND ica_hgi_eur.attribute_id = a_hgi.attribute_id AND ica_hgi_eur.currency_id = c_eur.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_eur ON p_ica_hgi_eur.as_of_date = dp.as_of_date AND p_ica_hgi_eur.source_id = s.source_id AND p_ica_hgi_eur.index_id = m.index_id AND p_ica_hgi_eur.attribute_id = a_hgi.attribute_id AND p_ica_hgi_eur.currency_id = c_eur.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_gbp ON ica_hgi_gbp.as_of_date = d.as_of_date AND ica_hgi_gbp.source_id = s.source_id AND ica_hgi_gbp.index_id = m.index_id AND ica_hgi_gbp.attribute_id = a_hgi.attribute_id AND ica_hgi_gbp.currency_id = c_gbp.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_gbp ON p_ica_hgi_gbp.as_of_date = dp.as_of_date AND p_ica_hgi_gbp.source_id = s.source_id AND p_ica_hgi_gbp.index_id = m.index_id AND p_ica_hgi_gbp.attribute_id = a_hgi.attribute_id AND p_ica_hgi_gbp.currency_id = c_gbp.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_sgd ON ica_hgi_sgd.as_of_date = d.as_of_date AND ica_hgi_sgd.source_id = s.source_id AND ica_hgi_sgd.index_id = m.index_id AND ica_hgi_sgd.attribute_id = a_hgi.attribute_id AND ica_hgi_sgd.currency_id = c_sgd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_sgd ON p_ica_hgi_sgd.as_of_date = dp.as_of_date AND p_ica_hgi_sgd.source_id = s.source_id AND p_ica_hgi_sgd.index_id = m.index_id AND p_ica_hgi_sgd.attribute_id = a_hgi.attribute_id AND p_ica_hgi_sgd.currency_id = c_sgd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_usd ON ica_hgi_usd.as_of_date = d.as_of_date AND ica_hgi_usd.source_id = s.source_id AND ica_hgi_usd.index_id = m.index_id AND ica_hgi_usd.attribute_id = a_hgi.attribute_id AND ica_hgi_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_usd ON p_ica_hgi_usd.as_of_date = dp.as_of_date AND p_ica_hgi_usd.source_id = s.source_id AND p_ica_hgi_usd.index_id = m.index_id AND p_ica_hgi_usd.attribute_id = a_hgi.attribute_id AND p_ica_hgi_usd.currency_id = c_usd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_aud ON ica_hgi_aud.as_of_date = d.as_of_date AND ica_hgi_aud.source_id = s.source_id AND ica_hgi_aud.index_id = m.index_id AND ica_hgi_aud.attribute_id = a_hgi.attribute_id AND ica_hgi_aud.currency_id = c_aud.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_aud ON p_ica_hgi_aud.as_of_date = dp.as_of_date AND p_ica_hgi_aud.source_id = s.source_id AND p_ica_hgi_aud.index_id = m.index_id AND p_ica_hgi_aud.attribute_id = a_hgi.attribute_id AND p_ica_hgi_aud.currency_id = c_aud.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_jpy ON ica_hgi_jpy.as_of_date = d.as_of_date AND ica_hgi_jpy.source_id = s.source_id AND ica_hgi_jpy.index_id = m.index_id AND ica_hgi_jpy.attribute_id = a_hgi.attribute_id AND ica_hgi_jpy.currency_id = c_jpy.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_jpy ON p_ica_hgi_jpy.as_of_date = dp.as_of_date AND p_ica_hgi_jpy.source_id = s.source_id AND p_ica_hgi_jpy.index_id = m.index_id AND p_ica_hgi_jpy.attribute_id = a_hgi.attribute_id AND p_ica_hgi_jpy.currency_id = c_jpy.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_zar ON ica_hgi_zar.as_of_date = d.as_of_date AND ica_hgi_zar.source_id = s.source_id AND ica_hgi_zar.index_id = m.index_id AND ica_hgi_zar.attribute_id = a_hgi.attribute_id AND ica_hgi_zar.currency_id = c_zar.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_zar ON p_ica_hgi_zar.as_of_date = dp.as_of_date AND p_ica_hgi_zar.source_id = s.source_id AND p_ica_hgi_zar.index_id = m.index_id AND p_ica_hgi_zar.attribute_id = a_hgi.attribute_id AND p_ica_hgi_zar.currency_id = c_zar.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_hkd ON ica_hgi_hkd.as_of_date = d.as_of_date AND ica_hgi_hkd.source_id = s.source_id AND ica_hgi_hkd.index_id = m.index_id AND ica_hgi_hkd.attribute_id = a_hgi.attribute_id AND ica_hgi_hkd.currency_id = c_hkd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_hkd ON p_ica_hgi_hkd.as_of_date = dp.as_of_date AND p_ica_hgi_hkd.source_id = s.source_id AND p_ica_hgi_hkd.index_id = m.index_id AND p_ica_hgi_hkd.attribute_id = a_hgi.attribute_id AND p_ica_hgi_hkd.currency_id = c_hkd.currency_id
+     LEFT JOIN bmk.index_curr_analytics ica_hgi_nzd ON ica_hgi_nzd.as_of_date = d.as_of_date AND ica_hgi_nzd.source_id = s.source_id AND ica_hgi_nzd.index_id = m.index_id AND ica_hgi_nzd.attribute_id = a_hgi.attribute_id AND ica_hgi_nzd.currency_id = c_nzd.currency_id
+     LEFT JOIN bmk.index_curr_analytics p_ica_hgi_nzd ON p_ica_hgi_nzd.as_of_date = dp.as_of_date AND p_ica_hgi_nzd.source_id = s.source_id AND p_ica_hgi_nzd.index_id = m.index_id AND p_ica_hgi_nzd.attribute_id = a_hgi.attribute_id AND p_ica_hgi_nzd.currency_id = c_nzd.currency_id
+  WHERE s.src_name::text = 'FTRUCF'::text;

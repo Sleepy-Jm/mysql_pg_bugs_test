@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17395: Assert failed on merge join when foreign range partition contains out-of-range value</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17395-8c326292078d1a57%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-02-05T06:00:01" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17395: Assert failed on merge join when foreign range partition contains out-of-range value" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="902d79f10154819f0ebad6fa7804c1ad">BUG #17395: Assert failed on merge join when foreign range partition contains out-of-range value</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202202050600">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17395-8c326292078d1a57@postgresql.org"></a>
+<a name="902d79f10154819f0ebad6fa7804c1ad"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17395: Assert failed on merge join when foreign range partition contains out-of-range value</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-05 06:00:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17395-8c326292078d1a57%40postgresql.org">17395-8c326292078d1a57@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17395-8c326292078d1a57%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17395-8c326292078d1a57%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17395-8c326292078d1a57%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17395-8c326292078d1a57%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202050000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17395<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>The following query:<br>CREATE EXTENSION postgres_fdw;<br>DO $d$<br>    BEGIN<br>        EXECUTE $$CREATE SERVER loopback FOREIGN DATA WRAPPER postgres_fdw<br>            OPTIONS (dbname &#x27;$$||current_database()||$$&#x27;,<br>                     port &#x27;$$||current_setting(&#x27;port&#x27;)||$$&#x27;<br>            )$$;<br>    END;<br>$d$;<br>CREATE USER MAPPING FOR CURRENT_USER SERVER loopback;</p>
+
+<p>CREATE TABLE fprt2 (a int) PARTITION BY RANGE(a);<br>CREATE TABLE fprt2_p1 (LIKE fprt2);<br>CREATE TABLE fprt2_p2 (LIKE fprt2);<br>INSERT INTO fprt2_p1 VALUES (2);<br>INSERT INTO fprt2_p2 VALUES (1);</p>
+
+<p>CREATE FOREIGN TABLE ftprt2_p1 PARTITION OF fprt2 FOR VALUES FROM (0) TO<br>(1)<br>    SERVER loopback OPTIONS (table_name &#x27;fprt2_p1&#x27;);<br>CREATE FOREIGN TABLE ftprt2_p2 PARTITION OF fprt2 FOR VALUES FROM (1) TO<br>(2)<br>    SERVER loopback OPTIONS (table_name &#x27;fprt2_p2&#x27;, use_remote_estimate<br>&#x27;true&#x27;);</p>
+
+<p>SELECT t1.a FROM fprt2 t1 JOIN fprt2 t2 ON (t1.a = t2.a);</p>
+
+<p>causes an assertion failure with the following stack:<br>Core was generated by `postgres: law regression [local] SELECT              <br>                        &#x27;.<br>Program terminated with signal SIGABRT, Aborted.<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>50      ../sysdeps/unix/sysv/linux/raise.c:  No such file or directory.<br>(gdb) bt<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>#1  0x00007fbae1737859 in __GI_abort () at abort.c:79<br>#2  0x00005566c7d3e72c in ExceptionalCondition (conditionName=0x5566c7ed0a1a<br>&quot;compareResult &lt; 0&quot;, <br>    errorType=0x5566c7ed07f3 &quot;FailedAssertion&quot;, fileName=0x5566c7ed095a<br>&quot;nodeMergejoin.c&quot;, lineNumber=898)<br>    at assert.c:69<br>#3  0x00005566c794c208 in ExecMergeJoin (pstate=0x5566c850faa0) at<br>nodeMergejoin.c:898<br>#4  0x00005566c79041ba in ExecProcNode (node=0x5566c850faa0) at<br>../../../src/include/executor/executor.h:257<br>#5  0x00005566c7906dd8 in ExecutePlan (estate=0x5566c850f830,<br>planstate=0x5566c850faa0, use_parallel_mode=false, <br>    operation=CMD_SELECT, sendTuples=true, numberTuples=0,<br>direction=ForwardScanDirection, dest=0x5566c857a560, <br>    execute_once=true) at execMain.c:1551<br>#6  0x00005566c79048f1 in standard_ExecutorRun (queryDesc=0x5566c8441bb0,<br>direction=ForwardScanDirection, count=0, <br>    execute_once=true) at execMain.c:361<br>#7  0x00005566c79046dc in ExecutorRun (queryDesc=0x5566c8441bb0,<br>direction=ForwardScanDirection, count=0, <br>    execute_once=true) at execMain.c:305<br>#8  0x00005566c7b81d38 in PortalRunSelect (portal=0x5566c848f1a0,<br>forward=true, count=0, dest=0x5566c857a560)<br>    at pquery.c:921<br>#9  0x00005566c7b8195c in PortalRun (portal=0x5566c848f1a0,<br>count=9223372036854775807, isTopLevel=true, run_once=true, <br>    dest=0x5566c857a560, altdest=0x5566c857a560, qc=0x7ffc64d269f0) at<br>pquery.c:765<br>#10 0x00005566c7b7a846 in exec_simple_query (<br>    query_string=0x5566c84202a0 &quot;SELECT t1.a FROM fprt2 t1 JOIN fprt2 t2 ON<br>(t1.a = t2.a);&quot;) at postgres.c:1214<br>#11 0x00005566c7b7f735 in PostgresMain (argc=1, argv=0x7ffc64d26c10,<br>dbname=0x5566c844c3f8 &quot;regression&quot;, <br>    username=0x5566c844c3d8 &quot;law&quot;) at postgres.c:4486<br>#12 0x00005566c7aa3e3d in BackendRun (port=0x5566c8443d10) at<br>postmaster.c:4530<br>#13 0x00005566c7aa3698 in BackendStartup (port=0x5566c8443d10) at<br>postmaster.c:4252<br>#14 0x00005566c7a9f48d in ServerLoop () at postmaster.c:1745<br>#15 0x00005566c7a9ebea in PostmasterMain (argc=3, argv=0x5566c841a560) at<br>postmaster.c:1417<br>#16 0x00005566c798e0f7 in main (argc=3, argv=0x5566c841a560) at main.c:209</p>
+
+<p>Reproduced on REL_12_STABLE..master. On REL_11_STABLE and also when the<br>server is built without asserts SELECT returns two rows. The offending<br>commit is 959d00e9d.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="531524.1644076257@sss.pgh.pa.us"></a>
+<a name="3b658ecdceb3b4b84794f38ff7a38fe2"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17395: Assert failed on merge join when foreign range partition contains out-of-range value</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-05 15:50:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/531524.1644076257%40sss.pgh.pa.us">531524.1644076257@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/531524.1644076257%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/531524.1644076257%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/531524.1644076257%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/531524.1644076257%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202050000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; The following query:<br>&gt; [ foreign partition that doesn&#x27;t contain the expected data ]<br>&gt; causes an assertion failure with the following stack:</p>
+
+<p>Hm.  I suppose we have to reduce that assert to an actual runtime<br>test.  More generally, though, it seems like the documentation is<br>not nearly clear enough that it&#x27;s on the user&#x27;s head to make sure<br>that a foreign partition&#x27;s contents meet the partition constraint.<br>Sec. 5.11.2 punts the matter to the CREATE FOREIGN TABLE man page,<br>which is okay, but CREATE FOREIGN TABLE doesn&#x27;t lay it out with<br>any degree of clarity either.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

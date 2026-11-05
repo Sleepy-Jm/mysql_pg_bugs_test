@@ -1,0 +1,311 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17454
+Logged by:          Laowu wong
+Email address:      thbytwo(at)live(dot)cn
+PostgreSQL version: 14.2
+Operating system:   centos 7
+Description:        
+
+
+It should return the server port when I execute 'select inet_server_port();'
+with the command line 'psql -p 15431'.
+It seems that if I do not enter the ipv4 address in the
+psql-command-line,the pg will return null.
+
+
+the current behavior:
+[postgres(at)pc67 ~]$ /home/postgres/pgREL1402/bin/psql -p 15431
+psql (14.2)
+Type "help" for help.
+
+
+postgres=# select inet_server_port();
+ inet_server_port 
+------------------
+
+
+(1 row)
+
+
+the expected:
+[postgres(at)pc67 ~]$ /home/postgres/pgREL1402/bin/psql -p 15431
+psql (14.2)
+Type "help" for help.
+
+
+postgres=# select inet_server_port();
+ inet_server_port 
+------------------
+            15431
+(1 row)
+
+
+the env：
+centos 7  x86
+PG14.2
+
+
+
+
+
+### MESSAGE 1
+On Friday, April 1, 2022, PG Bug reporting form <noreply(at)postgresql(dot)org>
+wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17454
+> Logged by:          Laowu wong
+> Email address:      thbytwo(at)live(dot)cn
+> PostgreSQL version: 14.2
+> Operating system:   centos 7
+> Description:
+>
+> It should return the server port when I execute 'select
+> inet_server_port();'
+> with the command line 'psql -p 15431'.
+> It seems that if I do not enter the ipv4 address in the
+> psql-command-line,the pg will return null.
+
+
+Right, because the default is to use a local socket.
+
+
+David J.
+
+
+
+### MESSAGE 2
+If I run multiple instances on one server with local socket, how can I distinguish them?I think the port is need.
+
+
+________________________________
+发件人: David G. Johnston <david(dot)g(dot)johnston(at)gmail(dot)com>
+发送时间: 2022年4月2日 23:07
+收件人: thbytwo(at)live(dot)cn <thbytwo(at)live(dot)cn>; pgsql-bugs(at)lists(dot)postgresql(dot)org <pgsql-bugs(at)lists(dot)postgresql(dot)org>
+主题: Re: BUG #17454: Using psql without ipv4 address,the inet_server_port do not return PORT.
+
+
+On Friday, April 1, 2022, PG Bug reporting form <noreply(at)postgresql(dot)org<mailto:noreply(at)postgresql(dot)org>> wrote:
+The following bug has been logged on the website:
+
+
+Bug reference:      17454
+Logged by:          Laowu wong
+Email address:      thbytwo(at)live(dot)cn<mailto:thbytwo(at)live(dot)cn>
+PostgreSQL version: 14.2
+Operating system:   centos 7
+Description:
+
+
+It should return the server port when I execute 'select inet_server_port();'
+with the command line 'psql -p 15431'.
+It seems that if I do not enter the ipv4 address in the
+psql-command-line,the pg will return null.
+
+
+Right, because the default is to use a local socket.
+
+
+David J.
+
+
+
+
+
+### MESSAGE 3
+On Sat, Apr 2, 2022 at 6:37 PM Wong Simon <thbytwo(at)live(dot)cn> wrote:
+
+
+> If I run multiple instances on one server with local socket, how can I
+> distinguish them?I think the port is need.
+>
+>
+You do have the right idea, but you need to inspect the static
+configuration setting the server is using as opposed to the connection
+state reported by the function.
+
+
+https://www.postgresql.org/docs/current/runtime-config-connection.html#RUNTIME-CONFIG-CONNECTION-SETTINGS
+
+
+port
+
+
+The TCP port the server listens on; 5432 by default. Note that the same
+port number is used for all IP addresses the server listens on. This
+parameter can only be set at server start.
+
+
+David J.
+
+
+
+### MESSAGE 4
+On Sun, 3 Apr 2022 at 16:50, Wong Simon <thbytwo(at)live(dot)cn> wrote:
+> If I run multiple instances on one server with local socket, how can I distinguish them?I think the port is need.
+
+
+You distinguish them by the socket NAME whose "extension" is the port
+as a decimal string. The socket name is derived from the port option,
+but it is not a port. It's clearly specified:
+
+
+inet_server_addr () → inet
+Returns the IP address on which the server accepted the current
+connection, or NULL if the current connection is via a Unix-domain
+socket.
+
+
+inet_server_port () → integer
+Returns the IP port number on which the server accepted the current
+connection, or NULL if the current connection is via a Unix-domain
+socket.
+
+
+I do not know if there is  an "unix_socket_path" option, as there can
+be multiple sockets, may be those functions predate
+unix_socket_directories being multivalued ( in TCP, with a single
+socket listening on 0.0.0.0, you can have connection on different
+local address, so it getsockname(2) is needed more ).
+
+
+But if you just need to distinguish instance on diferent ports, query
+the "port" configuration parameter, IIRC this is unique ( although may
+be you can somehow reuse it with careful usage of listen_addresses and
+unix_socket_directories ).
+
+
+Francisco Olarte.
+
+
+
+
+
+### MESSAGE 5
+On Sun, Apr 3, 2022 at 8:36 AM Francisco Olarte <folarte(at)peoplecall(dot)com>
+wrote:
+
+
+> On Sun, 3 Apr 2022 at 16:50, Wong Simon <thbytwo(at)live(dot)cn> wrote:
+> > If I run multiple instances on one server with local socket, how can I
+> distinguish them?I think the port is need.
+>
+> You distinguish them by the socket NAME whose "extension" is the port
+> as a decimal string. The socket name is derived from the port option,
+> but it is not a port. It's clearly specified:
+>
+
+
+Resorting to string parsing is never desirable, nor is it necessary here.
+
+
+>
+> But if you just need to distinguish instance on diferent ports, query
+> the "port" configuration parameter, IIRC this is unique ( although may
+> be you can somehow reuse it with careful usage of listen_addresses and
+> unix_socket_directories ).
+>
+>
+Per the docs It is indeed single-valued.  I don't know what "reuse" would
+mean in this context but both sockets and IP have a specific usage of this
+setting's value that the DBA cannot alter.
+
+
+One could also inspect data_directory, it has the same "unique per cluster
+on the same machine" property.
+
+
+The function inet_server_addr() can help to distinguish which machine if
+there are multiple.  Though what "local" means may be a problem.  I suppose
+what is useful depends on "why" one needs to distinguish them.
+
+
+David J.
+
+
+
+### MESSAGE 6
+On Sun, 3 Apr 2022 at 17:50, David G. Johnston
+<david(dot)g(dot)johnston(at)gmail(dot)com> wrote:
+> On Sun, Apr 3, 2022 at 8:36 AM Francisco Olarte <folarte(at)peoplecall(dot)com> wrote:
+>>
+>> On Sun, 3 Apr 2022 at 16:50, Wong Simon <thbytwo(at)live(dot)cn> wrote:
+>> > If I run multiple instances on one server with local socket, how can I distinguish them?I think the port is need.
+>> You distinguish them by the socket NAME whose "extension" is the port
+>> as a decimal string. The socket name is derived from the port option,
+>> but it is not a port. It's clearly specified:
+> Resorting to string parsing is never desirable, nor is it necessary here.
+
+
+Socket name seems not to be accessible, as let per a cursory look at
+the docs, anyway, but I just looked for unix and for socket in the
+index.
+And as extension must be port, you are right, no info there.
+
+
+>> But if you just need to distinguish instance on diferent ports, query
+>> the "port" configuration parameter, IIRC this is unique ( although may
+>> be you can somehow reuse it with careful usage of listen_addresses and
+>> unix_socket_directories ).
+
+
+> Per the docs It is indeed single-valued.  I don't know what "reuse" would mean in this context but both sockets and IP have a specific usage of this setting's value that the DBA cannot alter.
+
+
+Port is single valued, what I meant is I'm not sure if using
+socket_dir=/socka, listen_addr=127.0.0.1, data_dir=/dataA and
+port=5432 plus socket_dir=/sockb, listen_addr=127.0.0.2,
+data_dir=/datab and port=5432 would let you start two correctly
+functioning instances in the same machine. In my usage postgres
+normally behaves as expected, does not bother doing extra checks, just
+listens where it is told to and hums along ( I know of some stupid
+programs which, in a situation like this, have code to check if there
+is another process listening in the same port, where there is no
+transport address collision at all ).
+
+
+Francisco Olarte.
+
+
+
+
+
+### MESSAGE 7
+Francisco Olarte <folarte(at)peoplecall(dot)com> writes:
+>> On Sun, 3 Apr 2022 at 16:50, Wong Simon <thbytwo(at)live(dot)cn> wrote:
+>>> If I run multiple instances on one server with local socket, how can I distinguish them?I think the port is need.
+
+
+> Port is single valued, what I meant is I'm not sure if using
+> socket_dir=/socka, listen_addr=127.0.0.1, data_dir=/dataA and
+> port=5432 plus socket_dir=/sockb, listen_addr=127.0.0.2,
+> data_dir=/datab and port=5432 would let you start two correctly
+> functioning instances in the same machine.
+
+
+I think relying on port for this purpose is misguided anyway.
+We've had requests in the past to let one postmaster listen on
+multiple different port numbers; I think the only reason it's
+not happened yet is nobody got excited enough to write a patch.
+
+
+Likewise, inet_server_addr() seems a bit shaky as a server
+identity value, since it's already possible to have a postmaster
+listening on multiple IP addresses.
+
+
+If you're trying to identify an installation uniquely, the
+machine name and data_directory are probably the best key.
+Getting a suitably unique machine name might be tricky.
+For localhost connections, though, you could ignore that.
+
+
+			regards, tom lane
+
+
+

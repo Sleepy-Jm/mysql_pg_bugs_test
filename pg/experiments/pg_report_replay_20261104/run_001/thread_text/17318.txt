@@ -1,0 +1,270 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17318
+Logged by:          Zhiyong Wu
+Email address:      253540651(at)qq(dot)com
+PostgreSQL version: 14.1
+Operating system:   Linux version 5.13.0-1-MANJARO (builduser(at)LEGION)
+Description:        
+
+
+PoC:
+;
+ ;
+ WITH RECURSIVE x ( x ) AS ( SELECT 1 UNION ALL SELECT x FROM LATERAL ( (
+SELECT * FROM ( ( SELECT 4 AS x ) UNION ALL ( SELECT 5 AS x ) ) AS x WHERE x
+BETWEEN 1 AND 2 AND x < ( SELECT 3 GROUP BY DISTINCT ROLLUP ( x , x ) ,
+ROLLUP ( x , x ) ) ) UNION ALL ( SELECT ( SELECT x LIMIT 1 ) FROM x OFFSET 0
+LIMIT 5 ) ) AS x GROUP BY ROLLUP ( ( x , x , x ) , ( ( SELECT TRIM (
+TRAILING ' ' FROM SUBSTRING ( VERSION ( ) FROM '^[^0-9]*' ) ) WHERE ( x IS
+NOT NULL ) ) , x ) ) ) CYCLE x SET BOOLEAN USING VALUES SELECT FROM x GROUP
+BY DISTINCT CUBE ( x , x , x ) ;
+ RESET ALL ;
+ INSERT INTO x VALUES ( 7 , 4 , 'cccc' , 'h' ) ;
+
+
+Asan Log:
+==3973==ERROR: AddressSanitizer: SEGV on unknown address 0x000000040000 (pc
+0x000000d9fdd6 bp 0x000000000002 sp 0x7ffd39de1d70 T0)
+==3973==The signal is caused by a READ memory access.
+    #0 0xd9fdd6 in bms_is_subset
+/root/postgres/bld/../src/backend/nodes/bitmapset.c:327:13
+    #1 0xf25392 in add_vars_to_targetlist
+/root/postgres/bld/../src/backend/optimizer/plan/initsplan.c:247:8
+    #2 0xf250c7 in build_base_rel_tlists
+/root/postgres/bld/../src/backend/optimizer/plan/initsplan.c:192:3
+    #3 0xf32c45 in query_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planmain.c:178:2
+    #4 0xf3f24e in grouping_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1448:17
+    #5 0xf394a7 in subquery_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2
+    #6 0xe859a6 in set_subquery_pathlist
+/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:2229:17
+    #7 0xe859a6 in set_rel_size
+/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:423:5
+    #8 0xe7a0cb in set_base_rel_sizes
+/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:324:3
+    #9 0xe7a0cb in make_one_rel
+/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:186:2
+    #10 0xf32cd2 in query_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planmain.c:276:14
+    #11 0xf3f24e in grouping_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1448:17
+    #12 0xf394a7 in subquery_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2
+    #13 0xfa116c in recurse_set_operations
+/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:239:28
+    #14 0xfa04ea in generate_recursion_path
+/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:469:9
+    #15 0xfa04ea in plan_set_operations
+/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:156:15
+    #16 0xf3c035 in grouping_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1286:17
+    #17 0xf394a7 in subquery_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2
+    #18 0xf790cd in SS_process_ctes
+/root/postgres/bld/../src/backend/optimizer/plan/subselect.c:980:13
+    #19 0xf3552c in subquery_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:650:3
+    #20 0xf33304 in standard_planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:406:9
+    #21 0xf32fa8 in planner
+/root/postgres/bld/../src/backend/optimizer/plan/planner.c:277:12
+    #22 0x13379c7 in pg_plan_query
+/root/postgres/bld/../src/backend/tcop/postgres.c:847:9
+    #23 0x13379c7 in pg_plan_queries
+/root/postgres/bld/../src/backend/tcop/postgres.c:939:11
+    #24 0x1345487 in exec_simple_query
+/root/postgres/bld/../src/backend/tcop/postgres.c:1133:19
+    #25 0x133da73 in PostgresMain
+/root/postgres/bld/../src/backend/tcop/postgres.c
+    #26 0x1094d63 in BackendRun
+/root/postgres/bld/../src/backend/postmaster/postmaster.c:4584:2
+    #27 0x109333d in BackendStartup
+/root/postgres/bld/../src/backend/postmaster/postmaster.c:4312:3
+    #28 0x109333d in ServerLoop
+/root/postgres/bld/../src/backend/postmaster/postmaster.c:1801:7
+    #29 0x10898e3 in PostmasterMain
+/root/postgres/bld/../src/backend/postmaster/postmaster.c:1473:11
+    #30 0xd9d463 in main
+/root/postgres/bld/../src/backend/main/main.c:198:3
+    #31 0x7f9a9f2ce0b2 in __libc_start_main
+/build/glibc-eX1tMB/glibc-2.31/csu/../csu/libc-start.c:308:16
+    #32 0x49bc1d in _start (/usr/local/pgsql/bin/postgres+0x49bc1d)
+
+
+AddressSanitizer can not provide additional info.
+SUMMARY: AddressSanitizer: SEGV
+/root/postgres/bld/../src/backend/nodes/bitmapset.c:327:13 in bms_is_subset
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+>  WITH RECURSIVE x ( x ) AS ( SELECT 1 UNION ALL SELECT x FROM LATERAL ( (
+> SELECT * FROM ( ( SELECT 4 AS x ) UNION ALL ( SELECT 5 AS x ) ) AS x WHERE x
+> BETWEEN 1 AND 2 AND x < ( SELECT 3 GROUP BY DISTINCT ROLLUP ( x , x ) ,
+> ROLLUP ( x , x ) ) ) UNION ALL ( SELECT ( SELECT x LIMIT 1 ) FROM x OFFSET 0
+> LIMIT 5 ) ) AS x GROUP BY ROLLUP ( ( x , x , x ) , ( ( SELECT TRIM (
+> TRAILING ' ' FROM SUBSTRING ( VERSION ( ) FROM '^[^0-9]*' ) ) WHERE ( x IS
+> NOT NULL ) ) , x ) ) ) CYCLE x SET BOOLEAN USING VALUES SELECT FROM x GROUP
+> BY DISTINCT CUBE ( x , x , x ) ;
+
+
+I simplified this to
+
+
+WITH RECURSIVE x ( x ) AS
+  ( SELECT 1
+    UNION ALL
+    SELECT x FROM
+    (
+      SELECT 4 AS x
+      UNION ALL
+      SELECT x FROM x
+    ) AS x
+  )
+CYCLE x SET b USING v
+SELECT * FROM x
+;
+
+
+and now I'm not sure whether to consider this an optimizer bug
+or failure to detect an unsupported case.  Our SELECT ref page
+says
+
+
+    Both the SEARCH and the CYCLE clause are only valid for recursive WITH
+    queries. The with_query must be a UNION (or UNION ALL) of two SELECT
+    (or equivalent) commands (no nested UNIONs).
+
+
+This WITH query sure looks like nested UNIONs to me, so either
+that restriction is stated incorrectly, or it's being enforced
+inadequately.  If the former, we have an optimizer problem.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+> On Mon, Dec 06, 2021 at 09:56:40AM -0500, Tom Lane wrote:
+> PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> >  WITH RECURSIVE x ( x ) AS ( SELECT 1 UNION ALL SELECT x FROM LATERAL ( (
+> > SELECT * FROM ( ( SELECT 4 AS x ) UNION ALL ( SELECT 5 AS x ) ) AS x WHERE x
+> > BETWEEN 1 AND 2 AND x < ( SELECT 3 GROUP BY DISTINCT ROLLUP ( x , x ) ,
+> > ROLLUP ( x , x ) ) ) UNION ALL ( SELECT ( SELECT x LIMIT 1 ) FROM x OFFSET 0
+> > LIMIT 5 ) ) AS x GROUP BY ROLLUP ( ( x , x , x ) , ( ( SELECT TRIM (
+> > TRAILING ' ' FROM SUBSTRING ( VERSION ( ) FROM '^[^0-9]*' ) ) WHERE ( x IS
+> > NOT NULL ) ) , x ) ) ) CYCLE x SET BOOLEAN USING VALUES SELECT FROM x GROUP
+> > BY DISTINCT CUBE ( x , x , x ) ;
+>
+> I simplified this to
+>
+> WITH RECURSIVE x ( x ) AS
+>   ( SELECT 1
+>     UNION ALL
+>     SELECT x FROM
+>     (
+>       SELECT 4 AS x
+>       UNION ALL
+>       SELECT x FROM x
+>     ) AS x
+>   )
+> CYCLE x SET b USING v
+> SELECT * FROM x
+> ;
+>
+> and now I'm not sure whether to consider this an optimizer bug
+> or failure to detect an unsupported case.  Our SELECT ref page
+> says
+>
+>     Both the SEARCH and the CYCLE clause are only valid for recursive WITH
+>     queries. The with_query must be a UNION (or UNION ALL) of two SELECT
+>     (or equivalent) commands (no nested UNIONs).
+>
+> This WITH query sure looks like nested UNIONs to me, so either
+> that restriction is stated incorrectly, or it's being enforced
+> inadequately.  If the former, we have an optimizer problem.
+
+
+Looking through the original thread [1] it seems "nested UNIONs" means
+constructions like "foo UNION bar UNION baz", which is indeed handled in
+parse_cte. The existing restrictions probably have to be extended to
+cover cases like here as well.
+
+
+[1]: https://www.postgresql.org/message-id/flat/db80ceee-6f97-9b4a-8ee8-3ba0c58e5be2%402ndquadrant.com
+
+
+
+
+
+### MESSAGE 3
+> On Tue, Dec 07, 2021 at 01:59:25PM +0100, Dmitry Dolgov wrote:
+> > On Mon, Dec 06, 2021 at 09:56:40AM -0500, Tom Lane wrote:
+> > PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> > >  WITH RECURSIVE x ( x ) AS ( SELECT 1 UNION ALL SELECT x FROM LATERAL ( (
+> > > SELECT * FROM ( ( SELECT 4 AS x ) UNION ALL ( SELECT 5 AS x ) ) AS x WHERE x
+> > > BETWEEN 1 AND 2 AND x < ( SELECT 3 GROUP BY DISTINCT ROLLUP ( x , x ) ,
+> > > ROLLUP ( x , x ) ) ) UNION ALL ( SELECT ( SELECT x LIMIT 1 ) FROM x OFFSET 0
+> > > LIMIT 5 ) ) AS x GROUP BY ROLLUP ( ( x , x , x ) , ( ( SELECT TRIM (
+> > > TRAILING ' ' FROM SUBSTRING ( VERSION ( ) FROM '^[^0-9]*' ) ) WHERE ( x IS
+> > > NOT NULL ) ) , x ) ) ) CYCLE x SET BOOLEAN USING VALUES SELECT FROM x GROUP
+> > > BY DISTINCT CUBE ( x , x , x ) ;
+> >
+> > I simplified this to
+> >
+> > WITH RECURSIVE x ( x ) AS
+> >   ( SELECT 1
+> >     UNION ALL
+> >     SELECT x FROM
+> >     (
+> >       SELECT 4 AS x
+> >       UNION ALL
+> >       SELECT x FROM x
+> >     ) AS x
+> >   )
+> > CYCLE x SET b USING v
+> > SELECT * FROM x
+> > ;
+> >
+> > and now I'm not sure whether to consider this an optimizer bug
+> > or failure to detect an unsupported case.  Our SELECT ref page
+> > says
+> >
+> >     Both the SEARCH and the CYCLE clause are only valid for recursive WITH
+> >     queries. The with_query must be a UNION (or UNION ALL) of two SELECT
+> >     (or equivalent) commands (no nested UNIONs).
+> >
+> > This WITH query sure looks like nested UNIONs to me, so either
+> > that restriction is stated incorrectly, or it's being enforced
+> > inadequately.  If the former, we have an optimizer problem.
+>
+> Looking through the original thread [1] it seems "nested UNIONs" means
+> constructions like "foo UNION bar UNION baz", which is indeed handled in
+> parse_cte. The existing restrictions probably have to be extended to
+> cover cases like here as well.
+
+
+Probably the most straightforward way to extend validation for such
+queries would be to add some sort of flag for catching nested UNIONs in
+CteState and verify presence of UNION and CYCLE in checkWellFormedSelectStmt.
+Not sure if it's a right way to fix the problem, but it passes the tests.
+
+
+One note, in the thread [1] Kyotaro Horiguchi is investigating similar
+issue and has proposed another patch to fix it, but it doesn't catch the
+problematic query here.
+
+
+[1]: https://www.postgresql.org/message-id/20211207.172546.1329872704555357126.horikyota.ntt%40gmail.com
+

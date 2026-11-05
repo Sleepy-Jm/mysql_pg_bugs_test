@@ -1,0 +1,48 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17448
+Logged by:          Okano Naoki
+Email address:      okano(dot)naoki(at)jp(dot)fujitsu(dot)com
+PostgreSQL version: 14.2
+Operating system:   Windows
+Description:        
+
+
+With huge_pages = on, the postgres process does not appear to use large
+pages.
+I checked with VMMap if the large pages are used in the following
+environment.
+Environment
+  PostgreSQL version: 14.2
+  Operating system  : Windows 10 20H2
+
+
+On this page (*) says that in Windows 10, version 1703 and later OS
+versions,  
+you must specify the FILE_MAP_LARGE_PAGES flag with the MapViewOfFile
+function 
+to map large pages.
+
+
+I think it seems to be the cause that MapViewOfFile() in
+src/backend/port/win32_shmem.c 
+does not specify FILE_MAP_LARGE_PAGES flag.
+
+
+(*) MapViewOfFileEx function
+https://docs.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-mapviewoffileex
+
+
+FILE_MAP_LARGE_PAGES
+  Starting with Windows 10, version 1703, this flag specifies 
+  that the view should be mapped using large page support. 
+  The size of the view must be a multiple of the size of a large page 
+  reported by the GetLargePageMinimum function, 
+  and the file-mapping object must have been created using the
+SEC_LARGE_PAGES option. 
+  If you provide a non-null value for lpBaseAddress, 
+  then the value must be a multiple of GetLargePageMinimum.
+
+
+

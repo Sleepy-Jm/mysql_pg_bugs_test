@@ -1,0 +1,378 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17438
+Logged by:          Sergey Belyashov
+Email address:      sergey(dot)belyashov(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Debian 11, GNU/Linux x86_64
+Description:        
+
+
+Master DB has few tables: A (few inserts per second, about 200 updates per
+second, ~100 deletes each 5 minutes), B (~100 inserts each 5 minutes), C
+(~200 inserts and ~200 updates per second). B and C are large partitioned by
+range tables (36 and 12 partitions). A is small table about 10K entries
+(often updates). Table A has publications for inserts and deletes. Table B
+has publication for all operations except truncate via root.
+
+
+I do some maintenance work. I stop production load on DB and do some high
+load operations with table C (for example: "insert into D select * from C").
+After completion replications for A and B freezes and loads CPU for 50-99%
+without actual data transmission. I try to disable/enable/refresh
+subscription, but no effect. I try to restart master - no result. Only
+drop/create of subscriptions helps me.
+
+
+Publisher logs many messages like following:
+2022-03-14 19:57:02.907 MSK [1771976] user(at)DB ERROR:  replication slot
+"A_sub" is active for PID 1766849
+2022-03-14 19:57:02.907 MSK [1771976] user(at)DB STATEMENT:  START_REPLICATION
+SLOT "A_sub" LOGICAL 28C/60150F50 (proto_version '2', publication_names
+'"A_pub"')
+2022-03-14 19:57:02.909 MSK [1771977] user(at)DB ERROR:  replication slot
+"B_sub" is active for PID 1766828
+2022-03-14 19:57:02.909 MSK [1771977] user(at)DB STATEMENT:  START_REPLICATION
+SLOT "B_sub" LOGICAL 28C/AE2B7D8 (proto_version '2', 
+publication_names '"B_pub"')
+
+
+Subscriber logs many messages like following:
+2022-03-14 19:56:52.709 MSK [3266082] LOG:  logical replication apply worker
+for subscription "B_sub" has started
+2022-03-14 19:56:52.710 MSK [993] LOG:  background worker "logical
+replication worker" (PID 3266080) exited with exit code 1
+2022-03-14 19:56:52.814 MSK [3266081] ERROR:  could not start WAL streaming:
+ERROR:  replication slot "A_sub" is active for PID 1766849
+2022-03-14 19:56:52.815 MSK [993] LOG:  background worker "logical
+replication worker" (PID 3266081) exited with exit code 1
+2022-03-14 19:56:52.818 MSK [3266082] ERROR:  could not start WAL streaming:
+ERROR:  replication slot "B_sub" is active for PID 1766828
+2022-03-14 19:56:52.819 MSK [993] LOG:  background worker "logical
+replication worker" (PID 3266082) exited with exit code 1
+
+
+
+
+
+### MESSAGE 1
+On Mon, Mar 14, 2022 at 11:49 PM PG Bug reporting form
+<noreply(at)postgresql(dot)org> wrote:
+>
+> The following bug has been logged on the website:
+>
+> Bug reference:      17438
+> Logged by:          Sergey Belyashov
+> Email address:      sergey(dot)belyashov(at)gmail(dot)com
+> PostgreSQL version: 14.2
+> Operating system:   Debian 11, GNU/Linux x86_64
+> Description:
+>
+> Master DB has few tables: A (few inserts per second, about 200 updates per
+> second, ~100 deletes each 5 minutes), B (~100 inserts each 5 minutes), C
+> (~200 inserts and ~200 updates per second). B and C are large partitioned by
+> range tables (36 and 12 partitions). A is small table about 10K entries
+> (often updates). Table A has publications for inserts and deletes. Table B
+> has publication for all operations except truncate via root.
+>
+> I do some maintenance work. I stop production load on DB and do some high
+> load operations with table C (for example: "insert into D select * from C").
+> After completion replications for A and B freezes and loads CPU for 50-99%
+> without actual data transmission. I try to disable/enable/refresh
+> subscription, but no effect. I try to restart master - no result. Only
+> drop/create of subscriptions helps me.
+>
+
+
+Is it possible to get some reproducible script/test for this problem?
+
+
+> Publisher logs many messages like following:
+> 2022-03-14 19:57:02.907 MSK [1771976] user(at)DB ERROR:  replication slot
+> "A_sub" is active for PID 1766849
+> 2022-03-14 19:57:02.907 MSK [1771976] user(at)DB STATEMENT:  START_REPLICATION
+> SLOT "A_sub" LOGICAL 28C/60150F50 (proto_version '2', publication_names
+> '"A_pub"')
+> 2022-03-14 19:57:02.909 MSK [1771977] user(at)DB ERROR:  replication slot
+> "B_sub" is active for PID 1766828
+> 2022-03-14 19:57:02.909 MSK [1771977] user(at)DB STATEMENT:  START_REPLICATION
+> SLOT "B_sub" LOGICAL 28C/AE2B7D8 (proto_version '2',
+> publication_names '"B_pub"')
+>
+> Subscriber logs many messages like following:
+> 2022-03-14 19:56:52.709 MSK [3266082] LOG:  logical replication apply worker
+> for subscription "B_sub" has started
+> 2022-03-14 19:56:52.710 MSK [993] LOG:  background worker "logical
+> replication worker" (PID 3266080) exited with exit code 1
+> 2022-03-14 19:56:52.814 MSK [3266081] ERROR:  could not start WAL streaming:
+> ERROR:  replication slot "A_sub" is active for PID 1766849
+> 2022-03-14 19:56:52.815 MSK [993] LOG:  background worker "logical
+> replication worker" (PID 3266081) exited with exit code 1
+> 2022-03-14 19:56:52.818 MSK [3266082] ERROR:  could not start WAL streaming:
+> ERROR:  replication slot "B_sub" is active for PID 1766828
+> 2022-03-14 19:56:52.819 MSK [993] LOG:  background worker "logical
+> replication worker" (PID 3266082) exited with exit code 1
+>
+
+
+Just by seeing these LOGs, it seems subscriber side workers are
+exiting due to some error and publisher-side (WALSender) still
+continues due to which I think we are seeing ""A_sub" is active for
+PID 1766849". Do you see any different type of error in
+subscriber-side logs?
+
+
+-- 
+With Regards,
+Amit Kapila.
+
+
+
+
+
+### MESSAGE 2
+ср, 16 мар. 2022 г. в 14:45, Amit Kapila <amit(dot)kapila16(at)gmail(dot)com>:
+>
+> Is it possible to get some reproducible script/test for this problem?
+
+
+I have not tried to do it. But it is always reproducible for me: I try
+to do it on different servers. My maintenance work takes more than 4
+hours. There is no difference, do I "insert into x select * from C" or
+"alter table C alter column X type text" (I did this command initially
+for each detached partition, but have issues with subscriptions, so I
+try to change column type by copying table partitions to new table).
+
+
+>
+> Just by seeing these LOGs, it seems subscriber side workers are
+> exiting due to some error and publisher-side (WALSender) still
+> continues due to which I think we are seeing ""A_sub" is active for
+> PID 1766849". Do you see any different type of error in
+> subscriber-side logs?
+>
+
+
+No errors other than those provided in the previous email.
+
+
+Sergey Belyashov
+
+
+
+
+
+### MESSAGE 3
+On Wed, Mar 16, 2022 at 5:39 PM Sergey Belyashov
+<sergey(dot)belyashov(at)gmail(dot)com> wrote:
+>
+> ср, 16 мар. 2022 г. в 14:45, Amit Kapila <amit(dot)kapila16(at)gmail(dot)com>:
+> >
+> > Is it possible to get some reproducible script/test for this problem?
+>
+> I have not tried to do it. But it is always reproducible for me: I try
+> to do it on different servers. My maintenance work takes more than 4
+> hours. There is no difference, do I "insert into x select * from C" or
+> "alter table C alter column X type text" (I did this command initially
+> for each detached partition, but have issues with subscriptions, so I
+> try to change column type by copying table partitions to new table).
+>
+
+
+Is my understanding correct that this problem occurs only when you are
+doing large operations of tables that are not published (like C or D)
+in your case?
+
+
+> >
+> > Just by seeing these LOGs, it seems subscriber side workers are
+> > exiting due to some error and publisher-side (WALSender) still
+> > continues due to which I think we are seeing ""A_sub" is active for
+> > PID 1766849". Do you see any different type of error in
+> > subscriber-side logs?
+> >
+>
+> No errors other than those provided in the previous email.
+>
+
+
+It is difficult for me to deduce anything from the errors given. I
+think we need some more information from the logs to find the reason.
+One idea could be that we run the subscriber with log_min_messages as
+debug1 as that might give some more information in logs.
+
+
+-- 
+With Regards,
+Amit Kapila.
+
+
+
+
+
+### MESSAGE 4
+вт, 29 мар. 2022 г. в 15:03, Amit Kapila <amit(dot)kapila16(at)gmail(dot)com>:
+> Is my understanding correct that this problem occurs only when you are
+> doing large operations of tables that are not published (like C or D)
+> in your case?
+
+
+I do not try to do anything on published tables, because I do it on
+partitions and I detach them first from published tables.
+
+
+> It is difficult for me to deduce anything from the errors given. I
+> think we need some more information from the logs to find the reason.
+> One idea could be that we run the subscriber with log_min_messages as
+> debug1 as that might give some more information in logs.
+
+
+Most of errors are:
+2022-03-31 13:05:22.228 MSK [993] LOG:  received SIGHUP, reloading
+configuration files
+2022-03-31 13:05:22.233 MSK [993] LOG:  parameter "log_min_messages"
+changed to "debug1"
+2022-03-31 13:05:34.393 MSK [1158752] DEBUG:  autovacuum: processing
+database "DB3"
+2022-03-31 13:05:43.567 MSK [894778] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C88EF210.snap
+2022-03-31 13:05:43.567 MSK [894781] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C88EF210.snap
+2022-03-31 13:05:43.567 MSK [893220] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C88EF210.snap
+2022-03-31 13:05:43.567 MSK [894670] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C88EF210.snap
+2022-03-31 13:05:43.567 MSK [894873] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C88EF210.snap
+2022-03-31 13:05:43.569 MSK [891054] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C88EF210.snap
+2022-03-31 13:05:43.582 MSK [894781] node(at)DB DEBUG:  updated xmin: 1 restart: 0
+2022-03-31 13:05:43.583 MSK [894781] node(at)DB DEBUG:  failed to
+increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,
+current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up
+to 57B/C88EF210
+2022-03-31 13:05:43.584 MSK [894778] node(at)DB DEBUG:  updated xmin: 1 restart: 0
+2022-03-31 13:05:43.584 MSK [894778] node(at)DB DEBUG:  failed to
+increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,
+current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up
+to 57B/C88EF210
+2022-03-31 13:05:43.584 MSK [894670] node(at)DB DEBUG:  updated xmin: 1 restart: 0
+2022-03-31 13:05:43.584 MSK [894670] node(at)DB DEBUG:  failed to
+increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,
+current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up
+to 57B/C88EF210
+2022-03-31 13:05:43.585 MSK [894873] node(at)DB DEBUG:  updated xmin: 1 restart: 0
+2022-03-31 13:05:43.586 MSK [894873] node(at)DB DEBUG:  failed to
+increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,
+current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up
+to 57B/C88EF210
+2022-03-31 13:05:43.586 MSK [891054] node(at)DB DEBUG:  updated xmin: 1 restart: 0
+2022-03-31 13:05:43.586 MSK [893220] node(at)DB DEBUG:  updated xmin: 1 restart: 0
+2022-03-31 13:05:43.586 MSK [891054] node(at)DB DEBUG:  failed to
+increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,
+current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up
+to 57B/C88EF210
+2022-03-31 13:05:43.586 MSK [893220] node(at)DB DEBUG:  failed to
+increase restart lsn: proposed 57B/C88EF210, after 57B/C88EF210,
+current candidate 57B/C88EF210, current after 57B/C88EF210, flushed up
+to 57B/C88EF210
+2022-03-31 13:05:43.588 MSK [894781] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:05:43.591 MSK [894778] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:05:43.591 MSK [894670] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:05:43.592 MSK [893220] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:05:43.592 MSK [891054] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:05:43.592 MSK [894873] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:05:46.393 MSK [1158756] DEBUG:  autovacuum: processing
+database "DB"
+2022-03-31 13:05:58.396 MSK [1158759] DEBUG:  autovacuum: processing
+database "postgres"
+2022-03-31 13:06:02.044 MSK [893220] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C8925660.snap
+2022-03-31 13:06:02.044 MSK [894873] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C8925660.snap
+2022-03-31 13:06:02.044 MSK [891054] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C8925660.snap
+2022-03-31 13:06:02.044 MSK [894670] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C8925660.snap
+2022-03-31 13:06:02.044 MSK [894778] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C8925660.snap
+2022-03-31 13:06:02.045 MSK [894781] node(at)DB DEBUG:  serializing
+snapshot to pg_logical/snapshots/57B-C8925660.snap
+2022-03-31 13:06:02.051 MSK [894778] node(at)DB DEBUG:  got new restart
+lsn 57B/C88EF210 at 57B/C8925660
+2022-03-31 13:06:02.052 MSK [894670] node(at)DB DEBUG:  got new restart
+lsn 57B/C88EF210 at 57B/C8925660
+2022-03-31 13:06:02.052 MSK [894781] node(at)DB DEBUG:  got new restart
+lsn 57B/C88EF210 at 57B/C8925660
+2022-03-31 13:06:02.052 MSK [893220] node(at)DB DEBUG:  got new restart
+lsn 57B/C88EF210 at 57B/C8925660
+2022-03-31 13:06:02.052 MSK [891054] node(at)DB DEBUG:  got new restart
+lsn 57B/C88EF210 at 57B/C8925660
+2022-03-31 13:06:02.052 MSK [894873] node(at)DB DEBUG:  got new restart
+lsn 57B/C88EF210 at 57B/C8925660
+2022-03-31 13:06:02.055 MSK [894778] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:06:02.059 MSK [894873] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:06:02.065 MSK [894781] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:06:02.065 MSK [891054] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:06:02.066 MSK [894670] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+2022-03-31 13:06:02.081 MSK [893220] node(at)DB DEBUG:  updated xmin: 0 restart: 1
+
+
+log file is attached.
+
+
+Sergey Belyashov
+
+
+
+### MESSAGE 5
+On Thu, Mar 31, 2022 at 6:23 PM Sergey Belyashov
+<sergey(dot)belyashov(at)gmail(dot)com> wrote:
+>
+> вт, 29 мар. 2022 г. в 15:03, Amit Kapila <amit(dot)kapila16(at)gmail(dot)com>:
+> > Is my understanding correct that this problem occurs only when you are
+> > doing large operations of tables that are not published (like C or D)
+> > in your case?
+>
+> I do not try to do anything on published tables, because I do it on
+> partitions and I detach them first from published tables.
+>
+> > It is difficult for me to deduce anything from the errors given. I
+> > think we need some more information from the logs to find the reason.
+> > One idea could be that we run the subscriber with log_min_messages as
+> > debug1 as that might give some more information in logs.
+>
+> Most of errors are:
+...
+>
+> log file is attached.
+>
+
+
+From the logs, I see the below errors:
+...
+2022-03-31 13:26:47.234 MSK [887763] ERROR:  terminating logical
+replication worker due to timeout
+2022-03-31 13:26:47.241 MSK [888012] ERROR:  terminating logical
+replication worker due to timeout
+...
+
+
+Based on these errors and the information provided by you (operations
+of non-published tables), I think you are facing the same problem as
+being discussed in the thread [1]. If you can test the patch submitted
+in email [2] and let us know your findings that would be great.
+
+
+[1] - https://www.postgresql.org/message-id/CAA5-nLARN7-3SLU_QUxfy510pmrYK6JJb%3Dbk3hcgemAM_pAv%2Bw%40mail.gmail.com
+[2] - https://www.postgresql.org/message-id/OS3PR01MB6275E0C2B4D9E488AD7CBA209E1F9%40OS3PR01MB6275.jpnprd01.prod.outlook.com
+
+
+-- 
+With Regards,
+Amit Kapila.
+
+
+

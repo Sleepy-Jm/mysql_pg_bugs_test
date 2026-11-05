@@ -1,0 +1,1123 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18764: server closed the connection unexpectedly</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18764-63ad667ea26e877a%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-01-03T07:36:29" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18764: server closed the connection unexpectedly" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="3b1a822ccb8bc713e4a90cff409b2c36">BUG #18764: server closed the connection unexpectedly</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202501030736">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18764-63ad667ea26e877a@postgresql.org"></a>
+<a name="3b1a822ccb8bc713e4a90cff409b2c36"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>dqetool(at)126(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-03 07:36:29</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18764-63ad667ea26e877a%40postgresql.org">18764-63ad667ea26e877a@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18764-63ad667ea26e877a%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18764-63ad667ea26e877a%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18764-63ad667ea26e877a%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18764-63ad667ea26e877a%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18764<br>Logged by:          Jason Smith<br>Email address:      dqetool(at)126(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Linux<br>Description:        </p>
+
+<p>Run the following statements and an error is returned.</p>
+
+<p>CREATE TABLE t0 (c1 INT, c2 DECIMAL);<br>INSERT INTO t0 VALUES (0, NULL);<br>INSERT INTO t0 VALUES (8, NULL);<br>SELECT c2 AS ca2, c2 AS ca3 FROM t0 UNION SELECT DISTINCT ca8 AS ca5, ca7 AS<br>ca6 FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1 JOIN (SELECT c1 AS<br>ca10, c1 AS ca11 FROM t0) AS ta2 ON TRUE; -- server closed the connection<br>unexpectedly</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="446342.1735923417@sss.pgh.pa.us"></a>
+<a name="41ab3f1f429bf33dd31a7934c6654d5b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>dqetool(at)126(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-03 16:56:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/446342.1735923417%40sss.pgh.pa.us">446342.1735923417@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/446342.1735923417%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/446342.1735923417%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/446342.1735923417%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/446342.1735923417%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; CREATE TABLE t0 (c1 INT, c2 DECIMAL);<br>&gt; INSERT INTO t0 VALUES (0, NULL);<br>&gt; INSERT INTO t0 VALUES (8, NULL);<br>&gt; SELECT c2 AS ca2, c2 AS ca3 FROM t0 UNION SELECT DISTINCT ca8 AS ca5, ca7 AS<br>&gt; ca6 FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1 JOIN (SELECT c1 AS<br>&gt; ca10, c1 AS ca11 FROM t0) AS ta2 ON TRUE; -- server closed the connection<br>&gt; unexpectedly</p>
+
+<p>Thanks for the report!  It&#x27;s crashing here:</p>
+
+<p>#0  pg_detoast_datum (datum=0x0) at fmgr.c:1834<br>#1  0x0000000000951603 in DatumGetNumeric (X=0)<br>    at ../../../../src/include/postgres.h:314<br>#2  numeric_fast_cmp (x=0, y=8, ssup=&lt;optimized out&gt;) at numeric.c:2301<br>#3  0x0000000000a19019 in ApplySortComparator (datum1=0, isNull1=false, <br>    datum2=8, isNull2=false, ssup=0x1d92f60)<br>    at ../../../../src/include/utils/sortsupport.h:224<br>#4  0x0000000000a1acc5 in comparetup_heap_tiebreak (a=0x1d98a78, b=0x1d98a90, <br>    state=0x1d92b10) at tuplesortvariants.c:1133<br>#5  0x0000000000a1ab1b in comparetup_heap (a=0x1d98a78, b=0x1d98a90, <br>    state=0x1d92b10) at tuplesortvariants.c:1086<br>#6  0x0000000000a133e7 in qsort_tuple (data=0x1d98a78, n=2, <br>    compare=0xa1aa99 &lt;comparetup_heap&gt;, arg=0x1d92b10)<br>    at ../../../../src/include/lib/sort_template.h:316<br>#7  0x0000000000a17cfe in tuplesort_sort_memtuples (state=0x1d92b10)<br>    at tuplesort.c:2721<br>#8  0x0000000000a15529 in tuplesort_performsort (state=0x1d92b10)<br>    at tuplesort.c:1382<br>#9  0x0000000000722b13 in ExecSort (pstate=0x1d61db0) at nodeSort.c:160<br>#10 0x00000000006f717f in ExecScanFetch (<br>    recheckMtd=0x724f30 &lt;SubqueryRecheck&gt;, accessMtd=0x724f40 &lt;SubqueryNext&gt;, <br>    node=0x1d61c10) at execScan.c:131</p>
+
+<p>I think what is happening is that the executor thinks the sort column<br>is numeric but it&#x27;s actually integer.  If you EXPLAIN VERBOSE the<br>query you see</p>
+
+<p>...<br>               -&gt;  Subquery Scan on &quot;*SELECT* 2&quot;<br>                     Output: &quot;*SELECT* 2&quot;.ca5, &quot;*SELECT* 2&quot;.ca6<br>                     -&gt;  Sort<br>                           Output: t0_1.c2, t0_1.c1<br>                           Sort Key: t0_1.c2, t0_1.c1 USING &lt;<br>                           -&gt;  HashAggregate<br>                                 Output: t0_1.c2, t0_1.c1<br>...</p>
+
+<p>That &quot;USING &lt;&quot; annotation is unexpected.  I&#x27;m pretty sure it&#x27;s<br>there because the sort operator doesn&#x27;t match the default btree<br>opclass of the column type, which would be the case if we were<br>trying to use numeric_lt to sort the integer &quot;c1&quot; column.</p>
+
+<p>git bisect&#x27;ing shows that the failure started here:</p>
+
+<p>66c0185a3d14bbbf51d0fc9d267093ffec735231 is the first bad commit<br>commit 66c0185a3d14bbbf51d0fc9d267093ffec735231<br>Author: David Rowley &lt;drowley(at)postgresql(dot)org&gt;<br>Date:   Mon Mar 25 14:31:14 2024 +1300</p>
+
+<p>    Allow planner to use Merge Append to efficiently implement UNION</p>
+
+<p>But it may be that this is a pre-existing problem that just happened<br>to be exposed by the change in plan shape following that commit.<br>Needs more digging.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="468120.1735927103@sss.pgh.pa.us"></a>
+<a name="7627d913ca002adda8da8d3d811395ae"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>dqetool(at)126(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-03 17:58:23</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/468120.1735927103%40sss.pgh.pa.us">468120.1735927103@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/468120.1735927103%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/468120.1735927103%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/468120.1735927103%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/468120.1735927103%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I wrote:<br>&gt; Needs more digging.</p>
+
+<p>Actually ... why is that Sort there at all?  The whole plan looks like</p>
+
+<p>regression=# explain (costs off) <br>SELECT c2 AS ca2, c2 AS ca3 FROM t0<br>UNION<br>SELECT DISTINCT ca8 AS ca5, ca7 AS ca6<br>  FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1<br>       JOIN<br>       (SELECT c1 AS ca10, c1 AS ca11 FROM t0) AS ta2<br>       ON TRUE;<br>                             QUERY PLAN                              <br>---------------------------------------------------------------------<br> Unique<br>   -&gt;  Sort<br>         Sort Key: t0.c2, t0.c2<br>         -&gt;  Append<br>               -&gt;  Seq Scan on t0<br>               -&gt;  Subquery Scan on &quot;*SELECT* 2&quot;<br>                     -&gt;  Sort<br>                           Sort Key: t0_1.c2, t0_1.c1 USING &lt;<br>                           -&gt;  HashAggregate<br>                                 Group Key: t0_1.c2, t0_1.c1<br>                                 -&gt;  Nested Loop<br>                                       -&gt;  Seq Scan on t0 t0_1<br>                                       -&gt;  Materialize<br>                                             -&gt;  Seq Scan on t0 t0_2<br>(14 rows)</p>
+
+<p>There is no value in forcing a sort of the subquery&#x27;s output,<br>and the previous code didn&#x27;t do so:</p>
+
+<p>regression=# explain (costs off) <br>SELECT c2 AS ca2, c2 AS ca3 FROM t0<br>UNION<br>SELECT DISTINCT ca8 AS ca5, ca7 AS ca6<br>  FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1<br>       JOIN<br>       (SELECT c1 AS ca10, c1 AS ca11 FROM t0) AS ta2<br>       ON TRUE;<br>                       QUERY PLAN                        <br>---------------------------------------------------------<br> HashAggregate<br>   Group Key: t0.c2, t0.c2<br>   -&gt;  Append<br>         -&gt;  Seq Scan on t0<br>         -&gt;  Subquery Scan on &quot;*SELECT* 2&quot;<br>               -&gt;  HashAggregate<br>                     Group Key: t0_1.c2, t0_1.c1<br>                     -&gt;  Nested Loop<br>                           -&gt;  Seq Scan on t0 t0_1<br>                           -&gt;  Materialize<br>                                 -&gt;  Seq Scan on t0 t0_2<br>(11 rows)</p>
+
+<p>I&#x27;m not sure if the change from hash to sort-and-unique at the<br>top level means anything.  But we surely shouldn&#x27;t have bothered<br>with sorted output from the second UNION arm, even if we were<br>generating the right sort keys :-(.</p>
+
+<p>Also, I&#x27;ve confirmed by looking at the plan tree that the implicit<br>cast of c1 from integer to numeric is done in the targetlist of<br>the Subquery Scan node.  (I&#x27;m surprised that EXPLAIN VERBOSE hides<br>that function call; it&#x27;s not very helpful that it does so.)<br>But the lower Sort node does have</p>
+
+<p>	                  :sortOperators ( 1754 1754)</p>
+
+<p>so it&#x27;s trying to apply numeric_lt to both columns even though<br>the second one is still integer at that point.</p>
+
+<p>I&#x27;m thinking at this point that the bug boils down to trying to<br>push pathkeys into the subplan without regard for the type<br>conversion that occurs at the set-operation level.  Once we&#x27;ve<br>done that, the lower level will generate this incorrectly-sorted<br>Path, and that probably wins the add_path tournament on the basis<br>of being better sorted and fuzzily the same cost as the unsorted<br>path.  So that&#x27;s how come that path gets chosen even though<br>the sort is useless in context.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs49+-TEOGJmkQVPrEj6eu43ND7GNqccd8OCXxuFQTga1qg@mail.gmail.com"></a>
+<a name="094cf686fbfb4b3e36245d1597468957"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;, dqetool(at)126(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-06 13:14:10</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs49%2B-TEOGJmkQVPrEj6eu43ND7GNqccd8OCXxuFQTga1qg%40mail.gmail.com">CAMbWs49+-TEOGJmkQVPrEj6eu43ND7GNqccd8OCXxuFQTga1qg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs49%2B-TEOGJmkQVPrEj6eu43ND7GNqccd8OCXxuFQTga1qg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs49%2B-TEOGJmkQVPrEj6eu43ND7GNqccd8OCXxuFQTga1qg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs49%2B-TEOGJmkQVPrEj6eu43ND7GNqccd8OCXxuFQTga1qg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs49%2B-TEOGJmkQVPrEj6eu43ND7GNqccd8OCXxuFQTga1qg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, Jan 4, 2025 at 2:58 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; I&#x27;m thinking at this point that the bug boils down to trying to<br>&gt; push pathkeys into the subplan without regard for the type<br>&gt; conversion that occurs at the set-operation level.  Once we&#x27;ve<br>&gt; done that, the lower level will generate this incorrectly-sorted<br>&gt; Path, and that probably wins the add_path tournament on the basis<br>&gt; of being better sorted and fuzzily the same cost as the unsorted<br>&gt; path.  So that&#x27;s how come that path gets chosen even though<br>&gt; the sort is useless in context.</p>
+
+<p>I&#x27;ve reached the same conclusion.  I&#x27;m thinking about whether we<br>should refrain from pushing pathkeys into the subplan when type<br>conversion occurs at the set-operation level.  Maybe we can do this<br>check in generate_setop_child_grouplist, like below.</p>
+
+<p>--- a/src/backend/optimizer/plan/planner.c<br>+++ b/src/backend/optimizer/plan/planner.c<br>@@ -8091,6 +8091,9 @@ generate_setop_child_grouplist(SetOperationStmt<br>*op, List *targetlist)<br>    {<br>        TargetEntry *tle = (TargetEntry *) lfirst(lt);<br>        SortGroupClause *sgc;<br>+       Oid         opfamily,<br>+                   opcintype;<br>+       int16       strategy;</p>
+
+<p>        /* resjunk columns could have sortgrouprefs.  Leave these alone */<br>        if (tle-&gt;resjunk)<br>@@ -8101,6 +8104,18 @@ generate_setop_child_grouplist(SetOperationStmt<br>*op, List *targetlist)<br>        sgc = (SortGroupClause *) lfirst(lg);<br>        lg = lnext(grouplist, lg);</p>
+
+<p>+       if (!OidIsValid(sgc-&gt;sortop))<br>+           return NIL;<br>+<br>+       /* Find the operator in pg_amop --- failure shouldn&#x27;t happen */<br>+       if (!get_ordering_op_properties(sgc-&gt;sortop,<br>+                                       &amp;opfamily, &amp;opcintype, &amp;strategy))<br>+           elog(ERROR, &quot;operator %u is not a valid ordering operator&quot;,<br>+                sgc-&gt;sortop);<br>+<br>+       if (exprType((Node *) tle-&gt;expr) != opcintype)<br>+           return NIL;<br>+<br>        /* assign a tleSortGroupRef, or reuse the existing one */<br>        sgc-&gt;tleSortGroupRef = assignSortGroupRef(tle, targetlist);<br>    }</p>
+
+<p>Thanks<br>Richard</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs4-Tgw5fKcbzba8UCwXxAE7oTCzc7DXU3BfCS0UPeb4A8Q@mail.gmail.com"></a>
+<a name="c201b8eec1703155a1440b3b5ced9551"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;, dqetool(at)126(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-07 07:00:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs4-Tgw5fKcbzba8UCwXxAE7oTCzc7DXU3BfCS0UPeb4A8Q%40mail.gmail.com">CAMbWs4-Tgw5fKcbzba8UCwXxAE7oTCzc7DXU3BfCS0UPeb4A8Q@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs4-Tgw5fKcbzba8UCwXxAE7oTCzc7DXU3BfCS0UPeb4A8Q%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs4-Tgw5fKcbzba8UCwXxAE7oTCzc7DXU3BfCS0UPeb4A8Q%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs4-Tgw5fKcbzba8UCwXxAE7oTCzc7DXU3BfCS0UPeb4A8Q%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs4-Tgw5fKcbzba8UCwXxAE7oTCzc7DXU3BfCS0UPeb4A8Q%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, Jan 4, 2025 at 2:58 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; Also, I&#x27;ve confirmed by looking at the plan tree that the implicit<br>&gt; cast of c1 from integer to numeric is done in the targetlist of<br>&gt; the Subquery Scan node.  (I&#x27;m surprised that EXPLAIN VERBOSE hides<br>&gt; that function call; it&#x27;s not very helpful that it does so.)</p>
+
+<p>Yeah, it seems that we tend to hide function calls that are implicit<br>casts.  show_plan_tlist() calls deparse_expression() with showimplicit<br>set to false, and get_func_expr() does not display function calls of<br>COERCE_IMPLICIT_CAST in this case.</p>
+
+<p>Thanks<br>Richard</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAApHDvo8FfuOiXYnJ1n2fZh8nwrDwkSU7=k6So+u-pYDOkN4YQ@mail.gmail.com"></a>
+<a name="7a1f4fb52cc4d28cb62c28372eb7c26e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>dqetool(at)126(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-09 03:30:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAApHDvo8FfuOiXYnJ1n2fZh8nwrDwkSU7%3Dk6So%2Bu-pYDOkN4YQ%40mail.gmail.com">CAApHDvo8FfuOiXYnJ1n2fZh8nwrDwkSU7=k6So+u-pYDOkN4YQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAApHDvo8FfuOiXYnJ1n2fZh8nwrDwkSU7%3Dk6So%2Bu-pYDOkN4YQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAApHDvo8FfuOiXYnJ1n2fZh8nwrDwkSU7%3Dk6So%2Bu-pYDOkN4YQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAApHDvo8FfuOiXYnJ1n2fZh8nwrDwkSU7%3Dk6So%2Bu-pYDOkN4YQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAApHDvo8FfuOiXYnJ1n2fZh8nwrDwkSU7%3Dk6So%2Bu-pYDOkN4YQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, 4 Jan 2025 at 06:58, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; Actually ... why is that Sort there at all?  The whole plan looks like<br>&gt;<br>&gt; regression=# explain (costs off)<br>&gt; SELECT c2 AS ca2, c2 AS ca3 FROM t0<br>&gt; UNION<br>&gt; SELECT DISTINCT ca8 AS ca5, ca7 AS ca6<br>&gt;   FROM (SELECT c1 AS ca7, c2 AS ca8 FROM t0) AS ta1<br>&gt;        JOIN<br>&gt;        (SELECT c1 AS ca10, c1 AS ca11 FROM t0) AS ta2<br>&gt;        ON TRUE;<br>&gt;                              QUERY PLAN<br>&gt; ---------------------------------------------------------------------<br>&gt;  Unique<br>&gt;    -&gt;  Sort<br>&gt;          Sort Key: t0.c2, t0.c2<br>&gt;          -&gt;  Append<br>&gt;                -&gt;  Seq Scan on t0<br>&gt;                -&gt;  Subquery Scan on &quot;*SELECT* 2&quot;<br>&gt;                      -&gt;  Sort<br>&gt;                            Sort Key: t0_1.c2, t0_1.c1 USING &lt;<br>&gt;                            -&gt;  HashAggregate<br>&gt;                                  Group Key: t0_1.c2, t0_1.c1<br>&gt;                                  -&gt;  Nested Loop<br>&gt;                                        -&gt;  Seq Scan on t0 t0_1<br>&gt;                                        -&gt;  Materialize<br>&gt;                                              -&gt;  Seq Scan on t0 t0_2<br>&gt; (14 rows)<br>&gt;<br>&gt; There is no value in forcing a sort of the subquery&#x27;s output,<br>&gt; and the previous code didn&#x27;t do so:</p>
+
+<p>The reason for the 2nd sort, (ignoring the invalidity of the pathkeys)<br>is due to how build_setop_child_paths() tries sorting the<br>cheapest_input_path.  The problem is that the sorted path gets added<br>to the same RelOptInfo as the cheapest_input_path so if add_path()<br>sees they&#x27;re fuzzily the same cost, the sorted has better pathkeys, so<br>the actual cheapest path is thrown away. I think the reason this<br>happens in this case is that there are just not that many rows to<br>sort, and it&#x27;s fairly expensive to get those rows.</p>
+
+<p>The reason that the planner doesn&#x27;t end up doing a Merge Append is<br>because the sorted path for the first branch of the UNION has the same<br>column twice in the targetlist and only needs a single PathKey to<br>sort. Later, that causes the get_cheapest_path_for_pathkeys() in<br>generate_union_paths() not to find a matching sorted path since<br>union_pathkeys has 2 PathKeys. I think that might be fixed by the<br>patch I had being toying around with which I posted in [1].  If we had<br>something like that then that would make the apparent wasted sort less<br>of an issue here.</p>
+
+<p>David</p>
+
+<p>[1] <a href="https://www.postgresql.org/message-id/CAApHDvqo1rV8O4pMU2-22iTASBXgnm4kbHF6A8_VMqiDR3hG8A@mail.gmail.com" rel="nofollow">https://www.postgresql.org/message-id/CAApHDvqo1rV8O4pMU2-22iTASBXgnm4kbHF6A8_VMqiDR3hG8A%40mail.gmail.com</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAApHDvpytcc1eVXwB5brsjeppezvi4EJ_vTV+m3yUa2N-zT46A@mail.gmail.com"></a>
+<a name="6c34585e94a81a9b003a31be9153b331"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, dqetool(at)126(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-09 03:44:17</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAApHDvpytcc1eVXwB5brsjeppezvi4EJ_vTV%2Bm3yUa2N-zT46A%40mail.gmail.com">CAApHDvpytcc1eVXwB5brsjeppezvi4EJ_vTV+m3yUa2N-zT46A@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAApHDvpytcc1eVXwB5brsjeppezvi4EJ_vTV%2Bm3yUa2N-zT46A%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAApHDvpytcc1eVXwB5brsjeppezvi4EJ_vTV%2Bm3yUa2N-zT46A%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAApHDvpytcc1eVXwB5brsjeppezvi4EJ_vTV%2Bm3yUa2N-zT46A%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAApHDvpytcc1eVXwB5brsjeppezvi4EJ_vTV%2Bm3yUa2N-zT46A%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, 7 Jan 2025 at 02:14, Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; On Sat, Jan 4, 2025 at 2:58 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt; I&#x27;m thinking at this point that the bug boils down to trying to<br>&gt; &gt; push pathkeys into the subplan without regard for the type<br>&gt; &gt; conversion that occurs at the set-operation level.  Once we&#x27;ve<br>&gt; &gt; done that, the lower level will generate this incorrectly-sorted<br>&gt; &gt; Path, and that probably wins the add_path tournament on the basis<br>&gt; &gt; of being better sorted and fuzzily the same cost as the unsorted<br>&gt; &gt; path.  So that&#x27;s how come that path gets chosen even though<br>&gt; &gt; the sort is useless in context.<br>&gt;<br>&gt; I&#x27;ve reached the same conclusion.  I&#x27;m thinking about whether we<br>&gt; should refrain from pushing pathkeys into the subplan when type<br>&gt; conversion occurs at the set-operation level.  Maybe we can do this<br>&gt; check in generate_setop_child_grouplist, like below.</p>
+
+<p>So I guess this must mean that we cannot assume that it&#x27;s ever safe to<br>assume that a type that is implicitly castable to the top setop&#x27;s type<br>sort order matches, so we must ensure we don&#x27;t generate any<br>setop_pathkeys for the subquery in this case.</p>
+
+<p>&gt; --- a/src/backend/optimizer/plan/planner.c<br>&gt; +++ b/src/backend/optimizer/plan/planner.c<br>&gt; @@ -8091,6 +8091,9 @@ generate_setop_child_grouplist(SetOperationStmt<br>&gt; *op, List *targetlist)<br>&gt;     {<br>&gt;         TargetEntry *tle = (TargetEntry *) lfirst(lt);<br>&gt;         SortGroupClause *sgc;<br>&gt; +       Oid         opfamily,<br>&gt; +                   opcintype;<br>&gt; +       int16       strategy;<br>&gt;<br>&gt;         /* resjunk columns could have sortgrouprefs.  Leave these alone */<br>&gt;         if (tle-&gt;resjunk)<br>&gt; @@ -8101,6 +8104,18 @@ generate_setop_child_grouplist(SetOperationStmt<br>&gt; *op, List *targetlist)<br>&gt;         sgc = (SortGroupClause *) lfirst(lg);<br>&gt;         lg = lnext(grouplist, lg);<br>&gt;<br>&gt; +       if (!OidIsValid(sgc-&gt;sortop))<br>&gt; +           return NIL;<br>&gt; +<br>&gt; +       /* Find the operator in pg_amop --- failure shouldn&#x27;t happen */<br>&gt; +       if (!get_ordering_op_properties(sgc-&gt;sortop,<br>&gt; +                                       &amp;opfamily, &amp;opcintype, &amp;strategy))<br>&gt; +           elog(ERROR, &quot;operator %u is not a valid ordering operator&quot;,<br>&gt; +                sgc-&gt;sortop);<br>&gt; +<br>&gt; +       if (exprType((Node *) tle-&gt;expr) != opcintype)<br>&gt; +           return NIL;<br>&gt; +<br>&gt;         /* assign a tleSortGroupRef, or reuse the existing one */<br>&gt;         sgc-&gt;tleSortGroupRef = assignSortGroupRef(tle, targetlist);<br>&gt;     }</p>
+
+<p>Can&#x27;t you just look up the setop&#x27;s type from op-&gt;colTypes instead of<br>looking the type up via the sortop? i.e. the attached?</p>
+
+<p>David<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/170237/fix_generate_setop_child_grouplist.patch">fix_generate_setop_child_grouplist.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>2.1 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1793867.1736395064@sss.pgh.pa.us"></a>
+<a name="b51b23de832cd69b02b0da7e905aa177"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;, dqetool(at)126(dot)com,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-09 03:57:44</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1793867.1736395064%40sss.pgh.pa.us">1793867.1736395064@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1793867.1736395064%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1793867.1736395064%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1793867.1736395064%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1793867.1736395064%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt; writes:<br>&gt; On Tue, 7 Jan 2025 at 02:14, Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt;&gt; I&#x27;ve reached the same conclusion.  I&#x27;m thinking about whether we<br>&gt;&gt; should refrain from pushing pathkeys into the subplan when type<br>&gt;&gt; conversion occurs at the set-operation level.  Maybe we can do this<br>&gt;&gt; check in generate_setop_child_grouplist, like below.</p>
+
+<p>&gt; So I guess this must mean that we cannot assume that it&#x27;s ever safe to<br>&gt; assume that a type that is implicitly castable to the top setop&#x27;s type<br>&gt; sort order matches, so we must ensure we don&#x27;t generate any<br>&gt; setop_pathkeys for the subquery in this case.</p>
+
+<p>The mere fact that there&#x27;s an implicit cast sure doesn&#x27;t make it safe.<br>We have implicit casts that cross sort-order behaviors (such as<br>integer to oid), and those would be just as big a hazard as this<br>example where the datatypes aren&#x27;t physically compatible.</p>
+
+<p>We could imagine detecting whether the subquery&#x27;s datatype belongs<br>to the same btree opfamily as the outer query is using, and if so<br>adapting the pathkeys to that type.  But I&#x27;m dubious that it&#x27;s<br>worth the trouble: if this were a common case we&#x27;d have discovered<br>this bug sooner.  So I&#x27;m for just not pushing down the pathkeys if<br>there&#x27;s a type mismatch.</p>
+
+<p>Didn&#x27;t study the code, so have no opinion right now on the details<br>of how to check that.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1795556.1736396078@sss.pgh.pa.us"></a>
+<a name="01c6b9d7be1ab84501876b5a2d2d32e1"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>dqetool(at)126(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-09 04:14:38</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1795556.1736396078%40sss.pgh.pa.us">1795556.1736396078@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1795556.1736396078%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1795556.1736396078%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1795556.1736396078%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1795556.1736396078%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt; writes:<br>&gt; On Sat, 4 Jan 2025 at 06:58, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; There is no value in forcing a sort of the subquery&#x27;s output,<br>&gt;&gt; and the previous code didn&#x27;t do so:</p>
+
+<p>&gt; The reason for the 2nd sort, (ignoring the invalidity of the pathkeys)<br>&gt; is due to how build_setop_child_paths() tries sorting the<br>&gt; cheapest_input_path.  The problem is that the sorted path gets added<br>&gt; to the same RelOptInfo as the cheapest_input_path so if add_path()<br>&gt; sees they&#x27;re fuzzily the same cost, the sorted has better pathkeys, so<br>&gt; the actual cheapest path is thrown away. I think the reason this<br>&gt; happens in this case is that there are just not that many rows to<br>&gt; sort, and it&#x27;s fairly expensive to get those rows.</p>
+
+<p>Yeah, same conclusion Richard and I came to.  It&#x27;s not that big a<br>problem (aside from the validity issue) because this path would only<br>win if the sorting cost is estimated to be insignificant relative<br>to the subquery&#x27;s other costs.  So while it might be nice to improve<br>that in future, I&#x27;m not very concerned about it now.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs49c7-RbgZ-_6c4HTOS52LJjoGkkdCP7Q1E9yEq=tziR6w@mail.gmail.com"></a>
+<a name="75be583d9f20e1bfb4288ff4d2927a51"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, dqetool(at)126(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-09 07:38:09</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs49c7-RbgZ-_6c4HTOS52LJjoGkkdCP7Q1E9yEq%3DtziR6w%40mail.gmail.com">CAMbWs49c7-RbgZ-_6c4HTOS52LJjoGkkdCP7Q1E9yEq=tziR6w@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs49c7-RbgZ-_6c4HTOS52LJjoGkkdCP7Q1E9yEq%3DtziR6w%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs49c7-RbgZ-_6c4HTOS52LJjoGkkdCP7Q1E9yEq%3DtziR6w%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs49c7-RbgZ-_6c4HTOS52LJjoGkkdCP7Q1E9yEq%3DtziR6w%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs49c7-RbgZ-_6c4HTOS52LJjoGkkdCP7Q1E9yEq%3DtziR6w%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Jan 9, 2025 at 12:44 PM David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt; wrote:<br>&gt; On Tue, 7 Jan 2025 at 02:14, Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; --- a/src/backend/optimizer/plan/planner.c<br>&gt; &gt; +++ b/src/backend/optimizer/plan/planner.c<br>&gt; &gt; @@ -8091,6 +8091,9 @@ generate_setop_child_grouplist(SetOperationStmt<br>&gt; &gt; *op, List *targetlist)<br>&gt; &gt;     {<br>&gt; &gt;         TargetEntry *tle = (TargetEntry *) lfirst(lt);<br>&gt; &gt;         SortGroupClause *sgc;<br>&gt; &gt; +       Oid         opfamily,<br>&gt; &gt; +                   opcintype;<br>&gt; &gt; +       int16       strategy;<br>&gt; &gt;<br>&gt; &gt;         /* resjunk columns could have sortgrouprefs.  Leave these alone */<br>&gt; &gt;         if (tle-&gt;resjunk)<br>&gt; &gt; @@ -8101,6 +8104,18 @@ generate_setop_child_grouplist(SetOperationStmt<br>&gt; &gt; *op, List *targetlist)<br>&gt; &gt;         sgc = (SortGroupClause *) lfirst(lg);<br>&gt; &gt;         lg = lnext(grouplist, lg);<br>&gt; &gt;<br>&gt; &gt; +       if (!OidIsValid(sgc-&gt;sortop))<br>&gt; &gt; +           return NIL;<br>&gt; &gt; +<br>&gt; &gt; +       /* Find the operator in pg_amop --- failure shouldn&#x27;t happen */<br>&gt; &gt; +       if (!get_ordering_op_properties(sgc-&gt;sortop,<br>&gt; &gt; +                                       &amp;opfamily, &amp;opcintype, &amp;strategy))<br>&gt; &gt; +           elog(ERROR, &quot;operator %u is not a valid ordering operator&quot;,<br>&gt; &gt; +                sgc-&gt;sortop);<br>&gt; &gt; +<br>&gt; &gt; +       if (exprType((Node *) tle-&gt;expr) != opcintype)<br>&gt; &gt; +           return NIL;<br>&gt; &gt; +<br>&gt; &gt;         /* assign a tleSortGroupRef, or reuse the existing one */<br>&gt; &gt;         sgc-&gt;tleSortGroupRef = assignSortGroupRef(tle, targetlist);<br>&gt; &gt;     }<br>&gt;<br>&gt; Can&#x27;t you just look up the setop&#x27;s type from op-&gt;colTypes instead of<br>&gt; looking the type up via the sortop? i.e. the attached?</p>
+
+<p>Yeah, right.  Using SetOperationStmt.colTypes is more convenient here.</p>
+
+<p>Thanks<br>Richard</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAApHDvp8FAfk4trKMnc+3O0yoyzFjWBs33t6_rx06TZZV0erVA@mail.gmail.com"></a>
+<a name="eb1ef54b9a0f9f74d781b474544628c7"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, dqetool(at)126(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-10 01:35:52</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAApHDvp8FAfk4trKMnc%2B3O0yoyzFjWBs33t6_rx06TZZV0erVA%40mail.gmail.com">CAApHDvp8FAfk4trKMnc+3O0yoyzFjWBs33t6_rx06TZZV0erVA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAApHDvp8FAfk4trKMnc%2B3O0yoyzFjWBs33t6_rx06TZZV0erVA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAApHDvp8FAfk4trKMnc%2B3O0yoyzFjWBs33t6_rx06TZZV0erVA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAApHDvp8FAfk4trKMnc%2B3O0yoyzFjWBs33t6_rx06TZZV0erVA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAApHDvp8FAfk4trKMnc%2B3O0yoyzFjWBs33t6_rx06TZZV0erVA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, 9 Jan 2025 at 20:38, Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; On Thu, Jan 9, 2025 at 12:44 PM David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; Can&#x27;t you just look up the setop&#x27;s type from op-&gt;colTypes instead of<br>&gt; &gt; looking the type up via the sortop? i.e. the attached?<br>&gt;<br>&gt; Yeah, right.  Using SetOperationStmt.colTypes is more convenient here.</p>
+
+<p>I pushed a revised patch. I removed the check for the sortop. I first<br>also thought I&#x27;d overlooked that, but it turned out that&#x27;s fine as it<br>was as standard_qp_callback() handles checking for un-sortable<br>SortGroupClauses.</p>
+
+<p>Jason, you can expect a fix for this in 17.3. In the meantime, you<br>could add an explicit cast to numeric in the subquery, e.g:</p>
+
+<p>SELECT c2 AS ca2, c2 AS ca3<br>FROM t0<br>UNION<br>SELECT DISTINCT ca8 AS ca5, ca7::numeric AS ca6<br>FROM (<br>SELECT c1 AS ca7, c2 AS ca8 FROM t0<br>) AS ta1 JOIN (<br>SELECT c1 AS ca10, c1 AS ca11<br>FROM t0<br>) AS ta2 ON TRUE;</p>
+
+<p>Thanks for the report.</p>
+
+<p>David</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="40e14bc2.2e9d5.1944e16339d.Coremail.dqetool@126.com"></a>
+<a name="c66eae2131b95698a8cfb39e6a084138"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>dqetool &lt;dqetool(at)126(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David Rowley&quot; &lt;dgrowleyml(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;Richard Guo&quot; &lt;guofenglinux(at)gmail(dot)com&gt;, &quot;Tom Lane&quot; &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,  &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re:  BUG #18764: server closed the connection unexpectedly</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-10 02:41:05</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/40e14bc2.2e9d5.1944e16339d.Coremail.dqetool%40126.com">40e14bc2.2e9d5.1944e16339d.Coremail.dqetool@126.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/40e14bc2.2e9d5.1944e16339d.Coremail.dqetool%40126.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/40e14bc2.2e9d5.1944e16339d.Coremail.dqetool%40126.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/40e14bc2.2e9d5.1944e16339d.Coremail.dqetool%40126.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/40e14bc2.2e9d5.1944e16339d.Coremail.dqetool%40126.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Thanks for the quick fix and detailed explanation.</p>
+
+<p>Jason<br>---- Replied Message ----<br>| From | David Rowley&lt;dgrowleyml(at)gmail(dot)com&gt; |<br>| Date | 1/10/2025 09:36 |<br>| To | Richard Guo&lt;guofenglinux(at)gmail(dot)com&gt; |<br>| Cc | Tom Lane&lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,<br>&lt;dqetool(at)126(dot)com&gt;,<br>&lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt; |<br>| Subject | Re: BUG #18764: server closed the connection unexpectedly |<br>On Thu, 9 Jan 2025 at 20:38, Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:</p>
+
+<p>On Thu, Jan 9, 2025 at 12:44 PM David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt; wrote:<br>Can&#x27;t you just look up the setop&#x27;s type from op-&gt;colTypes instead of<br>looking the type up via the sortop? i.e. the attached?</p>
+
+<p>Yeah, right.  Using SetOperationStmt.colTypes is more convenient here.</p>
+
+<p>I pushed a revised patch. I removed the check for the sortop. I first<br>also thought I&#x27;d overlooked that, but it turned out that&#x27;s fine as it<br>was as standard_qp_callback() handles checking for un-sortable<br>SortGroupClauses.</p>
+
+<p>Jason, you can expect a fix for this in 17.3. In the meantime, you<br>could add an explicit cast to numeric in the subquery, e.g:</p>
+
+<p>SELECT c2 AS ca2, c2 AS ca3<br>FROM t0<br>UNION<br>SELECT DISTINCT ca8 AS ca5, ca7::numeric AS ca6<br>FROM (<br>SELECT c1 AS ca7, c2 AS ca8 FROM t0<br>) AS ta1 JOIN (<br>SELECT c1 AS ca10, c1 AS ca11<br>FROM t0<br>) AS ta2 ON TRUE;</p>
+
+<p>Thanks for the report.</p>
+
+<p>David<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

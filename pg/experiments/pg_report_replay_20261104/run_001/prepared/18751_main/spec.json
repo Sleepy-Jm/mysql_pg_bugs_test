@@ -1,0 +1,44 @@
+{
+  "report_id": "18751",
+  "scenario_id": "18751_main",
+  "target_version": "17.2",
+  "source_url": "https://www.postgresql.org/message-id/18751-887c7bf4e67e65a7%40postgresql.org",
+  "parts": [
+    {
+      "text": "create table t1(t timestamptz primary key, v text);\ncreate table t2(t timestamptz primary key, v text);\n\n\ninsert into t1(t, v)\nselect to_timestamp(i * 3600), i::text\nfrom generate_series(0, 24 * 7 - 1) as t(i);\n\n\ninsert into t2(t, v)\nselect to_timestamp(i * 3600), i::text\nfrom generate_series(24 * 7, 100000) as t(i);",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18751.txt",
+      "start_offset": 380,
+      "end_offset": 701,
+      "start_line": 17,
+      "end_line": 31,
+      "excerpt_sha256": "137075b401bd52f1c5cd809625762628f94f3ef404c970158ac699e23722488e",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    },
+    {
+      "text": "explain analyze select * from (\n(select * from t1)\nunion all\n(select * from t2 where true) -- Not just `true`, any condition here\n)\norder by t\nlimit 10;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18751.txt",
+      "start_offset": 1331,
+      "end_offset": 1484,
+      "start_line": 53,
+      "end_line": 60,
+      "excerpt_sha256": "42bd52915afb6cb5e3e5d9f14746dc819f2538cb88b2cf61ab0dcabdd6a21e08",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    }
+  ],
+  "mode": "psql",
+  "oracle": {
+    "kind": "output",
+    "pattern": "Gather Merge",
+    "reported_phenomenon": "增加 WHERE true 的 UNION ALL 使用 Gather Merge/Sort",
+    "author_expected_behavior": "作者期望保持有序索引的 Merge Append"
+  },
+  "config": {},
+  "notes": "只判定报告中的计划形状，不比较共享服务器墙钟性能。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "spec_sha256": "16c8e9b9ef42903e7adcf5991d8b0997e47ecaf3f8f6a357e00dda1b34bfedc2"
+}

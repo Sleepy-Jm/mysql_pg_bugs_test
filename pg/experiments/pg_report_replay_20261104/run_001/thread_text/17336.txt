@@ -1,0 +1,154 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17336
+Logged by:          ma liangzhu
+Email address:      ma100(at)hotmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   centos7
+Description:        
+
+
+In logtape.c,  
+
+
+* Each  `swap_nodes`  will execute assignment statement three times, while
+we only need execute once like in tuplesort.c
+
+
+* right_offset(unsigned i) parameter i seemed should be `unsigned long`
+
+
+Here's a patch
+
+
+-------------------------------------
+```diff
+diff --git a/src/backend/utils/sort/logtape.c
+b/src/backend/utils/sort/logtape.c
+index 48baccd..c96d1ca 100644
+--- a/src/backend/utils/sort/logtape.c
++++ b/src/backend/utils/sort/logtape.c
+@@ -340,16 +340,6 @@ ltsReadFillBuffer(LogicalTape *lt)
+        return (lt->nbytes > 0);
+ }
+
+
+-static inline void
+-swap_nodes(long *heap, unsigned long a, unsigned long b)
+-{
+-       unsigned long swap;
+-
+-       swap = heap[a];
+-       heap[a] = heap[b];
+-       heap[b] = swap;
+-}
+-
+ static inline unsigned long
+ left_offset(unsigned long i)
+ {
+@@ -357,7 +347,7 @@ left_offset(unsigned long i)
+ }
+
+
+ static inline unsigned long
+-right_offset(unsigned i)
++right_offset(unsigned long i)
+ {
+        return 2 * i + 2;
+ }
+@@ -411,6 +401,8 @@ ltsGetFreeBlock(LogicalTapeSet *lts)
+        /* sift down */
+        pos = 0;
+        heapsize = lts->nFreeBlocks;
++       long t = heap[pos];
++
+        while (true)
+        {
+                unsigned long left = left_offset(pos);
+@@ -426,12 +418,13 @@ ltsGetFreeBlock(LogicalTapeSet *lts)
+                else
+                        break;
+
+
+-               if (heap[min_child] >= heap[pos])
++               if (heap[min_child] >= t)
+                        break;
+
+
+-               swap_nodes(heap, min_child, pos);
++               heap[pos] = heap[min_child];
+                pos = min_child;
+        }
++       heap[pos] = t;
+
+
+        return blocknum;
+ }
+@@ -514,18 +507,20 @@ ltsReleaseBlock(LogicalTapeSet *lts, long blocknum)
+        /* place entry at end of minheap array */
+        heap[pos] = blocknum;
+        lts->nFreeBlocks++;
++       long t = heap[pos];
+
+
+        /* sift up */
+        while (pos != 0)
+        {
+                unsigned long parent = parent_offset(pos);
+
+
+-               if (heap[parent] < heap[pos])
++               if (heap[parent] < t)
+                        break;
+
+
+-               swap_nodes(heap, parent, pos);
++               heap[pos] = heap[parent];
+                pos = parent;
+        }
++       heap[pos] = t;
+ }
+
+
+ /*
+```
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> In logtape.c,  
+
+
+> * Each  `swap_nodes`  will execute assignment statement three times, while
+> we only need execute once like in tuplesort.c
+
+
+Yeah, that could be improved.  I see similar coding in binaryheap.c, too.
+
+
+> * right_offset(unsigned i) parameter i seemed should be `unsigned long`
+
+
+Ugh, that's surely wrong.  I don't know that anyone could get to >4G entries
+in this heap, but it's still wrong.
+
+
+Thanks for the report!
+
+
+> Here's a patch
+
+
+FYI, patches tend not to survive being passed through email unless
+you add 'em as attachments.
+
+
+			regards, tom lane
+
+
+

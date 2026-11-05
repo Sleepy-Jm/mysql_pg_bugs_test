@@ -1,0 +1,34 @@
+{
+  "report_id": "17368",
+  "scenario_id": "17368_main",
+  "target_version": "14.1",
+  "source_url": "https://www.postgresql.org/message-id/17368-98a4f99e8e4b4402%40postgresql.org",
+  "parts": [
+    {
+      "text": "setup\n{\n\tCREATE TABLE bank_account (id TEXT PRIMARY KEY, balance DECIMAL NOT\nNULL);\n\tINSERT INTO bank_account (id, balance) VALUES ('X', 0), ('Y', 0);\n}\n\n\nteardown\n{\n\tDROP TABLE bank_account;\n}\n\n\nsession s1\nsetup \t\t{ BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE; }\nstep s1ry\t{ SELECT balance FROM bank_account WHERE id = 'Y'; }\nstep s1wy\t{ UPDATE bank_account SET balance = 20 WHERE id = 'Y'; }\nstep s1c \t{ COMMIT; }\n\n\nsession s2\nsetup\t\t{ BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE; }\nstep s2rx\t{ SELECT balance FROM bank_account WHERE id = 'X'; }\nstep s2ry\t{ SELECT balance FROM bank_account WHERE id = 'Y'; }\nstep s2wx\t{ UPDATE bank_account SET balance = -11 WHERE id = 'X'; }\nstep s2c\t{ COMMIT; }\n\n\nsession s3\nsetup\t\t{ BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY\nDEFERRABLE; }\nstep s3r\t{ SELECT id, balance FROM bank_account WHERE id IN ('X', 'Y') ORDER\nBY id; }\nstep s3c\t{ COMMIT; }\n\n\nsession s4\nsetup\t\t{ BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE; }\nstep s4to\t{ SET lock_timeout = '10ms' }\nstep s4wx\t{ UPDATE bank_account SET balance = -11 WHERE id = 'X'; }\nstep s4c\t{ COMMIT; }\n\n\npermutation s2rx s2ry s1ry s1wy s1c s3r s2wx s2c s3c\npermutation s2ry s1wy s1c s2wx s4to s4wx s4c s3r s2c s3c",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17368.txt",
+      "start_offset": 305,
+      "end_offset": 1526,
+      "start_line": 13,
+      "end_line": 61,
+      "excerpt_sha256": "8f41ba50d7651fa9cd95f99d9eb497a5718b215a441162c9f76322b43348fe4b",
+      "transformations": [
+        "trim outer whitespace",
+        "append SQL terminator at excerpt boundary",
+        "remove SQL terminator: this input uses isolation specification grammar"
+      ]
+    }
+  ],
+  "mode": "isolation",
+  "oracle": {
+    "kind": "crash",
+    "pattern": "terminated by signal 6",
+    "reported_phenomenon": "隔离测试 read-only-anomaly-3 触发 GetSafeSnapshot 断言",
+    "author_expected_behavior": "可正常完成或报告序列化冲突，不应断言崩溃"
+  },
+  "config": {},
+  "notes": "",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "spec_sha256": "d0675bf1735344a770ee31b3cca220563f1d00c98d2175287384d3f8d26947ff"
+}

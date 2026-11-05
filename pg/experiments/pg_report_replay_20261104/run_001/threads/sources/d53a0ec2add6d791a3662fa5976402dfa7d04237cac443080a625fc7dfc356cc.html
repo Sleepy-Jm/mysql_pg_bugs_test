@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17474: Segmentation fault from INSERT ( JumbleExpr )</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17474-60868309e99b1fca%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-05-05T12:10:19" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17474: Segmentation fault from INSERT ( JumbleExpr )" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="b9390a161bde2f44cdfda775f299dd87">BUG #17474: Segmentation fault from INSERT ( JumbleExpr )</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202205051210">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17474-60868309e99b1fca@postgresql.org"></a>
+<a name="b9390a161bde2f44cdfda775f299dd87"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>vyegorov(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17474: Segmentation fault from INSERT ( JumbleExpr )</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-05 12:10:19</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17474-60868309e99b1fca%40postgresql.org">17474-60868309e99b1fca@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17474-60868309e99b1fca%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17474-60868309e99b1fca%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17474-60868309e99b1fca%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17474-60868309e99b1fca%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205050000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17474<br>Logged by:          Victor Yegorov<br>Email address:      vyegorov(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Ubuntu 20.04.4 LTS (focal)<br>Description:        </p>
+
+<p>Quite simple setup, that works on 13 version, is causing SEGFAULTs on 14.2.<br>Reproducible.</p>
+
+<p>*** Table definition ***</p>
+
+<p>                                 Table &quot;public.outputs&quot;<br>     Column     |   Type    | Collation | Nullable |               Default<br>----------------+-----------+-----------+----------+-------------------------------------<br> id             | integer   |           | not null |<br>nextval(&#x27;outputs_id_seq&#x27;::regclass)<br> transaction_id | integer   |           |          |<br> address        | bigint    |           |          |<br> position       | integer   |           |          |<br> amount         | bigint    |           |          |<br> type           | integer   |           |          |<br> req_sigs       | integer   |           |          |<br> multisig_type  | integer[] |           |          |<br>Indexes:<br>    &quot;outputs_pkey&quot; PRIMARY KEY, btree (id)<br>    &quot;address&quot; btree (address)<br>    &quot;outputs_amount_idx&quot; btree (amount)<br>    &quot;transaction_id&quot; btree (transaction_id)<br>    &quot;trx_pos&quot; btree (transaction_id, &quot;position&quot;)<br>Foreign-key constraints:<br>    &quot;outputs_transaction_id_fkey&quot; FOREIGN KEY (transaction_id) REFERENCES<br>transactions(id) ON DELETE CASCADE<br>Referenced by:<br>    TABLE &quot;inputs&quot; CONSTRAINT &quot;inputs_output_id_fkey&quot; FOREIGN KEY<br>(output_id) REFERENCES outputs(id) ON DELETE CASCADE<br>    TABLE &quot;output_datas&quot; CONSTRAINT &quot;output_datas_output_id_fkey&quot; FOREIGN<br>KEY (output_id) REFERENCES outputs(id) ON DELETE CASCADE</p>
+
+<p>*** INSERT statement ***</p>
+
+<p>LOG:  server process (PID 2585336) was terminated by signal 11: Segmentation<br>fault<br>DETAIL:  Failed process was running: INSERT INTO outputs (transaction_id,<br>address, position, amount, type, req_sigs) VALUES (254800, 163252, 0, 1, 1,<br>1), (254800, 61860, 1, 1, 1, 1), (254800, 99617, 2, 1, 1, 1), (254800,<br>163255, 3, 1, 1, 1), (254800, 12098, 4, 1, 1, 1), (254800, 97997, 5, 1, 1,<br>1), (254800, 13404, 6, 1, 1, 1), (254800, 80413, 7, 1, 1, 1), (254800, 8319,<br>8, 1, 1, 1), (254800, 163261, 9, 1, 1, 1), (254800, 163262, 10, 1, 1, 1),<br>(254800, 163263, 11, 1, 1, 1), (254800, 163264, 12, 1, 1, 1), (254800,<br>163265, 13, 1, 1, 1), (254800, 163266, 14, 1, 1, 1), (254800, 163267, 15, 1,<br>1, 1), (254800, 163197, 16, 1, 1, 1), (254800, 163269, 17, 1, 1, 1),<br>(254800, 163270, 18, 1, 1, 1), (254800, 1238, 19, 1, 1, 1), (254800, 12093,<br>20, 1, 1, 1), (254800, 24167, 21, 1, 1, 1), (254800, 39000, 22, 1, 1, 1),<br>(254800, 163255, 23, 1, 1, 1), (254800, 163275, 24, 1, 1, 1), (254800,<br>93813, 25, 1, 1, 1), (254800, 163277, 26, 1, 1, 1), (254800, 163278, 27, 1,<br>1, 1), (254800, 8285, 28, 1, 1, 1), (254800, 9111, 29, 1, 1, 1), (254800,<br>54795, 30, 1, 1, 1), (254</p>
+
+<p>Total length of the INSERT statement is round 100Kb.</p>
+
+<p>*** Backtrace ***</p>
+
+<p>Core was generated by `postgres: 14/main: parser litecoin 10.1.1.20(43434)<br>PARSE                     &#x27;.<br>Program terminated with signal SIGSEGV, Segmentation fault.<br>#0  0x000056397d94c297 in memcpy (__len=1016, __src=&lt;optimized out&gt;,<br>__dest=&lt;optimized out&gt;) at<br>/usr/include/x86_64-linux-gnu/bits/string_fortified.h:34<br>34      /usr/include/x86_64-linux-gnu/bits/string_fortified.h: No such file<br>or directory.<br>(gdb) bt<br>#0  0x000056397d94c297 in memcpy (__len=1016, __src=&lt;optimized out&gt;,<br>__dest=&lt;optimized out&gt;) at<br>/usr/include/x86_64-linux-gnu/bits/string_fortified.h:34<br>#1  AppendJumble (item=&lt;optimized out&gt;, item(at)entry=0x7f403929afd8 &quot;u&quot;,<br>size=30595144541, size(at)entry=4, jstate=&lt;optimized out&gt;, jstate=&lt;optimized<br>out&gt;) at ./build/../src/backend/utils/misc/queryjumble.c:213<br>#2  0x000056397d94c6c4 in JumbleExpr (jstate=0x7f4038f652e0, node=&lt;optimized<br>out&gt;) at ./build/../src/backend/utils/misc/queryjumble.c:373<br>#3  0x000056397d94c8c1 in JumbleExpr (jstate=0x7f4038f652e0, node=&lt;optimized<br>out&gt;) at ./build/../src/backend/utils/misc/queryjumble.c:743<br>#4  0x000056397d94c8c1 in JumbleExpr (jstate=0x7f4038f652e0, node=&lt;optimized<br>out&gt;) at ./build/../src/backend/utils/misc/queryjumble.c:743<br>#5  0x000056397d94c5dc in JumbleRangeTable (rtable=0x7f403966a020,<br>jstate=0x7f4038f652e0) at<br>./build/../src/backend/utils/misc/queryjumble.c:300<br>#6  JumbleQueryInternal (jstate=0x7f4038f652e0, query=0x7f4039669b28) at<br>./build/../src/backend/utils/misc/queryjumble.c:248<br>#7  0x000056397d94cfec in JumbleQuery (query=query(at)entry=0x7f4039669b28,<br>querytext=querytext(at)entry=0x56397fdb9b59 &quot;&quot;) at<br>./build/../src/backend/utils/misc/queryjumble.c:127<br>#8  0x000056397d5e26b3 in parse_analyze_varparams<br>(parseTree=parseTree(at)entry=0x7f4039669aa8,<br>sourceText=sourceText(at)entry=0x56397fdb9b59 &quot;&quot;,<br>paramTypes=paramTypes(at)entry=0x7fff3a4f6748,<br>numParams=numParams(at)entry=0x7fff3a4f6734)<br>    at ./build/../src/backend/parser/analyze.c:169<br>#9  0x000056397d80cc1e in exec_parse_message (numParams=&lt;optimized out&gt;,<br>paramTypes=&lt;optimized out&gt;, stmt_name=0x56397fdb9b58 &quot;&quot;,<br>query_string=0x56397fdb9b59 &quot;&quot;) at<br>./build/../src/backend/tcop/postgres.c:1458<br>#10 PostgresMain (argc=argc(at)entry=1, argv=argv(at)entry=0x7fff3a4f6a20,<br>dbname=&lt;optimized out&gt;, username=&lt;optimized out&gt;) at<br>./build/../src/backend/tcop/postgres.c:4515<br>#11 0x000056397d78cb6b in BackendRun (port=&lt;optimized out&gt;, port=&lt;optimized<br>out&gt;) at ./build/../src/backend/postmaster/postmaster.c:4530<br>#12 BackendStartup (port=&lt;optimized out&gt;) at<br>./build/../src/backend/postmaster/postmaster.c:4252<br>#13 ServerLoop () at ./build/../src/backend/postmaster/postmaster.c:1745<br>#14 0x000056397d78d9ec in PostmasterMain (argc=&lt;optimized out&gt;,<br>argv=0x56397fbacf10) at<br>./build/../src/backend/postmaster/postmaster.c:1417<br>#15 0x000056397d506c8d in main (argc=5, argv=0x56397fbacf10) at<br>./build/../src/backend/main/main.c:209</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2679378.1651758280@sss.pgh.pa.us"></a>
+<a name="8adfb281659d1ab64fd16b58588987e0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>vyegorov(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17474: Segmentation fault from INSERT ( JumbleExpr )</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-05 13:44:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2679378.1651758280%40sss.pgh.pa.us">2679378.1651758280@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2679378.1651758280%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2679378.1651758280%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2679378.1651758280%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2679378.1651758280%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205050000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; Quite simple setup, that works on 13 version, is causing SEGFAULTs on 14.2.<br>&gt; Reproducible.</p>
+
+<p>Can you provide a reproducer SQL script?  The stack trace looks like<br>some element of the VALUES list is not in the format that JumbleExpr<br>is expecting, but there&#x27;s nothing odd-looking about the fragment<br>you showed.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAGnEbohm6ebdCbrKbwBjOERBP_+ofPdmGxY0TKeicT76Mf647A@mail.gmail.com"></a>
+<a name="05469e0290466d4a7aafdd896cec656a"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17474: Segmentation fault from INSERT ( JumbleExpr )</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-05 14:34:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAGnEbohm6ebdCbrKbwBjOERBP_%2BofPdmGxY0TKeicT76Mf647A%40mail.gmail.com">CAGnEbohm6ebdCbrKbwBjOERBP_+ofPdmGxY0TKeicT76Mf647A@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAGnEbohm6ebdCbrKbwBjOERBP_%2BofPdmGxY0TKeicT76Mf647A%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAGnEbohm6ebdCbrKbwBjOERBP_%2BofPdmGxY0TKeicT76Mf647A%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAGnEbohm6ebdCbrKbwBjOERBP_%2BofPdmGxY0TKeicT76Mf647A%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAGnEbohm6ebdCbrKbwBjOERBP_%2BofPdmGxY0TKeicT76Mf647A%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205050000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>чт, 5 мая 2022 г. в 16:44, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;:</p>
+
+<p>&gt; PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; &gt; Quite simple setup, that works on 13 version, is causing SEGFAULTs on<br>&gt; 14.2.<br>&gt; &gt; Reproducible.<br>&gt;<br>&gt; Can you provide a reproducer SQL script?  The stack trace looks like<br>&gt; some element of the VALUES list is not in the format that JumbleExpr<br>&gt; is expecting, but there&#x27;s nothing odd-looking about the fragment<br>&gt; you showed.<br>&gt;</p>
+
+<p>I will try to find such a case, though it might not be straightforward.</p>
+
+<p>Same query after the restart of Postgres succeeds. So it feels like we&#x27;re<br>accumulating smth here.</p>
+
+<p>-- <br>Victor Yegorov<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2689773.1651763556@sss.pgh.pa.us"></a>
+<a name="e95abde2df492aeefbc3640c31a3aa49"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>vyegorov(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17474: Segmentation fault from INSERT ( JumbleExpr )</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-05 15:12:36</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2689773.1651763556%40sss.pgh.pa.us">2689773.1651763556@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2689773.1651763556%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2689773.1651763556%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2689773.1651763556%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2689773.1651763556%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205050000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; (gdb) bt<br>&gt; #0  0x000056397d94c297 in memcpy (__len=1016, __src=&lt;optimized out&gt;,<br>&gt; __dest=&lt;optimized out&gt;) at<br>&gt; /usr/include/x86_64-linux-gnu/bits/string_fortified.h:34<br>&gt; #1  AppendJumble (item=&lt;optimized out&gt;, item(at)entry=0x7f403929afd8 &quot;u&quot;,<br>&gt; size=30595144541, size(at)entry=4, jstate=&lt;optimized out&gt;, jstate=&lt;optimized<br>&gt; out&gt;) at ./build/../src/backend/utils/misc/queryjumble.c:213</p>
+
+<p>If we take that at face value --- which isn&#x27;t a very safe assumption when<br>dealing with optimized code --- it suggests that the loop in AppendJumble<br>has gone crazy and allowed &quot;size&quot; to wrap around to some large value.<br>If that happened then it&#x27;d iterate until &quot;item&quot; advances off the end of<br>memory and you get SIGSEGV.</p>
+
+<p>I don&#x27;t see how that could possibly happen though, short of a compiler<br>bug:</p>
+
+<p>    while (size &gt; 0)<br>    {<br>        Size        part_size;<br>        ...<br>        part_size = Min(size, JUMBLE_SIZE - jumble_len);<br>        ...<br>        size -= part_size;<br>    }</p>
+
+<p>How could the value of part_size exceed size?</p>
+
+<p>I&#x27;ve spent time staring at that code before, because Coverity regularly<br>whines about queryjumble.c in terms suggesting that it sees a potential<br>for exactly this kind of bug.  But I sure don&#x27;t see it.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

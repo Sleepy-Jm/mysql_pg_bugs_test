@@ -1,0 +1,750 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17409
+Logged by:          Holly Roberts
+Email address:      holly(dot)roberts(at)starlingbank(dot)com
+PostgreSQL version: 14.2
+Operating system:   Debian 10.2.1-6
+Description:        
+
+
+When attempting to change the data type of a column that has previously been
+clustered on, which is also referenced by a foreign key, then an exception
+is thrown.
+
+
+Reproduction steps using a fresh database:
+	CREATE TABLE parent (
+		parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY
+	);
+	CREATE TABLE child (
+		child_field INTEGER,
+		CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent
+(parent_field)
+	);
+	CLUSTER parent USING pk_parent;
+	ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;
+
+
+This throws the following error:
+	ERROR:  relation 16458 has multiple clustered indexes
+	'SELECT 16458::regclass' returns 'parent';
+This has previously worked on various versions of postgres 12 and 13 for me
+(latest tried 13.6)
+
+
+I have reproduced the following on both 14.2 and 14.0, my postgres version
+is as follows:
+	SELECT version();
+	PostgreSQL 14.2 (Debian 14.2-1.pgdg110+1) on x86_64-pc-linux-gnu, compiled
+by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
+
+
+Some minor observations:
+- Removing the FK allows the data type to be changed
+- Occurs for both primary key/unique index
+- Occurs on other data types (eg. going from TEXT to BIGINT with 'USING')
+
+
+Looking through pg_catalog I can also see that only one index is clustered
+as would be expected:
+	SELECT
+	  table_cls.relnamespace::regnamespace::text AS schema,
+	  table_cls.relname AS table,
+	  index_cls.relname AS index,
+	  indisclustered
+	FROM pg_index pi
+	INNER JOIN pg_class index_cls ON (pi.indexrelid = index_cls.oid)
+	INNER JOIN pg_class table_cls ON (pi.indrelid = table_cls.oid)
+	WHERE (table_cls.relnamespace::regnamespace::text, table_cls.relname) =
+('public', 'parent');
+
+
+	 schema | table  |   index   | indisclustered
+	--------+--------+-----------+----------------
+	 public | parent | pk_parent | t
+	(1 row)
+
+
+Many Thanks,
+Holly Roberts
+
+
+
+
+
+### MESSAGE 1
+
+On Wed, 16 Feb 2022 at 22:38, PG Bug reporting form <noreply(at)postgresql(dot)org> wrote:
+> The following bug has been logged on the website:
+>
+> Bug reference:      17409
+> Logged by:          Holly Roberts
+> Email address:      holly(dot)roberts(at)starlingbank(dot)com
+> PostgreSQL version: 14.2
+> Operating system:   Debian 10.2.1-6
+> Description:        
+>
+> When attempting to change the data type of a column that has previously been
+> clustered on, which is also referenced by a foreign key, then an exception
+> is thrown.
+>
+> Reproduction steps using a fresh database:
+> 	CREATE TABLE parent (
+> 		parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY
+> 	);
+> 	CREATE TABLE child (
+> 		child_field INTEGER,
+> 		CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent
+> (parent_field)
+> 	);
+> 	CLUSTER parent USING pk_parent;
+> 	ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;
+>
+> This throws the following error:
+> 	ERROR:  relation 16458 has multiple clustered indexes
+> 	'SELECT 16458::regclass' returns 'parent';
+> This has previously worked on various versions of postgres 12 and 13 for me
+> (latest tried 13.6)
+>
+
+
+It seems the following commit cause this problem.
+
+
+commit 8b069ef5dca97cd737a5fd64c420df3cd61ec1c9
+Author: Peter Eisentraut <peter(at)eisentraut(dot)org>
+
+
+    Change get_constraint_index() to use pg_constraint.conindid
+
+
+    It was still using a scan of pg_depend instead of using the conindid
+    column that has been added since.
+
+
+    Since it is now just a catalog lookup wrapper and not related to
+    pg_depend, move from pg_depend.c to lsyscache.c.
+
+
+    Reviewed-by: Matthias van de Meent <boekewurm+postgres(at)gmail(dot)com>
+    Reviewed-by: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>
+    Reviewed-by: Michael Paquier <michael(at)paquier(dot)xyz>
+    Discussion: https://www.postgresql.org/message-id/flat/4688d55c-9a2e-9a5a-d166-5f24fe0bf8db%40enterprisedb.com
+
+
+After some analyze, I found `ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT`
+will split into `ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT` and
+`ALTER TABLE public.child ADD CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent(parent_field)`
+statements.
+
+
+When the second stement executed in RememberConstraintForRebuilding(), the
+get_constraint_index() returns valid oid after 8b069ef5, however, before this
+commit, it returns invalid oid.
+
+
+The different is that the get_constraint_index() uses pg_depend to find
+constraint index oid before 8b069ef5, after this commit it uses lsyscache
+to find index oid.
+
+
+I'm not sure this is a bug or not. Any thoughts?
+
+
+Also Cc to Peter Eisentraut who commits this.
+
+
+-- 
+Regrads,
+Japin Li.
+ChengDu WenWu Information Technology Co.,Ltd.
+
+
+
+
+
+### MESSAGE 2
+
+On Fri, 18 Feb 2022 at 00:38, Japin Li <japinli(at)hotmail(dot)com> wrote:
+> On Wed, 16 Feb 2022 at 22:38, PG Bug reporting form <noreply(at)postgresql(dot)org> wrote:
+>> The following bug has been logged on the website:
+>>
+>> Bug reference:      17409
+>> Logged by:          Holly Roberts
+>> Email address:      holly(dot)roberts(at)starlingbank(dot)com
+>> PostgreSQL version: 14.2
+>> Operating system:   Debian 10.2.1-6
+>> Description:        
+>>
+>> When attempting to change the data type of a column that has previously been
+>> clustered on, which is also referenced by a foreign key, then an exception
+>> is thrown.
+>>
+>> Reproduction steps using a fresh database:
+>> 	CREATE TABLE parent (
+>> 		parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY
+>> 	);
+>> 	CREATE TABLE child (
+>> 		child_field INTEGER,
+>> 		CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent
+>> (parent_field)
+>> 	);
+>> 	CLUSTER parent USING pk_parent;
+>> 	ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;
+>>
+>> This throws the following error:
+>> 	ERROR:  relation 16458 has multiple clustered indexes
+>> 	'SELECT 16458::regclass' returns 'parent';
+>> This has previously worked on various versions of postgres 12 and 13 for me
+>> (latest tried 13.6)
+>>
+>
+> It seems the following commit cause this problem.
+>
+> commit 8b069ef5dca97cd737a5fd64c420df3cd61ec1c9
+> Author: Peter Eisentraut <peter(at)eisentraut(dot)org>
+>
+>     Change get_constraint_index() to use pg_constraint.conindid
+>
+>     It was still using a scan of pg_depend instead of using the conindid
+>     column that has been added since.
+>
+>     Since it is now just a catalog lookup wrapper and not related to
+>     pg_depend, move from pg_depend.c to lsyscache.c.
+>
+>     Reviewed-by: Matthias van de Meent <boekewurm+postgres(at)gmail(dot)com>
+>     Reviewed-by: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>
+>     Reviewed-by: Michael Paquier <michael(at)paquier(dot)xyz>
+>     Discussion: https://www.postgresql.org/message-id/flat/4688d55c-9a2e-9a5a-d166-5f24fe0bf8db%40enterprisedb.com
+>
+>
+> After some analyze, I found `ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT`
+> will split into `ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT` and
+> `ALTER TABLE public.child ADD CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent(parent_field)`
+> statements.
+>
+> When the second stement executed in RememberConstraintForRebuilding(), the
+> get_constraint_index() returns valid oid after 8b069ef5, however, before this
+> commit, it returns invalid oid.
+>
+> The different is that the get_constraint_index() uses pg_depend to find
+> constraint index oid before 8b069ef5, after this commit it uses lsyscache
+> to find index oid.
+>
+> I'm not sure this is a bug or not. Any thoughts?
+>
+> Also Cc to Peter Eisentraut who commits this.
+
+
+The RememberClusterOnForRebuilding() use the tab->clusterOnIndex to check
+the cluster index exist or not, however, the cluster index can occur more
+than once, so I think we should check the clustered index by index name.
+Here is a patch to fix it.  Any suggestions?
+
+
+-- 
+Regrads,
+Japin Li.
+ChengDu WenWu Information Technology Co.,Ltd.
+
+
+
+
+
+### MESSAGE 3
+
+On Fri, 18 Feb 2022 at 01:28, Japin Li <japinli(at)hotmail(dot)com> wrote:
+> On Fri, 18 Feb 2022 at 00:38, Japin Li <japinli(at)hotmail(dot)com> wrote:
+>> On Wed, 16 Feb 2022 at 22:38, PG Bug reporting form <noreply(at)postgresql(dot)org> wrote:
+>>> The following bug has been logged on the website:
+>>>
+>>> Bug reference:      17409
+>>> Logged by:          Holly Roberts
+>>> Email address:      holly(dot)roberts(at)starlingbank(dot)com
+>>> PostgreSQL version: 14.2
+>>> Operating system:   Debian 10.2.1-6
+>>> Description:        
+>>>
+>>> When attempting to change the data type of a column that has previously been
+>>> clustered on, which is also referenced by a foreign key, then an exception
+>>> is thrown.
+>>>
+>>> Reproduction steps using a fresh database:
+>>> 	CREATE TABLE parent (
+>>> 		parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY
+>>> 	);
+>>> 	CREATE TABLE child (
+>>> 		child_field INTEGER,
+>>> 		CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent
+>>> (parent_field)
+>>> 	);
+>>> 	CLUSTER parent USING pk_parent;
+>>> 	ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;
+>>>
+>>> This throws the following error:
+>>> 	ERROR:  relation 16458 has multiple clustered indexes
+>>> 	'SELECT 16458::regclass' returns 'parent';
+>>> This has previously worked on various versions of postgres 12 and 13 for me
+>>> (latest tried 13.6)
+>>>
+>
+> The RememberClusterOnForRebuilding() use the tab->clusterOnIndex to check
+> the cluster index exist or not, however, the cluster index can occur more
+> than once, so I think we should check the clustered index by index name.
+> Here is a patch to fix it.  Any suggestions?
+
+
+Sorry for forgetting attach the patch.
+
+
+-- 
+Regrads,
+Japin Li.
+ChengDu WenWu Information Technology Co.,Ltd.
+
+
+
+
+
+### MESSAGE 4
+On Fri, Feb 18, 2022 at 01:30:46AM +0800, Japin Li wrote:
+> On Fri, 18 Feb 2022 at 01:28, Japin Li <japinli(at)hotmail(dot)com> wrote:
+>> The RememberClusterOnForRebuilding() use the tab->clusterOnIndex to check
+>> the cluster index exist or not, however, the cluster index can occur more
+>> than once, so I think we should check the clustered index by index name.
+>> Here is a patch to fix it.  Any suggestions?
+> 
+> Sorry for forgetting attach the patch.
+
+
+Reusing the test case at the top of the thread, this can also be
+triggered for replica identities, as of the code just at the top of
+what you have patched.  See for example:
+CREATE TABLE parent (
+  parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY);
+ALTER TABLE parent REPLICA IDENTITY USING INDEX pk_parent;
+CREATE TABLE child (
+  child_field INTEGER,
+  CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent (parent_field));
+-- error here
+ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;
+
+
+We surely should have test cases for all that.
+
+
+Anyway, I'd need to think more about your suggestion, but is that
+actually the best thing we can do?  In this case, we'd attempt to
+register twice an index to rebuild within
+RememberIndexForRebuilding(), for the same relation, but there is no
+need to do so.  Shouldn't we try instead to do a better job at
+scanning the pg_depend entries in ATExecAlterColumnType() and avoid
+the risk to do the same job twice?  That would take care of the
+replica identity case that I have just mentioned, and of the clustered
+index case reported upthread.
+--
+Michael
+
+
+
+### MESSAGE 5
+
+On Fri, 18 Feb 2022 at 12:27, Michael Paquier <michael(at)paquier(dot)xyz> wrote:
+> On Fri, Feb 18, 2022 at 01:30:46AM +0800, Japin Li wrote:
+>> On Fri, 18 Feb 2022 at 01:28, Japin Li <japinli(at)hotmail(dot)com> wrote:
+>>> The RememberClusterOnForRebuilding() use the tab->clusterOnIndex to check
+>>> the cluster index exist or not, however, the cluster index can occur more
+>>> than once, so I think we should check the clustered index by index name.
+>>> Here is a patch to fix it.  Any suggestions?
+>> 
+>> Sorry for forgetting attach the patch.
+>
+> Reusing the test case at the top of the thread, this can also be
+> triggered for replica identities, as of the code just at the top of
+> what you have patched.  See for example:
+> CREATE TABLE parent (
+>   parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY);
+> ALTER TABLE parent REPLICA IDENTITY USING INDEX pk_parent;
+> CREATE TABLE child (
+>   child_field INTEGER,
+>   CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent (parent_field));
+> -- error here
+> ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;
+>
+
+
+Thanks for pointing out this.
+
+
+> We surely should have test cases for all that.
+>
+
+
+Agreed.
+
+
+> Anyway, I'd need to think more about your suggestion, but is that
+> actually the best thing we can do?
+
+
+Thanks for your review, I'm also not sure this solution is best or not.
+It is just one solution for this problem.
+
+
+> In this case, we'd attempt to
+> register twice an index to rebuild within
+> RememberIndexForRebuilding(), for the same relation, but there is no
+> need to do so.
+
+
+Sorry, I don't get your mind. In both cases, the RememberIndexForRebuilding()
+didn't called, why you say "register twice an index to rebuild within
+RememberIndexForRebuilding()".
+
+
+> Shouldn't we try instead to do a better job at
+> scanning the pg_depend entries in ATExecAlterColumnType() and avoid
+> the risk to do the same job twice?  That would take care of the
+> replica identity case that I have just mentioned, and of the clustered
+> index case reported upthread.
+
+
+Yeah, I forget the replica identity case.
+
+
+-- 
+Regrads,
+Japin Li.
+ChengDu WenWu Information Technology Co.,Ltd.
+
+
+
+
+
+### MESSAGE 6
+
+On Fri, 18 Feb 2022 at 12:27, Michael Paquier <michael(at)paquier(dot)xyz> wrote:
+> On Fri, Feb 18, 2022 at 01:30:46AM +0800, Japin Li wrote:
+> Reusing the test case at the top of the thread, this can also be
+> triggered for replica identities, as of the code just at the top of
+> what you have patched.  See for example:
+> CREATE TABLE parent (
+>   parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY);
+> ALTER TABLE parent REPLICA IDENTITY USING INDEX pk_parent;
+> CREATE TABLE child (
+>   child_field INTEGER,
+>   CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent (parent_field));
+> -- error here
+> ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;
+>
+> We surely should have test cases for all that.
+>
+> Anyway, I'd need to think more about your suggestion, but is that
+> actually the best thing we can do?  In this case, we'd attempt to
+> register twice an index to rebuild within
+> RememberIndexForRebuilding(), for the same relation, but there is no
+> need to do so.  Shouldn't we try instead to do a better job at
+> scanning the pg_depend entries in ATExecAlterColumnType() and avoid
+> the risk to do the same job twice?  That would take care of the
+> replica identity case that I have just mentioned, and of the clustered
+> index case reported upthread.
+
+
+Attach a new patch to fix the replica identify case, also add test cases.
+
+
+-- 
+Regrads,
+Japin Li.
+ChengDu WenWu Information Technology Co.,Ltd.
+
+
+
+
+
+### MESSAGE 7
+Hello,
+
+
+Thanks for looking into this issue and coming up with a patch. Has any
+further progress been made on getting this into 14 stable?
+Apologies if I have missed anything.
+
+
+Many thanks,
+Holly Roberts
+
+
+On Fri, 18 Feb 2022 at 09:54, Japin Li <japinli(at)hotmail(dot)com> wrote:
+
+
+>
+> On Fri, 18 Feb 2022 at 12:27, Michael Paquier <michael(at)paquier(dot)xyz> wrote:
+> > On Fri, Feb 18, 2022 at 01:30:46AM +0800, Japin Li wrote:
+> > Reusing the test case at the top of the thread, this can also be
+> > triggered for replica identities, as of the code just at the top of
+> > what you have patched.  See for example:
+> > CREATE TABLE parent (
+> >   parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY);
+> > ALTER TABLE parent REPLICA IDENTITY USING INDEX pk_parent;
+> > CREATE TABLE child (
+> >   child_field INTEGER,
+> >   CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent
+> (parent_field));
+> > -- error here
+> > ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;
+> >
+> > We surely should have test cases for all that.
+> >
+> > Anyway, I'd need to think more about your suggestion, but is that
+> > actually the best thing we can do?  In this case, we'd attempt to
+> > register twice an index to rebuild within
+> > RememberIndexForRebuilding(), for the same relation, but there is no
+> > need to do so.  Shouldn't we try instead to do a better job at
+> > scanning the pg_depend entries in ATExecAlterColumnType() and avoid
+> > the risk to do the same job twice?  That would take care of the
+> > replica identity case that I have just mentioned, and of the clustered
+> > index case reported upthread.
+>
+>
+> Attach a new patch to fix the replica identify case, also add test cases.
+>
+> --
+> Regrads,
+> Japin Li.
+> ChengDu WenWu Information Technology Co.,Ltd.
+>
+
+
+
+### MESSAGE 8
+Japin Li <japinli(at)hotmail(dot)com> writes:
+> Attach a new patch to fix the replica identify case, also add test cases.
+
+
+Now that we realize we need to de-duplicate, it seems to me we should
+postpone the get_rel_name() calls so that we don't have to do that
+work repeatedly; as attached.
+
+
+Also, while I've not done anything about it here, the proposed test
+cases seem remarkably cavalier about their choices of test table
+names.  If you want to use names as generic as "parent" and "child",
+they'd better be temp tables to avoid risk of conflict against other
+concurrent regression tests.  But most of alter_table.sql prefers
+to use names starting with "at".
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 9
+
+On Fri, 11 Mar 2022 at 08:37, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> Japin Li <japinli(at)hotmail(dot)com> writes:
+>> Attach a new patch to fix the replica identify case, also add test cases.
+>
+> Now that we realize we need to de-duplicate, it seems to me we should
+> postpone the get_rel_name() calls so that we don't have to do that
+> work repeatedly; as attached.
+>
+
+
+Thanks for your review.  Agreed.
+
+
+> Also, while I've not done anything about it here, the proposed test
+> cases seem remarkably cavalier about their choices of test table
+> names.  If you want to use names as generic as "parent" and "child",
+> they'd better be temp tables to avoid risk of conflict against other
+> concurrent regression tests.  But most of alter_table.sql prefers
+> to use names starting with "at".
+
+
+My apologies!  How about s/parent/atref/g and s/child/attmp/g ?
+
+
+Attached v4 patch, please consider this for futher review.
+
+
+--
+Regrads,
+Japin Li.
+ChengDu WenWu Information Technology Co.,Ltd.
+
+
+
+
+
+### MESSAGE 10
+Japin Li <japinli(at)hotmail(dot)com> writes:
+> Attached v4 patch, please consider this for futher review.
+
+
+I was about ready to push this, when I started to wonder why the
+problem was introduced by 8b069ef5d, which on its face is merely
+a small performance improvement.  After digging into it, I find
+that in fact, that changed the semantics of get_constraint_index(),
+and not trivially so.  In the cases at hand, ATExecAlterColumnType's
+scan of pg_depend finds two entries for constraints that need to
+be rebuilt: there is the pk_atref primary key constraint, and there
+is the fk_atref foreign key constraint.  The new implementation
+of get_constraint_index() returns the pk_atref index as the
+associated index of both constraints, whereas the old code returned
+it only for the pk_atref constraint.  The old behavior is what
+ATExecAlterColumnType wants, I judge.  As this stands, we will
+rebuild indexes that don't need to be rebuilt, and indeed might
+be on other tables altogether from the one that is being modified
+(which opens all sorts of potential locking problems).  So I think
+what we actually want to do is not this, but to revert that
+behavioral change.  As far as I can see, the other sites that
+call get_constraint_index() only do so on constraint types that
+really own indexes; but there might be external code that expects
+get_constraint_index() to have its old behavior.
+
+
+The fundamental problem is that get_constraint_index() is no
+longer satisfying its API spec:
+
+
+ *        Given the OID of a unique, primary-key, or exclusion constraint,
+ *        return the OID of the underlying index.
+
+
+as now it will also return a nonzero OID for FK constraints (and
+maybe other kinds?).
+
+
+One way to fix this is to add a check of contype to
+get_constraint_index(); the other way is to do so at the
+call sites.  I'm kind of leaning to the former for v14,
+but since it makes get_constraint_index() less generally
+useful, maybe we should change its API spec in HEAD?
+Not sure.  Checking contype separately would require an
+additional syscache lookup, so it's not *that* attractive.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 11
+I wrote:
+> ... The old behavior is what
+> ATExecAlterColumnType wants, I judge.  As this stands, we will
+> rebuild indexes that don't need to be rebuilt, and indeed might
+> be on other tables altogether from the one that is being modified
+> (which opens all sorts of potential locking problems).
+
+
+Oh, well, not so much:
+
+
+regression=# create table atref (p1 int constraint pk_atref primary key);
+CREATE TABLE
+regression=# create table attbl (c1 int, constraint fk_atref foreign key (c1) references atref(p1));
+CREATE TABLE
+regression=# cluster atref using pk_atref;
+CLUSTER
+regression=# alter table attbl alter column c1 set data type bigint;
+ERROR:  "pk_atref" is not an index for table "attbl"
+
+
+Still, that's just as unpleasant as the originally-reported case.
+(I've not figured out yet why the "cluster" step is required to
+make this repro work.)
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 12
+I wrote:
+> (I've not figured out yet why the "cluster" step is required to
+> make this repro work.)
+
+
+Oh, of course: the failure only occurs if we think the index is clustered
+or a replica-identity index; else we don't store a request to rebuild it.
+
+
+The attached seems to do the trick.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 13
+
+On Sat, 12 Mar 2022 at 02:29, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> I wrote:
+>> (I've not figured out yet why the "cluster" step is required to
+>> make this repro work.)
+>
+> Oh, of course: the failure only occurs if we think the index is clustered
+> or a replica-identity index; else we don't store a request to rebuild it.
+>
+> The attached seems to do the trick.
+>
+
+
+Fantastic!  Thanks for your detail dig.
+
+
+--
+Regrads,
+Japin Li.
+ChengDu WenWu Information Technology Co.,Ltd.
+
+
+
+
+
+### MESSAGE 14
+On Fri, Mar 11, 2022 at 01:29:05PM -0500, Tom Lane wrote:
+> Oh, of course:
+
+
+Thanks for dropping by the thread.  I was planning to bisect that 
+but with the CF things have gone out of hand.
+
+
+> the failure only occurs if we think the index is clustered
+> or a replica-identity index; else we don't store a request to rebuild it.
+
+
+Yes, I think that what you did in 369398e to tweak
+get_constraint_name() is the right fix, or we'd finish by creating
+more index rebuild requests than necessary when going through the
+inheritance tree of these tables.
+--
+Michael
+
+
+
+### MESSAGE 15
+On Mon, Mar 14, 2022 at 04:51:10PM +0900, Michael Paquier wrote:
+> Yes, I think that what you did in 369398e to tweak
+> get_constraint_name() is the right fix, or we'd finish by creating
+> more index rebuild requests than necessary when going through the
+> inheritance tree of these tables.
+
+
+Ditto, 641f3df.
+--
+Michael
+

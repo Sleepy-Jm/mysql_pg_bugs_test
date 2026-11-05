@@ -1,0 +1,42 @@
+{
+  "report_id": "17443",
+  "scenario_id": "17443_main",
+  "target_version": "14.2",
+  "source_url": "https://www.postgresql.org/message-id/17443-543da4d6744b8ef2%40postgresql.org",
+  "parts": [
+    {
+      "text": "create temp table teste as\n  select s::int as id1, s::int as id2, quote_ident('Nome ' || to_char(s,\n'FM00000000'))::varchar(15) as nome\n    from generate_series(1,10000000) x(s);\n\n\ncreate index teste1 on teste (id1);\ncreate index teste2 on teste using brin (id2);",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17443.txt",
+      "start_offset": 350,
+      "end_offset": 616,
+      "start_line": 16,
+      "end_line": 26,
+      "excerpt_sha256": "4e080255524bbfa25bb0e929c235d72f26113052974c73d861b57ede4f91b753",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    },
+    {
+      "text": "EXPLAIN (analyze on, wal on, verbose on, format text)\n  select id2 from teste where id2 = 1000000;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17443.txt",
+      "start_offset": 717,
+      "end_offset": 815,
+      "start_line": 29,
+      "end_line": 30,
+      "excerpt_sha256": "71ec3d86d22876bf614250f1200e0674a0080e75b256e6badc55656c43111d6a",
+      "transformations": []
+    }
+  ],
+  "mode": "psql",
+  "oracle": {
+    "kind": "output",
+    "pattern": "Seq Scan on pg_temp\\.teste",
+    "reported_phenomenon": "默认 enable_seqscan=on 时 id2 查询使用顺序扫描",
+    "author_expected_behavior": "作者希望使用 BRIN 索引"
+  },
+  "config": {},
+  "notes": "",
+  "timeout": 180,
+  "preparation_status": "ready",
+  "spec_sha256": "e3fc3c2b72d709257f8a9dca55af5af932762979f47f1275f083098c65a2b45e"
+}

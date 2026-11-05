@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17318: ERROR: AddressSanitizer: SEGV on unknown address in optimizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17318-2eb65a3a611d2368%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2021-12-06T06:40:39" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17318: ERROR: AddressSanitizer: SEGV on unknown address in optimizer" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17318 Logged by: Zhiyong Wu Email address: 253540651@qq.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17318: ERROR: AddressSanitizer: SEGV on unknown address in optimizer</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>253540651(at)qq(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17318: ERROR: AddressSanitizer: SEGV on unknown address in optimizer</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-06 06:40:39</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17318-2eb65a3a611d2368%40postgresql.org">17318-2eb65a3a611d2368@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17318-2eb65a3a611d2368%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17318-2eb65a3a611d2368%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17318-2eb65a3a611d2368%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17318-2eb65a3a611d2368%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17318-2eb65a3a611d2368%40postgresql.org" selected="selected">2021-12-06 06:40:39 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="3048015.1638802600%40sss.pgh.pa.us">&nbsp;2021-12-06 14:56:40 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20211207125925.jps4l6tr7htd6h3z%40localhost">&nbsp;&nbsp;2021-12-07 12:59:25 from Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;</option>
+  <option value="20211208094102.qrxyu2u2426e4wy5%40localhost">&nbsp;&nbsp;&nbsp;2021-12-08 09:41:02 from Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17318<br>Logged by:          Zhiyong Wu<br>Email address:      253540651(at)qq(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Linux version 5.13.0-1-MANJARO (builduser(at)LEGION)<br>Description:        </p>
+
+<p>PoC:<br>;<br> ;<br> WITH RECURSIVE x ( x ) AS ( SELECT 1 UNION ALL SELECT x FROM LATERAL ( (<br>SELECT * FROM ( ( SELECT 4 AS x ) UNION ALL ( SELECT 5 AS x ) ) AS x WHERE x<br>BETWEEN 1 AND 2 AND x &lt; ( SELECT 3 GROUP BY DISTINCT ROLLUP ( x , x ) ,<br>ROLLUP ( x , x ) ) ) UNION ALL ( SELECT ( SELECT x LIMIT 1 ) FROM x OFFSET 0<br>LIMIT 5 ) ) AS x GROUP BY ROLLUP ( ( x , x , x ) , ( ( SELECT TRIM (<br>TRAILING &#x27; &#x27; FROM SUBSTRING ( VERSION ( ) FROM &#x27;^[^0-9]*&#x27; ) ) WHERE ( x IS<br>NOT NULL ) ) , x ) ) ) CYCLE x SET BOOLEAN USING VALUES SELECT FROM x GROUP<br>BY DISTINCT CUBE ( x , x , x ) ;<br> RESET ALL ;<br> INSERT INTO x VALUES ( 7 , 4 , &#x27;cccc&#x27; , &#x27;h&#x27; ) ;</p>
+
+<p>Asan Log:<br>==3973==ERROR: AddressSanitizer: SEGV on unknown address 0x000000040000 (pc<br>0x000000d9fdd6 bp 0x000000000002 sp 0x7ffd39de1d70 T0)<br>==3973==The signal is caused by a READ memory access.<br>    #0 0xd9fdd6 in bms_is_subset<br>/root/postgres/bld/../src/backend/nodes/bitmapset.c:327:13<br>    #1 0xf25392 in add_vars_to_targetlist<br>/root/postgres/bld/../src/backend/optimizer/plan/initsplan.c:247:8<br>    #2 0xf250c7 in build_base_rel_tlists<br>/root/postgres/bld/../src/backend/optimizer/plan/initsplan.c:192:3<br>    #3 0xf32c45 in query_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planmain.c:178:2<br>    #4 0xf3f24e in grouping_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1448:17<br>    #5 0xf394a7 in subquery_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2<br>    #6 0xe859a6 in set_subquery_pathlist<br>/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:2229:17<br>    #7 0xe859a6 in set_rel_size<br>/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:423:5<br>    #8 0xe7a0cb in set_base_rel_sizes<br>/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:324:3<br>    #9 0xe7a0cb in make_one_rel<br>/root/postgres/bld/../src/backend/optimizer/path/allpaths.c:186:2<br>    #10 0xf32cd2 in query_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planmain.c:276:14<br>    #11 0xf3f24e in grouping_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1448:17<br>    #12 0xf394a7 in subquery_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2<br>    #13 0xfa116c in recurse_set_operations<br>/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:239:28<br>    #14 0xfa04ea in generate_recursion_path<br>/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:469:9<br>    #15 0xfa04ea in plan_set_operations<br>/root/postgres/bld/../src/backend/optimizer/prep/prepunion.c:156:15<br>    #16 0xf3c035 in grouping_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1286:17<br>    #17 0xf394a7 in subquery_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:1025:2<br>    #18 0xf790cd in SS_process_ctes<br>/root/postgres/bld/../src/backend/optimizer/plan/subselect.c:980:13<br>    #19 0xf3552c in subquery_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:650:3<br>    #20 0xf33304 in standard_planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:406:9<br>    #21 0xf32fa8 in planner<br>/root/postgres/bld/../src/backend/optimizer/plan/planner.c:277:12<br>    #22 0x13379c7 in pg_plan_query<br>/root/postgres/bld/../src/backend/tcop/postgres.c:847:9<br>    #23 0x13379c7 in pg_plan_queries<br>/root/postgres/bld/../src/backend/tcop/postgres.c:939:11<br>    #24 0x1345487 in exec_simple_query<br>/root/postgres/bld/../src/backend/tcop/postgres.c:1133:19<br>    #25 0x133da73 in PostgresMain<br>/root/postgres/bld/../src/backend/tcop/postgres.c<br>    #26 0x1094d63 in BackendRun<br>/root/postgres/bld/../src/backend/postmaster/postmaster.c:4584:2<br>    #27 0x109333d in BackendStartup<br>/root/postgres/bld/../src/backend/postmaster/postmaster.c:4312:3<br>    #28 0x109333d in ServerLoop<br>/root/postgres/bld/../src/backend/postmaster/postmaster.c:1801:7<br>    #29 0x10898e3 in PostmasterMain<br>/root/postgres/bld/../src/backend/postmaster/postmaster.c:1473:11<br>    #30 0xd9d463 in main<br>/root/postgres/bld/../src/backend/main/main.c:198:3<br>    #31 0x7f9a9f2ce0b2 in __libc_start_main<br>/build/glibc-eX1tMB/glibc-2.31/csu/../csu/libc-start.c:308:16<br>    #32 0x49bc1d in _start (/usr/local/pgsql/bin/postgres+0x49bc1d)</p>
+
+<p>AddressSanitizer can not provide additional info.<br>SUMMARY: AddressSanitizer: SEGV<br>/root/postgres/bld/../src/backend/nodes/bitmapset.c:327:13 in bms_is_subset</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/3048015.1638802600%40sss.pgh.pa.us">Re: BUG #17318: ERROR: AddressSanitizer: SEGV on unknown address in optimizer</a> at 2021-12-06 14:56:40 from Tom Lane
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/17320-70e37868182512ab%40postgresql.org">Next Message</a></th>
+            <td>PG Bug reporting form</td>
+            <td>2021-12-06 06:42:57</td>
+            <td><a href="/message-id/17320-70e37868182512ab%40postgresql.org">BUG #17320: A SEGV in optimizer</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/Ya1tKYLozbcvw5Dw%40paquier.xyz">Previous Message</a></th>
+            <td>Michael Paquier</td>
+            <td>2021-12-06 01:53:45</td>
+            <td><a href="/message-id/Ya1tKYLozbcvw5Dw%40paquier.xyz">Re: BUG #17268: Possible corruption in toast index after reindex
+ index concurrently</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,32 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18755
+Logged by:          Xin Zhang
+Email address:      zhanghien(at)qq(dot)com
+PostgreSQL version: 17.2
+Operating system:   Any
+Description:        
+
+
+In function insert_event_trigger_tuple, the datum array is declared with
+length Natts_pg_trigger:
+```c
+	Datum		values[Natts_pg_trigger];
+	bool		nulls[Natts_pg_trigger];
+```
+
+
+Natts_pg_trigger should only be used in pg_trigger tuple and
+Natts_pg_event_trigger is for pg_event_trigger?
+I think this could be a typo. Maybe the author of function
+insert_event_trigger_tuple copied the variables from CreateTriggerFiringOn
+but forgot to change the array length to Natts_pg_event_trigger.
+
+
+The current code works because Natts_pg_trigger is 19 and
+Natts_pg_event_trigger is 7, the pg_event_trigger values array is allocated
+with some extra items which is never accessed with index >= 7.
+
+
+

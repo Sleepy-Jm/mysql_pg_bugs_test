@@ -1,0 +1,72 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17356
+Logged by:          László Zsolt Nagy
+Email address:      nagylzs(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   Debian Linux
+Description:        
+
+
+How to reproduce:
+
+
+# Start minimal virgin system
+docker run -it --rm debian bash
+apt update
+apt install -y acl ca-certificates curl gzip libbsd0 libbz2-1.0 libc6
+libedit2 libffi7 libnettle8 libicu67 libreadline8 libgcc1 libgmp10
+libgnutls30 libhogweed6  libidn2-0 libldap-2.4-2 liblz4-1 liblzma5
+libncurses6  libp11-kit0 libpcre3  libsasl2-2 libsqlite3-0 libssl1.1
+libstdc++6 libtasn1-6 libtinfo6 libunistring2 libuuid1 libxml2 libxslt1.1
+libzstd1 locales procps tar zlib1g gnupg dumb-init curl
+
+
+# Install hunspell-hu and PostgreSQL
+apt install -y hunspell hunspell-hu
+curl -s
+https://salsa.debian.org/postgresql/postgresql-common/raw/master/pgdg/apt.postgresql.org.sh
+| bash
+apt update
+apt install -y postgresql-14
+
+
+The above procedure gives this error during the last step:
+
+
+Building PostgreSQL dictionaries from installed myspell/hunspell
+packages...
+  hu_hu
+iconv: illegal input sequence at position 131
+ERROR: Conversion of /usr/share/hunspell/hu_HU.aff failed
+
+
+It happens when pg_updatedicts is executed.
+
+
+I'm not sure where the problem is. It may be in hunspell, or hunspell-hu, or
+iconv or postgresql. I have tried to find the root cause, but I falied. At
+least it seems that it is NOT a bug in hunspell or hunspell-hu, because the
+author of hunspell wrote this comment in 2018 at
+https://github.com/hunspell/hunspell/issues/559#issuecomment-446335091 
+
+
+> Not a bug: Hunspell's file format is not an UTF-8 encoded text file in the
+case of SET UTF-8 with the default 8-bit FLAG.
+
+
+That hunspell issue is only open because "it is a valid request", but it is
+not a bug nonetheless (according to the author).
+
+
+So it might be iconv, or it might be pg_updatedicts that calls iconv with
+the wrong parameters. I do not know enough to tell...
+
+
+I think that this bug has been around for years now, and it makes impossible
+to use tsearch2 with Hungarian spelling.
+
+
+

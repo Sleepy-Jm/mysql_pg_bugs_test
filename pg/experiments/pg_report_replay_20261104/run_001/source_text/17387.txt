@@ -1,0 +1,49 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17387
+Logged by:          James Inform
+Email address:      james(dot)inform(at)pharmapp(dot)de
+PostgreSQL version: 14.1
+Operating system:   Mac and Linux (Ubuntu)
+Description:        
+
+
+While the following sql works under PG13:
+
+
+with q_data as (
+  select '1' as testa, 1 as testb 
+  union
+  select '2' as testa, 2 as testb 
+  union
+  select '3' as testa, 3 as testb 
+  union
+  select '4' as testa, 4 as testb 
+)
+select array_agg(q) || array_agg(q) from q_data q;
+
+
+and results in:
+ {"(3,3)","(1,1)","(4,4)","(2,2)","(3,3)","(1,1)","(4,4)","(2,2)"}
+
+
+the same SQL on PG14.1 fails with:
+
+
+ERROR:  operator is not unique: record[] || record[]
+LINE 10: select array_agg(q) || array_agg(q) from q_data q;
+                                               ^
+HINT:  Could not choose a best candidate operator. You might need to add
+explicit type casts.
+
+
+Let's not discuss if such an sql makes sense.
+But question is: Why is PG14 giving an error while PG13 works?
+
+
+Cheers,
+James
+
+
+

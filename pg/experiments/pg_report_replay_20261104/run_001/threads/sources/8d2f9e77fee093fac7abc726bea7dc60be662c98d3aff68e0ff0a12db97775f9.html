@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18778: Query planning fails in ExecInitExprRec with unrecognized node type</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18778-24cd399df6c806af%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-01-16T20:00:01" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18778: Query planning fails in ExecInitExprRec with unrecognized node type" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="78e7aa0a589f3418ef72608c4aedf8a9">BUG #18778: Query planning fails in ExecInitExprRec with unrecognized node type</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202501162000">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18778-24cd399df6c806af@postgresql.org"></a>
+<a name="78e7aa0a589f3418ef72608c4aedf8a9"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18778: Query planning fails in ExecInitExprRec with unrecognized node type</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-16 20:00:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18778-24cd399df6c806af%40postgresql.org">18778-24cd399df6c806af@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18778-24cd399df6c806af%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18778-24cd399df6c806af%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18778-24cd399df6c806af%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18778-24cd399df6c806af%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18778<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Ubuntu 24.04<br>Description:        </p>
+
+<p>The following script:<br>CREATE TABLE t (id int, PRIMARY KEY (id)) PARTITION BY RANGE (id);<br>CREATE TABLE t0 PARTITION OF t FOR VALUES FROM (0) TO (1);<br>CREATE TABLE t1 PARTITION OF t FOR VALUES FROM (1) TO (2);</p>
+
+<p>SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM<br>t0 t00) r, t<br>WHERE t.id &gt; CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;</p>
+
+<p>fails with:<br>ERROR:  XX000: unrecognized node type: 24<br>LOCATION:  ExecInitExprRec, execExpr.c:2657</p>
+
+<p>The first bad commit for this anomaly (discovered with SQLsmith) is<br>41efb8340.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1919554.1737070534@sss.pgh.pa.us"></a>
+<a name="db9db9dc10ca05b226eb971addb5c8cc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18778: Query planning fails in ExecInitExprRec with unrecognized node type</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-16 23:35:34</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1919554.1737070534%40sss.pgh.pa.us">1919554.1737070534@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1919554.1737070534%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1919554.1737070534%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1919554.1737070534%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1919554.1737070534%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; The following script:<br>&gt; CREATE TABLE t (id int, PRIMARY KEY (id)) PARTITION BY RANGE (id);<br>&gt; CREATE TABLE t0 PARTITION OF t FOR VALUES FROM (0) TO (1);<br>&gt; CREATE TABLE t1 PARTITION OF t FOR VALUES FROM (1) TO (2);</p>
+
+<p>&gt; SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM<br>&gt; t0 t00) r, t<br>&gt; WHERE t.id &gt; CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;</p>
+
+<p>&gt; fails with:<br>&gt; ERROR:  XX000: unrecognized node type: 24</p>
+
+<p>Thanks for the report!  setrefs.c is supposed to remove<br>AlternativeSubPlan nodes from the plan, but it&#x27;s failing to do so<br>here.  Digging, the un-cleaned-up AlternativeSubPlan is inside the<br>exec_pruning_steps of an Append node&#x27;s part_prune_info, and I see<br>that setrefs is totally unaware that those expressions might need<br>processing.  I think it ought to be applying fix_scan_expr to them,<br>as per the attached.  There are a bunch of tidying-up things that<br>fix_scan_expr does, so I suspect that there may be more bug symptoms<br>reachable from this oversight.  Some of the missed processing may be<br>redundant --- for example it&#x27;s likely that<br>record_plan_function_dependency is duplicative because functions used<br>here would also be used elsewhere in the query.  But it&#x27;s hard to<br>believe it all is.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/170668/apply-setrefs-fixups-to-pruning-expressions.patch">apply-setrefs-fixups-to-pruning-expressions.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>1000 bytes</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="dc467c76-e5e5-4eaf-950b-32097f32d4f2@Spark"></a>
+<a name="f67f40dcc23c0c070dac6c7f5a2401e8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Zhang Mingli &lt;zmlpostgres(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>exclusion(at)gmail(dot)com, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18778: Query planning fails in ExecInitExprRec with
+ unrecognized node type</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-18 15:52:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/dc467c76-e5e5-4eaf-950b-32097f32d4f2%40Spark">dc467c76-e5e5-4eaf-950b-32097f32d4f2@Spark</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/dc467c76-e5e5-4eaf-950b-32097f32d4f2%40Spark">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/dc467c76-e5e5-4eaf-950b-32097f32d4f2%40Spark" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/dc467c76-e5e5-4eaf-950b-32097f32d4f2%40Spark" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/dc467c76-e5e5-4eaf-950b-32097f32d4f2%40Spark" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501180000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p></p>
+
+<p>Zhang Mingli<br><a href="http://www.hashdata.xyz" rel="nofollow">www.hashdata.xyz</a><br>On Jan 17, 2025 at 07:35 +0800, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, wrote:<br>&gt; PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; &gt; The following script:<br>&gt; &gt; CREATE TABLE t (id int, PRIMARY KEY (id)) PARTITION BY RANGE (id);<br>&gt; &gt; CREATE TABLE t0 PARTITION OF t FOR VALUES FROM (0) TO (1);<br>&gt; &gt; CREATE TABLE t1 PARTITION OF t FOR VALUES FROM (1) TO (2);<br>&gt;<br>&gt; &gt; SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM<br>&gt; &gt; t0 t00) r, t<br>&gt; &gt; WHERE t.id &gt; CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;<br>&gt;<br>&gt; &gt; fails with:<br>&gt; &gt; ERROR: XX000: unrecognized node type: 24<br>&gt;<br>&gt; Thanks for the report! setrefs.c is supposed to remove<br>&gt; AlternativeSubPlan nodes from the plan, but it&#x27;s failing to do so<br>&gt; here. Digging, the un-cleaned-up AlternativeSubPlan is inside the<br>&gt; exec_pruning_steps of an Append node&#x27;s part_prune_info, and I see<br>&gt; that setrefs is totally unaware that those expressions might need<br>&gt; processing. I think it ought to be applying fix_scan_expr to them,<br>&gt; as per the attached. There are a bunch of tidying-up things that<br>&gt; fix_scan_expr does, so I suspect that there may be more bug symptoms<br>&gt; reachable from this oversight. Some of the missed processing may be<br>&gt; redundant --- for example it&#x27;s likely that<br>&gt; record_plan_function_dependency is duplicative because functions used<br>&gt; here would also be used elsewhere in the query. But it&#x27;s hard to<br>&gt; believe it all is.<br>&gt;<br>Hi, I have tested the patch, and confirm that it works well. Additionally, I believe it might be worth creating a test case for it.</p>
+
+<p>And I have a question that may not be directly related to the issue: why is there a Subplan 2, and it appears to be unused?</p>
+
+<p>explain(costs off, verbose) SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM<br>t0 t00) r, t WHERE t.id &gt; CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;<br>                                                    QUERY PLAN<br>------------------------------------------------------------------------------------------------------------------<br> Nested Loop<br>   Output: 1<br>   -&gt;  Seq Scan on public.t0 t00<br>         Output: t00.id<br>   -&gt;  Append<br>         -&gt;  Index Only Scan using t0_pkey on public.t0 t_1<br>               Output: t_1.id<br>               Index Cond: (t_1.id &gt; CASE WHEN (jsonb_build_object(EXISTS(SubPlan 1)) IS NULL) THEN 1 ELSE 1 END)<br>               SubPlan 2<br>                 -&gt;  Seq Scan on public.t0 t0_1<br>                       Output: t0_1.id<br>         -&gt;  Index Only Scan using t1_pkey on public.t1 t_2<br>               Output: t_2.id<br>               Index Cond: (t_2.id &gt; CASE WHEN (jsonb_build_object(EXISTS(SubPlan 1)) IS NULL) THEN 1 ELSE 1 END)<br>         SubPlan 1<br>           -&gt;  Index Only Scan using t0_pkey on public.t0<br>                 Index Cond: (t0.id = t00.id)<br>(17 rows)</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2550569.1737219097@sss.pgh.pa.us"></a>
+<a name="8215fa4bda43a71abb6a8d44b605e1ce"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Zhang Mingli &lt;zmlpostgres(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18778: Query planning fails in ExecInitExprRec with unrecognized node type</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-18 16:51:37</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2550569.1737219097%40sss.pgh.pa.us">2550569.1737219097@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2550569.1737219097%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2550569.1737219097%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2550569.1737219097%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2550569.1737219097%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501180000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Zhang Mingli &lt;zmlpostgres(at)gmail(dot)com&gt; writes:<br>&gt; And I have a question that may not be directly related to the issue: why is there a Subplan 2, and it appears to be unused?</p>
+
+<p>Yeah, that&#x27;s because the AlternativeSubPlan originally had two child<br>subplans: a parameterized one intended for a few calls, and a hashed<br>one to be used for a lot of calls.  We build both because at the time<br>when this needs to happen, we don&#x27;t have any clue how many calls<br>there will be.  We wait till the very end of planning to decide which<br>one is more likely to win based on context, and then discard the<br>AlternativeSubPlan, replacing it with a direct reference to the chosen<br>SubPlan.  But the other one stays in the tree.  Getting rid of it<br>seemed complicated, and it won&#x27;t be referenced at runtime so there&#x27;s<br>not much penalty from leaving it there.  It is confusing, I admit.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

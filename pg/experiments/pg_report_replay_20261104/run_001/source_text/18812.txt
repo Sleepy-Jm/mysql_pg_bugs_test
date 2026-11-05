@@ -1,0 +1,54 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18812
+Logged by:          Boris Korzun
+Email address:      drtr0jan(at)yandex(dot)ru
+PostgreSQL version: 17.2
+Operating system:   FreeBSD 14-stable
+Description:        
+
+
+Conditional rule checks underlying table for the types ignoring the
+statement.
+
+
+-----
+CREATE TABLE t
+(
+    c varchar(10) NOT NULL
+);
+
+
+CREATE VIEW v AS
+SELECT NULL::text AS c
+FROM t;
+
+
+CREATE RULE "insert" AS ON INSERT TO v
+    WHERE FALSE
+    DO INSTEAD
+    INSERT INTO t (c)
+    VALUES (new.c);
+
+
+CREATE RULE "skip" AS ON INSERT TO v DO INSTEAD NOTHING;
+-----
+
+
+I've two rules for a view - unconditional INSTEAD (skip) and conditional
+INSTEAD (always FALSE). But if I trying to insert a type mismatched data to
+the view, I've got a type constraint error.
+
+
+-----
+INSERT INTO v (c) VALUES ('testtesttest');
+-----
+[22001] ERROR: value too long for type character varying(10)
+-----
+
+
+Why? It seems like a bug.
+
+
+

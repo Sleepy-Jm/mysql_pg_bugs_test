@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17434-d9f7a064ce2a88a3%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-03-11T11:11:54" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17434 Logged by: Yugo Nagata Email address: nagata@sraoss.co.jp PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>nagata(at)sraoss(dot)co(dot)jp</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-11 11:11:54</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17434-d9f7a064ce2a88a3%40postgresql.org">17434-d9f7a064ce2a88a3@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17434-d9f7a064ce2a88a3%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17434-d9f7a064ce2a88a3%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17434-d9f7a064ce2a88a3%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17434-d9f7a064ce2a88a3%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17434-d9f7a064ce2a88a3%40postgresql.org" selected="selected">2022-03-11 11:11:54 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="YtCrjN0HLew0w4Ss%40momjian.us">&nbsp;2022-07-14 23:49:32 from Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</option>
+  <option value="3190751.1657845414%40sss.pgh.pa.us">&nbsp;&nbsp;2022-07-15 00:36:54 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAKFQuwbY_vJWcvJLUz2r%2BzzwwhkJbjzjojfGx%3DMvd9TZ0TTKew%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2022-07-15 02:14:33 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="3498921.1657919211%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;2022-07-15 21:06:51 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;	&#x1f4ce;</option>
+  <option value="CAKFQuwa9JQgKgg3Djrx%3D7p1Phhj68QEq0TWYG72Xv-nPz61r0w%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-18 19:55:48 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="805866.1658175624%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-18 20:20:24 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAKFQuwYQpm6E4nTgiOZAGRg0JKquHaXQ0JkqruWeHuOQX6-70g%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-18 22:17:11 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="37325fb7-8014-4028-9bcf-60d83f4fe8dd%40manitou-mail.org">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-19 11:16:21 from &quot;Daniel Verite&quot; &lt;daniel(at)manitou-mail(dot)org&gt;</option>
+  <option value="2350990.1658848101%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-26 15:08:21 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;	&#x1f4ce;</option>
+  <option value="CAKFQuwYRYhF8iOD9MHp7VuZur_JvVEjDzpMHuUHNeYReB5v2Sw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-26 15:22:38 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="2356216.1658849834%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-26 15:37:14 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAKFQuwYxPhPVMGJ-uoV7rq291xAU3dwww2fWwMuaz6EPiruJ5g%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-26 15:48:23 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="2361330.1658851386%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-26 16:03:06 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAKFQuwYaN%2BSJyHcXyjAwZ7zRCze%2B6Xj7ns_hOEg2%2BfhZEJUOHg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-26 16:11:52 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="2363212.1658852059%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-26 16:14:19 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20220728105134.d5ce51dd756b3149e9b9c52c%40sraoss.co.jp">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-28 01:51:34 from Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;	&#x1f4ce;</option>
+  <option value="3214515.1658976655%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-28 02:50:55 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAKFQuwaQ-ho0PUyo%3DH7sfidrhS45-%3DS5FBbiqewLOZ3oVedGtw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-28 16:13:05 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="20220809002102.b815cd4dad20fdc91dff5ce8%40sraoss.co.jp">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-08-08 15:21:02 from Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;	&#x1f4ce;</option>
+  <option value="20220930102342.852ad903b9c0418048c07fe5%40sraoss.co.jp">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-30 01:23:42 from Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;	&#x1f4ce;</option>
+  <option value="3032689.1667757257%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-06 17:54:17 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;	&#x1f4ce;</option>
+  <option value="20221109190114.b820cb610cbc23d5ec281eb8%40sraoss.co.jp">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-09 10:01:14 from Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;	&#x1f4ce;</option>
+  <option value="3993442.1668010649%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-09 16:17:29 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20221110134919.c92e112be567d637f126d03d%40sraoss.co.jp">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-10 04:49:19 from Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</option>
+  <option value="65a899dd-aebc-f667-1d0a-abb89ff3abf8%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-09 16:24:43 from Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</option>
+  <option value="3995893.1668011885%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-09 16:38:05 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20221110144859.d9004fdd47396fe64fe032da%40sraoss.co.jp">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-10 05:48:59 from Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</option>
+  <option value="229552.1668112417%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-10 20:33:37 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;	&#x1f4ce;</option>
+  <option value="20221116195302.8404eb58bbea02eaa9250af2%40sraoss.co.jp">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-16 10:53:02 from Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</option>
+  <option value="CAO_rXXCqRiPLWjAKxP5P4RfTHWhwn-eo-uZeURib1umQSaEoag%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-25 15:17:02 from Israel Barth Rubio &lt;barthisrael(at)gmail(dot)com&gt;</option>
+  <option value="4066263.1669395975%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-11-25 17:06:15 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="be36e954-b343-decf-69b9-8850f3acafef%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-12-12 19:16:32 from Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</option>
+  <option value="2207596.1670880178%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-12-12 21:22:58 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="2495271.1670959618%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-12-13 19:26:58 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203110000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203110000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17434<br>Logged by:          Yugo Nagata<br>Email address:      nagata(at)sraoss(dot)co(dot)jp<br>PostgreSQL version: 14.2<br>Operating system:   Ubuntu<br>Description:        </p>
+
+<p>CREATE/DROP DATABASE can be executed in the same transaction with other<br>commands when we use pipeline mode in pgbench or libpq API. If the<br>transaction aborts, this causes an inconsistency between the system catalog<br>and base directory.</p>
+
+<p>Here is an example using the pgbench /startpipeline meta command.</p>
+
+<p>----------------------------------------------------<br>(1)  Confirm that there are four databases from psql and directories in<br>base.</p>
+
+<p>$ psql -l<br>                                 List of databases<br>   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access<br>privileges   <br>-----------+--------+----------+-------------+-------------+-----------------------<br> postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br> template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>(4 rows)</p>
+
+<p>$ ls data/base/<br>1  13014  13015  16409  pgsql_tmp</p>
+
+<p>(2) Execute CREATE DATABASE in a transaction, and the transaction fails.</p>
+
+<p>$ cat pipeline_createdb.sql <br>\startpipeline<br>create database test;<br>select 1/0;<br>\endpipeline</p>
+
+<p>$ pgbench -t 1 -f pipeline_createdb.sql -M extended<br>pgbench (14.2)<br>starting vacuum...end.<br>pgbench: error: client 0 script 0 aborted in command 3 query 0: <br>....</p>
+
+<p>(3) There are still four databases but a new directory was created in<br>base.</p>
+
+<p>$ psql -l<br>                                 List of databases<br>   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access<br>privileges   <br>-----------+--------+----------+-------------+-------------+-----------------------<br> postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br> template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>(4 rows)</p>
+
+<p>$ ls data/base/<br>1  13014  13015  16409  16411  pgsql_tmp</p>
+
+<p>(4) Next, execute DROP DATABASE in a transaction, and the transaction<br>fails.</p>
+
+<p>$ cat pipeline_dropdb.sql <br>\startpipeline<br>drop database test0;<br>select 1/0;<br>\endpipeline</p>
+
+<p>$ pgbench -t 1 -f pipeline_dropdb.sql -M extended<br>pgbench (14.2)<br>starting vacuum...end.<br>pgbench: error: client 0 script 0 aborted in command 3 query 0:<br>...</p>
+
+<p>(5) There are still four databases but the corresponding directory was<br>deleted in base.</p>
+
+<p>$ psql -l<br>                                 List of databases<br>   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access<br>privileges   <br>-----------+--------+----------+-------------+-------------+-----------------------<br> postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br> template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>(4 rows)</p>
+
+<p>$ ls data/base/<br>1  13014  13015  16411  pgsql_tmp</p>
+
+<p>(6) We cannot connect the database &quot;test0&quot;.</p>
+
+<p>$ psql test0<br>psql: error: connection to server on socket &quot;/tmp/.s.PGSQL.25435&quot; failed:<br>FATAL:  database &quot;test0&quot; does not exist<br>DETAIL:  The database subdirectory &quot;base/16409&quot; is missing.<br>----------------------------------------------------</p>
+
+<p>Detailed discussions are here;<br><a href="https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp" rel="nofollow">https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/YtCrjN0HLew0w4Ss%40momjian.us">Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</a> at 2022-07-14 23:49:32 from Bruce Momjian
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/MEYP282MB1669CD6C93FD1DCA85CAB2C1B60C9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">Next Message</a></th>
+            <td>Japin Li</td>
+            <td>2022-03-11 13:18:14</td>
+            <td><a href="/message-id/MEYP282MB1669CD6C93FD1DCA85CAB2C1B60C9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAH2-WzmMXTRWtmaXB%2B51RDw5xY1A9kfEpOQ%3DWYVQrC9Skf1G0w%40mail.gmail.com">Previous Message</a></th>
+            <td>Peter Geoghegan</td>
+            <td>2022-03-11 04:55:37</td>
+            <td><a href="/message-id/CAH2-WzmMXTRWtmaXB%2B51RDw5xY1A9kfEpOQ%3DWYVQrC9Skf1G0w%40mail.gmail.com">Re: BUG #17255: Server crashes in index_delete_sort_cmp() due to race
+ condition with vacuum</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-hackers by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/0AAB6121-E987-4CE0-9040-1D92A5F088C8%40yesql.se">Next Message</a></th>
+            <td>Daniel Gustafsson</td>
+            <td>2022-03-11 11:22:10</td>
+            <td><a href="/message-id/0AAB6121-E987-4CE0-9040-1D92A5F088C8%40yesql.se">Re: On login trigger: take three</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/TYAPR01MB5866F12429CFCED8093D6A68F50C9%40TYAPR01MB5866.jpnprd01.prod.outlook.com">Previous Message</a></th>
+            <td>kuroda.hayato@fujitsu.com</td>
+            <td>2022-03-11 10:58:25</td>
+            <td><a href="/message-id/TYAPR01MB5866F12429CFCED8093D6A68F50C9%40TYAPR01MB5866.jpnprd01.prod.outlook.com">RE: Handle infinite recursion in logical replication setup</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,50 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17452
+Logged by:          Andreas Karlsson
+Email address:      andreas(at)proxel(dot)se
+PostgreSQL version: 14.2
+Operating system:   Linux and Mac at least
+Description:        
+
+
+Hi,
+
+
+I noticed that the optimization (in transformAExprIn()) for the case where
+there is an IN (...) with only one item breaks certain queries. Of course it
+is also possible that it is the single-item case which is correct and the
+multiple-item case which is broken. The case where I found this behavior was
+caused by the casting rules around the reg* types but there could be other
+similar issues.
+
+
+Here is a simplified example based on a real query:
+
+
+# SELECT version();
+                                                        version             
+                                           
+------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 14.2 (Debian 14.2-1.pgdg120+1+b2) on x86_64-pc-linux-gnu,
+compiled by gcc (Debian 11.2.0-18) 11.2.0, 64-bit
+(1 row)
+
+
+# SELECT 'version'::regproc IN ('version');
+ERROR:  invalid input syntax for type oid: "version"
+LINE 1: SELECT 'version'::regproc IN ('version');
+                                      ^
+# SELECT 'version'::regproc IN ('version', 'version');
+ ?column? 
+----------
+ t
+(1 row)
+
+
+Best regards,
+Andreas
+
+
+

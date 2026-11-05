@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17624: Creating database is non-ending execution.</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17624-40bd8106071a8e89%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-09-29T08:41:30" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17624: Creating database is non-ending execution." />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="ed2666ae29ede6618b7869a364e991e7">BUG #17624: Creating database is non-ending execution.</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202209290841">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17624-40bd8106071a8e89@postgresql.org"></a>
+<a name="ed2666ae29ede6618b7869a364e991e7"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>ishimweb123(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17624: Creating database is non-ending execution.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-29 08:41:30</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17624-40bd8106071a8e89%40postgresql.org">17624-40bd8106071a8e89@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17624-40bd8106071a8e89%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17624-40bd8106071a8e89%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17624-40bd8106071a8e89%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17624-40bd8106071a8e89%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17624<br>Logged by:          Bertrand Mutangana<br>Email address:      ishimweb123(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 18.04 running on wsl<br>Description:        </p>
+
+<p>I have installed PostgreSQL version 14.01in ubuntu 18.04 running in WSL<br>windows 10. Set up and configuration went well. The problem occurred when I<br>tried to create a database. The execution doesn&#x27;t end. It shows that it is<br>running but it does not end. I waited for over 6 hours and nothing was<br>happening. It is important to note that everything else was working fine.<br>Please correct that because it looks like it is a bug in version 14. I<br>switched to version 12 and it is working fine and I can create the databases<br>in seconds.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwYiRTmLn=Z9y=R2kSssrcVARnmcWFbgDq=sqSTWq1CgkA@mail.gmail.com"></a>
+<a name="a36781b1e34a161e4880b5ebfd8b7f46"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>ishimweb123(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17624: Creating database is non-ending execution.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-29 14:31:16</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwYiRTmLn%3DZ9y%3DR2kSssrcVARnmcWFbgDq%3DsqSTWq1CgkA%40mail.gmail.com">CAKFQuwYiRTmLn=Z9y=R2kSssrcVARnmcWFbgDq=sqSTWq1CgkA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwYiRTmLn%3DZ9y%3DR2kSssrcVARnmcWFbgDq%3DsqSTWq1CgkA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwYiRTmLn%3DZ9y%3DR2kSssrcVARnmcWFbgDq%3DsqSTWq1CgkA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwYiRTmLn%3DZ9y%3DR2kSssrcVARnmcWFbgDq%3DsqSTWq1CgkA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwYiRTmLn%3DZ9y%3DR2kSssrcVARnmcWFbgDq%3DsqSTWq1CgkA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Sep 29, 2022 at 2:44 AM PG Bug reporting form &lt;<br>noreply(at)postgresql(dot)org&gt; wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17624<br>&gt; Logged by:          Bertrand Mutangana<br>&gt; Email address:      ishimweb123(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.1<br>&gt; Operating system:   Ubuntu 18.04 running on wsl<br>&gt; Description:<br>&gt;<br>&gt; Please correct that because it looks like it is a bug in version 14. I<br>&gt; switched to version 12 and it is working fine and I can create the<br>&gt; databases<br>&gt; in seconds.<br>&gt;<br>&gt;<br>Maybe try switching to the current v14 minor release and seeing if that<br>works; reporting bugs against unsupported minor releases isn&#x27;t that<br>productive, especially anything in the first year.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAC1Ng2Y7Oh=1mK2wo=+Srn_E9KgLzRk4=0K46TdeG4K8XV4kSQ@mail.gmail.com"></a>
+<a name="6d194206ac52d46ae6d41358c7fa45ba"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Bertrand Mutangana &lt;ishimweb123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17624: Creating database is non-ending execution.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-29 14:40:19</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAC1Ng2Y7Oh%3D1mK2wo%3D%2BSrn_E9KgLzRk4%3D0K46TdeG4K8XV4kSQ%40mail.gmail.com">CAC1Ng2Y7Oh=1mK2wo=+Srn_E9KgLzRk4=0K46TdeG4K8XV4kSQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAC1Ng2Y7Oh%3D1mK2wo%3D%2BSrn_E9KgLzRk4%3D0K46TdeG4K8XV4kSQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAC1Ng2Y7Oh%3D1mK2wo%3D%2BSrn_E9KgLzRk4%3D0K46TdeG4K8XV4kSQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAC1Ng2Y7Oh%3D1mK2wo%3D%2BSrn_E9KgLzRk4%3D0K46TdeG4K8XV4kSQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAC1Ng2Y7Oh%3D1mK2wo%3D%2BSrn_E9KgLzRk4%3D0K46TdeG4K8XV4kSQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Ok, I&#x27;ll do that.</p>
+
+<p>On Thu, 29 Sep 2022, 16:31 David G. Johnston, &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;<br>wrote:</p>
+
+<p>&gt; On Thu, Sep 29, 2022 at 2:44 AM PG Bug reporting form &lt;<br>&gt; noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;<br>&gt;&gt; The following bug has been logged on the website:<br>&gt;&gt;<br>&gt;&gt; Bug reference:      17624<br>&gt;&gt; Logged by:          Bertrand Mutangana<br>&gt;&gt; Email address:      ishimweb123(at)gmail(dot)com<br>&gt;&gt; PostgreSQL version: 14.1<br>&gt;&gt; Operating system:   Ubuntu 18.04 running on wsl<br>&gt;&gt; Description:<br>&gt;&gt;<br>&gt;&gt; Please correct that because it looks like it is a bug in version 14. I<br>&gt;&gt; switched to version 12 and it is working fine and I can create the<br>&gt;&gt; databases<br>&gt;&gt; in seconds.<br>&gt;&gt;<br>&gt;&gt;<br>&gt; Maybe try switching to the current v14 minor release and seeing if that<br>&gt; works; reporting bugs against unsupported minor releases isn&#x27;t that<br>&gt; productive, especially anything in the first year.<br>&gt;<br>&gt; David J.<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20221019184748.h4yvc2ds4fzll52j@awork3.anarazel.de"></a>
+<a name="7b92f87365b4288f1bee8c4c4db0a566"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>ishimweb123(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17624: Creating database is non-ending execution.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-10-19 18:47:48</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20221019184748.h4yvc2ds4fzll52j%40awork3.anarazel.de">20221019184748.h4yvc2ds4fzll52j@awork3.anarazel.de</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20221019184748.h4yvc2ds4fzll52j%40awork3.anarazel.de">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20221019184748.h4yvc2ds4fzll52j%40awork3.anarazel.de" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20221019184748.h4yvc2ds4fzll52j%40awork3.anarazel.de" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20221019184748.h4yvc2ds4fzll52j%40awork3.anarazel.de" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202210190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On 2022-09-29 08:41:30 +0000, PG Bug reporting form wrote:<br>&gt; The following bug has been logged on the website:<br>&gt; <br>&gt; Bug reference:      17624<br>&gt; Logged by:          Bertrand Mutangana<br>&gt; Email address:      ishimweb123(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.1<br>&gt; Operating system:   Ubuntu 18.04 running on wsl<br>&gt; Description:        <br>&gt; <br>&gt; I have installed PostgreSQL version 14.01in ubuntu 18.04 running in WSL<br>&gt; windows 10.</p>
+
+<p>WSL1 or WSL2? They work entirely differently, hence the question...</p>
+
+<p>Greetings,</p>
+
+<p>Andres Freund</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

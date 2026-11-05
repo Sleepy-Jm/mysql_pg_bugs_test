@@ -1,0 +1,137 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17366
+Logged by:          Error result returned in timestamp2timestamptz, expected to be off by one
+hour
+Email address:      dafoer_x(at)163(dot)com
+PostgreSQL version: 14.1
+Operating system:   REL_14_STABLE
+Description:        
+
+
+For REL_14_STABLE
+git log ad5b6f248ab288c3252d8122d12a1eb410d4a0b6
+
+
+e.g.
+postgres=# set timezone to "PST8PDT";
+SET
+postgres=# select * from pg_timezone_names where name = 'PST8PDT';
+  name   | abbrev | utc_offset | is_dst 
+---------+--------+------------+--------
+ PST8PDT | PST    | -08:00:00  | f
+(1 row)
+
+
+postgres=# select (timestamp '2021-03-14 02:00:00')::timestamptz;
+      timestamptz       
+------------------------
+ 2021-03-14 03:00:00-07
+(1 row)
+
+
+postgres=# select (timestamp '2021-03-14 03:00:00')::timestamptz;
+      timestamptz       
+------------------------
+ 2021-03-14 03:00:00-07
+(1 row)
+
+
+expected:
+postgres=# select (timestamp '2021-03-14 02:00:00')::timestamptz;
+2021-03-14 02:00:00-07
+
+
+
+
+
+### MESSAGE 1
+On Fri, 14 Jan 2022 at 11:15, PG Bug reporting form
+<noreply(at)postgresql(dot)org> wrote:
+> Logged by:          Error result returned in timestamp2timestamptz, expected to be off by one
+...
+> postgres=# set timezone to "PST8PDT";
+..
+> postgres=# select (timestamp '2021-03-14 02:00:00')::timestamptz;
+>  2021-03-14 03:00:00-07
+> postgres=# select (timestamp '2021-03-14 03:00:00')::timestamptz;
+>  2021-03-14 03:00:00-07
+
+
+You are playing around the DST changes, and timestamp must have unique
+representations, for informal descriptions "time jumps from 2 to 3" is
+fine, when dealing with real data you must decide if it jumps just
+before or just after, it seems your expectations are wrong:
+
+
+=> show time zone;
+ TimeZone
+----------
+ PST8PDT
+(1 row)
+
+
+=> with a(hms) as (values
+('01:59:59'),('02:00:00'),('02:00:01'),('02:59:59'),('03:00:00'),('03:00:01'))
+, b as (select '2021-03-14 '||hms as f from a)
+select f, f::timestamp, (f::timestamp)::timestamptz from b;
+          f          |          f          |           f
+---------------------+---------------------+------------------------
+ 2021-03-14 01:59:59 | 2021-03-14 01:59:59 | 2021-03-14 01:59:59-08
+ 2021-03-14 02:00:00 | 2021-03-14 02:00:00 | 2021-03-14 03:00:00-07
+ 2021-03-14 02:00:01 | 2021-03-14 02:00:01 | 2021-03-14 03:00:01-07
+ 2021-03-14 02:59:59 | 2021-03-14 02:59:59 | 2021-03-14 03:59:59-07
+ 2021-03-14 03:00:00 | 2021-03-14 03:00:00 | 2021-03-14 03:00:00-07
+ 2021-03-14 03:00:01 | 2021-03-14 03:00:01 | 2021-03-14 03:00:01-07
+(6 rows)
+
+
+Local values do not exist in the (2-3) interval, so they are shifted,
+but to cover the timestamp line without overlapping you need half-open
+intervals, pg is choosing to use rigth-open, so 2:00 does not exist
+but 3:00 does, they cannot both exist ( as normalized output, as input
+both are valid, but internally they are stored the same way, time
+jumps, pg has to choose a coherent offset to print them ).
+
+
+Francisco Olarte.
+
+
+
+
+
+### MESSAGE 2
+Francisco Olarte <folarte(at)peoplecall(dot)com> writes:
+> On Fri, 14 Jan 2022 at 11:15, PG Bug reporting form
+> <noreply(at)postgresql(dot)org> wrote:
+>> postgres=# set timezone to "PST8PDT";
+>> ..
+>> postgres=# select (timestamp '2021-03-14 02:00:00')::timestamptz;
+>> 2021-03-14 03:00:00-07
+>> postgres=# select (timestamp '2021-03-14 03:00:00')::timestamptz;
+>> 2021-03-14 03:00:00-07
+
+
+> You are playing around the DST changes, and timestamp must have unique
+> representations, for informal descriptions "time jumps from 2 to 3" is
+> fine, when dealing with real data you must decide if it jumps just
+> before or just after, it seems your expectations are wrong:
+
+
+Yeah.  See
+
+
+https://www.postgresql.org/docs/devel/datetime-invalid-input.html
+
+
+(I'm pointing you to the devel version of that page because it
+contains a correction that hasn't yet propagated into the other
+versions)
+
+
+			regards, tom lane
+
+
+

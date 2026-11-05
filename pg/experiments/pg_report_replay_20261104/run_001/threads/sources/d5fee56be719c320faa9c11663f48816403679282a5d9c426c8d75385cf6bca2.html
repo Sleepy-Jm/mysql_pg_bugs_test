@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17416: Server crashes due to python3 stack overflow on executing multiple plpy.rollback() calls</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17416-ed8fe5d7213d6c25%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-02-23T11:00:01" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17416: Server crashes due to python3 stack overflow on executing multiple plpy.rollback() calls" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="5ffe68916e42e2844c1fac5176642e79">BUG #17416: Server crashes due to python3 stack overflow on executing multiple plpy.rollback() calls</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202202231100">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17416-ed8fe5d7213d6c25@postgresql.org"></a>
+<a name="5ffe68916e42e2844c1fac5176642e79"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17416: Server crashes due to python3 stack overflow on executing multiple plpy.rollback() calls</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-23 11:00:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17416-ed8fe5d7213d6c25%40postgresql.org">17416-ed8fe5d7213d6c25@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17416-ed8fe5d7213d6c25%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17416-ed8fe5d7213d6c25%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17416-ed8fe5d7213d6c25%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17416-ed8fe5d7213d6c25%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202230000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17416<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>When executing the following script:<br>psql -c &quot;<br>CREATE EXTENSION plpython3u;</p>
+
+<p>CREATE FUNCTION plpy_xact_test() RETURNS int<br>LANGUAGE plpython3u<br>AS &#x27;<br>plpy.rollback()<br>return 1<br>&#x27;&quot;</p>
+
+<p>for i in `seq 500`; do echo &quot;SELECT plpy_xact_test();&quot;; done | psql</p>
+
+<p>I get the server crash with the following stack trace:<br>Core was generated by `postgres: law regression [local] SELECT              <br>                        &#x27;.<br>Program terminated with signal SIGABRT, Aborted.<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>50      ../sysdeps/unix/sysv/linux/raise.c: No such file or directory.<br>(gdb) bt<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>#1  0x00007f27fc652859 in __GI_abort () at abort.c:79<br>#2  0x00007f27f2987c38 in ?? () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#3  0x00007f27f2aa56a9 in Py_FatalError () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#4  0x00007f27f2ade3e7 in _Py_CheckRecursiveCall () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#5  0x00007f27f2b7237c in ?? () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#6  0x00007f27f2bbc9b6 in _PyObject_CallMethodId () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#7  0x00007f27f2aa5260 in ?? () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#8  0x00007f27f2aa555b in ?? () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#9  0x00007f27f2aa56a9 in Py_FatalError () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#10 0x00007f27f2ade3e7 in _Py_CheckRecursiveCall () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#11 0x00007f27f29884ec in _PyEval_EvalFrameDefault () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#12 0x00007f27f2addecb in _PyEval_EvalCodeWithName () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#13 0x00007f27f2ade252 in PyEval_EvalCodeEx () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#14 0x00007f27f2ade63f in PyEval_EvalCode () from<br>/usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0<br>#15 0x00007f27f2ec0078 in PLy_procedure_call (proc=0x5616bf113c80,<br>kargs=0x7f27f2ecb79d &quot;args&quot;, vargs=0x7f27f2808500)<br>    at plpy_exec.c:1032<br>#16 0x00007f27f2ebd4aa in PLy_exec_function (fcinfo=0x5616bf110398,<br>proc=0x5616bf113c80) at plpy_exec.c:104<br>#17 0x00007f27f2ec0a11 in plpython3_call_handler (fcinfo=0x5616bf110398) at<br>plpy_main.c:270<br>#18 0x00005616bdb70449 in ExecInterpExpr (state=0x5616bf1102b0,<br>econtext=0x5616bf10ffb0, isnull=0x7ffdc73aea3f)<br>    at execExprInterp.c:725<br>#19 0x00005616bdb728dc in ExecInterpExprStillValid (state=0x5616bf1102b0,<br>econtext=0x5616bf10ffb0, <br>    isNull=0x7ffdc73aea3f) at execExprInterp.c:1824<br>#20 0x00005616bdbcdfb3 in ExecEvalExprSwitchContext (state=0x5616bf1102b0,<br>econtext=0x5616bf10ffb0, <br>    isNull=0x7ffdc73aea3f) at ../../../src/include/executor/executor.h:339<br>#21 0x00005616bdbce02b in ExecProject (projInfo=0x5616bf1102a8) at<br>../../../src/include/executor/executor.h:373<br>#22 0x00005616bdbce275 in ExecResult (pstate=0x5616bf10fe98) at<br>nodeResult.c:136<br>#23 0x00005616bdb88cb0 in ExecProcNodeFirst (node=0x5616bf10fe98) at<br>execProcnode.c:463<br>#24 0x00005616bdb7c79c in ExecProcNode (node=0x5616bf10fe98) at<br>../../../src/include/executor/executor.h:257<br>#25 0x00005616bdb7f3ba in ExecutePlan (estate=0x5616bf10fc60,<br>planstate=0x5616bf10fe98, use_parallel_mode=false, <br>    operation=CMD_SELECT, sendTuples=true, numberTuples=0,<br>direction=ForwardScanDirection, dest=0x5616bf0191d0, <br>    execute_once=true) at execMain.c:1551<br>#26 0x00005616bdb7ced3 in standard_ExecutorRun (queryDesc=0x5616bef7da10,<br>direction=ForwardScanDirection, count=0, <br>    execute_once=true) at execMain.c:361<br>#27 0x00005616bdb7ccbe in ExecutorRun (queryDesc=0x5616bef7da10,<br>direction=ForwardScanDirection, count=0, <br>    execute_once=true) at execMain.c:305<br>#28 0x00005616bddfa2ec in PortalRunSelect (portal=0x5616befbf3e0,<br>forward=true, count=0, dest=0x5616bf0191d0)<br>    at pquery.c:921<br>#29 0x00005616bddf9f10 in PortalRun (portal=0x5616befbf3e0,<br>count=9223372036854775807, isTopLevel=true, run_once=true, <br>    dest=0x5616bf0191d0, altdest=0x5616bf0191d0, qc=0x7ffdc73aee40) at<br>pquery.c:765<br>#30 0x00005616bddf2e22 in exec_simple_query (query_string=0x5616bef5b980<br>&quot;SELECT plpy_xact_test();&quot;) at postgres.c:1214<br>#31 0x00005616bddf7ce9 in PostgresMain (argc=1, argv=0x7ffdc73af060,<br>dbname=0x5616bef872c8 &quot;regression&quot;, <br>    username=0x5616bef872a8 &quot;law&quot;) at postgres.c:4496<br>#32 0x00005616bdd1c4d3 in BackendRun (port=0x5616bef7cf00) at<br>postmaster.c:4530<br>#33 0x00005616bdd1bd2e in BackendStartup (port=0x5616bef7cf00) at<br>postmaster.c:4252<br>#34 0x00005616bdd17b23 in ServerLoop () at postmaster.c:1745<br>#35 0x00005616bdd17280 in PostmasterMain (argc=3, argv=0x5616bef559b0) at<br>postmaster.c:1417<br>#36 0x00005616bdc06738 in main (argc=3, argv=0x5616bef559b0) at main.c:209</p>
+
+<p>The server log contains:<br>..<br>2022-02-23 12:58:23.640 MSK [810462] ERROR:  invalid transaction<br>termination<br>2022-02-23 12:58:23.640 MSK [810462] CONTEXT:  PL/Python function<br>&quot;plpy_xact_test&quot;<br>2022-02-23 12:58:23.640 MSK [810462] STATEMENT:  SELECT plpy_xact_test();<br>2022-02-23 12:58:23.641 MSK [810462] ERROR:  invalid transaction<br>termination<br>...<br>2022-02-23 12:58:23.657 MSK [810462] STATEMENT:  SELECT plpy_xact_test();<br>2022-02-23 12:58:23.657 MSK [810462] ERROR:  RecursionError: maximum<br>recursion depth exceeded<br>2022-02-23 12:58:23.657 MSK [810462] CONTEXT:  Traceback (most recent call<br>last):<br>    PL/Python function &quot;plpy_xact_test&quot;<br>2022-02-23 12:58:23.657 MSK [810462] STATEMENT:  SELECT plpy_xact_test();<br>2022-02-23 12:58:23.657 MSK [810462] ERROR:  invalid transaction<br>termination<br>2022-02-23 12:58:23.657 MSK [810462] CONTEXT:  PL/Python function<br>&quot;plpy_xact_test&quot;<br>2022-02-23 12:58:23.657 MSK [810462] STATEMENT:  SELECT plpy_xact_test();<br>2022-02-23 12:58:23.657 MSK [810462] ERROR:  invalid transaction<br>termination<br>2022-02-23 12:58:23.657 MSK [810462] CONTEXT:  PL/Python function<br>&quot;plpy_xact_test&quot;<br>2022-02-23 12:58:23.657 MSK [810462] STATEMENT:  SELECT plpy_xact_test();<br>...<br>2022-02-23 12:58:23.658 MSK [810462] ERROR:  invalid transaction<br>termination<br>2022-02-23 12:58:23.658 MSK [810462] CONTEXT:  PL/Python function<br>&quot;plpy_xact_test&quot;<br>2022-02-23 12:58:23.658 MSK [810462] STATEMENT:  SELECT plpy_xact_test();<br>Fatal Python error: Cannot recover from stack overflow.<br>Python runtime state: initialized</p>
+
+<p>Current thread 0x00007f27fc628740 (most recent call first):<br>  File &quot;&lt;string&gt;&quot;, line 3 in __plpython_procedure_plpy_xact_test_16390<br>  File &quot;&lt;string&gt;&quot;, line 1 in &lt;module&gt;<br>  File &quot;&lt;string&gt;&quot;, line 3 in __plpython_procedure_plpy_xact_test_16390<br>  File &quot;&lt;string&gt;&quot;, line 1 in &lt;module&gt;<br>  File &quot;&lt;string&gt;&quot;, line 3 in __plpython_procedure_plpy_xact_test_16390<br>...<br>  File &quot;&lt;string&gt;&quot;, line 1 in &lt;module&gt;<br>  File &quot;&lt;string&gt;&quot;, line 3 in __plpython_procedure_plpy_xact_test_16390<br>  File &quot;&lt;string&gt;&quot;, line 1 in &lt;module&gt;<br>  ...<br>2022-02-23 12:58:23.818 MSK [810446] LOG:  server process (PID 810462) was<br>terminated by signal 6: Aborted<br>2022-02-23 12:58:23.818 MSK [810446] DETAIL:  Failed process was running:<br>SELECT plpy_xact_test();</p>
+
+<p>Reproduced on REL_11_0..master.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1048491.1645633650@sss.pgh.pa.us"></a>
+<a name="f49a8359cc27d99798bf6a9e4aebd36a"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17416: Server crashes due to python3 stack overflow on executing multiple plpy.rollback() calls</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-23 16:27:30</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1048491.1645633650%40sss.pgh.pa.us">1048491.1645633650@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1048491.1645633650%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1048491.1645633650%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1048491.1645633650%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1048491.1645633650%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202230000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; When executing the following script:<br>&gt; psql -c &quot;<br>&gt; CREATE EXTENSION plpython3u;</p>
+
+<p>&gt; CREATE FUNCTION plpy_xact_test() RETURNS int<br>&gt; LANGUAGE plpython3u<br>&gt; AS &#x27;<br>&gt; plpy.rollback()<br>&gt; return 1<br>&gt; &#x27;&quot;</p>
+
+<p>&gt; for i in `seq 500`; do echo &quot;SELECT plpy_xact_test();&quot;; done | psql</p>
+
+<p>&gt; I get the server crash with the following stack trace:</p>
+
+<p>Interesting.  For me, 500 repetitions won&#x27;t crash it, but 1000 will.<br>Apparently, each escape out of plpy.rollback leaves an open frame<br>on Python&#x27;s internal control stack, and eventually it barfs.<br>So this is a different way to reach the problems already under<br>investigation at [1].  You don&#x27;t really need a bleeding-edge<br>Python at all.</p>
+
+<p>			regards, tom lane</p>
+
+<p>[1] <a href="https://www.postgresql.org/message-id/flat/3375ffd8-d71c-2565-e348-a597d6e739e3(at)enterprisedb(dot)com" rel="nofollow">https://www.postgresql.org/message-id/flat/3375ffd8-d71c-2565-e348-a597d6e739e3(at)enterprisedb(dot)com</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,2425 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17448: In Windows 10, version 1703 and later, huge_pages doesn&#x27;t work.</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17448-0a96583a67edb1f7%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-03-25T07:52:57" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17448: In Windows 10, version 1703 and later, huge_pages doesn&#x27;t work." />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="083221ae4c620167fb7976d24d59f762">BUG #17448: In Windows 10, version 1703 and later, huge_pages doesn&#x27;t work.</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202203250752">pgsql-bugs</a></span><span class="listname"><a href="/list/pgsql-hackers/since/202203250752">pgsql-hackers</a></span></td>
+</table>
+
+
+
+<a name="17448-0a96583a67edb1f7@postgresql.org"></a>
+<a name="083221ae4c620167fb7976d24d59f762"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>okano(dot)naoki(at)jp(dot)fujitsu(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17448: In Windows 10, version 1703 and later, huge_pages doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-25 07:52:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17448-0a96583a67edb1f7%40postgresql.org">17448-0a96583a67edb1f7@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17448-0a96583a67edb1f7%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17448-0a96583a67edb1f7%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17448-0a96583a67edb1f7%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17448-0a96583a67edb1f7%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203250000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203250000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17448<br>Logged by:          Okano Naoki<br>Email address:      okano(dot)naoki(at)jp(dot)fujitsu(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Windows<br>Description:        </p>
+
+<p>With huge_pages = on, the postgres process does not appear to use large<br>pages.<br>I checked with VMMap if the large pages are used in the following<br>environment.<br>Environment<br>  PostgreSQL version: 14.2<br>  Operating system  : Windows 10 20H2</p>
+
+<p>On this page (*) says that in Windows 10, version 1703 and later OS<br>versions,  <br>you must specify the FILE_MAP_LARGE_PAGES flag with the MapViewOfFile<br>function <br>to map large pages.</p>
+
+<p>I think it seems to be the cause that MapViewOfFile() in<br>src/backend/port/win32_shmem.c <br>does not specify FILE_MAP_LARGE_PAGES flag.</p>
+
+<p>(*) MapViewOfFileEx function<br><a href="https://docs.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-mapviewoffileex" rel="nofollow">https://docs.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-mapviewoffileex</a></p>
+
+<p>FILE_MAP_LARGE_PAGES<br>  Starting with Windows 10, version 1703, this flag specifies <br>  that the view should be mapped using large page support. <br>  The size of the view must be a multiple of the size of a large page <br>  reported by the GetLargePageMinimum function, <br>  and the file-mapping object must have been created using the<br>SEC_LARGE_PAGES option. <br>  If you provide a non-null value for lpBaseAddress, <br>  then the value must be a multiple of GetLargePageMinimum.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Yj6oxYsBE5LXA8ZP@paquier.xyz"></a>
+<a name="26a4fe5d36fae1417a5e9ac136ec7c96"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>okano(dot)naoki(at)jp(dot)fujitsu(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-26 05:46:45</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Yj6oxYsBE5LXA8ZP%40paquier.xyz">Yj6oxYsBE5LXA8ZP@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Yj6oxYsBE5LXA8ZP%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Yj6oxYsBE5LXA8ZP%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Yj6oxYsBE5LXA8ZP%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Yj6oxYsBE5LXA8ZP%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Mar 25, 2022 at 07:52:57AM +0000, PG Bug reporting form wrote:<br>&gt; On this page (*) says that in Windows 10, version 1703 and later OS<br>&gt; versions,  <br>&gt; you must specify the FILE_MAP_LARGE_PAGES flag with the MapViewOfFile<br>&gt; function <br>&gt; to map large pages.<br>&gt; <br>&gt; I think it seems to be the cause that MapViewOfFile() in<br>&gt; src/backend/port/win32_shmem.c <br>&gt; does not specify FILE_MAP_LARGE_PAGES flag.</p>
+
+<p>Hmm.  Okay.  A patch would be straight-forward, as we could just<br>assign the optional flag in a separate variable at the beginning of<br>PGSharedMemoryCreate(), similarly to flProtect when we find out that<br>large pages can be used, then pass it down to MapViewOfFileEx().  I<br>don&#x27;t have a Windows 10 machine as recent as that at hand, though..</p>
+
+<p>Perhaps the CI uses Windows machines that would allow to test and<br>check that, with some logs magically added to debug things.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220326082408.moh55zuecxjmewnm@jrouhaud"></a>
+<a name="d968e607d07c16a1bd4cd3be4b6a7bfd"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>okano(dot)naoki(at)jp(dot)fujitsu(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-26 08:24:08</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220326082408.moh55zuecxjmewnm%40jrouhaud">20220326082408.moh55zuecxjmewnm@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220326082408.moh55zuecxjmewnm%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220326082408.moh55zuecxjmewnm%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220326082408.moh55zuecxjmewnm%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220326082408.moh55zuecxjmewnm%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, Mar 26, 2022 at 02:46:45PM +0900, Michael Paquier wrote:<br>&gt; On Fri, Mar 25, 2022 at 07:52:57AM +0000, PG Bug reporting form wrote:<br>&gt; &gt; On this page (*) says that in Windows 10, version 1703 and later OS<br>&gt; &gt; versions,<br>&gt; &gt; you must specify the FILE_MAP_LARGE_PAGES flag with the MapViewOfFile<br>&gt; &gt; function<br>&gt; &gt; to map large pages.<br>&gt; &gt;<br>&gt; &gt; I think it seems to be the cause that MapViewOfFile() in<br>&gt; &gt; src/backend/port/win32_shmem.c<br>&gt; &gt; does not specify FILE_MAP_LARGE_PAGES flag.<br>&gt;<br>&gt; I don&#x27;t have a Windows 10 machine as recent as that at hand, though..</p>
+
+<p>I have a Windows 10 apparently version 20H2 (the versioning doesn&#x27;t make any<br>sense) with all needed to compile postgres at hand.  I can have a look next<br>week.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Yj7WzK278PmZaiqT@paquier.xyz"></a>
+<a name="e8d9901479dd1092cc5e383f96f8067d"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>okano(dot)naoki(at)jp(dot)fujitsu(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-26 09:03:55</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Yj7WzK278PmZaiqT%40paquier.xyz">Yj7WzK278PmZaiqT@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Yj7WzK278PmZaiqT%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Yj7WzK278PmZaiqT%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Yj7WzK278PmZaiqT%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Yj7WzK278PmZaiqT%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, Mar 26, 2022 at 04:24:08PM +0800, Julien Rouhaud wrote:<br>&gt; I have a Windows 10 apparently version 20H2 (the versioning doesn&#x27;t make any<br>&gt; sense) with all needed to compile postgres at hand.  I can have a look next<br>&gt; week.</p>
+
+<p>Thanks!<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CA+hUKGLwOSf-QwVtCcKx9xvugN2BSzEBBeD5DNyTXgcSRp5sTw@mail.gmail.com"></a>
+<a name="1b1365f67a3498b7bf1b90e3523e92e2"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-26 11:07:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CA%2BhUKGLwOSf-QwVtCcKx9xvugN2BSzEBBeD5DNyTXgcSRp5sTw%40mail.gmail.com">CA+hUKGLwOSf-QwVtCcKx9xvugN2BSzEBBeD5DNyTXgcSRp5sTw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CA%2BhUKGLwOSf-QwVtCcKx9xvugN2BSzEBBeD5DNyTXgcSRp5sTw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CA%2BhUKGLwOSf-QwVtCcKx9xvugN2BSzEBBeD5DNyTXgcSRp5sTw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CA%2BhUKGLwOSf-QwVtCcKx9xvugN2BSzEBBeD5DNyTXgcSRp5sTw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CA%2BhUKGLwOSf-QwVtCcKx9xvugN2BSzEBBeD5DNyTXgcSRp5sTw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, Mar 26, 2022 at 9:24 PM Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt; wrote:<br>&gt; On Sat, Mar 26, 2022 at 02:46:45PM +0900, Michael Paquier wrote:<br>&gt; &gt; On Fri, Mar 25, 2022 at 07:52:57AM +0000, PG Bug reporting form wrote:<br>&gt; &gt; &gt; On this page (*) says that in Windows 10, version 1703 and later OS<br>&gt; &gt; &gt; versions,<br>&gt; &gt; &gt; you must specify the FILE_MAP_LARGE_PAGES flag with the MapViewOfFile<br>&gt; &gt; &gt; function<br>&gt; &gt; &gt; to map large pages.<br>&gt; &gt; &gt;<br>&gt; &gt; &gt; I think it seems to be the cause that MapViewOfFile() in<br>&gt; &gt; &gt; src/backend/port/win32_shmem.c<br>&gt; &gt; &gt; does not specify FILE_MAP_LARGE_PAGES flag.<br>&gt; &gt;<br>&gt; &gt; I don&#x27;t have a Windows 10 machine as recent as that at hand, though..<br>&gt;<br>&gt; I have a Windows 10 apparently version 20H2 (the versioning doesn&#x27;t make any<br>&gt; sense) with all needed to compile postgres at hand.  I can have a look next<br>&gt; week.</p>
+
+<p>There are traces of method to the madness:  It&#x27;s basically YYMM, but<br>then after 2004 they switched to H1 and H2 (first/second half of the<br>year) instead of MM, perhaps to avoid confusion with YYYY format year.<br>Note also that Windows 10 has a 21H2 and Windows 11 has a 21H2.</p>
+
+<p>Hmm, so all versions of Windows that our current coding worked on were<br>EOL&#x27;d 6 months after PostgreSQL 11 came out with huge_pages support<br>for Windows:</p>
+
+<p><a href="https://en.wikipedia.org/wiki/Windows_10_version_history" rel="nofollow">https://en.wikipedia.org/wiki/Windows_10_version_history</a></p>
+
+<p>Some question I have: is FILE_MAP_LARGE PAGES a macro?  We claim to<br>support all those ancient zombie OSes like Windows 7, or maybe it&#x27;s<br>even XP for 11, and this has to be back-patched to 11, so we might<br>need to make it conditional.  But conditional on what?  For example,<br>does something like the attached work (untested)?  What happens if a &lt;<br>1703 kernel sees this flag, does it reject it or ignore it?<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/132507/0001-Fix-huge_pages-on-current-Windows.patch">0001-Fix-huge_pages-on-current-Windows.patch</a>
+            
+          </th>
+          <td>application/x-patch</td>
+          <td>1.8 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Yj76HKWAxZ66SGsc@paquier.xyz"></a>
+<a name="8a0a1d476d57dac266cf56a182062b07"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-26 11:33:48</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Yj76HKWAxZ66SGsc%40paquier.xyz">Yj76HKWAxZ66SGsc@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Yj76HKWAxZ66SGsc%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Yj76HKWAxZ66SGsc%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Yj76HKWAxZ66SGsc%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Yj76HKWAxZ66SGsc%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Mar 27, 2022 at 12:07:57AM +1300, Thomas Munro wrote:<br>&gt; Some question I have: is FILE_MAP_LARGE PAGES a macro?  We claim to<br>&gt; support all those ancient zombie OSes like Windows 7, or maybe it&#x27;s<br>&gt; even XP for 11, and this has to be back-patched to 11, so we might<br>&gt; need to make it conditional.  But conditional on what?  For example,<br>&gt; does something like the attached work (untested)?  What happens if a &lt;<br>&gt; 1703 kernel sees this flag, does it reject it or ignore it?</p>
+
+<p>Good question.  I would choose a soft approach here and not insist if<br>the flag was not known at compilation time, but we could also take a<br>more aggressive approach and hardcode a value.  Anyway, it seems to me<br>that the correct solution here would be to compile the code with a<br>PG_FILE_MAP_LARGE_PAGES that checks if the flag exists at compile<br>time, and we would set it at run time if we know that we are on a<br>version of Windows that supports it.  IsWindowsVersionOrGreater()<br>should be able to do the job.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YkQMyhsP7xgLDDT/@paquier.xyz"></a>
+<a name="0234065839d5c7b64b15e0d765f72095"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-30 07:54:50</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YkQMyhsP7xgLDDT/%40paquier.xyz">YkQMyhsP7xgLDDT/@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YkQMyhsP7xgLDDT/%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YkQMyhsP7xgLDDT/%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YkQMyhsP7xgLDDT/%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YkQMyhsP7xgLDDT/%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203300000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203300000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Mar 27, 2022 at 12:07:57AM +1300, Thomas Munro wrote:<br>&gt; There are traces of method to the madness:  It&#x27;s basically YYMM, but<br>&gt; then after 2004 they switched to H1 and H2 (first/second half of the<br>&gt; year) instead of MM, perhaps to avoid confusion with YYYY format year.<br>&gt; Note also that Windows 10 has a 21H2 and Windows 11 has a 21H2.<br>&gt;<br>&gt; Some question I have: is FILE_MAP_LARGE PAGES a macro?  We claim to<br>&gt; support all those ancient zombie OSes like Windows 7, or maybe it&#x27;s<br>&gt; even XP for 11, and this has to be back-patched to 11, so we might<br>&gt; need to make it conditional.  But conditional on what?  For example,<br>&gt; does something like the attached work (untested)?  What happens if a &lt;<br>&gt; 1703 kernel sees this flag, does it reject it or ignore it?</p>
+
+<p>I don&#x27;t have an answer about how much Windows gets angry if we pass<br>down to MapViewOfFileEx() the flag FILE_MAP_LARGE_PAGES when running<br>the code on a version of Windows that does not support it.</p>
+
+<p>Anyway, I think that we could just play it safe.  See for example the<br>attached, where I use PG_FILE_MAP_LARGE_PAGES at compile time to find<br>if the value is set.  Then, at run-time, I am just relying on <br>IsWindowsVersionOrGreater() to do the job, something useful when<br>huge_pages=on as I guess we should fail hard if we did not know about<br>FILE_MAP_LARGE_PAGES at compile-time, but try to use huge pages at run<br>time with version &gt;= 10.0.1703.</p>
+
+<p>Perhaps there is a better thing to do?<br>--<br>Michael<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/132653/win32-hugepages-michael.patch">win32-hugepages-michael.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>2.7 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220331045908.bm5edcacvymgwwv2@jrouhaud"></a>
+<a name="abe6bca48e0fa16ea684be78861860f7"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-31 04:59:08</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220331045908.bm5edcacvymgwwv2%40jrouhaud">20220331045908.bm5edcacvymgwwv2@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220331045908.bm5edcacvymgwwv2%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220331045908.bm5edcacvymgwwv2%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220331045908.bm5edcacvymgwwv2%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220331045908.bm5edcacvymgwwv2%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203310000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203310000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On Wed, Mar 30, 2022 at 04:54:50PM +0900, Michael Paquier wrote:<br>&gt; On Sun, Mar 27, 2022 at 12:07:57AM +1300, Thomas Munro wrote:<br>&gt; &gt; There are traces of method to the madness:  It&#x27;s basically YYMM, but<br>&gt; &gt; then after 2004 they switched to H1 and H2 (first/second half of the<br>&gt; &gt; year) instead of MM, perhaps to avoid confusion with YYYY format year.<br>&gt; &gt; Note also that Windows 10 has a 21H2 and Windows 11 has a 21H2.<br>&gt; &gt;<br>&gt; &gt; Some question I have: is FILE_MAP_LARGE PAGES a macro?  We claim to<br>&gt; &gt; support all those ancient zombie OSes like Windows 7, or maybe it&#x27;s<br>&gt; &gt; even XP for 11, and this has to be back-patched to 11, so we might<br>&gt; &gt; need to make it conditional.  But conditional on what?  For example,<br>&gt; &gt; does something like the attached work (untested)?  What happens if a &lt;<br>&gt; &gt; 1703 kernel sees this flag, does it reject it or ignore it?<br>&gt;<br>&gt; I don&#x27;t have an answer about how much Windows gets angry if we pass<br>&gt; down to MapViewOfFileEx() the flag FILE_MAP_LARGE_PAGES when running<br>&gt; the code on a version of Windows that does not support it.</p>
+
+<p>No idea either, and I don&#x27;t have old enough Windows machine available to try.</p>
+
+<p>&gt; Anyway, I think that we could just play it safe.  See for example the<br>&gt; attached, where I use PG_FILE_MAP_LARGE_PAGES at compile time to find<br>&gt; if the value is set.  Then, at run-time, I am just relying on<br>&gt; IsWindowsVersionOrGreater() to do the job, something useful when<br>&gt; huge_pages=on as I guess we should fail hard if we did not know about<br>&gt; FILE_MAP_LARGE_PAGES at compile-time, but try to use huge pages at run<br>&gt; time with version &gt;= 10.0.1703.</p>
+
+<p>That approach seems sensible.  For reference the versionhelpers.h seems to be<br>available starting with VS 2013 / v120, which is ok since that the oldest<br>version we support AFAICS.</p>
+
+<p>After *a lot of time* I could finally test this patch.  For the record I could<br>never find a way to allow &#x27;Lock pages in memory&#x27; on the Windows 10 home I have,<br>so I tried on my Windows 11 evaluation I also had around (version 21H2, so it<br>should be recent enough).  For the record on this one there was gpedit<br>available, but then I got a 1450 error, and didn&#x27;t find any information on how<br>to reserve huge pages or something like that on Windows.  So I just configured<br>shared_buffers to 10MB, which should still be big enough to need multiple huge<br>pages, and it seems to work:</p>
+
+<p>postgres=# select version();<br>                            version<br>---------------------------------------------------------------<br> PostgreSQL 15devel, compiled by Visual C++ build 1929, 64-bit<br>(1 row)</p>
+
+<p>postgres=# show huge_pages;<br> huge_pages<br>------------<br> on<br>(1 row)</p>
+
+<p>Now, I also have the exact same result without the patch applied so it&#x27;s hard<br>to know whether it had any impact at all.  Unfortunately, I didn&#x27;t find any<br>information on how to check if &quot;large pages&quot; are used and/or by which program.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YkVbbZBiC4yxXPuc@paquier.xyz"></a>
+<a name="d250db8e488127f4f083a6f38133fbf3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-31 07:42:37</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YkVbbZBiC4yxXPuc%40paquier.xyz">YkVbbZBiC4yxXPuc@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YkVbbZBiC4yxXPuc%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YkVbbZBiC4yxXPuc%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YkVbbZBiC4yxXPuc%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YkVbbZBiC4yxXPuc%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203310000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203310000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Mar 31, 2022 at 12:59:08PM +0800, Julien Rouhaud wrote:<br>&gt; That approach seems sensible.  For reference the versionhelpers.h seems to be<br>&gt; available starting with VS 2013 / v120, which is ok since that the oldest<br>&gt; version we support AFAICS.</p>
+
+<p>Hmm.  This points out to a different problem.  The oldest version of<br>MSVC supported on v10 and v11 is VS2005, so a backpatch means that<br>those checks would need to be tweaked if we&#x27;d want to be perfectly<br>compatible.  But I&#x27;d rather not enter in this game category, limiting<br>this patch to v12~ :)</p>
+
+<p>&gt; Now, I also have the exact same result without the patch applied so it&#x27;s hard<br>&gt; to know whether it had any impact at all.  Unfortunately, I didn&#x27;t find any<br>&gt; information on how to check if &quot;large pages&quot; are used and/or by which program.</p>
+
+<p>Okano-san has mentioned VMMap upthread:<br><a href="https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap" rel="nofollow">https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap</a><br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220331080055.hjrrsrd4lxwlt7f5@jrouhaud"></a>
+<a name="86910649c609d77d0ee8ecb6e082b6ca"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-31 08:00:55</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220331080055.hjrrsrd4lxwlt7f5%40jrouhaud">20220331080055.hjrrsrd4lxwlt7f5@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220331080055.hjrrsrd4lxwlt7f5%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220331080055.hjrrsrd4lxwlt7f5%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220331080055.hjrrsrd4lxwlt7f5%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220331080055.hjrrsrd4lxwlt7f5%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203310000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203310000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Mar 31, 2022 at 04:42:37PM +0900, Michael Paquier wrote:<br>&gt; On Thu, Mar 31, 2022 at 12:59:08PM +0800, Julien Rouhaud wrote:<br>&gt; &gt; That approach seems sensible.  For reference the versionhelpers.h seems to be<br>&gt; &gt; available starting with VS 2013 / v120, which is ok since that the oldest<br>&gt; &gt; version we support AFAICS.<br>&gt; <br>&gt; Hmm.  This points out to a different problem.  The oldest version of<br>&gt; MSVC supported on v10 and v11 is VS2005, so a backpatch means that<br>&gt; those checks would need to be tweaked if we&#x27;d want to be perfectly<br>&gt; compatible.  But I&#x27;d rather not enter in this game category, limiting<br>&gt; this patch to v12~ :)</p>
+
+<p>Ah, I indeed haven&#x27;t check in back branches.  v12 isn&#x27;t that bad.</p>
+
+<p>&gt; &gt; Now, I also have the exact same result without the patch applied so it&#x27;s hard<br>&gt; &gt; to know whether it had any impact at all.  Unfortunately, I didn&#x27;t find any<br>&gt; &gt; information on how to check if &quot;large pages&quot; are used and/or by which program.<br>&gt; <br>&gt; Okano-san has mentioned VMMap upthread:<br>&gt; <a href="https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap" rel="nofollow">https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap</a></p>
+
+<p>Yes, I totally missed that.  Thomas Munro also mentioned it off-list, and<br>also found some reference [1] indicating that large pages should show up as<br>&quot;Locked WS&quot;.  I tested with and without the patch and in both case I don&#x27;t see<br>any &quot;Locked WS&quot; usage.  I also get the same Page Table size, which seems<br>consistent with large pages not being used.  Now, this is a vm running with<br>virtualbox and we&#x27;re not entirely sure that huge pages can be allocated with<br>it.  I wish I could test on my windows 10 machine as it&#x27;s not virtualized, but<br>I can&#x27;t give the required privileges.</p>
+
+<p>[1] <a href="https://aloiskraus.wordpress.com/2016/10/03/windows-10-memory-compression-and-more/" rel="nofollow">https://aloiskraus.wordpress.com/2016/10/03/windows-10-memory-compression-and-more/</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220331104659.ol6pqe7s3tpkymuk@jrouhaud"></a>
+<a name="540d4863f4636290f5432bd017dafd82"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-31 10:46:59</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220331104659.ol6pqe7s3tpkymuk%40jrouhaud">20220331104659.ol6pqe7s3tpkymuk@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220331104659.ol6pqe7s3tpkymuk%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220331104659.ol6pqe7s3tpkymuk%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220331104659.ol6pqe7s3tpkymuk%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220331104659.ol6pqe7s3tpkymuk%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203310000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203310000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Mar 31, 2022 at 04:00:55PM +0800, Julien Rouhaud wrote:<br>&gt; &gt; Okano-san has mentioned VMMap upthread:<br>&gt; &gt; <a href="https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap" rel="nofollow">https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap</a><br>&gt; <br>&gt; Yes, I totally missed that.  Thomas Munro also mentioned it off-list, and<br>&gt; also found some reference [1] indicating that large pages should show up as<br>&gt; &quot;Locked WS&quot;.  I tested with and without the patch and in both case I don&#x27;t see<br>&gt; any &quot;Locked WS&quot; usage.  I also get the same Page Table size, which seems<br>&gt; consistent with large pages not being used.  Now, this is a vm running with<br>&gt; virtualbox and we&#x27;re not entirely sure that huge pages can be allocated with<br>&gt; it.  I wish I could test on my windows 10 machine as it&#x27;s not virtualized, but<br>&gt; I can&#x27;t give the required privileges.<br>&gt; <br>&gt; [1] <a href="https://aloiskraus.wordpress.com/2016/10/03/windows-10-memory-compression-and-more/" rel="nofollow">https://aloiskraus.wordpress.com/2016/10/03/windows-10-memory-compression-and-more/</a></p>
+
+<p>So, after more digging it turns out that the patch is supposed to work.  If I<br>force using the PG_FILE_MAP_LARGE_PAGES, postgres starts and I do see &quot;Locked<br>WS&quot; usage with VMMap, with a size in the order of magnitude of my<br>shared_buffers.</p>
+
+<p>What is apparently not working on my VM is IsWindowsVersionOrGreater(10, 0,<br>1703).  I added some debug around to check what GetVersionEx() [2] is saying,<br>and I get:</p>
+
+<p>dwMajorVersion == 6<br>dwMinorVersion == 2<br>dwBuildNumber == 9200</p>
+
+<p>While winver.exe on the same vm says windows 11, version 21H2, build 22000.493.</p>
+
+<p>I&#x27;m therefore extremely confused.  The documentation of<br>IsWindowsVersionOrGreater() at [3] is also highly confusing:</p>
+
+<p>&gt; TRUE if the specified version matches, or is greater than, the version of the<br>&gt; current Windows OS; otherwise, FALSE.</p>
+
+<p>Isn&#x27;t that supposed to be the opposite?</p>
+
+<p>[2] <a href="https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getversionexa" rel="nofollow">https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getversionexa</a><br><a href="https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-osversioninfoexa" rel="nofollow">https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-osversioninfoexa</a></p>
+
+<p>[3] <a href="https://docs.microsoft.com/en-us/windows/win32/api/versionhelpers/nf-versionhelpers-iswindowsversionorgreater" rel="nofollow">https://docs.microsoft.com/en-us/windows/win32/api/versionhelpers/nf-versionhelpers-iswindowsversionorgreater</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220331110309.ws25d6dl5yyzprye@jrouhaud"></a>
+<a name="44999732679fa766d5f1f5110ad7e076"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-31 11:03:09</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220331110309.ws25d6dl5yyzprye%40jrouhaud">20220331110309.ws25d6dl5yyzprye@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220331110309.ws25d6dl5yyzprye%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220331110309.ws25d6dl5yyzprye%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220331110309.ws25d6dl5yyzprye%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220331110309.ws25d6dl5yyzprye%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203310000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203310000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Mar 31, 2022 at 06:46:59PM +0800, Julien Rouhaud wrote:<br>&gt; On Thu, Mar 31, 2022 at 04:00:55PM +0800, Julien Rouhaud wrote:<br>&gt; &gt; &gt; Okano-san has mentioned VMMap upthread:<br>&gt; &gt; &gt; <a href="https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap" rel="nofollow">https://docs.microsoft.com/en-us/sysinternals/downloads/vmmap</a><br>&gt; &gt; <br>&gt; &gt; Yes, I totally missed that.  Thomas Munro also mentioned it off-list, and<br>&gt; &gt; also found some reference [1] indicating that large pages should show up as<br>&gt; &gt; &quot;Locked WS&quot;.  I tested with and without the patch and in both case I don&#x27;t see<br>&gt; &gt; any &quot;Locked WS&quot; usage.  I also get the same Page Table size, which seems<br>&gt; &gt; consistent with large pages not being used.  Now, this is a vm running with<br>&gt; &gt; virtualbox and we&#x27;re not entirely sure that huge pages can be allocated with<br>&gt; &gt; it.  I wish I could test on my windows 10 machine as it&#x27;s not virtualized, but<br>&gt; &gt; I can&#x27;t give the required privileges.<br>&gt; &gt; <br>&gt; &gt; [1] <a href="https://aloiskraus.wordpress.com/2016/10/03/windows-10-memory-compression-and-more/" rel="nofollow">https://aloiskraus.wordpress.com/2016/10/03/windows-10-memory-compression-and-more/</a><br>&gt; <br>&gt; So, after more digging it turns out that the patch is supposed to work.  If I<br>&gt; force using the PG_FILE_MAP_LARGE_PAGES, postgres starts and I do see &quot;Locked<br>&gt; WS&quot; usage with VMMap, with a size in the order of magnitude of my<br>&gt; shared_buffers.<br>&gt; <br>&gt; What is apparently not working on my VM is IsWindowsVersionOrGreater(10, 0,<br>&gt; 1703).  I added some debug around to check what GetVersionEx() [2] is saying,<br>&gt; and I get:<br>&gt; <br>&gt; dwMajorVersion == 6<br>&gt; dwMinorVersion == 2<br>&gt; dwBuildNumber == 9200<br>&gt; <br>&gt; While winver.exe on the same vm says windows 11, version 21H2, build 22000.493.</p>
+
+<p>So, what GetVersionEx returns is actually &quot;it depends&quot;, and this is documented:</p>
+
+<p>&gt; With the release of Windows 8.1, the behavior of the GetVersionEx API has<br>&gt; changed in the value it will return for the operating system version. The<br>&gt; value returned by the GetVersionEx function now depends on how the<br>&gt; application is manifested.<br>&gt;<br>&gt; Applications not manifested for Windows 8.1 or Windows 10 will return the<br>&gt; Windows 8 OS version value (6.2). Once an application is manifested for a<br>&gt; given operating system version, GetVersionEx will always return the version<br>&gt; that the application is manifested for in future releases. To manifest your<br>&gt; applications for Windows 8.1 or Windows 10, refer to Targeting your<br>&gt; application for Windows.</p>
+
+<p>There&#x27;s no such indication on IsWindowsVersionOrGreater(), but after seeing<br>various comments on forums from angry people, it may be a hint that it behaves<br>similarly.  I&#x27;m not sure what to do at this point, maybe just always use the<br>flag (the PG_ version which may be 0), hoping that hopefully windows won&#x27;t<br>define it if it can&#x27;t handle it?</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YkaTrRBo6bk5EZ5F@paquier.xyz"></a>
+<a name="ff71b39e97293a58fa6cc008c5a8db87"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-01 05:54:53</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YkaTrRBo6bk5EZ5F%40paquier.xyz">YkaTrRBo6bk5EZ5F@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YkaTrRBo6bk5EZ5F%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YkaTrRBo6bk5EZ5F%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YkaTrRBo6bk5EZ5F%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YkaTrRBo6bk5EZ5F%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204010000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202204010000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Mar 31, 2022 at 06:46:59PM +0800, Julien Rouhaud wrote:<br>&gt; So, after more digging it turns out that the patch is supposed to work.  If I<br>&gt; force using the PG_FILE_MAP_LARGE_PAGES, postgres starts and I do see &quot;Locked<br>&gt; WS&quot; usage with VMMap, with a size in the order of magnitude of my<br>&gt; shared_buffers.<br>&gt; <br>&gt; What is apparently not working on my VM is IsWindowsVersionOrGreater(10, 0,<br>&gt; 1703).  I added some debug around to check what GetVersionEx() [2] is saying,<br>&gt; and I get:<br>&gt; <br>&gt; dwMajorVersion == 6<br>&gt; dwMinorVersion == 2<br>&gt; dwBuildNumber == 9200</p>
+
+<p>Okay.  Well, I&#x27;d like to think that the patch written as-is is<br>correct.  Now your tests are saying the contrary, so I don&#x27;t really<br>know what to think about it :)</p>
+
+<p>&gt;&gt; TRUE if the specified version matches, or is greater than, the version of the<br>&gt;&gt; current Windows OS; otherwise, FALSE.<br>&gt; <br>&gt; Isn&#x27;t that supposed to be the opposite?</p>
+
+<p>I get from the upstream docs that if the runtime version of Windows is<br>higher than 10.0.1703, IsWindowsVersionOrGreater() should return<br>true.  Perhaps the issue is in the patch and its argument values, but<br>it does not look straight-forward to know what those values should<br>be, and there are no examples in the docs to show that, either :/<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YkaUuhwppy2hiBi9@paquier.xyz"></a>
+<a name="b03be0477a78efa1a4a021d4e636f1d8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-01 05:59:22</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YkaUuhwppy2hiBi9%40paquier.xyz">YkaUuhwppy2hiBi9@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YkaUuhwppy2hiBi9%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YkaUuhwppy2hiBi9%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YkaUuhwppy2hiBi9%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YkaUuhwppy2hiBi9%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204010000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202204010000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Mar 31, 2022 at 07:03:09PM +0800, Julien Rouhaud wrote:<br>&gt; There&#x27;s no such indication on IsWindowsVersionOrGreater(), but after seeing<br>&gt; various comments on forums from angry people, it may be a hint that it behaves<br>&gt; similarly.  I&#x27;m not sure what to do at this point, maybe just always use the<br>&gt; flag (the PG_ version which may be 0), hoping that hopefully windows won&#x27;t<br>&gt; define it if it can&#x27;t handle it?</p>
+
+<p>Looking at the internals of versionhelpers.h, would it work to use as<br>arguments for IsWindowsVersionOrGreater() the following, in this<br>order?  As of:<br>- HIBYTE(_WIN32_WINNT_WINTHRESHOLD)<br>- LOBYTE(_WIN32_WINNT_WINTHRESHOLD)<br>- 1703</p>
+
+<p>Just to drop an idea.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YkaZgufzxtyTeJv+@jrouhaud"></a>
+<a name="46b9af301d81bfac39d54587b2804fcc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-01 06:19:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YkaZgufzxtyTeJv%2B%40jrouhaud">YkaZgufzxtyTeJv+@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YkaZgufzxtyTeJv%2B%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YkaZgufzxtyTeJv%2B%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YkaZgufzxtyTeJv%2B%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YkaZgufzxtyTeJv%2B%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204010000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202204010000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Apr 01, 2022 at 02:59:22PM +0900, Michael Paquier wrote:<br>&gt; On Thu, Mar 31, 2022 at 07:03:09PM +0800, Julien Rouhaud wrote:<br>&gt; &gt; There&#x27;s no such indication on IsWindowsVersionOrGreater(), but after seeing<br>&gt; &gt; various comments on forums from angry people, it may be a hint that it behaves<br>&gt; &gt; similarly.  I&#x27;m not sure what to do at this point, maybe just always use the<br>&gt; &gt; flag (the PG_ version which may be 0), hoping that hopefully windows won&#x27;t<br>&gt; &gt; define it if it can&#x27;t handle it?<br>&gt;<br>&gt; Looking at the internals of versionhelpers.h, would it work to use as<br>&gt; arguments for IsWindowsVersionOrGreater() the following, in this<br>&gt; order?  As of:<br>&gt; - HIBYTE(_WIN32_WINNT_WINTHRESHOLD)<br>&gt; - LOBYTE(_WIN32_WINNT_WINTHRESHOLD)<br>&gt; - 1703<br>&gt;<br>&gt; Just to drop an idea.</p>
+
+<p>I will test that in a bit.  I still think that at least some API exists to give<br>the real answer since winver and similar report correct info, I just don&#x27;t know<br>what those are.</p>
+
+<p>Note that if you want to test yourself you could use this script [1] using the<br>evaluation virtual machine [2] to automatically setup a windows 11 environment<br>with everything needed to compile postgres with a extra dependencies.  The<br>whole process is a bit long though, so I can also give you access to my vm if<br>you prefer, probably the latency shouldn&#x27;t be too bad :)</p>
+
+<p>[1] <a href="https://github.com/rjuju/pg_msvc_generator/blob/master/bootstrap.ps1" rel="nofollow">https://github.com/rjuju/pg_msvc_generator/blob/master/bootstrap.ps1</a><br>[2] <a href="https://developer.microsoft.com/en-us/windows/downloads/virtual-machines/" rel="nofollow">https://developer.microsoft.com/en-us/windows/downloads/virtual-machines/</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Ymd7C+QineDpi7Eb@jrouhaud"></a>
+<a name="8b7be4e5b36bb1059a9ff59ed455b820"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Wilm Hoyer &lt;W(dot)Hoyer(at)dental-vision(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-hackers(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-26 04:54:35</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Ymd7C%2BQineDpi7Eb%40jrouhaud">Ymd7C+QineDpi7Eb@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Ymd7C%2BQineDpi7Eb%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Ymd7C%2BQineDpi7Eb%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Ymd7C%2BQineDpi7Eb%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Ymd7C%2BQineDpi7Eb%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202204260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>Please keep the list in copy, especially if that&#x27;s about Windows specific as<br>I&#x27;m definitely not very knowledgeable about it.</p>
+
+<p>On Fri, Apr 01, 2022 at 09:18:03AM +0000, Wilm Hoyer wrote:<br>&gt; <br>&gt; If you don&#x27;t wanna go the manifest way, maybe the RtlGetVersion function is the one you need:<br>&gt; <a href="https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlgetversion?redirectedfrom=MSDN" rel="nofollow">https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlgetversion?redirectedfrom=MSDN</a></p>
+
+<p>Thanks for the info!  I tried to use the function but trying to include either<br>wdm.h or Ntddk.h errors out.  Unfortunately I don&#x27;t know how to look for a file<br>in Windows so I don&#x27;t even know if those files are present.</p>
+
+<p>I searched a bit and apparently some people are using this function directly<br>opening some dll, which seems wrong.</p>
+
+<p>&gt; Another Idea on windows machines would be to use the commandline to execute<br>&gt; ver in a separate Process and store the result in a file.</p>
+
+<p>That also seems hackish, I don&#x27;t think that we want to rely on something like<br>that.</p>
+
+<p>&gt; &gt;&gt; While winver.exe on the same vm says windows 11, version 21H2, build 22000.493.<br>&gt; <br>&gt; &gt; So, what GetVersionEx returns is actually &quot;it depends&quot;, and this is documented:<br>&gt; <br>&gt; &gt;&gt; With the release of Windows 8.1, the behavior of the GetVersionEx API <br>&gt; &gt;&gt; has changed in the value it will return for the operating system <br>&gt; &gt;&gt; version. The value returned by the GetVersionEx function now depends <br>&gt; &gt;&gt; on how the application is manifested.<br>&gt; &gt;&gt;<br>&gt; &gt;&gt; Applications not manifested for Windows 8.1 or Windows 10 will return <br>&gt; &gt;&gt; the Windows 8 OS version value (6.2). Once an application is <br>&gt; &gt;&gt; manifested for a given operating system version, GetVersionEx will <br>&gt; &gt;&gt; always return the version that the application is manifested for in <br>&gt; &gt;&gt; future releases. To manifest your applications for Windows 8.1 or <br>&gt; &gt;&gt; Windows 10, refer to Targeting your application for Windows.<br>&gt; <br>&gt; The documentation is a bit unclear - with the correct functions you should get the:<br>&gt; Minimum( actualOS-Version, Maximum(Manifested OS Versions))<br>&gt; The Idea behind, as I understand it, is to better support virtualization and<br>&gt; backward compatibility - you manifest only Windows 8.1 -&gt; than you always get<br>&gt; a System that behaves like Windows 8.1 in every aspect.  (Every Aspect not<br>&gt; true in some corner cases due to security patches)</p>
+
+<p>Well, it clearly does *NOT* behave as a Windows 8.1, even if for some reason<br>large pages relies on security patches.</p>
+
+<p>Their API is entirely useless, so I&#x27;m still on the opinion that we should<br>unconditionally use the FILE_MAP_LARGE_PAGES flag if it&#x27;s defined and call it a<br>day.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Ymj7GHBfTnaN5kWW@paquier.xyz"></a>
+<a name="5171e88ab5728a13a405e74d722b619a"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Wilm Hoyer &lt;W(dot)Hoyer(at)dental-vision(dot)de&gt;, pgsql-hackers(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-27 08:13:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Ymj7GHBfTnaN5kWW%40paquier.xyz">Ymj7GHBfTnaN5kWW@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Ymj7GHBfTnaN5kWW%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Ymj7GHBfTnaN5kWW%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Ymj7GHBfTnaN5kWW%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Ymj7GHBfTnaN5kWW%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204270000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202204270000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Apr 26, 2022 at 12:54:35PM +0800, Julien Rouhaud wrote:<br>&gt; I searched a bit and apparently some people are using this function directly<br>&gt; opening some dll, which seems wrong.</p>
+
+<p>I was wondering about this whole business, and the manifest approach<br>is a *horrible* design for an API where the goal is to know if your<br>run-time environment is greater than a given threshold.</p>
+
+<p>&gt;&gt; Another Idea on windows machines would be to use the commandline to execute<br>&gt;&gt; ver in a separate Process and store the result in a file.<br>&gt; <br>&gt; That also seems hackish, I don&#x27;t think that we want to rely on something like<br>&gt; that.</p>
+
+<p>Hmm.  That depends on the dependency set, I guess.  We do that on<br>Linux at some extent to for large pages in sysv_shmem.c.  Perhaps this<br>could work for Win10 if this avoids the extra loopholes with the<br>manifests.</p>
+
+<p>&gt; Their API is entirely useless,</p>
+
+<p>This I agree.</p>
+
+<p>&gt; so I&#x27;m still on the opinion that we should<br>&gt; unconditionally use the FILE_MAP_LARGE_PAGES flag if it&#x27;s defined and call it a<br>&gt; day.</p>
+
+<p>Are we sure that this is not going to cause failures in environments<br>where the flag is not supported?<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CABUevExOUiOVjiecHsZWpTzvmbyCs-tF2Nf8RCqHXvoS2VXqNg@mail.gmail.com"></a>
+<a name="b867ed15e72ccfc36b183c8b0be77775"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Magnus Hagander &lt;magnus(at)hagander(dot)net&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Wilm Hoyer &lt;W(dot)Hoyer(at)dental-vision(dot)de&gt;,  PostgreSQL Developers &lt;pgsql-hackers(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-27 10:01:03</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CABUevExOUiOVjiecHsZWpTzvmbyCs-tF2Nf8RCqHXvoS2VXqNg%40mail.gmail.com">CABUevExOUiOVjiecHsZWpTzvmbyCs-tF2Nf8RCqHXvoS2VXqNg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CABUevExOUiOVjiecHsZWpTzvmbyCs-tF2Nf8RCqHXvoS2VXqNg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CABUevExOUiOVjiecHsZWpTzvmbyCs-tF2Nf8RCqHXvoS2VXqNg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CABUevExOUiOVjiecHsZWpTzvmbyCs-tF2Nf8RCqHXvoS2VXqNg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CABUevExOUiOVjiecHsZWpTzvmbyCs-tF2Nf8RCqHXvoS2VXqNg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204270000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202204270000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Apr 26, 2022, 05:55 Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt; wrote:</p>
+
+<p>&gt; Hi,<br>&gt;<br>&gt; Please keep the list in copy, especially if that&#x27;s about Windows specific<br>&gt; as<br>&gt; I&#x27;m definitely not very knowledgeable about it.<br>&gt;<br>&gt; On Fri, Apr 01, 2022 at 09:18:03AM +0000, Wilm Hoyer wrote:<br>&gt; &gt;<br>&gt; &gt; If you don&#x27;t wanna go the manifest way, maybe the RtlGetVersion function<br>&gt; is the one you need:<br>&gt; &gt;<br>&gt; <a href="https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlgetversion?redirectedfrom=MSDN" rel="nofollow">https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlgetversion?redirectedfrom=MSDN</a><br>&gt;<br>&gt; Thanks for the info!  I tried to use the function but trying to include<br>&gt; either<br>&gt; wdm.h or Ntddk.h errors out.  Unfortunately I don&#x27;t know how to look for a<br>&gt; file<br>&gt; in Windows so I don&#x27;t even know if those files are present.<br>&gt;</p>
+
+<p>That&#x27;s a kernel api for use in drivers. Not in applications. You need the<br>device driver developer kit to get to the headers.</p>
+
+<p>It&#x27;s not supposed to be used from a user land application.</p>
+
+<p>But note the documentation comment that says: “*RtlGetVersion* is the<br>kernel-mode equivalent of the user-mode *GetVersionEx* function in the<br>Windows SDK. &quot;.</p>
+
+<p>Tldr, user mode applications are supposed to use GetVersionEx().</p>
+
+<p>/Magnus<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="9178d683d05d420a887369ffb38d8fbd@dental-vision.de"></a>
+<a name="b0fe7550dcffe582d22486240d6e8e4b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Wilm Hoyer &lt;W(dot)Hoyer(at)dental-vision(dot)de&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;pgsql-hackers(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-hackers(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>AW: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-27 15:04:23</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/9178d683d05d420a887369ffb38d8fbd%40dental-vision.de">9178d683d05d420a887369ffb38d8fbd@dental-vision.de</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/9178d683d05d420a887369ffb38d8fbd%40dental-vision.de">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/9178d683d05d420a887369ffb38d8fbd%40dental-vision.de" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/9178d683d05d420a887369ffb38d8fbd%40dental-vision.de" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/9178d683d05d420a887369ffb38d8fbd%40dental-vision.de" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204270000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202204270000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Tue, Apr 26, 2022 at 12:54:35PM +0800, Julien Rouhaud wrote:<br>&gt;&gt; I searched a bit and apparently some people are using this function <br>&gt;&gt; directly opening some dll, which seems wrong.</p>
+
+<p>&gt; I was wondering about this whole business, and the manifest approach is a *horrible* design for an API where the goal is to know if your run-time environment is greater than a given threshold.</p>
+
+<p>Agreed for the use case at hand, where you want to use one core API Function or another depending on the OS Version.</p>
+
+<p>One Blog from Microsoft, I remember, told that one reason for the change were the increase of false installation error messages &quot;Install Error - Your system does not meet the minimum supported operating system and service pack level.&quot;<br>where the software in question was written for Windows XP and the user tried to install it on, say, Windows 8.<br>That is just a Developer-Pilot error, where the Developers forgot to anticipate future OS Versions and instead of checking for Version at least, where checking for Version equality of all at design time known Windows Version.<br>Since you can develop only against OS APIs known at design time, and Microsoft claims to be pretty good at maintaining backward compatible facades for their APIs, there is some reason in that decision.<br>(To only see the Versions and APIs you told the OS with the manifest, you knew about at compile time).<br>The core Problem at hand is, that ms broke the promise of backward compatibility, since the function in question is working differently, depending on windows version, although with the above reasoning we should get the exact same behavior on windows 10 as on windows 8.1 (as PostgreSql, per default, only claims to know about Windows 8.1 features).</p>
+
+<p>That said, I can understand the design decision. Personally, I still don&#x27;t like it a bit, since developers should be allowed to make some stupid mistakes.</p>
+
+<p>&gt;&gt;&gt; Another Idea on windows machines would be to use the commandline to <br>&gt;&gt;&gt; execute ver in a separate Process and store the result in a file.<br>&gt;&gt; <br>&gt;&gt; That also seems hackish, I don&#x27;t think that we want to rely on <br>&gt;&gt; something like that.</p>
+
+<p>&gt;Hmm.  That depends on the dependency set, I guess.  We do that on Linux at some extent to for large pages in sysv_shmem.c.  Perhaps this could work for Win10 if this avoids the extra loopholes with the &gt;manifests.</p>
+
+<p>I used the following hack to get the &quot;real&quot; Major and Minor Version of Windows - it&#x27;s in C# (.Net) and needs to be adjusted (you can compile as x64 and use a long-long as return value ) to return the Service Number too and translated it into C.<br>I share it anyways, as it might help - please be kind, as it really is a little hack.</p>
+
+<p>Situation: <br>Main Application can&#x27;t or is not willing to add a manifest file into its resources.</p>
+
+<p>Solution:<br>Start a small executable (which has a manifest file compiled into its resources), let it read the OS Version and code the Version into its return Code.</p>
+
+<p>CInt32 is basically an integer redefinition, where one can access the lower and higher Int16 separately.</p>
+
+<p>The Main Programm eventually calls this (locate the executable, adjust the Process startup to be minimal, call the executable as separate process and interpret the return value as Version):<br>private static Version ReadModernOsVersionInternal()<br>{<br>    String codeBase = Assembly.GetExecutingAssembly().CodeBase;<br>    Uri uri = new Uri(codeBase);</p>
+
+<p>    String localPath = uri.LocalPath;<br>    String pathDirectory = Path.GetDirectoryName(localPath);</p>
+
+<p>    if (pathDirectory != null)<br>    {<br>        String fullCombinePath = Path.Combine(pathDirectory, &quot;Cf.Utilities.ReadModernOSVersion&quot;);</p>
+
+<p>        ProcessStartInfo processInfo = new ProcessStartInfo<br>        {<br>            FileName = fullCombinePath,<br>            CreateNoWindow = true,<br>            UseShellExecute = false<br>        };</p>
+
+<p>        Process process = new Process<br>        {<br>            StartInfo = processInfo<br>        };</p>
+
+<p>        process.Start();</p>
+
+<p>        if (process.WaitForExit(TimeSpan.FromSeconds(1).Milliseconds))<br>        {<br>            CInt32 versionInteger = process.ExitCode;<br>            return new Version(versionInteger.HighValue, versionInteger.LowValue);<br>        }<br>    }</p>
+
+<p>    return new Version();<br>}</p>
+
+<p>The small Version Check executable:</p>
+
+<p>static Int32 Main(String[] args)<br>{<br>    return OsVersionErmittler.ErmittleOsVersion();<br>}</p>
+
+<p>and</p>
+
+<p>static class OsVersionErmittler<br>{<br>    /// &lt;summary&gt;<br>    /// Ermittelt die OsVersion und übergibt diese als High und LowWord.<br>    /// &lt;/summary&gt;<br>    /// &lt;returns&gt;&lt;/returns&gt;<br>    public static CInt32 ErmittleOsVersion()<br>    {<br>        OperatingSystem version = Environment.OSVersion;<br>        if (version.Platform == PlatformID.Win32NT &amp;&amp; version.Version &gt;= new Version(6, 3))<br>        {<br>            String versionString = version.VersionString;<br>            return new CInt32((Int16) version.Version.Major, (Int16) version.Version.Minor);<br>        }<br>        return 0;<br>    }<br>}</p>
+
+<p>The shortened manifest of the small executable:<br>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;<br>&lt;assembly manifestVersion=&quot;1.0&quot; xmlns=&quot;urn:schemas-microsoft-com:asm.v1&quot;&gt;<br>    &lt;compatibility xmlns=&quot;urn:schemas-microsoft-com:compatibility.v1&quot;&gt;<br>    &lt;application&gt;<br>      &lt;!-- Eine Liste der Windows-Versionen, unter denen diese Anwendung getestet<br>           und für die sie entwickelt wurde. Wenn Sie die Auskommentierung der entsprechenden Elemente aufheben, <br>           wird von Windows automatisch die kompatibelste Umgebung ausgewählt. --&gt;</p>
+
+<p>      &lt;!-- Windows Vista --&gt;<br>      &lt;!--&lt;supportedOS Id=&quot;{e2011457-1546-43c5-a5fe-008deee3d3f0}&quot; /&gt;--&gt;</p>
+
+<p>      &lt;!-- Windows 7 --&gt;<br>      &lt;!--&lt;supportedOS Id=&quot;{35138b9a-5d96-4fbd-8e2d-a2440225f93a}&quot; /&gt;--&gt;</p>
+
+<p>      &lt;!-- Windows 8 --&gt;<br>      &lt;!--&lt;supportedOS Id=&quot;{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}&quot; /&gt;--&gt;</p>
+
+<p>      &lt;!-- Windows 8.1 --&gt;<br>      &lt;supportedOS Id=&quot;{1f676c76-80e1-4239-95bb-83d0f6d0da78}&quot; /&gt;</p>
+
+<p>      &lt;!-- Windows 10 --&gt;<br>      &lt;supportedOS Id=&quot;{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}&quot; /&gt;</p>
+
+<p>    &lt;/application&gt;<br>  &lt;/compatibility&gt;</p>
+
+<p> &lt;/assembly&gt;</p>
+
+<p>I hope I&#x27;m not intrusive, otherwise, feel free to ignore this mail,<br>Wilm.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220427164841.xcpdcmq76ixn7zgx@jrouhaud"></a>
+<a name="d5a88a63fff0c179c7cb4f1cf47b7f01"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Wilm Hoyer &lt;W(dot)Hoyer(at)dental-vision(dot)de&gt;, pgsql-hackers(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-27 16:48:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220427164841.xcpdcmq76ixn7zgx%40jrouhaud">20220427164841.xcpdcmq76ixn7zgx@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220427164841.xcpdcmq76ixn7zgx%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220427164841.xcpdcmq76ixn7zgx%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220427164841.xcpdcmq76ixn7zgx%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220427164841.xcpdcmq76ixn7zgx%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204270000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202204270000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Apr 27, 2022 at 05:13:12PM +0900, Michael Paquier wrote:<br>&gt; On Tue, Apr 26, 2022 at 12:54:35PM +0800, Julien Rouhaud wrote:<br>&gt; &gt; so I&#x27;m still on the opinion that we should<br>&gt; &gt; unconditionally use the FILE_MAP_LARGE_PAGES flag if it&#x27;s defined and call it a<br>&gt; &gt; day.<br>&gt; <br>&gt; Are we sure that this is not going to cause failures in environments<br>&gt; where the flag is not supported?</p>
+
+<p>I don&#x27;t know for sure as I have no way to test, but it would be very lame for<br>an OS to provide a #define explicitly intended for one use case if that use<br>case can&#x27;t handle that flag yet.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220427165228.dkxndmm4lsrd5zgg@jrouhaud"></a>
+<a name="b2149339d196f45398929771fe516885"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Wilm Hoyer &lt;W(dot)Hoyer(at)dental-vision(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, &quot;pgsql-hackers(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-hackers(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-27 16:52:28</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220427165228.dkxndmm4lsrd5zgg%40jrouhaud">20220427165228.dkxndmm4lsrd5zgg@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220427165228.dkxndmm4lsrd5zgg%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220427165228.dkxndmm4lsrd5zgg%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220427165228.dkxndmm4lsrd5zgg%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220427165228.dkxndmm4lsrd5zgg%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204270000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202204270000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Apr 27, 2022 at 03:04:23PM +0000, Wilm Hoyer wrote:<br>&gt;<br>&gt; I used the following hack to get the &quot;real&quot; Major and Minor Version of<br>&gt; Windows - it&#x27;s in C# (.Net) and needs to be adjusted (you can compile as x64<br>&gt; and use a long-long as return value ) to return the Service Number too and<br>&gt; translated it into C.<br>&gt; I share it anyways, as it might help - please be kind, as it really is a<br>&gt; little hack.<br>&gt;<br>&gt; Situation:<br>&gt; Main Application can&#x27;t or is not willing to add a manifest file into its<br>&gt; resources.<br>&gt;<br>&gt; Solution:<br>&gt; Start a small executable (which has a manifest file compiled into its<br>&gt; resources), let it read the OS Version and code the Version into its return<br>&gt; Code.</p>
+
+<p>Thanks for sharing.</p>
+
+<p>Having to compile another tool just for that seems like a very high price to<br>pay, especially since we don&#x27;t have any C# code in the tree.  I&#x27;m not even sure<br>that compiling this wouldn&#x27;t need additional requirements and/or if it would<br>work on our oldest supported Windows versions.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="6389b5a88e114bee85593af2853c08cd@dental-vision.de"></a>
+<a name="359f6c9e476c5a2f87619ab7bcb88970"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Wilm Hoyer &lt;W(dot)Hoyer(at)dental-vision(dot)de&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, &quot;pgsql-hackers(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-hackers(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>AW: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-28 09:31:17</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/6389b5a88e114bee85593af2853c08cd%40dental-vision.de">6389b5a88e114bee85593af2853c08cd@dental-vision.de</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/6389b5a88e114bee85593af2853c08cd%40dental-vision.de">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/6389b5a88e114bee85593af2853c08cd%40dental-vision.de" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/6389b5a88e114bee85593af2853c08cd%40dental-vision.de" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/6389b5a88e114bee85593af2853c08cd%40dental-vision.de" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204280000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202204280000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Wed, Apr 27, 2022 at 03:04:23PM +0000, Wilm Hoyer wrote:<br>&gt;&gt;<br>&gt;&gt; I used the following hack to get the &quot;real&quot; Major and Minor Version of <br>&gt;&gt; Windows - it&#x27;s in C# (.Net) and needs to be adjusted (you can compile <br>&gt;&gt; as x64 and use a long-long as return value ) to return the Service <br>&gt;&gt; Number too and translated it into C.<br>&gt;&gt; I share it anyways, as it might help - please be kind, as it really is <br>&gt;&gt; a little hack.<br>&gt;&gt;<br>&gt;&gt; Situation:<br>&gt;&gt; Main Application can&#x27;t or is not willing to add a manifest file into <br>&gt;&gt; its resources.<br>&gt;&gt;<br>&gt;&gt; Solution:<br>&gt;&gt; Start a small executable (which has a manifest file compiled into its <br>&gt;&gt; resources), let it read the OS Version and code the Version into its <br>&gt;&gt; return Code.</p>
+
+<p>&gt; Thanks for sharing.</p>
+
+<p>You are welcome.</p>
+
+<p>&gt; Having to compile another tool just for that seems like a very high price to pay, especially since we don&#x27;t have any C# code in the tree.  I&#x27;m not even sure that compiling this wouldn&#x27;t need additional  requirements and/or if it would work on our oldest supported Windows versions.</p>
+
+<p>With &quot;translate it into C&quot; I meant &quot;tread it as pseudo code, for a solution in plain C&quot; (e.g. substitude Environment.OSVersion with IsWindowsVersionOrGreater or GetVersion )</p>
+
+<p>On Wed, Apr 27, 2022 at 05:13:12PM +0900, Michael Paquier wrote:<br>&gt; On Tue, Apr 26, 2022 at 12:54:35PM +0800, Julien Rouhaud wrote:<br>&gt; &gt; so I&#x27;m still on the opinion that we should unconditionally use the <br>&gt; &gt; FILE_MAP_LARGE_PAGES flag if it&#x27;s defined and call it a day.<br>&gt; <br>&gt; Are we sure that this is not going to cause failures in environments <br>&gt; where the flag is not supported?</p>
+
+<p>I&#x27;m not that familiar with the Microsoft OS or C (that&#x27;s why I haven&#x27;t migrated the c# code to C in the first place) to have a clear answer to that question.</p>
+
+<p>If there is any risk and you want to avoid it, I can share a search result when I faced the same issue for our application. I declined this solution in favor of the previously shared one.<br>It&#x27;s from NUnit (and needs migration to C as well - but since it just involves the Registry this should be pretty forward).<br>Just in case the Framework is not known: NUnit is the most popular .Net port of the Unit Testing Framework JUnit. There exits a C port too (CUnit) Maybe in there you can find an OS Version check too.</p>
+
+<p>// Copyright (c) Charlie Poole, Rob Prouse and Contributors. MIT License - see LICENSE.txt<br>[...]<br>namespace NUnit.Framework.Internal<br>{<br>    [SecuritySafeCritical]<br>    public class OSPlatform<br>    {<br>[...]<br>        /// &lt;summary&gt;<br>        /// Gets the actual OS Version, not the incorrect value that might be<br>        /// returned for Win 8.1 and Win 10<br>        /// &lt;/summary&gt;<br>        /// &lt;remarks&gt;<br>        /// If an application is not manifested as Windows 8.1 or Windows 10,<br>        /// the version returned from Environment.OSVersion will not be 6.3 and 10.0<br>        /// respectively, but will be 6.2 and 6.3. The correct value can be found in<br>        /// the registry.<br>        /// &lt;/remarks&gt;<br>        /// &lt;param name=&quot;version&quot;&gt;The original version&lt;/param&gt;<br>        /// &lt;returns&gt;The correct OS version&lt;/returns&gt;<br>        private static Version GetWindows81PlusVersion(Version version)<br>        {<br>            try<br>            {<br>                using (var key = Registry.LocalMachine.OpenSubKey(@&quot;SOFTWARE\Microsoft\Windows NT\CurrentVersion&quot;))<br>                {<br>                    if (key != null)<br>                    {<br>                        var buildStr = key.GetValue(&quot;CurrentBuildNumber&quot;) as string;<br>                        int.TryParse(buildStr, out var build);</p>
+
+<p>                        // These two keys are in Windows 10 only and are DWORDS<br>                        var major = key.GetValue(&quot;CurrentMajorVersionNumber&quot;) as int?;<br>                        var minor = key.GetValue(&quot;CurrentMinorVersionNumber&quot;) as int?;<br>                        if (major.HasValue &amp;&amp; minor.HasValue)<br>                        {<br>                            return new Version(major.Value, minor.Value, build);<br>                        }</p>
+
+<p>                        // If we get here, we are not Windows 10, so we are Windows 8<br>                        // or 8.1. 8.1 might report itself as 6.2, but will have 6.3<br>                        // in the registry. We can&#x27;t do this earlier because for backwards<br>                        // compatibility, Windows 10 also has 6.3 for this key.<br>                        var currentVersion = key.GetValue(&quot;CurrentVersion&quot;) as string;<br>                        if(currentVersion == &quot;6.3&quot;)<br>                        {<br>                            return new Version(6, 3, build);<br>                        }<br>                    }<br>                }<br>            }<br>            catch (Exception)<br>            {<br>            }<br>            return version;<br>        }<br>[...]<br>   }<br>}</p>
+
+<p>Finally, my reasoning to use the executable solution in favor of the NUnit one: <br>I found no guarantee from Microsoft regarding the keys and values in the registry - hence a change with an update or in a newer Windows is not likely, but still possible. That&#x27;s no problem for a heavily used and supported framework like NUnit - they are likely to adopt within days of a new Windows release. I on the other hand wanted a solution with small to no support. That&#x27;s why I decided to implement a solution that&#x27;s as in line as possible with the official Microsoft advice for targeting newer OS Versions.</p>
+
+<p>Best regards<br>Wilm.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YsdgeTimQONuzEDQ@paquier.xyz"></a>
+<a name="6d80d96d49a23436217b6299d5a627dc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Wilm Hoyer &lt;W(dot)Hoyer(at)dental-vision(dot)de&gt;, pgsql-hackers(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-07 22:38:49</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YsdgeTimQONuzEDQ%40paquier.xyz">YsdgeTimQONuzEDQ@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YsdgeTimQONuzEDQ%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YsdgeTimQONuzEDQ%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YsdgeTimQONuzEDQ%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YsdgeTimQONuzEDQ%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207070000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207070000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Apr 26, 2022 at 12:54:35PM +0800, Julien Rouhaud wrote:<br>&gt; Their API is entirely useless, so I&#x27;m still on the opinion that we should<br>&gt; unconditionally use the FILE_MAP_LARGE_PAGES flag if it&#x27;s defined and call it a<br>&gt; day.</p>
+
+<p>Now that the minimal runtime version is Windows 10 in v16~ thanks to<br>495ed0e, we could be much more aggressive and do the attached, which<br>is roughly what Thomas has proposed upthread at the exception of<br>assuming that FILE_MAP_LARGE_PAGES always exists, because updates are<br>forced by MS in this environment.  We could make it conditional, of<br>course, with an extra #ifdef painting.<br>--<br>Michael<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/135236/v2-0001-Fix-huge_pages-on-current-Windows.patch">v2-0001-Fix-huge_pages-on-current-Windows.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>1.7 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YyRxXJ+FXOWTBBrb@paquier.xyz"></a>
+<a name="1d7921e16414ef91cd0a5461981df272"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-16 12:51:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YyRxXJ%2BFXOWTBBrb%40paquier.xyz">YyRxXJ+FXOWTBBrb@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YyRxXJ%2BFXOWTBBrb%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YyRxXJ%2BFXOWTBBrb%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YyRxXJ%2BFXOWTBBrb%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YyRxXJ%2BFXOWTBBrb%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209160000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202209160000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Mar 27, 2022 at 12:07:57AM +1300, Thomas Munro wrote:<br>&gt; Some question I have: is FILE_MAP_LARGE PAGES a macro?  We claim to<br>&gt; support all those ancient zombie OSes like Windows 7, or maybe it&#x27;s<br>&gt; even XP for 11, and this has to be back-patched to 11, so we might<br>&gt; need to make it conditional.  But conditional on what?  For example,<br>&gt; does something like the attached work (untested)?  What happens if a &lt;<br>&gt; 1703 kernel sees this flag, does it reject it or ignore it?</p>
+
+<p>I have been looking at this thread, and found an answer in an example<br>of application creating a map object with large pages in [1]:<br>&quot;This flag is ignored on OS versions before Windows 10, version 1703.&quot;</p>
+
+<p>So based on that I think that we could just apply and backpatch what<br>you have here.  This issue is much easier to reason about on HEAD<br>where we just care about Win &gt;= 10, and we&#x27;ve be rather careful with<br>changes like that when it came to Windows.  Any objections about doing <br>a backpatch?  I&#x27;d like to do so after an extra lookup, if there are no<br>objections.  Or would folks prefer a HEAD-only fix for now?</p>
+
+<p>[1]: <a href="https://docs.microsoft.com/en-us/windows/win32/memory/creating-a-file-mapping-using-large-pages?source=recommendations" rel="nofollow">https://docs.microsoft.com/en-us/windows/win32/memory/creating-a-file-mapping-using-large-pages?source=recommendations</a><br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3677878.1663338578@sss.pgh.pa.us"></a>
+<a name="3e269a9e07d647e0448e9c98ff60ccac"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;,
+        okano(dot)naoki(at)jp(dot)fujitsu(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-16 14:29:38</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3677878.1663338578%40sss.pgh.pa.us">3677878.1663338578@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3677878.1663338578%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3677878.1663338578%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3677878.1663338578%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3677878.1663338578%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209160000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202209160000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; writes:<br>&gt; So based on that I think that we could just apply and backpatch what<br>&gt; you have here.  This issue is much easier to reason about on HEAD<br>&gt; where we just care about Win &gt;= 10, and we&#x27;ve be rather careful with<br>&gt; changes like that when it came to Windows.  Any objections about doing <br>&gt; a backpatch?  I&#x27;d like to do so after an extra lookup, if there are no<br>&gt; objections.  Or would folks prefer a HEAD-only fix for now?</p>
+
+<p>Let&#x27;s just fix it in HEAD.  I think the risk/reward ratio isn&#x27;t very<br>good here.</p>
+
+<p>(I&#x27;d be particularly against changing this in v10, because 10.23 will<br>be the last one; there will be no second chance if we ship it broken.)</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220916143612.5mqdrz5anq47sgr4@jrouhaud"></a>
+<a name="418ed33385122b32b1e78c086674ab98"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-16 14:36:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220916143612.5mqdrz5anq47sgr4%40jrouhaud">20220916143612.5mqdrz5anq47sgr4@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220916143612.5mqdrz5anq47sgr4%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220916143612.5mqdrz5anq47sgr4%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220916143612.5mqdrz5anq47sgr4%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220916143612.5mqdrz5anq47sgr4%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209160000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202209160000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Sep 16, 2022 at 10:29:38AM -0400, Tom Lane wrote:<br>&gt; Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; writes:<br>&gt; &gt; So based on that I think that we could just apply and backpatch what<br>&gt; &gt; you have here.  This issue is much easier to reason about on HEAD<br>&gt; &gt; where we just care about Win &gt;= 10, and we&#x27;ve be rather careful with<br>&gt; &gt; changes like that when it came to Windows.  Any objections about doing<br>&gt; &gt; a backpatch?  I&#x27;d like to do so after an extra lookup, if there are no<br>&gt; &gt; objections.  Or would folks prefer a HEAD-only fix for now?<br>&gt;<br>&gt; Let&#x27;s just fix it in HEAD.  I think the risk/reward ratio isn&#x27;t very<br>&gt; good here.<br>&gt;<br>&gt; (I&#x27;d be particularly against changing this in v10, because 10.23 will<br>&gt; be the last one; there will be no second chance if we ship it broken.)</p>
+
+<p>+1</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YyVsB9mAWFUwqkZx@paquier.xyz"></a>
+<a name="9ac68432a119cacdde1a67c1cd157448"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;, okano(dot)naoki(at)jp(dot)fujitsu(dot)com, PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-17 06:41:11</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YyVsB9mAWFUwqkZx%40paquier.xyz">YyVsB9mAWFUwqkZx@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YyVsB9mAWFUwqkZx%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YyVsB9mAWFUwqkZx%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YyVsB9mAWFUwqkZx%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YyVsB9mAWFUwqkZx%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209170000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202209170000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Sep 16, 2022 at 10:36:12PM +0800, Julien Rouhaud wrote:<br>&gt; On Fri, Sep 16, 2022 at 10:29:38AM -0400, Tom Lane wrote:<br>&gt;&gt; Let&#x27;s just fix it in HEAD.  I think the risk/reward ratio isn&#x27;t very<br>&gt;&gt; good here.<br>&gt;&gt;<br>&gt;&gt; (I&#x27;d be particularly against changing this in v10, because 10.23 will<br>&gt;&gt; be the last one; there will be no second chance if we ship it broken.)<br>&gt; <br>&gt; +1</p>
+
+<p>Okay, fine by me.  I have applied that only on HEAD, then.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

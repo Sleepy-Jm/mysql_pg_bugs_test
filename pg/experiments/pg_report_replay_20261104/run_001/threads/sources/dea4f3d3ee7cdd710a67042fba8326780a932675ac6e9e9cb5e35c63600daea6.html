@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18810: invalid value for parameter &quot;synchronized_standby_slots&quot; Caused error:&quot;Segmentation fault&quot;</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18810-226c754a49ea511f%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-02-13T10:43:54" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18810: invalid value for parameter &quot;synchronized_standby_slots&quot; Caused error:&quot;Segmentation fault&quot;" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="2705d92513b4e0c445c3808b4e195e18">BUG #18810: invalid value for parameter &quot;synchronized_standby_slots&quot; Caused error:&quot;Segmentation fault&quot;</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202502131043">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18810-226c754a49ea511f@postgresql.org"></a>
+<a name="2705d92513b4e0c445c3808b4e195e18"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>weijie1006jl(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18810: invalid value for parameter &quot;synchronized_standby_slots&quot; Caused error:&quot;Segmentation fault&quot;</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-13 10:43:54</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18810-226c754a49ea511f%40postgresql.org">18810-226c754a49ea511f@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18810-226c754a49ea511f%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18810-226c754a49ea511f%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18810-226c754a49ea511f%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18810-226c754a49ea511f%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18810<br>Logged by:          weijie JL<br>Email address:      weijie1006jl(at)gmail(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Rocky Linux release 9.4 (Blue Onyx)<br>Description:        </p>
+
+<p>log detail:<br>2025-02-13 11:45:28.563 CST    [4015389]LOG:  00000: received SIGHUP,<br>reloading configuration files<br>2025-02-13 11:45:28.563 CST    [4015389]LOCATION: <br>process_pm_reload_request, postmaster.c:2104<br>2025-02-13 11:45:28.564 CST    [4015389]LOG:  22023: invalid value for<br>parameter &quot;synchronized_standby_slots&quot;: &quot;slave&quot;<br>2025-02-13 11:45:28.564 CST    [4015389]DETAIL:  replication slot &quot;slave&quot;<br>does not exist<br>2025-02-13 11:45:28.564 CST    [4015389]LOCATION:  call_string_check_hook,<br>guc.c:6927<br>2025-02-13 11:45:28.564 CST    [4015389]LOG:  F0000: configuration file<br>&quot;/data/pgdata/pg5433/data/postgresql.conf&quot; contains errors; unaffected<br>changes were applied<br>2025-02-13 11:45:28.564 CST    [4015389]LOCATION: <br>ProcessConfigFileInternal, guc.c:616<br>2025-02-13 11:45:28.687 CST    [4015389]LOG:  00000: system logger process<br>(PID 1511029) was terminated by signal 11: Segmentation fault<br>2025-02-13 11:45:28.687 CST    [4015389]LOCATION:  LogChildExit,<br>postmaster.c:3097</p>
+
+<p>The Segmentation fault error here does not seem to affect the master<br>process. Is this error as expected?</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3587298.1739458634@sss.pgh.pa.us"></a>
+<a name="ca74f0eb0223fe23e9167bed72b9c591"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>weijie1006jl(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18810: invalid value for parameter &quot;synchronized_standby_slots&quot; Caused error:&quot;Segmentation fault&quot;</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-13 14:57:14</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3587298.1739458634%40sss.pgh.pa.us">3587298.1739458634@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3587298.1739458634%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3587298.1739458634%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3587298.1739458634%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3587298.1739458634%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; log detail:<br>&gt; 2025-02-13 11:45:28.563 CST    [4015389]LOG:  00000: received SIGHUP,<br>&gt; reloading configuration files<br>&gt; 2025-02-13 11:45:28.563 CST    [4015389]LOCATION: <br>&gt; process_pm_reload_request, postmaster.c:2104<br>&gt; 2025-02-13 11:45:28.564 CST    [4015389]LOG:  22023: invalid value for<br>&gt; parameter &quot;synchronized_standby_slots&quot;: &quot;slave&quot;<br>&gt; 2025-02-13 11:45:28.564 CST    [4015389]DETAIL:  replication slot &quot;slave&quot;<br>&gt; does not exist<br>&gt; 2025-02-13 11:45:28.564 CST    [4015389]LOCATION:  call_string_check_hook,<br>&gt; guc.c:6927<br>&gt; 2025-02-13 11:45:28.564 CST    [4015389]LOG:  F0000: configuration file<br>&gt; &quot;/data/pgdata/pg5433/data/postgresql.conf&quot; contains errors; unaffected<br>&gt; changes were applied<br>&gt; 2025-02-13 11:45:28.564 CST    [4015389]LOCATION: <br>&gt; ProcessConfigFileInternal, guc.c:616<br>&gt; 2025-02-13 11:45:28.687 CST    [4015389]LOG:  00000: system logger process<br>&gt; (PID 1511029) was terminated by signal 11: Segmentation fault</p>
+
+<p>I believe this is one of the bugs fixed in the just-released 17.3:</p>
+
+<p>    &lt;listitem&gt;<br>&lt;!--<br>Author: Álvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;<br>Branch: master [3c5f9f12c] 2024-12-03 17:50:57 +0100<br>Branch: REL_17_STABLE [9abdc1841] 2024-12-03 17:50:57 +0100<br>--&gt;<br>     &lt;para&gt;<br>      Avoid crash when a background process tries to check a new value<br>      of &lt;varname&gt;synchronized_standby_slots&lt;/varname&gt; (Álvaro Herrera)<br>      &lt;ulink url=&quot;&amp;commit_baseurl;9abdc1841&quot;&gt;&amp;sect;&lt;/ulink&gt;<br>     &lt;/para&gt;<br>    &lt;/listitem&gt;</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

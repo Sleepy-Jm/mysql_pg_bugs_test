@@ -1,0 +1,120 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17386
+Logged by:          Maxim Boguk
+Email address:      maxim(dot)boguk(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   Ubuntu Linux
+Description:        
+
+
+Hi,
+
+
+I found multiple cases of Btree index corruption after REINDEX someindex
+CONCURRENTLY;.
+
+
+What I found so far:
+1)corruption exists in master, on all replicas and test server recovered
+from base backup + wal archive (so it isn't some local hardware error)
+2)it doesn't happen every time but at least two cases of corrupted indexes
+found after database verification with amcheck.
+3)it happen on huge and write heavy table
+
+
+Now details:
+bt_index_parent_check results:
+set client_min_messages=DEBUG1;
+SET
+select bt_index_parent_check('jobs_pkey', true, true);
+psql:check.sql:2: DEBUG:  verifying consistency of tree structure for index
+"jobs_pkey" with cross-level checks
+psql:check.sql:2: DEBUG:  verifying level 3 (true root level)
+psql:check.sql:2: DEBUG:  verifying level 2
+psql:check.sql:2: DEBUG:  verifying level 1
+psql:check.sql:2: DEBUG:  verifying level 0 (leaf level)
+psql:check.sql:2: DEBUG:  verifying that tuples from index "jobs_pkey" are
+present in "jobs"
+psql:check.sql:2: ERROR:  heap tuple (33634183,14) from table "jobs" lacks
+matching index tuple within index "jobs_pkey"
+
+
+Now lets see what we have inside  page:
+SELECT * FROM heap_page_item_attrs(get_raw_page('jobs', 33634183),
+'jobs'::regclass) where lp=14;
+ lp | lp_off | lp_flags | lp_len | t_xmin | t_xmax | t_field3 | t_ctid |
+t_infomask2 | t_infomask | t_hoff | t_bits | t_oid | t_attrs 
+----+--------+----------+--------+--------+--------+----------+--------+-------------+------------+--------+--------+-------+---------
+ 14 |     26 |        2 |      0 |        |        |          |        |    
+        |            |        |        |       | 
+
+
+select  ctid,id,updated_at,created_at from jobs where job_reference =
+'some_ref';
+     ctid      |     id      |         updated_at         |        
+created_at         
+---------------+-------------+----------------------------+----------------------------
+ (33634183,26) | 26228724405 | 2022-01-25 00:50:32.544507 | 2021-11-18
+09:39:30.594114
+
+
+select id from jobs where id = 26228724405;
+ id
+----
+(0 rows)
+
+
+What I know that the reindex concurrently run during on updated_at of this
+tuple:
+2022-01-25 01:17:34.262 UTC 28073 postgres(at)**** from [local] [vxid:84/0
+txid:0] [REINDEX] LOG:  duration: 4649025.692 ms  statement: REINDEX INDEX
+CONCURRENTLY public.jobs_pkey
+
+
+Problem tuple data:
+SELECT * FROM heap_page_item_attrs(get_raw_page('jobs', 33634183),
+'jobs'::regclass) where lp=26;
+-[ RECORD 1
+]--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lp          | 26
+lp_off      | 1840
+lp_flags    | 1
+lp_len      | 522
+t_xmin      | 1829097938
+t_xmax      | 0
+t_field3    | 38
+t_ctid      | (33634183,26)
+t_infomask2 | 32846
+t_infomask  | 11011
+t_hoff      | 40
+t_bits      |
+01011100000000011110001000000000001001000000000011010100000111111111101110011000
+t_oid       | 
+t_attrs     |
+{NULL,"\\xab31353135315f37383730322d4a4f425245512d3135393732392d656e2d75732d4f54484c4f432d434125354642656e696369612d3239663963653035633163646564323435313532376230633232363830663465",NULL,"\\x114f616b6c616e64","\\x074341","\\x0d3934363631",NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,"\\x2f3b0000","\\x42293ab40b740200","\\xfb74b33d5c790200","\\x1c260300",NULL,NULL,NULL,"\\x01000000",NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,"\\x2b000000",NULL,NULL,"\\x00",NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,"\\xc0020000040000800400008040000000470000004900000052000000540000005e000000880000006c6f676f68747470733a2f2f7777772e687964726f6368656d7073632e636f6d2f77702d636f6e74656e742f75706c6f6164732f616d702d6c6f676f2e706e67636f756e747279555373706f6e736f7265646e6f736f757263656e616d65436c65616e20486172626f727320456e7669726f6e6d656e74616c2053657276696365732c20496e632e","\\x5d37383730322d4a4f425245512d3135393732392d656e2d75732d4f54484c4f432d434125354642656e69636961",NULL,"\\x873d0100",NULL,"\\x804b3e77e0780200",NULL,NULL,NULL,NULL,NULL,"\\x1300832500911aa41f","\\x1300a37900fe234826","\\xce2b5b00","\\xb5925a1b06000000","\\x4b905a1b06000000","\\x00000000","\\xe6120000","\\x0f020000","\\x20502e5508750200","\\x0400",NULL,"\\x67c30000","\\x4e6c1f13","\\x652105fbe2f3fab45335f04bfccc900c",NULL,NULL,"\\x04001c00","\\x0000",NULL}
+
+
+SELECT t_ctid, raw_flags, combined_flags FROM
+heap_page_item_attrs(get_raw_page('jobs', 33634183), 'jobs'::regclass),
+LATERAL heap_tuple_infomask_flags(t_infomask, t_infomask2)  where lp=26;
+-[ RECORD 1
+]--+---------------------------------------------------------------------------------------------------------------------
+t_ctid         | (33634183,26)
+raw_flags      |
+{HEAP_HASNULL,HEAP_HASVARWIDTH,HEAP_XMIN_COMMITTED,HEAP_XMIN_INVALID,HEAP_XMAX_INVALID,HEAP_UPDATED,HEAP_ONLY_TUPLE}
+combined_flags | {HEAP_XMIN_FROZEN}
+
+
+This is all what I have so far, but I have base backup taken before problem
+arise and wal archive and standalone server for experiments (database 10+TB
+size with huge load so it isn't fast but definitely possible extract all
+requested information).
+
+
+Kind Regards,
+Maxim
+
+
+

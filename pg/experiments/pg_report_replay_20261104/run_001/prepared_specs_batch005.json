@@ -1,0 +1,335 @@
+[
+  {
+    "report_id": "17304",
+    "scenario_id": "17304_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17304-e2600940ba8add78%40postgresql.org",
+    "parts": [
+      {
+        "text": "select;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17304.txt",
+        "start_offset": 923,
+        "end_offset": 930,
+        "start_line": 32,
+        "end_line": 32,
+        "excerpt_sha256": "74d235b585599ad3e532142acadc0f40d76b487364e65876558a7e9b7c0224c5",
+        "transformations": []
+      }
+    ],
+    "mode": "ubsan_client",
+    "oracle": {
+      "kind": "stderr",
+      "pattern": "print\\.c:\\d+:\\d+: runtime error: null pointer passed as argument 1",
+      "reported_phenomenon": "对齐输出空 SELECT 触发 psql UBSan 空指针报告",
+      "author_expected_behavior": "客户端不应触发未定义行为"
+    },
+    "config": {},
+    "notes": "保留 psql 默认对齐格式；无 -A/-t；对应客户端版本开启报告要求的UBSan。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "c1c7bef84d7e174ab25fdbe1bc96449fb3e4b683b65a01aafed14c78b5f6acb3"
+  },
+  {
+    "report_id": "17283",
+    "scenario_id": "17283_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17283-ad8b80401ffe779e%40postgresql.org",
+    "parts": [
+      {
+        "text": "Currently, PostgreSQL defaults to listen on 'localhost', which translates to\nsingle-stack IPv4 loopback address 127.0.0.1. However, IPv6 is more and more\nprevalent, not everything support happy eyeballs. Therefor, when no\nlisten_addresses are specified and/or if localhost is specified, this should\nnot default to 127.0.0.1, but instead to '127.0.0.1, ::1' to make PostreSQL\nlisten both on IPv4 and IPv6 loopback interfaces.\n\n\nThis especially fixes issues with the latest NodeJS v17.;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17283.txt",
+        "start_offset": 235,
+        "end_offset": 722,
+        "start_line": 12,
+        "end_line": 24,
+        "excerpt_sha256": "3deb1ec0d775d4deaede4e696c3a2f712bcd8eb52952f56e12587ef7c818cf8d",
+        "transformations": [
+          "trim outer whitespace",
+          "append SQL terminator at excerpt boundary"
+        ],
+        "material_kind": "operational_steps"
+      }
+    ],
+    "mode": "listen_probe",
+    "oracle": {
+      "kind": "output",
+      "pattern": "^IPV4_ONLY$",
+      "reported_phenomenon": "默认localhost只监听IPv4而未监听IPv6",
+      "author_expected_behavior": "默认同时监听127.0.0.1和::1"
+    },
+    "config": {
+      "listen_addresses": "'localhost'"
+    },
+    "notes": "这是监听配置与网络探测，不是SQL；localhost解析结果随环境记录。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "962c0107b8efd0401d880ed8abb981250fecbff26544fce62acede3d5268d9b7"
+  },
+  {
+    "report_id": "17357",
+    "scenario_id": "17357_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17357-02bf57d4d89bf972%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table elements (\n     id serial primary key,\n     priority smallint default 0\n);\ninsert into elements (priority) values\n    (1), (2), (3), (0), (0),\n    (3), (2), (1), (0), (0),\n    (0), (0), (0), (0), (0),\n    (1), (1), (2), (2), (3)\n;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17357.txt",
+        "start_offset": 314,
+        "end_offset": 402,
+        "start_line": 18,
+        "end_line": 22,
+        "excerpt_sha256": "5a70f86e3f220259e99f04166a2325f497b79fd275801a77beac734d2e04e053",
+        "transformations": [
+          "trim outer whitespace",
+          "concatenate explicitly supplied DDL and INSERT, remove displayed command tags"
+        ],
+        "additional_sources": [
+          {
+            "text": "insert into elements (priority) values\n    (1), (2), (3), (0), (0),\n    (3), (2), (1), (0), (0),\n    (0), (0), (0), (0), (0),\n    (1), (1), (2), (2), (3)\n;",
+            "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17357.txt",
+            "start_offset": 458,
+            "end_offset": 614,
+            "start_line": 26,
+            "end_line": 32,
+            "excerpt_sha256": "d1bc1b02f22b4a9fac7f722a9de02d0cfd61db1caf114e0bdac1eb89753b2095",
+            "transformations": [
+              "trim outer whitespace"
+            ]
+          }
+        ]
+      },
+      {
+        "text": "select\n     *,\n     row_number() over(\n     partition by priority order by priority desc\n) as n\nfrom elements\n;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17357.txt",
+        "start_offset": 655,
+        "end_offset": 769,
+        "start_line": 36,
+        "end_line": 45,
+        "excerpt_sha256": "4053a97f6859869209a787fd4416363efb50a3bec7dfabe1daaf3b7de1c31f38",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "select *\n    from (\n         select\n             *,\n             row_number() over(\n                 partition by priority order by priority desc\n         ) as n\nfrom elements\n) as tmp\nWHERE n = 1 AND priority = 3\n;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17357.txt",
+        "start_offset": 1170,
+        "end_offset": 1385,
+        "start_line": 66,
+        "end_line": 76,
+        "excerpt_sha256": "b929c54b2e0696a777cd575d14a07f7ad42f6409f628fb3413c4e06f526b60c7",
+        "transformations": []
+      }
+    ],
+    "mode": "window_compare",
+    "oracle": {
+      "kind": "output",
+      "pattern": "^ROW_CHANGED$",
+      "reported_phenomenon": "增加过滤条件后窗口编号为1的priority3记录id发生变化",
+      "author_expected_behavior": "作者期望过滤前后的编号稳定"
+    },
+    "config": {},
+    "notes": "比较原文两条查询的返回行，不为并列排序补充tie-breaker。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "90884dfe4d6dad4e4268f8d3b2a5dab8aa8db306be1c8307c17fd235571b645d"
+  },
+  {
+    "report_id": "17538",
+    "scenario_id": "17538_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17538-74a88f3ab5b55670%40postgresql.org",
+    "parts": [
+      {
+        "text": "Then, I update log_hostname to 'yes' in postgresql.conf, and send SIGHUP\nsignal to reload configuration files.\n\n\nI saw the logs showing the parameter was updated:\n2022-07-03 10:50:54.477 UTC [5955] LOG:  received SIGHUP, reloading\nconfiguration files\n2022-07-03 10:50:54.478 UTC [5955] LOG:  parameter \"log_hostname\" changed to\n\"yes\"\n\n\nAfter I disconnected to Postgres, connection log messages kept showing the\nIP address (127.0.0.1), which expected to show the host name (localhost).\nThis means updating log_hostname did not take effect.;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17538.txt",
+        "start_offset": 919,
+        "end_offset": 1460,
+        "start_line": 32,
+        "end_line": 48,
+        "excerpt_sha256": "072c36464590c04842fcc9f1870d7dd7cc5089cd92d2032b099e613eb6709f4d",
+        "transformations": [
+          "trim outer whitespace",
+          "append SQL terminator at excerpt boundary"
+        ],
+        "material_kind": "operational_steps"
+      }
+    ],
+    "mode": "hostname_reload",
+    "oracle": {
+      "kind": "output",
+      "pattern": "disconnection:.*host=127\\.0\\.0\\.1",
+      "reported_phenomenon": "log_hostname从no改yes后已有TCP连接的断开日志仍记IP",
+      "author_expected_behavior": "作者期望断开时记录localhost"
+    },
+    "config": {
+      "listen_addresses": "'127.0.0.1'",
+      "log_connections": "on",
+      "log_disconnections": "on",
+      "log_hostname": "off"
+    },
+    "notes": "用户wang/dbwang映射为隔离集群postgres；无业务SQL，保留同一已建立TCP连接。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "03db62719ae1cf859e216f5ce6566cbd1b6dc8a8c05601508e8e7e00fa35f1fb"
+  },
+  {
+    "report_id": "17393",
+    "scenario_id": "17393_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17393-fe5b19a5eb16cf7f%40postgresql.org",
+    "parts": [
+      {
+        "text": "Steps in script:\npsql -c 'CREATE DATABASE test'\n# basebackup\npg_basebackup -D $backup_dir/0\nsleep 5\nrec_pit=`date +'%Y-%m-%d %H:%M:%S'`\nsleep 5\n# drop db\npsql -c 'DROP DATABASE test'\n# save backup\npsql -c 'SELECT pg_switch_wal()'\nsleep 5\n# Stop db\npg_ctl -D $PGDATAstop\n# recovery\nrm -rf $PGDATA/*\ncp -r $backup_dir/0/* $PGDATA/\ntouch $PGDATA/recovery.signal\necho \"recovery_target_time='$rec_pit'\" >> $inst_dir/postgresql.conf\n# start\npg_ctl -D $PGDATA -l ${log_dir}/pgsql.log start\nsleep 5\necho \"\\c test\" | psql;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17393.txt",
+        "start_offset": 2175,
+        "end_offset": 2690,
+        "start_line": 63,
+        "end_line": 88,
+        "excerpt_sha256": "cfad9c33819e7a933c5d70e00ed34f89608a683dc359270e0d0178c6d9fc13dc",
+        "transformations": [
+          "trim outer whitespace",
+          "append SQL terminator at excerpt boundary"
+        ],
+        "material_kind": "operational_steps"
+      }
+    ],
+    "mode": "pitr",
+    "oracle": {
+      "kind": "output",
+      "pattern": "^CATALOG_WITHOUT_FILES$",
+      "reported_phenomenon": "PITR到DROP之前恢复catalog却缺数据库目录",
+      "author_expected_behavior": "catalog及数据文件均恢复"
+    },
+    "config": {},
+    "notes": "按原文步骤编排；路径/端口/用户替换为隔离任务；原数据目录rename保留，不执行rm -rf。",
+    "timeout": 180,
+    "preparation_status": "ready",
+    "spec_sha256": "08261f717b0c8ae4edfc47f42682635bdaf58c2cfd6e72524406a698ba988e7c"
+  },
+  {
+    "report_id": "17292",
+    "scenario_id": "17292_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17292-77f65b65342c5bf0%40postgresql.org",
+    "parts": [
+      {
+        "text": "explain select * from bmk.vw_ftrucf_index;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\materials\\17292_extracted\\buggy\\README",
+        "start_offset": 202,
+        "end_offset": 240,
+        "excerpt_sha256": "6991d3a088e24d1592803686c40cdea9e75b869780e573053bdc5812a1595d1c",
+        "transformations": [
+          "qualify view with bmk schema explicitly created by supplied install_part.sql"
+        ]
+      }
+    ],
+    "mode": "attachment_plan",
+    "oracle": {
+      "kind": "output",
+      "pattern": "(?s)Nested Loop Left Join.*Join Filter:.*InitPlan 24",
+      "reported_phenomenon": "219分区及索引下规划极慢并产生报告所示不完整计划",
+      "author_expected_behavior": "正常时间内生成完整计划"
+    },
+    "config": {},
+    "notes": "180秒有界规划；超时一律无法判断，不当作未复现；计划匹配另要求不存在Append，保留附件计划原文。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "attachment_scripts": [
+      "install_part.sql",
+      "install_partitions.sql",
+      "install_index_nopart.sql",
+      "install_index_part.sql"
+    ],
+    "additional_oracle_checks": [
+      {
+        "stream": "stdout",
+        "pattern": "Append",
+        "count": 0
+      }
+    ],
+    "spec_sha256": "c6211fc201dbd1a6fe6b1de8bbe9dbcca862658273e81bb0dbce3abbc78b11d2"
+  },
+  {
+    "report_id": "18805",
+    "scenario_id": "18805_linked18806",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18805-2477a1f983db961e%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table test(order_id int, name varchar);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18806.txt",
+        "start_offset": 11850,
+        "end_offset": 11896,
+        "start_line": 289,
+        "end_line": 289,
+        "excerpt_sha256": "8e1ea50caa592c144461fb8c64624bfce39792650a7650f15e4b37ae3db0659d",
+        "transformations": []
+      },
+      {
+        "text": "create table orders(order_id int, name char(10)) partition by hash\n(order_id);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18806.txt",
+        "start_offset": 11897,
+        "end_offset": 11975,
+        "start_line": 290,
+        "end_line": 291,
+        "excerpt_sha256": "f293d3bf311234ba53dbb0b1a202f3f1479452be7b531277b35e68125fbe3072",
+        "transformations": []
+      },
+      {
+        "text": "set enable_partitionwise_join = on;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18806.txt",
+        "start_offset": 12013,
+        "end_offset": 12048,
+        "start_line": 294,
+        "end_line": 294,
+        "excerpt_sha256": "497cd204a4721c8b2cdcdced64d4e1368ec02295ddba18002d378228631b791d",
+        "transformations": []
+      },
+      {
+        "text": "create table orders_p1 partition of orders for values with (\nmodulus 32, remainder 0);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18806.txt",
+        "start_offset": 12064,
+        "end_offset": 12150,
+        "start_line": 296,
+        "end_line": 297,
+        "excerpt_sha256": "f6b766b77706b1a882f893ec49173cba2cf619bb68700f57815fbc60c0d3d58b",
+        "transformations": []
+      },
+      {
+        "text": "explain select * from test t join orders o on\nt.order_id =o.order_id where t.order_id in (select order_id from orders);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18806.txt",
+        "start_offset": 12175,
+        "end_offset": 12294,
+        "start_line": 299,
+        "end_line": 300,
+        "excerpt_sha256": "502152206f993a8cde0631b8912129ee3012d100fc1ef451a878667d44fc0707",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal (?:6|11)",
+      "reported_phenomenon": "partitionwise join 查询导致断言/崩溃",
+      "author_expected_behavior": "正常完成规划"
+    },
+    "config": {},
+    "notes": "官方18805回复明确链接18806同一项目场景；重放18806官方简化例，不声称复现原XFS损坏，不计独立根因。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "linked_source_evidence": {
+      "text": "It is the same project scenario as the issue below ( BUG 18806）.\n\n\nhttps://www.postgresql.org/message-id/18806-d70b0c9fdf63dcbf%40postgresql.org￼",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\thread_text\\18805.txt",
+      "start_offset": 3637,
+      "end_offset": 3783,
+      "start_line": 100,
+      "end_line": 104,
+      "excerpt_sha256": "a8008a0c4e4cbfa7e4c3b56781b51a9221bb3bc4512401be6c1c8d7e37b4c5f8",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    },
+    "spec_sha256": "4290fe0fc837428157ff317edf87211ddbaf733af753836272e590f6f6a5471c"
+  }
+]

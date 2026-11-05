@@ -1,0 +1,250 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17533
+Logged by:          lx zou
+Email address:      zoulx1982(at)163(dot)com
+PostgreSQL version: 14.2
+Operating system:   Linux
+Description:        
+
+
+Hi,
+
+
+Recently, i run test using benchmarksql on pg14, and sometimes my test
+will
+failed, and i want to know whether it's a bug.
+
+
+My test step is:
+1. download pg14 source code from here 
+https://www.postgresql.org/ftp/source/v14.2/
+
+
+2. my operating system is linux centos7, here is my build step:
+./configure --prefix=`pwd`/inst --enable-debug CFLAGS="-O0"
+make -j > x
+make install
+./initdb -A trust --no-locale -E utf8 -D ../data
+
+
+postgres=# select version();
+                                   version                                  
+
+
+-----------------------------------------------------------------------------
+ PostgreSQL 14.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 9.1.0,
+64-bit
+(1 row)
+
+
+3. following is my postgresql.conf, others use default value
+
+
+vacuum_defer_cleanup_age = 60000
+listen_addresses = '*'
+port = 54321
+shared_buffers = 2GB
+
+
+4. the test tool i use is benchmarksql, which can download from here:
+https://sourceforge.net/projects/benchmarksql/
+and i use the lastet version benchmarksql-5.0.zip
+
+
+5. the test parameters is:
+warehouses=10
+loadWorkers=4
+terminals=10
+runTxnsPerTerminal=0
+runMins=150000
+limitTxnsPerMin=10000000
+terminalWarehouseFixed=false
+newOrderWeight=45
+paymentWeight=43
+orderStatusWeight=4
+deliveryWeight=4
+stockLevelWeight=4
+resultDirectory=my_result_%tY-%tm-%td_%tH%tM%tS
+osCollectorScript=./misc/os_collector_linux.py
+osCollectorInterval=1
+osCollectorDevices=net_eth0 blk_sda
+
+
+6. load data:
+./runSQL.sh props.pg ./sql.common/tableCreates.sql
+./runLoader.sh props.pg
+./runSQL.sh props.pg ./sql.common/indexCreates.sql
+./runSQL.sh props.pg ./sql.common/foreignKeys.sql
+./runSQL.sh props.pg ./sql.postgres/extraHistID.sql
+./runSQL.sh props.pg ./sql.postgres/buildFinish.sql
+
+
+7. run test:
+./runBenchmark.sh props.pg
+
+
+when run step 7, i offen receive such error:
+<<<
+Term-00, Running Average tpmTOTAL: 95259.54    Current tpmTOTAL: 19452   
+Memory Usage: 308MB / 1963MB          
+19:56:14,868 [Thread-7] FATAL  jTPCCTerminal : STOCK with S_W_ID=5
+S_I_ID=36110 not fount
+java.lang.Exception: STOCK with S_W_ID=5 S_I_ID=36110 not fount
+        at jTPCCTData.executeNewOrder(jTPCCTData.java:483)
+>>>
+
+
+and i also test with different guc config, i found if do not set
+vacuum_defer_cleanup_age to 60000
+(i.e. use default value 0), the step 7 can run successfully.
+
+
+I also test pgsql 10.21 version, and no matter i set
+vacuum_defer_cleanup_age to 60000
+or use default value 0, the step 7 can always run ok.
+
+
+So, i sumerrize following results:
+
+
+14.2 version
+vacuum_defer_cleanup_age = 60000    failed
+vacuum_defer_cleanup_age = 0           ok
+10.21 version
+vacuum_defer_cleanup_age = 60000    ok
+vacuum_defer_cleanup_age = 0           ok
+
+
+In addition, i do not run test on pgsql 11 - 13 version, so i do not known
+their test results.
+
+
+Thank you for your time.
+
+
+Regards.
+
+
+
+
+
+### MESSAGE 1
+Hi,
+   Does anyone know why the GUC vacuum_defer_cleanup_age will affect the test result of benchmarkSQL on pgsql 14 ?
+   In addition, the tuple reported not found is visible in next query, i.e. the tuple does not lost.
+   And in pgsql 10, there never occur this issue.
+
+
+Best regards.
+At 2022-06-25 23:38:14, "PG Bug reporting form" <noreply(at)postgresql(dot)org> wrote:
+>The following bug has been logged on the website:
+>
+>Bug reference:      17533
+>Logged by:          lx zou
+>Email address:      zoulx1982(at)163(dot)com
+>PostgreSQL version: 14.2
+>Operating system:   Linux
+>Description:        
+>
+>Hi,
+>
+>Recently, i run test using benchmarksql on pg14, and sometimes my test
+>will
+>failed, and i want to know whether it's a bug.
+>
+>My test step is:
+>1. download pg14 source code from here 
+>https://www.postgresql.org/ftp/source/v14.2/
+>
+>2. my operating system is linux centos7, here is my build step:
+>./configure --prefix=`pwd`/inst --enable-debug CFLAGS="-O0"
+>make -j > x
+>make install
+>./initdb -A trust --no-locale -E utf8 -D ../data
+>
+>postgres=# select version();
+>                                   version                                  
+>
+>-----------------------------------------------------------------------------
+> PostgreSQL 14.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 9.1.0,
+>64-bit
+>(1 row)
+>
+>3. following is my postgresql.conf, others use default value
+>
+>vacuum_defer_cleanup_age = 60000
+>listen_addresses = '*'
+>port = 54321
+>shared_buffers = 2GB
+>
+>4. the test tool i use is benchmarksql, which can download from here:
+>https://sourceforge.net/projects/benchmarksql/
+>and i use the lastet version benchmarksql-5.0.zip
+>
+>5. the test parameters is:
+>warehouses=10
+>loadWorkers=4
+>terminals=10
+>runTxnsPerTerminal=0
+>runMins=150000
+>limitTxnsPerMin=10000000
+>terminalWarehouseFixed=false
+>newOrderWeight=45
+>paymentWeight=43
+>orderStatusWeight=4
+>deliveryWeight=4
+>stockLevelWeight=4
+>resultDirectory=my_result_%tY-%tm-%td_%tH%tM%tS
+>osCollectorScript=./misc/os_collector_linux.py
+>osCollectorInterval=1
+>osCollectorDevices=net_eth0 blk_sda
+>
+>6. load data:
+>./runSQL.sh props.pg ./sql.common/tableCreates.sql
+>./runLoader.sh props.pg
+>./runSQL.sh props.pg ./sql.common/indexCreates.sql
+>./runSQL.sh props.pg ./sql.common/foreignKeys.sql
+>./runSQL.sh props.pg ./sql.postgres/extraHistID.sql
+>./runSQL.sh props.pg ./sql.postgres/buildFinish.sql
+>
+>7. run test:
+>./runBenchmark.sh props.pg
+>
+>when run step 7, i offen receive such error:
+><<<
+>Term-00, Running Average tpmTOTAL: 95259.54    Current tpmTOTAL: 19452   
+>Memory Usage: 308MB / 1963MB          
+>19:56:14,868 [Thread-7] FATAL  jTPCCTerminal : STOCK with S_W_ID=5
+>S_I_ID=36110 not fount
+>java.lang.Exception: STOCK with S_W_ID=5 S_I_ID=36110 not fount
+>        at jTPCCTData.executeNewOrder(jTPCCTData.java:483)
+>>>>
+>
+>and i also test with different guc config, i found if do not set
+>vacuum_defer_cleanup_age to 60000
+>(i.e. use default value 0), the step 7 can run successfully.
+>
+>I also test pgsql 10.21 version, and no matter i set
+>vacuum_defer_cleanup_age to 60000
+>or use default value 0, the step 7 can always run ok.
+>
+>So, i sumerrize following results:
+>
+>14.2 version
+>vacuum_defer_cleanup_age = 60000    failed
+>vacuum_defer_cleanup_age = 0           ok
+>10.21 version
+>vacuum_defer_cleanup_age = 60000    ok
+>vacuum_defer_cleanup_age = 0           ok
+>
+>In addition, i do not run test on pgsql 11 - 13 version, so i do not known
+>their test results.
+>
+>Thank you for your time.
+>
+>Regards.
+>
+

@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17667: to_char is used to collect statistics by week</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17667-5541f108ca50db84%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-10-27T12:43:45" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17667: to_char is used to collect statistics by week" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="7c919936bcdf71ce2f4af061183771cc">BUG #17667: to_char is used to collect statistics by week</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202210271243">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17667-5541f108ca50db84@postgresql.org"></a>
+<a name="7c919936bcdf71ce2f4af061183771cc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>1310290931(at)qq(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17667: to_char is used to collect statistics by week</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-10-27 12:43:45</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17667-5541f108ca50db84%40postgresql.org">17667-5541f108ca50db84@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17667-5541f108ca50db84%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17667-5541f108ca50db84%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17667-5541f108ca50db84%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17667-5541f108ca50db84%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202210270000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17667<br>Logged by:          高成 卫<br>Email address:      1310290931(at)qq(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   PostgreSQL 14.1 on x86_64-pc-linux-musl, compiled<br>Description:        </p>
+
+<p>Week 42 of 2022 is October 17-23   </p>
+
+<p>When I used ww to format the time, the 23rd was counted to week 43</p>
+
+<p>When I used IW to format the time, the 23rd was counted to the 42nd week</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="MEYP282MB1669DCA946F290B96F633CBBB6339@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM"></a>
+<a name="b7f0d34c83c80962a8b0b32b5fc093d1"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>1310290931(at)qq(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17667: to_char is used to collect statistics by week</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-10-27 12:59:18</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/MEYP282MB1669DCA946F290B96F633CBBB6339%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">MEYP282MB1669DCA946F290B96F633CBBB6339@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/MEYP282MB1669DCA946F290B96F633CBBB6339%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/MEYP282MB1669DCA946F290B96F633CBBB6339%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/MEYP282MB1669DCA946F290B96F633CBBB6339%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/MEYP282MB1669DCA946F290B96F633CBBB6339%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202210270000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Thu, 27 Oct 2022 at 20:43, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17667<br>&gt; Logged by:          高成 卫<br>&gt; Email address:      1310290931(at)qq(dot)com<br>&gt; PostgreSQL version: 14.1<br>&gt; Operating system:   PostgreSQL 14.1 on x86_64-pc-linux-musl, compiled<br>&gt; Description:        <br>&gt;<br>&gt; Week 42 of 2022 is October 17-23   <br>&gt;<br>&gt; When I used ww to format the time, the 23rd was counted to week 43<br>&gt;<br>&gt; When I used IW to format the time, the 23rd was counted to the 42nd week</p>
+
+<p>The documentation about Template Patterns for Date/Time Formatting [1]<br>already descried this:</p>
+
+<p>WW	week number of year (1–53) (the first week starts on the first day of the year)<br>IW	week number of ISO 8601 week-numbering year (01–53; the first Thursday of the year is in week 1)</p>
+
+<p>[1] <a href="https://www.postgresql.org/docs/current/functions-formatting.html#FUNCTIONS-FORMATTING-DATETIME-TABLE" rel="nofollow">https://www.postgresql.org/docs/current/functions-formatting.html#FUNCTIONS-FORMATTING-DATETIME-TABLE</a></p>
+
+<p>-- <br>Regrads,<br>Japin Li.<br>ChengDu WenWu Information Technology Co.,Ltd.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,67 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17437
+Logged by:          Jeff Janes
+Email address:      jeff(dot)janes(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Linux
+Description:        
+
+
+While looking into a stack overflow question:
+https://stackoverflow.com/questions/71456871/new-aggregation-code-performs-worse-despite-using-1000x-less-data-with-postgres/71458545#71458545
+
+
+I found a bug where time spent in setting up JIT is also attributed to
+something else (the function scan over generate_series)
+
+
+I can replicate the error (although not quite as dramatically--the problem
+is obvious, but only a small fraction of the overall time unlike in the
+original problem) using pgbench -i -s20 schema.
+
+
+explain analyze select aid from generate_series('2022-02-25
+14:00:00'::timestamp, '2022-02-25 15:00:00'::timestamp, interval '5min')
+f(t) join pgbench_accounts on extract(epoch from (now()-t))*1000 < aid;
+
+
+                                                                            
+   QUERY PLAN                                                               
+                 
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=0.43..67869958.43 rows=666666667 width=4) (actual
+time=16825.375..16825.378 rows=0 loops=1)
+   Join Filter: ((date_part('epoch'::text, (now() - (f.t)::timestamp with
+time zone)) * '1000'::double precision) < (pgbench_accounts.aid)::double
+precision)
+   Rows Removed by Join Filter: 26000000
+   ->  Function Scan on generate_series f  (cost=0.00..10.00 rows=1000
+width=8) (actual time=1060.859..1060.881 rows=13 loops=1)
+   ->  Materialize  (cost=0.43..69761.43 rows=2000000 width=4) (actual
+time=0.009..395.611 rows=2000000 loops=13)
+         ->  Index Only Scan using pgbench_accounts_pkey on pgbench_accounts
+ (cost=0.43..51948.43 rows=2000000 width=4) (actual time=0.043..447.145
+rows=2000000 loops=1)
+               Heap Fetches: 0
+ Planning Time: 0.157 ms
+ JIT:
+   Functions: 8
+   Options: Inlining true, Optimization true, Expressions true, Deforming
+true
+   Timing: Generation 7.150 ms, Inlining 257.488 ms, Optimization 439.004
+ms, Emission 352.708 ms, Total 1056.350 ms
+ Execution Time: 17662.690 ms
+(13 rows)
+
+
+That it takes a second for generate_series to generate 13 rows is of course
+ridiculous, and the time is suspiciously similar to the reported JIT time. 
+If I turn off jit, then the time reported in generate_series drops to
+negligible.  This example is from v12, but I also replicated in v14 and
+v15dev.  The exact timings differ, but the time attributed to the
+generate_series is always very close to that attributed to JIT.
+
+
+

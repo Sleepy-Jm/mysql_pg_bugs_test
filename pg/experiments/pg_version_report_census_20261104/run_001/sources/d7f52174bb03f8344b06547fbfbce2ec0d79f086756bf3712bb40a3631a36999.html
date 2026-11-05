@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17406-71e02820ae79bb40%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-02-15T17:32:33" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17406: Segmentation fault on GiST index after 14.2 upgrade" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17406 Logged by: Victor Yegorov Email address: vyegorov@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>vyegorov(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-15 17:32:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17406-71e02820ae79bb40%40postgresql.org">17406-71e02820ae79bb40@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17406-71e02820ae79bb40%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17406-71e02820ae79bb40%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17406-71e02820ae79bb40%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17406-71e02820ae79bb40%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17406-71e02820ae79bb40%40postgresql.org" selected="selected">2022-02-15 17:32:33 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="cb3a777a-99c7-f671-532d-b828a2223502%40enterprisedb.com">&nbsp;2022-02-15 20:51:47 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  <option value="CAGnEbojzf-uObyWeu1MPNKaYsnL_U2kg48K6Ec43waPRBu3DrQ%40mail.gmail.com">&nbsp;&nbsp;2022-02-16 08:14:49 from Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</option>
+  <option value="CAFBsxsGDb%2BbOVpNxvS3r--sTAKTk8aFHvuNche%3DPmSVK71_mMg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2022-02-16 12:23:43 from John Naylor &lt;john(dot)naylor(at)enterprisedb(dot)com&gt;</option>
+  <option value="788a0a51-b1e3-3601-5783-3f6488796ec4%40enterprisedb.com">&nbsp;&nbsp;&nbsp;2022-02-17 00:16:47 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  <option value="CAH2-WzkTvnAfAMLfo5Rs%2Bxn0Jnhf4riRt0Q6gu%3D_H1NO1XJJxQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2022-02-17 02:52:40 from Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</option>
+  <option value="c0c903ee-d53f-9e78-7e3b-1fee2e69922f%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-17 12:26:30 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  <option value="78098996-ca5e-a2ce-ae33-68ec8648ccc7%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-17 16:29:37 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  <option value="4eac5413-4267-d8e2-4d94-205d5256c498%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;2022-02-17 16:35:00 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  <option value="CAGnEboiQ-cnhXceFa9WfXk7y06fuVVsf9WcmEdPerjqth8QJxA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2022-02-21 17:57:00 from Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="c733dae0-15ba-bcdd-e465-1a9f2fdefebf%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-23 15:36:32 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  <option value="e544c795-2c7a-e662-19d2-e34da12bfa66%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-23 15:41:22 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  <option value="14ac4567-3285-f549-67df-debaeab7719f%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-24 15:18:50 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  <option value="5cd74597-f555-d4e1-4dc2-d399180bb8cc%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-24 18:36:40 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;	&#x1f4ce;</option>
+  <option value="6bc7e8a7-382f-9d8d-8b8d-9c6607f7fa15%40enterprisedb.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-24 21:17:27 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202150000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17406<br>Logged by:          Victor Yegorov<br>Email address:      vyegorov(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Ubuntu 18.04.6 LTS (bionic)<br>Description:        </p>
+
+<p>KVM guest, on Intel(R) Xeon(R) CPU E5-2697 v2.</p>
+
+<p>PostgreSQL 12.9 had been upgraded to 14.2 using</p>
+
+<p>pg_upgradecluster -k  -m link 12 main /mnt/postgres/14/</p>
+
+<p>After that, one of the queries is crashing with Segmentation Fault.<br>However, after REINDEX problem will be fixed. I thought I should report<br>still.</p>
+
+<p>explain<br>SELECT r.id, r.name, r.map_center_y, r.map_center_x,<br>       COALESCE ((SELECT string_agg(id::TEXT, &#x27;,&#x27;) FROM v3_region AS r2<br>WHERE r2.id != r.id AND r2.ltree_path &lt;@ r.ltree_path), &#x27;&#x27;) AS children<br>  FROM v3_region AS r;<br>                                                 QUERY PLAN<br>-------------------------------------------------------------------------------------------------------------<br> Seq Scan on v3_region r  (cost=0.00..3207.31 rows=349 width=580)<br>   SubPlan 1<br>     -&gt;  Aggregate  (cost=8.17..8.18 rows=1 width=32)<br>           -&gt;  Index Scan using region_ltree_path_idx_gist on v3_region r2 <br>(cost=0.14..8.16 rows=1 width=4)<br>                 Index Cond: (ltree_path &lt;@ r.ltree_path)<br>                 Filter: (id &lt;&gt; r.id)<br>(6 rows)</p>
+
+<p>Here is backtrace:<br>#0  __memmove_sse2_unaligned_erms () at<br>../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:435<br>#1  0x00007f129244c266 in memcpy (__len=&lt;optimized out&gt;,<br>__src=0x55bbbd430f4a, __dest=&lt;optimized out&gt;) at<br>/usr/include/x86_64-linux-gnu/bits/string_fortified.h:34<br>#2  copy_ltree (src=0x55bbbd430f4a) at<br>./build/../contrib/ltree/ltree_gist.c:446<br>#3  0x00007f129244db51 in gist_ischild (siglen=28, query=0x55bbbd410cb8,<br>key=0x55bbbd430f18) at ./build/../contrib/ltree/ltree_gist.c:454<br>#4  ltree_consistent (fcinfo=0x7ffdac2e3e20) at<br>./build/../contrib/ltree/ltree_gist.c:674<br>#5  0x000055bbbb944a5d in FunctionCall5Coll<br>(flinfo=flinfo(at)entry=0x55bbbd416b20, collation=&lt;optimized out&gt;,<br>arg1=arg1(at)entry=140727492165472, arg2=&lt;optimized out&gt;, arg3=&lt;optimized out&gt;,<br>arg4=&lt;optimized out&gt;, arg5=140727492165471)<br>    at ./build/../src/backend/utils/fmgr/fmgr.c:1241<br>#6  0x000055bbbb4db72d in gistindex_keytest (recheck_distances_p=&lt;synthetic<br>pointer&gt;, recheck_p=&lt;synthetic pointer&gt;, offset=4, page=0x7f1293a45180<br>&quot;K\313\003&quot;, tuple=0x7f1293a47058, scan=0x55bbbd4196c8)<br>    at ./build/../src/backend/access/gist/gistget.c:222<br>#7  gistScanPage (scan=scan(at)entry=0x55bbbd4196c8,<br>pageItem=pageItem(at)entry=0x7ffdac2e3fe0, myDistances=myDistances(at)entry=0x0,<br>tbm=tbm(at)entry=0x0, ntids=ntids(at)entry=0x0) at<br>./build/../src/backend/access/gist/gistget.c:438<br>#8  0x000055bbbb4dbf43 in gistgettuple (scan=0x55bbbd4196c8, dir=&lt;optimized<br>out&gt;) at ./build/../src/backend/access/gist/gistget.c:639<br>#9  0x000055bbbb50cb05 in index_getnext_tid (scan=0x55bbbd4196c8,<br>direction=&lt;optimized out&gt;) at<br>./build/../src/backend/access/index/indexam.c:533<br>#10 0x000055bbbb50ccbd in index_getnext_slot<br>(scan=scan(at)entry=0x55bbbd4196c8,<br>direction=direction(at)entry=ForwardScanDirection,<br>slot=slot(at)entry=0x55bbbd4057a0) at<br>./build/../src/backend/access/index/indexam.c:625<br>#11 0x000055bbbb6a3042 in IndexNext (node=node(at)entry=0x55bbbd405500) at<br>./build/../src/backend/executor/nodeIndexscan.c:133<br>#12 0x000055bbbb688281 in ExecScanFetch (recheckMtd=0x55bbbb6a38a0<br>&lt;IndexRecheck&gt;, accessMtd=0x55bbbb6a2fd0 &lt;IndexNext&gt;, node=0x55bbbd405500)<br>at ./build/../src/backend/executor/execScan.c:133<br>#13 ExecScan (node=0x55bbbd405500, accessMtd=0x55bbbb6a2fd0 &lt;IndexNext&gt;,<br>recheckMtd=0x55bbbb6a38a0 &lt;IndexRecheck&gt;) at<br>./build/../src/backend/executor/execScan.c:199<br>#14 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd405500) at<br>./build/../src/backend/executor/execProcnode.c:479<br>#15 0x000055bbbb68fb9c in ExecProcNode (node=0x55bbbd405500) at<br>./build/../src/include/executor/executor.h:257<br>#16 fetch_input_tuple (aggstate=aggstate(at)entry=0x55bbbd404ed8) at<br>./build/../src/backend/executor/nodeAgg.c:581<br>#17 0x000055bbbb692c19 in agg_retrieve_direct (aggstate=0x55bbbd404ed8) at<br>./build/../src/backend/executor/nodeAgg.c:2364<br>#18 ExecAgg (pstate=0x55bbbd404ed8) at<br>./build/../src/backend/executor/nodeAgg.c:2179<br>#19 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd404ed8) at<br>./build/../src/backend/executor/execProcnode.c:479<br>#20 0x000055bbbb6b14a1 in ExecProcNode (node=0x55bbbd404ed8) at<br>./build/../src/include/executor/executor.h:257<br>#21 ExecScanSubPlan (isNull=0x55bbbd4153dd, econtext=0x55bbbd414c00,<br>node=0x55bbbd415c70) at ./build/../src/backend/executor/nodeSubplan.c:323<br>#22 ExecSubPlan (node=node(at)entry=0x55bbbd415c70,<br>econtext=econtext(at)entry=0x55bbbd414c00, isNull=0x55bbbd4153dd) at<br>./build/../src/backend/executor/nodeSubplan.c:89<br>#23 0x000055bbbb678ebd in ExecEvalSubPlan (state=state(at)entry=0x55bbbd4153d8,<br>op=op(at)entry=0x55bbbd415618, econtext=econtext(at)entry=0x55bbbd414c00) at<br>./build/../src/backend/executor/execExprInterp.c:3932<br>#24 0x000055bbbb679b42 in ExecInterpExpr (state=0x55bbbd4153d8,<br>econtext=0x55bbbd414c00, isnull=&lt;optimized out&gt;) at<br>./build/../src/backend/executor/execExprInterp.c:1564<br>#25 0x000055bbbb6883d2 in ExecEvalExprSwitchContext (isNull=0x7ffdac2e4457,<br>econtext=0x55bbbd414c00, state=0x55bbbd4153d8) at<br>./build/../src/include/executor/executor.h:339<br>#26 ExecProject (projInfo=0x55bbbd4153d0) at<br>./build/../src/include/executor/executor.h:373<br>#27 ExecScan (node=&lt;optimized out&gt;, accessMtd=0x55bbbb6afe20 &lt;SeqNext&gt;,<br>recheckMtd=0x55bbbb6afdf0 &lt;SeqRecheck&gt;) at<br>./build/../src/backend/executor/execScan.c:238<br>#28 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd414af0) at<br>./build/../src/backend/executor/execProcnode.c:479<br>#29 0x000055bbbb67e34d in ExecProcNode (node=0x55bbbd414af0) at<br>./build/../src/include/executor/executor.h:257<br>#30 ExecutePlan (execute_once=&lt;optimized out&gt;, dest=0x55bbbbdbf260<br>&lt;donothingDR&gt;, direction=&lt;optimized out&gt;, numberTuples=0,<br>sendTuples=&lt;optimized out&gt;, operation=CMD_SELECT,<br>use_parallel_mode=&lt;optimized out&gt;, planstate=0x55bbbd414af0,<br>    estate=0x55bbbd404c58) at<br>./build/../src/backend/executor/execMain.c:1551<br>#31 standard_ExecutorRun (queryDesc=0x55bbbd4037c8, direction=&lt;optimized<br>out&gt;, count=0, execute_once=&lt;optimized out&gt;) at<br>./build/../src/backend/executor/execMain.c:361<br>#32 0x00007f13269e0595 in pgss_ExecutorRun (queryDesc=0x55bbbd4037c8,<br>direction=ForwardScanDirection, count=0, execute_once=&lt;optimized out&gt;) at<br>./build/../contrib/pg_stat_statements/pg_stat_statements.c:1003<br>#33 0x000055bbbb60c3e8 in ExplainOnePlan<br>(plannedstmt=plannedstmt(at)entry=0x55bbbd402018, into=into(at)entry=0x0,<br>es=es(at)entry=0x55bbbd2e0f78,<br>    queryString=queryString(at)entry=0x55bbbd289148 &quot;explain (analyze, buffers)<br>SELECT\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.id,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;,<br>&quot;r.name,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.map_center_y,\n&quot;, &#x27; &#x27; &lt;repeats 24<br>times&gt;, &quot;r.map_center_x,\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;..., params=params(at)entry=0x0, queryEnv=&lt;optimized out&gt;,<br>planduration=0x7ffdac2e4700, bufusage=0x7ffdac2e4780) at<br>./build/../src/backend/commands/explain.c:593<br>#34 0x000055bbbb60c7da in ExplainOneQuery (query=&lt;optimized out&gt;,<br>cursorOptions=&lt;optimized out&gt;, into=0x0, es=0x55bbbd2e0f78,<br>    queryString=0x55bbbd289148 &quot;explain (analyze, buffers) SELECT\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.id,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.name,\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.map_center_y,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;,<br>&quot;r.map_center_x,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;..., params=0x0, queryEnv=0x0) at<br>./build/../src/backend/commands/explain.c:410<br>#35 0x000055bbbb60ce7d in ExplainQuery (pstate=pstate(at)entry=0x55bbbd3a0230,<br>stmt=stmt(at)entry=0x55bbbd3b7840, params=params(at)entry=0x0,<br>dest=dest(at)entry=0x55bbbd3a01a0) at<br>./build/../src/backend/commands/explain.c:281<br>#36 0x000055bbbb806783 in standard_ProcessUtility<br>(pstmt=pstmt(at)entry=0x55bbbd3b7fa8,<br>    queryString=queryString(at)entry=0x55bbbd289148 &quot;explain (analyze, buffers)<br>SELECT\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.id,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;,<br>&quot;r.name,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.map_center_y,\n&quot;, &#x27; &#x27; &lt;repeats 24<br>times&gt;, &quot;r.map_center_x,\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;..., readOnlyTree=&lt;optimized out&gt;,<br>context=context(at)entry=PROCESS_UTILITY_TOPLEVEL, params=params(at)entry=0x0,<br>queryEnv=queryEnv(at)entry=0x0, dest=0x55bbbd3a01a0, qc=0x7ffdac2e4c70) at<br>./build/../src/backend/tcop/utility.c:862<br>#37 0x00007f13269e2221 in pgss_ProcessUtility (pstmt=0x55bbbd3b7fa8,<br>    queryString=0x55bbbd289148 &quot;explain (analyze, buffers) SELECT\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.id,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.name,\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.map_center_y,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;,<br>&quot;r.map_center_x,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;..., readOnlyTree=&lt;optimized<br>out&gt;, context=PROCESS_UTILITY_TOPLEVEL, params=0x0, queryEnv=0x0,<br>dest=0x55bbbd3a01a0, qc=0x7ffdac2e4c70) at<br>./build/../contrib/pg_stat_statements/pg_stat_statements.c:1135<br>#38 0x000055bbbb804935 in PortalRunUtility<br>(portal=portal(at)entry=0x55bbbd373888, pstmt=0x55bbbd3b7fa8,<br>isTopLevel=isTopLevel(at)entry=true,<br>setHoldSnapshot=setHoldSnapshot(at)entry=true, dest=dest(at)entry=0x55bbbd3a01a0,<br>qc=qc(at)entry=0x7ffdac2e4c70)<br>    at ./build/../src/backend/tcop/pquery.c:1155<br>#39 0x000055bbbb804cab in FillPortalStore<br>(portal=portal(at)entry=0x55bbbd373888, isTopLevel=isTopLevel(at)entry=true) at<br>./build/../src/backend/tcop/pquery.c:1028<br>#40 0x000055bbbb8050bf in PortalRun (portal=portal(at)entry=0x55bbbd373888,<br>count=count(at)entry=9223372036854775807, isTopLevel=isTopLevel(at)entry=true,<br>run_once=run_once(at)entry=true, dest=dest(at)entry=0x55bbbd3cec48,<br>altdest=altdest(at)entry=0x55bbbd3cec48,<br>    qc=0x7ffdac2e4e80) at ./build/../src/backend/tcop/pquery.c:760<br>#41 0x000055bbbb8008e9 in exec_simple_query (<br>    query_string=0x55bbbd289148 &quot;explain (analyze, buffers) SELECT\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.id,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.name,\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.map_center_y,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;,<br>&quot;r.map_center_x,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;...) at<br>./build/../src/backend/tcop/postgres.c:1214<br>#42 0x000055bbbb802c4c in PostgresMain (argc=argc(at)entry=1,<br>argv=argv(at)entry=0x7ffdac2e5340, dbname=&lt;optimized out&gt;, username=&lt;optimized<br>out&gt;) at ./build/../src/backend/tcop/postgres.c:4486<br>#43 0x000055bbbb775e2a in BackendRun (port=&lt;optimized out&gt;, port=&lt;optimized<br>out&gt;) at ./build/../src/backend/postmaster/postmaster.c:4530<br>#44 BackendStartup (port=&lt;optimized out&gt;) at<br>./build/../src/backend/postmaster/postmaster.c:4252<br>#45 ServerLoop () at ./build/../src/backend/postmaster/postmaster.c:1745<br>#46 0x000055bbbb776c68 in PostmasterMain (argc=5, argv=0x55bbbd281d90) at<br>./build/../src/backend/postmaster/postmaster.c:1417<br>#47 0x000055bbbb4af83b in main (argc=5, argv=0x55bbbd281d90) at<br>./build/../src/backend/main/main.c:209</p>
+
+<p>I can reproduce the issue easily, if you need more details.</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/cb3a777a-99c7-f671-532d-b828a2223502%40enterprisedb.com">Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</a> at 2022-02-15 20:51:47 from Tomas Vondra
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/DM8PR02MB7957E9EB0AF94B614520989EF1349%40DM8PR02MB7957.namprd02.prod.outlook.com">Next Message</a></th>
+            <td>Delaney, Ed</td>
+            <td>2022-02-15 18:12:29</td>
+            <td><a href="/message-id/DM8PR02MB7957E9EB0AF94B614520989EF1349%40DM8PR02MB7957.namprd02.prod.outlook.com">Re: Postgres 13.5 out parameter argument with explicit cast fails
+ with argument is not writable</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/3054063.1644944122%40sss.pgh.pa.us">Previous Message</a></th>
+            <td>Tom Lane</td>
+            <td>2022-02-15 16:55:22</td>
+            <td><a href="/message-id/3054063.1644944122%40sss.pgh.pa.us">Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

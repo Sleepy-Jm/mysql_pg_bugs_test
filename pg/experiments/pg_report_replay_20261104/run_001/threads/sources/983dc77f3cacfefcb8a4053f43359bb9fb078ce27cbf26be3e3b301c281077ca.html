@@ -1,0 +1,1942 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17355: Server crashes on ExecReScanForeignScan in postgres_fdw when accessing foreign partition</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17355-de8e362eb7001a96%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-06T08:00:00" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17355: Server crashes on ExecReScanForeignScan in postgres_fdw when accessing foreign partition" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="8a76670f4cec7f2ca340f7d6f5b11a48">BUG #17355: Server crashes on ExecReScanForeignScan in postgres_fdw when accessing foreign partition</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202201060800">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17355-de8e362eb7001a96@postgresql.org"></a>
+<a name="8a76670f4cec7f2ca340f7d6f5b11a48"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17355: Server crashes on ExecReScanForeignScan in postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-06 08:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17355-de8e362eb7001a96%40postgresql.org">17355-de8e362eb7001a96@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17355-de8e362eb7001a96%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17355-de8e362eb7001a96%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17355-de8e362eb7001a96%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17355-de8e362eb7001a96%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17355<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>When running the following script (with 20 concurrent insert/update/delete<br>queries):<br>cat &lt;&lt; &#x27;EOF&#x27; | psql postgres<br>CREATE EXTENSION postgres_fdw;</p>
+
+<p>CREATE SERVER testserver1 FOREIGN DATA WRAPPER postgres_fdw;<br>DO $d$<br>    BEGIN<br>        EXECUTE $$CREATE SERVER loopback FOREIGN DATA WRAPPER postgres_fdw<br>            OPTIONS (dbname &#x27;$$||current_database()||$$&#x27;,<br>                     port &#x27;$$||current_setting(&#x27;port&#x27;)||$$&#x27;<br>            )$$;<br>    END;<br>$d$;</p>
+
+<p>CREATE USER MAPPING FOR CURRENT_USER SERVER loopback;<br>CREATE TABLE async_pt (a int, b int) PARTITION BY RANGE (a);<br>CREATE TABLE base_tbl2 (a int, b int);<br>CREATE FOREIGN TABLE async_p2 PARTITION OF async_pt FOR VALUES FROM (2000)<br>TO (3000)<br>  SERVER loopback OPTIONS (table_name &#x27;base_tbl2&#x27;);<br>CREATE TABLE async_p3 PARTITION OF async_pt FOR VALUES FROM (3000) TO<br>(4000);<br>EOF</p>
+
+<p>for i in `seq 20`; do<br>cat &lt;&lt; &#x27;EOF&#x27; | psql postgres &gt;psql-$i.log &amp;<br>INSERT INTO async_pt SELECT i FROM generate_series(3000, 3100) i;<br>DELETE FROM async_pt;<br>UPDATE async_pt SET a = a;<br>EOF<br>done<br>wait</p>
+
+<p>I get crashes with the following stacktrace:<br>Core was generated by `postgres: law postgres [local] DELETE                <br>                        &#x27;.<br>Program terminated with signal SIGSEGV, Segmentation fault.<br>#0  0x00007f0f438e6c42 in postgresReScanForeignScan (node=0x5580b57f23b8) at<br>postgres_fdw.c:1651<br>1651            if (!fsstate-&gt;cursor_exists)<br>(gdb) bt<br>#0  0x00007f0f438e6c42 in postgresReScanForeignScan (node=0x5580b57f23b8) at<br>postgres_fdw.c:1651<br>#1  0x00005580b4987bf9 in ExecReScanForeignScan (node=0x5580b57f23b8) at<br>nodeForeignscan.c:326<br>#2  0x00005580b4942c0a in ExecReScan (node=0x5580b57f23b8) at<br>execAmi.c:235<br>#3  0x00005580b49815bb in ExecProcNode (node=0x5580b57f23b8) at<br>../../../src/include/executor/executor.h:255<br>#4  0x00005580b4981e3b in ExecAppend (pstate=0x5580b57f1f48) at<br>nodeAppend.c:360<br>#5  0x00005580b4967c88 in ExecProcNodeFirst (node=0x5580b57f1f48) at<br>execProcnode.c:463<br>#6  0x00005580b495b774 in ExecProcNode (node=0x5580b57f1f48) at<br>../../../src/include/executor/executor.h:257<br>#7  0x00005580b4960373 in EvalPlanQualNext (epqstate=0x5580b57cf360) at<br>execMain.c:2612<br>#8  0x00005580b495fc99 in EvalPlanQual (epqstate=0x5580b57cf360,<br>relation=0x7f0f37b3d598, rti=3, <br>    inputslot=0x5580b57d0540) at execMain.c:2383<br>#9  0x00005580b49a70ed in ExecDelete (mtstate=0x5580b57cf278,<br>resultRelInfo=0x5580b57cf5c8, tupleid=0x7ffdf2fa6002, <br>    oldtuple=0x0, planSlot=0x5580b57dc9a8, epqstate=0x5580b57cf360,<br>estate=0x5580b57ceff0, processReturning=true, <br>    canSetTag=true, changingPart=false, tupleDeleted=0x0, epqreturnslot=0x0)<br>at nodeModifyTable.c:1243<br>#10 0x00005580b49a95b3 in ExecModifyTable (pstate=0x5580b57cf278) at<br>nodeModifyTable.c:2599<br>#11 0x00005580b4967c88 in ExecProcNodeFirst (node=0x5580b57cf278) at<br>execProcnode.c:463<br>#12 0x00005580b495b774 in ExecProcNode (node=0x5580b57cf278) at<br>../../../src/include/executor/executor.h:257<br>#13 0x00005580b495e392 in ExecutePlan (estate=0x5580b57ceff0,<br>planstate=0x5580b57cf278, use_parallel_mode=false, <br>    operation=CMD_DELETE, sendTuples=false, numberTuples=0,<br>direction=ForwardScanDirection, dest=0x5580b57dad98, <br>    execute_once=true) at execMain.c:1551<br>#14 0x00005580b495beab in standard_ExecutorRun (queryDesc=0x5580b5711f80,<br>direction=ForwardScanDirection, count=0, <br>    execute_once=true) at execMain.c:361<br>#15 0x00005580b495bc96 in ExecutorRun (queryDesc=0x5580b5711f80,<br>direction=ForwardScanDirection, count=0, <br>    execute_once=true) at execMain.c:305<br>#16 0x00005580b4bd7cf8 in ProcessQuery (plan=0x5580b57d9ac0,<br>sourceText=0x5580b56e9440 &quot;DELETE FROM async_pt;&quot;, <br>    params=0x0, queryEnv=0x0, dest=0x5580b57dad98, qc=0x7ffdf2fa64b0) at<br>pquery.c:160<br>#17 0x00005580b4bd98b7 in PortalRunMulti (portal=0x5580b574d090,<br>isTopLevel=true, setHoldSnapshot=false, <br>    dest=0x5580b57dad98, altdest=0x5580b57dad98, qc=0x7ffdf2fa64b0) at<br>pquery.c:1274<br>#18 0x00005580b4bd8d9d in PortalRun (portal=0x5580b574d090,<br>count=9223372036854775807, isTopLevel=true, run_once=true, <br>    dest=0x5580b57dad98, altdest=0x5580b57dad98, qc=0x7ffdf2fa64b0) at<br>pquery.c:788<br>#19 0x00005580b4bd1bd9 in exec_simple_query (query_string=0x5580b56e9440<br>&quot;DELETE FROM async_pt;&quot;) at postgres.c:1214<br>#20 0x00005580b4bd6ac8 in PostgresMain (argc=1, argv=0x7ffdf2fa66d0,<br>dbname=0x5580b5714f78 &quot;postgres&quot;, <br>    username=0x5580b5714f58 &quot;law&quot;) at postgres.c:4486<br>#21 0x00005580b4afb357 in BackendRun (port=0x5580b570dab0) at<br>postmaster.c:4530<br>#22 0x00005580b4afabb2 in BackendStartup (port=0x5580b570dab0) at<br>postmaster.c:4252<br>#23 0x00005580b4af69a7 in ServerLoop () at postmaster.c:1745<br>#24 0x00005580b4af6104 in PostmasterMain (argc=3, argv=0x5580b56e34b0) at<br>postmaster.c:1417<br>#25 0x00005580b49e566a in main (argc=3, argv=0x5580b56e34b0) at main.c:209</p>
+
+<p>postmaster.log contains:<br>2022-01-06 10:46:20.145 MSK [403022] ERROR:  cannot re-evaluate a Foreign<br>Update or Delete during EvalPlanQual<br>2022-01-06 10:46:20.145 MSK [403022] STATEMENT:  UPDATE async_pt SET a =<br>a;<br>2022-01-06 10:46:20.320 MSK [403059] LOG:  unexpected EOF on client<br>connection with an open transaction<br>2022-01-06 10:46:20.320 MSK [402977] LOG:  server process (PID 403043) was<br>terminated by signal 11: Segmentation fault<br>2022-01-06 10:46:20.320 MSK [402977] DETAIL:  Failed process was running:<br>DELETE FROM async_pt;</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK14vYHWFLg=Lninw8W37gRsEzuwteemZfzkXqV8+g_qJ8A@mail.gmail.com"></a>
+<a name="df07e8fd6bbc8b806c8f4f086f9909ea"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>exclusion(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-06 09:56:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK14vYHWFLg%3DLninw8W37gRsEzuwteemZfzkXqV8%2Bg_qJ8A%40mail.gmail.com">CAPmGK14vYHWFLg=Lninw8W37gRsEzuwteemZfzkXqV8+g_qJ8A@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK14vYHWFLg%3DLninw8W37gRsEzuwteemZfzkXqV8%2Bg_qJ8A%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK14vYHWFLg%3DLninw8W37gRsEzuwteemZfzkXqV8%2Bg_qJ8A%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK14vYHWFLg%3DLninw8W37gRsEzuwteemZfzkXqV8%2Bg_qJ8A%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK14vYHWFLg%3DLninw8W37gRsEzuwteemZfzkXqV8%2Bg_qJ8A%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Jan 6, 2022 at 5:25 PM PG Bug reporting form<br>&lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt; When running the following script (with 20 concurrent insert/update/delete<br>&gt; queries):<br>&gt; cat &lt;&lt; &#x27;EOF&#x27; | psql postgres<br>&gt; CREATE EXTENSION postgres_fdw;<br>&gt;<br>&gt; CREATE SERVER testserver1 FOREIGN DATA WRAPPER postgres_fdw;<br>&gt; DO $d$<br>&gt;     BEGIN<br>&gt;         EXECUTE $$CREATE SERVER loopback FOREIGN DATA WRAPPER postgres_fdw<br>&gt;             OPTIONS (dbname &#x27;$$||current_database()||$$&#x27;,<br>&gt;                      port &#x27;$$||current_setting(&#x27;port&#x27;)||$$&#x27;<br>&gt;             )$$;<br>&gt;     END;<br>&gt; $d$;<br>&gt;<br>&gt; CREATE USER MAPPING FOR CURRENT_USER SERVER loopback;<br>&gt; CREATE TABLE async_pt (a int, b int) PARTITION BY RANGE (a);<br>&gt; CREATE TABLE base_tbl2 (a int, b int);<br>&gt; CREATE FOREIGN TABLE async_p2 PARTITION OF async_pt FOR VALUES FROM (2000)<br>&gt; TO (3000)<br>&gt;   SERVER loopback OPTIONS (table_name &#x27;base_tbl2&#x27;);<br>&gt; CREATE TABLE async_p3 PARTITION OF async_pt FOR VALUES FROM (3000) TO<br>&gt; (4000);<br>&gt; EOF<br>&gt;<br>&gt; for i in `seq 20`; do<br>&gt; cat &lt;&lt; &#x27;EOF&#x27; | psql postgres &gt;psql-$i.log &amp;<br>&gt; INSERT INTO async_pt SELECT i FROM generate_series(3000, 3100) i;<br>&gt; DELETE FROM async_pt;<br>&gt; UPDATE async_pt SET a = a;<br>&gt; EOF<br>&gt; done<br>&gt; wait<br>&gt;<br>&gt; I get crashes with the following stacktrace:</p>
+
+<p>I haven&#x27;t tried to reproduce this yet, but I have one question: did<br>you set the async_capable option to true?</p>
+
+<p>Thanks for the report!</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="9a8d0f3f-430d-024c-09f5-88a7519e9495@gmail.com"></a>
+<a name="12ba373476138780f89eb67a5b076e19"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-06 12:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/9a8d0f3f-430d-024c-09f5-88a7519e9495%40gmail.com">9a8d0f3f-430d-024c-09f5-88a7519e9495@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/9a8d0f3f-430d-024c-09f5-88a7519e9495%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/9a8d0f3f-430d-024c-09f5-88a7519e9495%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/9a8d0f3f-430d-024c-09f5-88a7519e9495%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/9a8d0f3f-430d-024c-09f5-88a7519e9495%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>06.01.2022 12:56, Etsuro Fujita wrote:<br>&gt; I haven&#x27;t tried to reproduce this yet, but I have one question: did<br>&gt; you set the async_capable option to true?<br>The async_capable setting doesn&#x27;t affect this, so I&#x27;ve filed it as a<br>separate bug report.<br>All the other parameters have default values in my setup.</p>
+
+<p>Best regards,<br>Alexander</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK16g9M1gBTQc2g6W4mYPcGdVWyJMcTbd=MB+huktgZciUg@mail.gmail.com"></a>
+<a name="ff75aa10ff59c1f9685b408b1d277a01"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-07 06:19:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK16g9M1gBTQc2g6W4mYPcGdVWyJMcTbd%3DMB%2BhuktgZciUg%40mail.gmail.com">CAPmGK16g9M1gBTQc2g6W4mYPcGdVWyJMcTbd=MB+huktgZciUg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK16g9M1gBTQc2g6W4mYPcGdVWyJMcTbd%3DMB%2BhuktgZciUg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK16g9M1gBTQc2g6W4mYPcGdVWyJMcTbd%3DMB%2BhuktgZciUg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK16g9M1gBTQc2g6W4mYPcGdVWyJMcTbd%3DMB%2BhuktgZciUg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK16g9M1gBTQc2g6W4mYPcGdVWyJMcTbd%3DMB%2BhuktgZciUg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Jan 6, 2022 at 9:00 PM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt; 06.01.2022 12:56, Etsuro Fujita wrote:<br>&gt; &gt; I haven&#x27;t tried to reproduce this yet, but I have one question: did<br>&gt; &gt; you set the async_capable option to true?</p>
+
+<p>&gt; The async_capable setting doesn&#x27;t affect this, so I&#x27;ve filed it as a<br>&gt; separate bug report.<br>&gt; All the other parameters have default values in my setup.</p>
+
+<p>Ok, thanks!</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK16=dfQEJKthRHOXcP5QbzCP8T_fiJng6xdBrxeWSDwcYA@mail.gmail.com"></a>
+<a name="a0b9295174acf45335fc0068d347cc29"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-18 08:01:27</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK16%3DdfQEJKthRHOXcP5QbzCP8T_fiJng6xdBrxeWSDwcYA%40mail.gmail.com">CAPmGK16=dfQEJKthRHOXcP5QbzCP8T_fiJng6xdBrxeWSDwcYA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK16%3DdfQEJKthRHOXcP5QbzCP8T_fiJng6xdBrxeWSDwcYA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK16%3DdfQEJKthRHOXcP5QbzCP8T_fiJng6xdBrxeWSDwcYA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK16%3DdfQEJKthRHOXcP5QbzCP8T_fiJng6xdBrxeWSDwcYA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK16%3DdfQEJKthRHOXcP5QbzCP8T_fiJng6xdBrxeWSDwcYA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201180000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Jan 7, 2022 at 3:19 PM Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt; wrote:<br>&gt; On Thu, Jan 6, 2022 at 9:00 PM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; 06.01.2022 12:56, Etsuro Fujita wrote:<br>&gt; &gt; &gt; I haven&#x27;t tried to reproduce this yet</p>
+
+<p>I think a simple reproducer for this issue is:</p>
+
+<p>1) Define the partitioned table async_pt as shown by Alexander.<br>2) Run concurrent transactions as follows.</p>
+
+<p>Session A: insert into async_pt values (3000);<br>Session A: begin;<br>Session A: update async_pt set a = a;<br>Session B: delete from async_pt;<br>Session A: commit;</p>
+
+<p>The commit in Session A would cause a server crash in Session B due to<br>the segmentation fault.</p>
+
+<p>Also, I think a simple reproducer for the “cannot re-evaluate a<br>Foreign Update or Delete during EvalPlanQual” error is:</p>
+
+<p>1) Define the partitioned table async_pt as shown by Alexander.<br>2) Run concurrent transactions as follows.</p>
+
+<p>Session A: insert into async_pt values (3000);<br>Session A: begin;<br>Session A: update async_pt set a = a;<br>Session B: update async_pt set a = a;<br>Session A: commit;</p>
+
+<p>The commit in Session A would cause the transaction in Session B to<br>abort with that error.</p>
+
+<p>I think the root cause of these issues is that because of the rework<br>for inherited UPDATE/DELETE in commit 86dc90056, ForeignScan nodes<br>doing direct modifications are re-evaluated as part of the<br>EvalPlanQual subtree when doing an EvalPlanQual check, which breaks<br>the assumption that those ForeignScan nodes should never be<br>re-evaluated by EvalPlanQual, leading to these issues.  To fix, I’d<br>like to propose to ignore those ForeignScan nodes in<br>ExecForeignScan/ExecReScanForeignScan when doing that recheck, like<br>the attached.</p>
+
+<p>Best regards,<br>Etsuro Fujita<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/129975/fix-EPQ-handling-for-direct-modifications.patch">fix-EPQ-handling-for-direct-modifications.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>2.0 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="c8b6f183-0cc1-feb4-8bfc-361c35983d8e@gmail.com"></a>
+<a name="53c2b1ce2a3040a2d60108d5e696ace5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-24 18:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/c8b6f183-0cc1-feb4-8bfc-361c35983d8e%40gmail.com">c8b6f183-0cc1-feb4-8bfc-361c35983d8e@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/c8b6f183-0cc1-feb4-8bfc-361c35983d8e%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/c8b6f183-0cc1-feb4-8bfc-361c35983d8e%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/c8b6f183-0cc1-feb4-8bfc-361c35983d8e%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/c8b6f183-0cc1-feb4-8bfc-361c35983d8e%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello Etsura-san,<br>18.01.2022 11:01, Etsuro Fujita wrote:<br>&gt; On Fri, Jan 7, 2022 at 3:19 PM Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt; wrote:<br>&gt;&gt; On Thu, Jan 6, 2022 at 9:00 PM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt;&gt;&gt; 06.01.2022 12:56, Etsuro Fujita wrote:<br>&gt;&gt;&gt;&gt; I haven&#x27;t tried to reproduce this yet<br>&gt; I think a simple reproducer for this issue is:<br>&gt;<br>&gt; 1) Define the partitioned table async_pt as shown by Alexander.<br>&gt; 2) Run concurrent transactions as follows.<br>&gt;<br>&gt; Session A: insert into async_pt values (3000);<br>&gt; Session A: begin;<br>&gt; Session A: update async_pt set a = a;<br>&gt; Session B: delete from async_pt;<br>&gt; Session A: commit;<br>&gt;<br>&gt; The commit in Session A would cause a server crash in Session B due to<br>&gt; the segmentation fault.<br>&gt;<br>&gt; Also, I think a simple reproducer for the “cannot re-evaluate a<br>&gt; Foreign Update or Delete during EvalPlanQual” error is:<br>&gt;<br>&gt; 1) Define the partitioned table async_pt as shown by Alexander.<br>&gt; 2) Run concurrent transactions as follows.<br>&gt;<br>&gt; Session A: insert into async_pt values (3000);<br>&gt; Session A: begin;<br>&gt; Session A: update async_pt set a = a;<br>&gt; Session B: update async_pt set a = a;<br>&gt; Session A: commit;<br>&gt;<br>&gt; The commit in Session A would cause the transaction in Session B to<br>&gt; abort with that error.<br>Thanks for the explanation and the fix!<br>I&#x27;ve made a simple isolation test (see attachment) to confirm this. And<br>it crashes without the fix as you said.<br>With your fix it works as expected (I was wondering how &quot;plan-&gt;operation<br>!= CMD_SELECT&quot; with RETURNING will work and I haven&#x27;t seen any issues yet.)</p>
+
+<p>(Besides that I&#x27;ve observed an infinite waiting for ShareLock with<br>step &quot;s1i&quot; { INSERT INTO pt VALUES (2000); }<br>This doesn&#x27;t happen with a regular (not foreign) table.)</p>
+
+<p>Best regards,<br>Alexander<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/130263/test-for-bug-17355.patch">test-for-bug-17355.patch</a>
+            
+          </th>
+          <td>text/x-patch</td>
+          <td>2.6 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK14sWcZ9wsuCY3pU5uguK2bj2GD=LjE7udCCikFDgSetkg@mail.gmail.com"></a>
+<a name="84f308512ccba6fa8b241c4208af78b5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-30 10:59:19</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK14sWcZ9wsuCY3pU5uguK2bj2GD%3DLjE7udCCikFDgSetkg%40mail.gmail.com">CAPmGK14sWcZ9wsuCY3pU5uguK2bj2GD=LjE7udCCikFDgSetkg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK14sWcZ9wsuCY3pU5uguK2bj2GD%3DLjE7udCCikFDgSetkg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK14sWcZ9wsuCY3pU5uguK2bj2GD%3DLjE7udCCikFDgSetkg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK14sWcZ9wsuCY3pU5uguK2bj2GD%3DLjE7udCCikFDgSetkg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK14sWcZ9wsuCY3pU5uguK2bj2GD%3DLjE7udCCikFDgSetkg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201300000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi Alexander,</p>
+
+<p>On Tue, Jan 25, 2022 at 3:00 AM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt; I&#x27;ve made a simple isolation test (see attachment) to confirm this. And<br>&gt; it crashes without the fix as you said.<br>&gt; With your fix it works as expected</p>
+
+<p>Thanks for testing!</p>
+
+<p>&gt; (I was wondering how &quot;plan-&gt;operation<br>&gt; != CMD_SELECT&quot; with RETURNING will work and I haven&#x27;t seen any issues yet.)</p>
+
+<p>EvalPlanQual rechecking is irrelevant for direct modifications even<br>when the UPDATE/DELETE query has a RETURNING clause; in which case we<br>compute the RETURNING expressions locally, but that is done *after*<br>updating/deleting foreign rows on the remote side.</p>
+
+<p>&gt; (Besides that I&#x27;ve observed an infinite waiting for ShareLock with<br>&gt; step &quot;s1i&quot; { INSERT INTO pt VALUES (2000); }<br>&gt; This doesn&#x27;t happen with a regular (not foreign) table.)</p>
+
+<p>You mean the lock wait occurs on the remote side, not on the local<br>side?  If so, I think that that is expected behavior because a write<br>conflict occurs on the remote side in that case.  Maybe I don’t fully<br>understand your words, so could you elaborate a bit more on your<br>observation?</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="dd9788a6-5078-408b-df81-9bd70698dd56@gmail.com"></a>
+<a name="e350792e83ae56de7010260d561ff8f1"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-01 04:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/dd9788a6-5078-408b-df81-9bd70698dd56%40gmail.com">dd9788a6-5078-408b-df81-9bd70698dd56@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/dd9788a6-5078-408b-df81-9bd70698dd56%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/dd9788a6-5078-408b-df81-9bd70698dd56%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/dd9788a6-5078-408b-df81-9bd70698dd56%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/dd9788a6-5078-408b-df81-9bd70698dd56%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202010000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello Etsuro-san,</p>
+
+<p>30.01.2022 13:59, Etsuro Fujita wrote:<br>&gt;&gt; (Besides that I&#x27;ve observed an infinite waiting for ShareLock with<br>&gt;&gt; step &quot;s1i&quot; { INSERT INTO pt VALUES (2000); }<br>&gt;&gt; This doesn&#x27;t happen with a regular (not foreign) table.)<br>&gt; You mean the lock wait occurs on the remote side, not on the local<br>&gt; side?  If so, I think that that is expected behavior because a write<br>&gt; conflict occurs on the remote side in that case.  Maybe I don’t fully<br>&gt; understand your words, so could you elaborate a bit more on your<br>&gt; observation?<br>Yes, you are right, that was expected behavior. I didn&#x27;t realize that<br>the isolationtester itself resolves blocking when the target table is local.<br>The isolationtester controls the step execution using<br>pg_isolation_test_session_is_blocked(), but when the target table is<br>foreign, it can not determine correctly whether one step blocking other<br>(cause it checks local, not remote session pids) and just hangs.<br>Sorry for the noise.</p>
+
+<p>Best regards,<br>Alexander</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK166WGTskmduTR+N7enYDUGrtvmVLZPn0ak_gk3gcYTaCQ@mail.gmail.com"></a>
+<a name="0b2d4007ebb2c34c11cefef6388765da"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-01 08:59:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK166WGTskmduTR%2BN7enYDUGrtvmVLZPn0ak_gk3gcYTaCQ%40mail.gmail.com">CAPmGK166WGTskmduTR+N7enYDUGrtvmVLZPn0ak_gk3gcYTaCQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK166WGTskmduTR%2BN7enYDUGrtvmVLZPn0ak_gk3gcYTaCQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK166WGTskmduTR%2BN7enYDUGrtvmVLZPn0ak_gk3gcYTaCQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK166WGTskmduTR%2BN7enYDUGrtvmVLZPn0ak_gk3gcYTaCQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK166WGTskmduTR%2BN7enYDUGrtvmVLZPn0ak_gk3gcYTaCQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202010000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi Alexander,</p>
+
+<p>On Tue, Feb 1, 2022 at 1:00 PM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt; 30.01.2022 13:59, Etsuro Fujita wrote:<br>&gt; &gt;&gt; (Besides that I&#x27;ve observed an infinite waiting for ShareLock with<br>&gt; &gt;&gt; step &quot;s1i&quot; { INSERT INTO pt VALUES (2000); }<br>&gt; &gt;&gt; This doesn&#x27;t happen with a regular (not foreign) table.)<br>&gt; &gt; You mean the lock wait occurs on the remote side, not on the local<br>&gt; &gt; side?  If so, I think that that is expected behavior because a write<br>&gt; &gt; conflict occurs on the remote side in that case.  Maybe I don’t fully<br>&gt; &gt; understand your words, so could you elaborate a bit more on your<br>&gt; &gt; observation?<br>&gt; Yes, you are right, that was expected behavior. I didn&#x27;t realize that<br>&gt; the isolationtester itself resolves blocking when the target table is local.<br>&gt; The isolationtester controls the step execution using<br>&gt; pg_isolation_test_session_is_blocked(), but when the target table is<br>&gt; foreign, it can not determine correctly whether one step blocking other<br>&gt; (cause it checks local, not remote session pids) and just hangs.</p>
+
+<p>Ok, thanks for the explanation!</p>
+
+<p>Attached is an updated patch.  I tweaked a comment a little bit and<br>added the commit message.  I didn’t include your test because in my<br>understanding we don’t add such a test into the postgres_fdw<br>regression test.  I’ll commit the patch if there are no objections<br>from you (or anyone else).</p>
+
+<p>Best regards,<br>Etsuro Fujita<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/130545/0001-Further-fix-for-EvalPlanQual-with-mix-of-local-and-f.patch">0001-Further-fix-for-EvalPlanQual-with-mix-of-local-and-f.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>3.7 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="baf788f0-fba2-fd27-8ffb-37718de6f07a@gmail.com"></a>
+<a name="5ab9a2df390a779fd2b561404d6d0603"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-01 18:00:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/baf788f0-fba2-fd27-8ffb-37718de6f07a%40gmail.com">baf788f0-fba2-fd27-8ffb-37718de6f07a@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/baf788f0-fba2-fd27-8ffb-37718de6f07a%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/baf788f0-fba2-fd27-8ffb-37718de6f07a%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/baf788f0-fba2-fd27-8ffb-37718de6f07a%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/baf788f0-fba2-fd27-8ffb-37718de6f07a%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202010000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>01.02.2022 11:59, Etsuro Fujita wrote:<br>&gt; Attached is an updated patch.  I tweaked a comment a little bit and<br>&gt; added the commit message.  I didn’t include your test because in my<br>&gt; understanding we don’t add such a test into the postgres_fdw<br>&gt; regression test.  I’ll commit the patch if there are no objections<br>&gt; from you (or anyone else).<br>Thank you! I have no objections.<br>That test was not intended for committing, I just wanted to show how<br>I&#x27;ve tested the fix.</p>
+
+<p>Best regards,<br>Alexander</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CA+HiwqFt2oAc9b12ba32H1_TULpShmHz26V1W3TiAFzpeBf1jA@mail.gmail.com"></a>
+<a name="bf8d0e64268f9ce0c6bb08d7b844c546"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-02 03:59:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CA%2BHiwqFt2oAc9b12ba32H1_TULpShmHz26V1W3TiAFzpeBf1jA%40mail.gmail.com">CA+HiwqFt2oAc9b12ba32H1_TULpShmHz26V1W3TiAFzpeBf1jA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CA%2BHiwqFt2oAc9b12ba32H1_TULpShmHz26V1W3TiAFzpeBf1jA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CA%2BHiwqFt2oAc9b12ba32H1_TULpShmHz26V1W3TiAFzpeBf1jA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CA%2BHiwqFt2oAc9b12ba32H1_TULpShmHz26V1W3TiAFzpeBf1jA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CA%2BHiwqFt2oAc9b12ba32H1_TULpShmHz26V1W3TiAFzpeBf1jA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202020000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Feb 1, 2022 at 5:58 PM Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt; wrote:<br>&gt; Hi Alexander,<br>&gt;<br>&gt; On Tue, Feb 1, 2022 at 1:00 PM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; 30.01.2022 13:59, Etsuro Fujita wrote:<br>&gt; &gt; &gt;&gt; (Besides that I&#x27;ve observed an infinite waiting for ShareLock with<br>&gt; &gt; &gt;&gt; step &quot;s1i&quot; { INSERT INTO pt VALUES (2000); }<br>&gt; &gt; &gt;&gt; This doesn&#x27;t happen with a regular (not foreign) table.)<br>&gt; &gt; &gt; You mean the lock wait occurs on the remote side, not on the local<br>&gt; &gt; &gt; side?  If so, I think that that is expected behavior because a write<br>&gt; &gt; &gt; conflict occurs on the remote side in that case.  Maybe I don’t fully<br>&gt; &gt; &gt; understand your words, so could you elaborate a bit more on your<br>&gt; &gt; &gt; observation?<br>&gt; &gt; Yes, you are right, that was expected behavior. I didn&#x27;t realize that<br>&gt; &gt; the isolationtester itself resolves blocking when the target table is local.<br>&gt; &gt; The isolationtester controls the step execution using<br>&gt; &gt; pg_isolation_test_session_is_blocked(), but when the target table is<br>&gt; &gt; foreign, it can not determine correctly whether one step blocking other<br>&gt; &gt; (cause it checks local, not remote session pids) and just hangs.<br>&gt;<br>&gt; Ok, thanks for the explanation!<br>&gt;<br>&gt; Attached is an updated patch.  I tweaked a comment a little bit and<br>&gt; added the commit message.  I didn’t include your test because in my<br>&gt; understanding we don’t add such a test into the postgres_fdw<br>&gt; regression test.  I’ll commit the patch if there are no objections<br>&gt; from you (or anyone else).</p>
+
+<p>Thank you for working on this and sorry about failing to reply to this sooner.</p>
+
+<p>Your proposed fix makes sense.</p>
+
+<p>I was trying to understand in what way commit 86dc90056&#x27;s is related<br>to this, because you mention it here in the thread and also in the<br>commit message.  I see that c3928b467, also mentioned in your commit<br>message, fixed a related bug [1], which in turn refers to 1375422c as<br>the cause [2].  c3928b467 fixed things so that BeginDirectModify()<br>won&#x27;t get called if EPQ is active, so fdw_state won&#x27;t get set.  Given<br>that, it also fixed ForeignNext() to not enter the FDW to perform a<br>non-SELECT operation in the EPQ-active case, which made sure its<br>caller Exec[Foreign]Scan() won&#x27;t enter the FDW in that case.  Though<br>it didn&#x27;t also fix ExecReScan[ForeignScan](), so this bug report.<br>Your patch fixes both ExecForeignScan() and ExecReScanForeignScan() to<br>not enter the FDW during EvalPlanQual() in non-SELECT cases.</p>
+
+<p>Before commit 86dc90056, EPQState.plan would be set to the 1st child<br>subplan, which if it happened to be a direct-modify ForeignScan node,<br>this bug would manifest.  After that commit though, a direct-modify<br>child subplan would *always* be present in EPQState.plan by way of its<br>parent Append node or some parent node thereof being set as<br>EPQState.plan, so the bug would now always manifest.  So my<br>understanding is that the commit 86dc90056 only changed *when* the bug<br>manifests, which is now &quot;always&quot; if direct-modify children are<br>present.  Is that understanding correct?</p>
+
+<p>BTW, isn&#x27;t the following code in ForeignNext() added by c3928b467<br>non-reachable after your patch:</p>
+
+<p>        /*<br>         * direct modifications cannot be re-evaluated, so shouldn&#x27;t get here<br>         * during EvalPlanQual processing<br>         */<br>        if (estate-&gt;es_epq_active != NULL)<br>            elog(ERROR, &quot;cannot re-evaluate a Foreign Update or Delete<br>during EvalPlanQual&quot;);</p>
+
+<p>Should that be converted to an Assert(estate-&gt;es_epq_active == NULL)?</p>
+
+<p>-- <br>Amit Langote<br>EDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a></p>
+
+<p>[1] EvalPlanQual() attempting to initialize a direct-modify<br>ForeignScan node without the necessary ResultRelInfo having been set<br>up.</p>
+
+<p>[2] As of 1375422c, ResultRelInfos are initialized in<br>ExecInitModifyTable() which won&#x27;t be invoked during<br>EvalPlanQualStart(), so EvalPlanQual() can no longer rely on accessing<br>a direct-modify ForeignScan node&#x27;s ResultRelInfo.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK1573XYkk8EH29bXDb-14+t+UTU_yqGNpnwdJwsbrjNrYA@mail.gmail.com"></a>
+<a name="ab9e613a27add436013b2c176dcca1a5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-02 10:40:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK1573XYkk8EH29bXDb-14%2Bt%2BUTU_yqGNpnwdJwsbrjNrYA%40mail.gmail.com">CAPmGK1573XYkk8EH29bXDb-14+t+UTU_yqGNpnwdJwsbrjNrYA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK1573XYkk8EH29bXDb-14%2Bt%2BUTU_yqGNpnwdJwsbrjNrYA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK1573XYkk8EH29bXDb-14%2Bt%2BUTU_yqGNpnwdJwsbrjNrYA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK1573XYkk8EH29bXDb-14%2Bt%2BUTU_yqGNpnwdJwsbrjNrYA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK1573XYkk8EH29bXDb-14%2Bt%2BUTU_yqGNpnwdJwsbrjNrYA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202020000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi Alexander,</p>
+
+<p>On Wed, Feb 2, 2022 at 3:00 AM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt; 01.02.2022 11:59, Etsuro Fujita wrote:<br>&gt; &gt; Attached is an updated patch.  I tweaked a comment a little bit and<br>&gt; &gt; added the commit message.  I didn’t include your test because in my<br>&gt; &gt; understanding we don’t add such a test into the postgres_fdw<br>&gt; &gt; regression test.  I’ll commit the patch if there are no objections<br>&gt; &gt; from you (or anyone else).<br>&gt; Thank you! I have no objections.<br>&gt; That test was not intended for committing, I just wanted to show how<br>&gt; I&#x27;ve tested the fix.</p>
+
+<p>OK</p>
+
+<p>Thanks!</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK17qMZv17pEc99sGcbNFYyrk8FQbFXzmijodM6wQVZQG4Q@mail.gmail.com"></a>
+<a name="21adf5046c6d70c851598785236e4947"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-02 10:55:03</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK17qMZv17pEc99sGcbNFYyrk8FQbFXzmijodM6wQVZQG4Q%40mail.gmail.com">CAPmGK17qMZv17pEc99sGcbNFYyrk8FQbFXzmijodM6wQVZQG4Q@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK17qMZv17pEc99sGcbNFYyrk8FQbFXzmijodM6wQVZQG4Q%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK17qMZv17pEc99sGcbNFYyrk8FQbFXzmijodM6wQVZQG4Q%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK17qMZv17pEc99sGcbNFYyrk8FQbFXzmijodM6wQVZQG4Q%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK17qMZv17pEc99sGcbNFYyrk8FQbFXzmijodM6wQVZQG4Q%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202020000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi Amit-san,</p>
+
+<p>On Wed, Feb 2, 2022 at 12:59 PM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt; Your proposed fix makes sense.</p>
+
+<p>Cool!</p>
+
+<p>&gt; I was trying to understand in what way commit 86dc90056&#x27;s is related<br>&gt; to this, because you mention it here in the thread and also in the<br>&gt; commit message.  I see that c3928b467, also mentioned in your commit<br>&gt; message, fixed a related bug [1], which in turn refers to 1375422c as<br>&gt; the cause [2].</p>
+
+<p>I think the diagnosis in commit c3928b467 isn&#x27;t correct; I think the<br>cause is commit 86dc90056, because before that commit, direct-modify<br>ForeignScan nodes didn&#x27;t get called during EvalPlanQual processing,<br>even in the case of an inherited UPDATE/DELETE.  (In direct<br>modification, all the work for it except the RETURNING computation is<br>done on the remote side, so we don&#x27;t need to invoke EvalPlanQual!)<br>BUT as you know, commit 86dc90056 changed things so that such<br>ForeignScan nodes can get called during EvalPlanQual processing, as<br>they are contained as part of the EvalPlanQual subtree in the case of<br>an inherited UPDATE/DELETE, which I think led to the issues in commit<br>c3928b467 as well as this bug report.</p>
+
+<p>&gt; Before commit 86dc90056, EPQState.plan would be set to the 1st child<br>&gt; subplan, which if it happened to be a direct-modify ForeignScan node,<br>&gt; this bug would manifest.  After that commit though, a direct-modify<br>&gt; child subplan would *always* be present in EPQState.plan by way of its<br>&gt; parent Append node or some parent node thereof being set as<br>&gt; EPQState.plan, so the bug would now always manifest.  So my<br>&gt; understanding is that the commit 86dc90056 only changed *when* the bug<br>&gt; manifests, which is now &quot;always&quot; if direct-modify children are<br>&gt; present.  Is that understanding correct?</p>
+
+<p>As I mentioned above, I think we didn&#x27;t have this bug before commit<br>86dc90056.  As for when this bug happens, I think it would depend on<br>the partitioned-table definition; eg, for a partitioned table like the<br>one discussed in the thread for commit c3928b467, it wouldn&#x27;t happen.</p>
+
+<p>&gt; BTW, isn&#x27;t the following code in ForeignNext() added by c3928b467<br>&gt; non-reachable after your patch:<br>&gt;<br>&gt;         /*<br>&gt;          * direct modifications cannot be re-evaluated, so shouldn&#x27;t get here<br>&gt;          * during EvalPlanQual processing<br>&gt;          */<br>&gt;         if (estate-&gt;es_epq_active != NULL)<br>&gt;             elog(ERROR, &quot;cannot re-evaluate a Foreign Update or Delete<br>&gt; during EvalPlanQual&quot;);<br>&gt;<br>&gt; Should that be converted to an Assert(estate-&gt;es_epq_active == NULL)?</p>
+
+<p>+1  I updated the patch as such.  Attached is a new version.  I also<br>tweaked a comment a litttle bit further.</p>
+
+<p>Thanks!</p>
+
+<p>Best regards,<br>Etsuro Fujita<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/130582/v2-0001-Further-fix-for-EvalPlanQual-with-mix-of-local-and-f.patch">v2-0001-Further-fix-for-EvalPlanQual-with-mix-of-local-and-f.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>2.4 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CA+HiwqHEzcxA69_WLXbXEan1S6cNu=7g0fsHUBgOhFTWkCcRZQ@mail.gmail.com"></a>
+<a name="f59657fba38fb3ef8bd1cb4aec2176b4"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-02 14:06:31</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CA%2BHiwqHEzcxA69_WLXbXEan1S6cNu%3D7g0fsHUBgOhFTWkCcRZQ%40mail.gmail.com">CA+HiwqHEzcxA69_WLXbXEan1S6cNu=7g0fsHUBgOhFTWkCcRZQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CA%2BHiwqHEzcxA69_WLXbXEan1S6cNu%3D7g0fsHUBgOhFTWkCcRZQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CA%2BHiwqHEzcxA69_WLXbXEan1S6cNu%3D7g0fsHUBgOhFTWkCcRZQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CA%2BHiwqHEzcxA69_WLXbXEan1S6cNu%3D7g0fsHUBgOhFTWkCcRZQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CA%2BHiwqHEzcxA69_WLXbXEan1S6cNu%3D7g0fsHUBgOhFTWkCcRZQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202020000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Fujita-san,</p>
+
+<p>On Wed, Feb 2, 2022 at 7:55 PM Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt; wrote:<br>&gt; On Wed, Feb 2, 2022 at 12:59 PM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; I was trying to understand in what way commit 86dc90056&#x27;s is related<br>&gt; &gt; to this, because you mention it here in the thread and also in the<br>&gt; &gt; commit message.  I see that c3928b467, also mentioned in your commit<br>&gt; &gt; message, fixed a related bug [1], which in turn refers to 1375422c as<br>&gt; &gt; the cause [2].<br>&gt;<br>&gt; I think the diagnosis in commit c3928b467 isn&#x27;t correct; I think the<br>&gt; cause is commit 86dc90056, because before that commit, direct-modify<br>&gt; ForeignScan nodes didn&#x27;t get called during EvalPlanQual processing,<br>&gt; even in the case of an inherited UPDATE/DELETE.  (In direct<br>&gt; modification, all the work for it except the RETURNING computation is<br>&gt; done on the remote side, so we don&#x27;t need to invoke EvalPlanQual!)<br>&gt; BUT as you know, commit 86dc90056 changed things so that such<br>&gt; ForeignScan nodes can get called during EvalPlanQual processing, as<br>&gt; they are contained as part of the EvalPlanQual subtree in the case of<br>&gt; an inherited UPDATE/DELETE, which I think led to the issues in commit<br>&gt; c3928b467 as well as this bug report.</p>
+
+<p>You&#x27;re right, thanks for the explanation.</p>
+
+<p>What I embarrassingly forgot is that, before 86dc90056, each child<br>subplan would be set to be passed to EvalPlanQ ual() when in its turn<br>came in the ExecModifyTable()&#x27;s main loo, using the following code<br>that 86dc90056 removed:</p>
+
+<p>        if (TupIsNull(planSlot))<br>-       {<br>-           /* advance to next subplan if any */<br>-           node-&gt;mt_whichplan++;<br>-           if (node-&gt;mt_whichplan &lt; node-&gt;mt_nplans)<br>-           {<br>-               resultRelInfo++;<br>-               subplanstate = node-&gt;mt_plans[node-&gt;mt_whichplan];<br>-               junkfilter = resultRelInfo-&gt;ri_junkFilter;<br>-               EvalPlanQualSetPlan(&amp;node-&gt;mt_epqstate, subplanstate-&gt;plan,<br>-                                   node-&gt;mt_arowmarks[node-&gt;mt_whichplan]);<br>-               continue;<br>-           }<br>-           else<br>-               break;<br>-       }</p>
+
+<p>Direct-modify subplans, even if they would get set to be passed to<br>EvalPlanQual(), would never actually be processed for the reasons you<br>mention.  Now that there&#x27;s only one subplan and all the child subplans<br>just its subnodes, any direct-modify nodes *would* get processed<br>because they&#x27;re in the plan that gets passed to EvalPlanQual().</p>
+
+<p>&gt; &gt; Before commit 86dc90056, EPQState.plan would be set to the 1st child<br>&gt; &gt; subplan, which if it happened to be a direct-modify ForeignScan node,<br>&gt; &gt; this bug would manifest.  After that commit though, a direct-modify<br>&gt; &gt; child subplan would *always* be present in EPQState.plan by way of its<br>&gt; &gt; parent Append node or some parent node thereof being set as<br>&gt; &gt; EPQState.plan, so the bug would now always manifest.  So my<br>&gt; &gt; understanding is that the commit 86dc90056 only changed *when* the bug<br>&gt; &gt; manifests, which is now &quot;always&quot; if direct-modify children are<br>&gt; &gt; present.  Is that understanding correct?<br>&gt;<br>&gt; As I mentioned above, I think we didn&#x27;t have this bug before commit<br>&gt; 86dc90056.  As for when this bug happens, I think it would depend on<br>&gt; the partitioned-table definition; eg, for a partitioned table like the<br>&gt; one discussed in the thread for commit c3928b467, it wouldn&#x27;t happen.</p>
+
+<p>Yeah, got it.</p>
+
+<p>&gt; &gt; BTW, isn&#x27;t the following code in ForeignNext() added by c3928b467<br>&gt; &gt; non-reachable after your patch:<br>&gt; &gt;<br>&gt; &gt;         /*<br>&gt; &gt;          * direct modifications cannot be re-evaluated, so shouldn&#x27;t get here<br>&gt; &gt;          * during EvalPlanQual processing<br>&gt; &gt;          */<br>&gt; &gt;         if (estate-&gt;es_epq_active != NULL)<br>&gt; &gt;             elog(ERROR, &quot;cannot re-evaluate a Foreign Update or Delete<br>&gt; &gt; during EvalPlanQual&quot;);<br>&gt; &gt;<br>&gt; &gt; Should that be converted to an Assert(estate-&gt;es_epq_active == NULL)?<br>&gt;<br>&gt; +1  I updated the patch as such.  Attached is a new version.  I also<br>&gt; tweaked a comment a litttle bit further.<br>&gt;<br>&gt; Thanks!</p>
+
+<p>Thanks, looks good to me.</p>
+
+<p>-- <br>Amit Langote<br>EDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="202202021442.hsxbhre2k533@alvherre.pgsql"></a>
+<a name="86499ad11262dc8952fd19dc785c46c2"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-02 14:42:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/202202021442.hsxbhre2k533%40alvherre.pgsql">202202021442.hsxbhre2k533@alvherre.pgsql</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/202202021442.hsxbhre2k533%40alvherre.pgsql">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/202202021442.hsxbhre2k533%40alvherre.pgsql" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/202202021442.hsxbhre2k533%40alvherre.pgsql" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/202202021442.hsxbhre2k533%40alvherre.pgsql" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202020000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2022-Feb-01, Etsuro Fujita wrote:</p>
+
+<p>&gt; I didn’t include your test because in my<br>&gt; understanding we don’t add such a test into the postgres_fdw<br>&gt; regression test.  I’ll commit the patch if there are no objections<br>&gt; from you (or anyone else).</p>
+
+<p>I think it would be good to reconsider this.  We currently don&#x27;t have<br>any isolation test files for postgres_fdw, but that doesn&#x27;t mean we<br>can&#x27;t add some (we now have several subdirs where both types of tests<br>coexist).  And if we don&#x27;t have these tests, it will be easier to break<br>this again in the future without noticing if we decide to rework<br>executor code again, which I&#x27;m sure we&#x27;ll do.</p>
+
+<p>Maybe you don&#x27;t need to add the test in back-branches, which is more<br>work; but if you only target branch master, it should only require an<br>ISOLATION line in the Makefile listing the new test.</p>
+
+<p>-- <br>Álvaro Herrera         PostgreSQL Developer  —  <a href="https://www.EnterpriseDB.com/" rel="nofollow">https://www.EnterpriseDB.com/</a><br>&quot;Every machine is a smoke machine if you operate it wrong enough.&quot;<br><a href="https://twitter.com/libseybieda/status/1541673325781196801" rel="nofollow">https://twitter.com/libseybieda/status/1541673325781196801</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK16hz0TTQ40Z-89_nONUsn-Q2v3xFO51P6N-q8Ogtq37jA@mail.gmail.com"></a>
+<a name="c578375457f3f46db5e9b9ac394c3601"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-03 06:32:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK16hz0TTQ40Z-89_nONUsn-Q2v3xFO51P6N-q8Ogtq37jA%40mail.gmail.com">CAPmGK16hz0TTQ40Z-89_nONUsn-Q2v3xFO51P6N-q8Ogtq37jA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK16hz0TTQ40Z-89_nONUsn-Q2v3xFO51P6N-q8Ogtq37jA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK16hz0TTQ40Z-89_nONUsn-Q2v3xFO51P6N-q8Ogtq37jA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK16hz0TTQ40Z-89_nONUsn-Q2v3xFO51P6N-q8Ogtq37jA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK16hz0TTQ40Z-89_nONUsn-Q2v3xFO51P6N-q8Ogtq37jA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi Amit-san,</p>
+
+<p>On Wed, Feb 2, 2022 at 11:06 PM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt; On Wed, Feb 2, 2022 at 7:55 PM Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; On Wed, Feb 2, 2022 at 12:59 PM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; &gt; BTW, isn&#x27;t the following code in ForeignNext() added by c3928b467<br>&gt; &gt; &gt; non-reachable after your patch:<br>&gt; &gt; &gt;<br>&gt; &gt; &gt;         /*<br>&gt; &gt; &gt;          * direct modifications cannot be re-evaluated, so shouldn&#x27;t get here<br>&gt; &gt; &gt;          * during EvalPlanQual processing<br>&gt; &gt; &gt;          */<br>&gt; &gt; &gt;         if (estate-&gt;es_epq_active != NULL)<br>&gt; &gt; &gt;             elog(ERROR, &quot;cannot re-evaluate a Foreign Update or Delete<br>&gt; &gt; &gt; during EvalPlanQual&quot;);<br>&gt; &gt; &gt;<br>&gt; &gt; &gt; Should that be converted to an Assert(estate-&gt;es_epq_active == NULL)?<br>&gt; &gt;<br>&gt; &gt; +1  I updated the patch as such.  Attached is a new version.  I also<br>&gt; &gt; tweaked a comment a litttle bit further.</p>
+
+<p>&gt; Thanks, looks good to me.</p>
+
+<p>Ok, I have committed the patch.</p>
+
+<p>Thanks again!</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK15oOhQGwp2z1+a+PTcz93Rbvq7Q8wtaXTOM6WZp2wbpLA@mail.gmail.com"></a>
+<a name="57ba00fa41e9375aaab729569e2a3ac5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-03 06:38:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK15oOhQGwp2z1%2Ba%2BPTcz93Rbvq7Q8wtaXTOM6WZp2wbpLA%40mail.gmail.com">CAPmGK15oOhQGwp2z1+a+PTcz93Rbvq7Q8wtaXTOM6WZp2wbpLA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK15oOhQGwp2z1%2Ba%2BPTcz93Rbvq7Q8wtaXTOM6WZp2wbpLA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK15oOhQGwp2z1%2Ba%2BPTcz93Rbvq7Q8wtaXTOM6WZp2wbpLA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK15oOhQGwp2z1%2Ba%2BPTcz93Rbvq7Q8wtaXTOM6WZp2wbpLA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK15oOhQGwp2z1%2Ba%2BPTcz93Rbvq7Q8wtaXTOM6WZp2wbpLA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi Alvaro,</p>
+
+<p>On Wed, Feb 2, 2022 at 11:42 PM Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt; wrote:<br>&gt; On 2022-Feb-01, Etsuro Fujita wrote:<br>&gt; &gt; I didn’t include your test because in my<br>&gt; &gt; understanding we don’t add such a test into the postgres_fdw<br>&gt; &gt; regression test.  I’ll commit the patch if there are no objections<br>&gt; &gt; from you (or anyone else).<br>&gt;<br>&gt; I think it would be good to reconsider this.  We currently don&#x27;t have<br>&gt; any isolation test files for postgres_fdw, but that doesn&#x27;t mean we<br>&gt; can&#x27;t add some (we now have several subdirs where both types of tests<br>&gt; coexist).  And if we don&#x27;t have these tests, it will be easier to break<br>&gt; this again in the future without noticing if we decide to rework<br>&gt; executor code again, which I&#x27;m sure we&#x27;ll do.</p>
+
+<p>Agreed.</p>
+
+<p>&gt; Maybe you don&#x27;t need to add the test in back-branches, which is more<br>&gt; work; but if you only target branch master, it should only require an<br>&gt; ISOLATION line in the Makefile listing the new test.</p>
+
+<p>I think it would be better to create a separate patch so that we test<br>not only this but other EvalPlanQual stuff such as ForeignRecheck, so<br>I applied the proposed patch to HEAD as well.</p>
+
+<p>Thanks!</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="0c5d710abcd92dc474b04ce802055a9f@postgrespro.ru"></a>
+<a name="2911e3bcbb2405545d02521776929d68"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Marina Polyakova &lt;m(dot)polyakova(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;, Alexander Lakhin
+ &lt;exclusion(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-03 10:37:55</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/0c5d710abcd92dc474b04ce802055a9f%40postgrespro.ru">0c5d710abcd92dc474b04ce802055a9f@postgrespro.ru</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/0c5d710abcd92dc474b04ce802055a9f%40postgrespro.ru">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/0c5d710abcd92dc474b04ce802055a9f%40postgrespro.ru" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/0c5d710abcd92dc474b04ce802055a9f%40postgrespro.ru" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/0c5d710abcd92dc474b04ce802055a9f%40postgrespro.ru" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2022-02-03 09:38, Etsuro Fujita wrote:<br>&gt; I think it would be better to create a separate patch so that we test<br>&gt; not only this but other EvalPlanQual stuff such as ForeignRecheck, so<br>&gt; I applied the proposed patch to HEAD as well.<br>&gt; <br>&gt; Thanks!<br>&gt; <br>&gt; Best regards,<br>&gt; Etsuro Fujita</p>
+
+<p>Hello everyone in this thread!</p>
+
+<p>Looks like gcc 11.2.0 is now reporting a warning in the branches <br>master/REL_14_STABLE, e.g. see CI <br><a href="https://github.com/postgres/postgres/runs/5047720839" rel="nofollow">https://github.com/postgres/postgres/runs/5047720839</a>:</p>
+
+<p>[06:30:18.201] nodeForeignscan.c: In function ‘ForeignNext’:<br>[06:30:18.201] nodeForeignscan.c:47:13: error: unused variable ‘estate’ <br>[-Werror=unused-variable]<br>[06:30:18.201]    47 |  EState    *estate = node-&gt;ss.ps.state;<br>[06:30:18.201]       |             ^~~~~~</p>
+
+<p>Please could you fix it? E.g. like in the attached patch - the following <br>commands work for me with it:</p>
+
+<p>$ ./configure &amp;&amp; COPT=-Werror make world-bin</p>
+
+<p>-- <br>Marina Polyakova<br>Postgres Professional: <a href="http://www.postgrespro.com" rel="nofollow">http://www.postgrespro.com</a></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/130627/diff_fix_ForeignNext_warning.patch">diff_fix_ForeignNext_warning.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>661 bytes</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK15zJftqi_LmFCU18bu6MHMTqLZcDS-0S0rZzhOkgWY+sQ@mail.gmail.com"></a>
+<a name="617f7937e819f5a229b82f2bde5ec2b1"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Marina Polyakova &lt;m(dot)polyakova(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;, Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-04 00:56:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK15zJftqi_LmFCU18bu6MHMTqLZcDS-0S0rZzhOkgWY%2BsQ%40mail.gmail.com">CAPmGK15zJftqi_LmFCU18bu6MHMTqLZcDS-0S0rZzhOkgWY+sQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK15zJftqi_LmFCU18bu6MHMTqLZcDS-0S0rZzhOkgWY%2BsQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK15zJftqi_LmFCU18bu6MHMTqLZcDS-0S0rZzhOkgWY%2BsQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK15zJftqi_LmFCU18bu6MHMTqLZcDS-0S0rZzhOkgWY%2BsQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK15zJftqi_LmFCU18bu6MHMTqLZcDS-0S0rZzhOkgWY%2BsQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202040000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Feb 3, 2022 at 7:37 PM Marina Polyakova<br>&lt;m(dot)polyakova(at)postgrespro(dot)ru&gt; wrote:<br>&gt; Looks like gcc 11.2.0 is now reporting a warning in the branches<br>&gt; master/REL_14_STABLE, e.g. see CI<br>&gt; <a href="https://github.com/postgres/postgres/runs/5047720839" rel="nofollow">https://github.com/postgres/postgres/runs/5047720839</a>:<br>&gt;<br>&gt; [06:30:18.201] nodeForeignscan.c: In function ‘ForeignNext’:<br>&gt; [06:30:18.201] nodeForeignscan.c:47:13: error: unused variable ‘estate’<br>&gt; [-Werror=unused-variable]<br>&gt; [06:30:18.201]    47 |  EState    *estate = node-&gt;ss.ps.state;<br>&gt; [06:30:18.201]       |             ^~~~~~<br>&gt;<br>&gt; Please could you fix it?</p>
+
+<p>Sorry, my oversight.  Andres fixed this independently.</p>
+
+<p>Thanks for the report!</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="202202061500.ocwvfbkylw3g@alvherre.pgsql"></a>
+<a name="156be557126326d167a146bd08e18a19"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-06 15:00:50</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/202202061500.ocwvfbkylw3g%40alvherre.pgsql">202202061500.ocwvfbkylw3g@alvherre.pgsql</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/202202061500.ocwvfbkylw3g%40alvherre.pgsql">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/202202061500.ocwvfbkylw3g%40alvherre.pgsql" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/202202061500.ocwvfbkylw3g%40alvherre.pgsql" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/202202061500.ocwvfbkylw3g%40alvherre.pgsql" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2022-Feb-03, Etsuro Fujita wrote:</p>
+
+<p>&gt; &gt; Maybe you don&#x27;t need to add the test in back-branches, which is more<br>&gt; &gt; work; but if you only target branch master, it should only require an<br>&gt; &gt; ISOLATION line in the Makefile listing the new test.<br>&gt; <br>&gt; I think it would be better to create a separate patch so that we test<br>&gt; not only this but other EvalPlanQual stuff such as ForeignRecheck, so<br>&gt; I applied the proposed patch to HEAD as well.</p>
+
+<p>Sure, that sounds good.  Are you or is anybody else working on that?</p>
+
+<p>-- <br>Álvaro Herrera         PostgreSQL Developer  —  <a href="https://www.EnterpriseDB.com/" rel="nofollow">https://www.EnterpriseDB.com/</a><br>Maybe there&#x27;s lots of data loss but the records of data loss are also lost.<br>(Lincoln Yeoh)</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK16B5XDYAMkDtgoxKZRwDAiBm5cK5_Jw=ZzZkD0bu18LSA@mail.gmail.com"></a>
+<a name="c3e0e0f08af0ed56fe2caf010fe42ae4"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17355: Server crashes on ExecReScanForeignScan in
+ postgres_fdw when accessing foreign partition</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-08 09:09:09</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK16B5XDYAMkDtgoxKZRwDAiBm5cK5_Jw%3DZzZkD0bu18LSA%40mail.gmail.com">CAPmGK16B5XDYAMkDtgoxKZRwDAiBm5cK5_Jw=ZzZkD0bu18LSA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK16B5XDYAMkDtgoxKZRwDAiBm5cK5_Jw%3DZzZkD0bu18LSA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK16B5XDYAMkDtgoxKZRwDAiBm5cK5_Jw%3DZzZkD0bu18LSA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK16B5XDYAMkDtgoxKZRwDAiBm5cK5_Jw%3DZzZkD0bu18LSA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK16B5XDYAMkDtgoxKZRwDAiBm5cK5_Jw%3DZzZkD0bu18LSA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Feb 7, 2022 at 12:00 AM Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt; wrote:<br>&gt; On 2022-Feb-03, Etsuro Fujita wrote:<br>&gt; &gt; &gt; Maybe you don&#x27;t need to add the test in back-branches, which is more<br>&gt; &gt; &gt; work; but if you only target branch master, it should only require an<br>&gt; &gt; &gt; ISOLATION line in the Makefile listing the new test.<br>&gt; &gt;<br>&gt; &gt; I think it would be better to create a separate patch so that we test<br>&gt; &gt; not only this but other EvalPlanQual stuff such as ForeignRecheck, so<br>&gt; &gt; I applied the proposed patch to HEAD as well.<br>&gt;<br>&gt; Sure, that sounds good.  Are you or is anybody else working on that?</p>
+
+<p>I don&#x27;t have time on this for v15.  I&#x27;m planning to work on it for<br>v16, but if anybody else feels like doing so for v15 or later, feel<br>free.</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

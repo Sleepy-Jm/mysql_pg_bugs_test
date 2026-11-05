@@ -1,0 +1,227 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18767
+Logged by:          Philippe BEAUDOIN
+Email address:      phb(dot)emaj(at)free(dot)fr
+PostgreSQL version: 17.2
+Operating system:   Linux
+Description:        
+
+
+I use GET DIAGNOSTICS PG_CONTEXT in some sensitive plpgsql functions that
+are declared SECURITY DEFINER in order to be sure that the caller belongs to
+a list of known callers. The returned stack contains the list of called
+functions, with their schema prefix and their parameters format.
+But I discovered that when the schema holding these functions is created
+while it is in the user's search_path, the returned stack doesn't contain
+the schema prefix anymore for the caller functions.
+Here is a small test case that reproduces the issue.
+
+
+A psql script :
+select version();
+drop schema if exists tst cascade;
+create schema tst;
+create function tst.caller1() returns text language plpgsql as 
+$$ BEGIN return tst.caller2(); END; $$;
+create function tst.caller2() returns text language plpgsql as 
+$$ BEGIN return tst.called(); END; $$;
+CREATE OR REPLACE FUNCTION tst.called()
+RETURNS text LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS
+$$
+  DECLARE
+    v_stack                  TEXT;
+  BEGIN
+    GET DIAGNOSTICS v_stack = PG_CONTEXT;
+    IF v_stack NOT LIKE '%tst.caller2()%' THEN
+      RAISE WARNING 'Beware: the calling function is not the expected
+one!';
+    END IF;
+    RETURN v_stack;
+  END;
+$$;
+set search_path = tst;
+show search_path;
+select caller1() as stack_in_called;
+reset search_path;
+show search_path;
+select tst.caller1() as stack_in_called;
+
+
+A simple shell script :
+echo "=========================================================="
+echo "                    The standart run"
+echo "=========================================================="
+psql  -a -f test_stack.sql
+echo "=========================================================="
+echo "The issue: a search_path is set before creating structures"
+echo "=========================================================="
+psql  -a -c "SET search_path = tst;" -f test_stack.sql
+
+
+And the output result :
+==========================================================
+                    The standart run
+==========================================================
+select version();
+                                                version                     
+                          
+-------------------------------------------------------------------------------------------------------
+ PostgreSQL 17.2 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu
+13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+(1 row)
+
+
+drop schema if exists tst cascade;
+psql:test_stack.sql:2: NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to function tst.caller1()
+drop cascades to function tst.caller2()
+drop cascades to function tst.called()
+DROP SCHEMA
+create schema tst;
+CREATE SCHEMA
+create function tst.caller1() returns text language plpgsql as 
+$$ BEGIN return tst.caller2(); END; $$;
+CREATE FUNCTION
+create function tst.caller2() returns text language plpgsql as 
+$$ BEGIN return tst.called(); END; $$;
+CREATE FUNCTION
+CREATE OR REPLACE FUNCTION tst.called()
+RETURNS text LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS
+$$
+  DECLARE
+    v_stack                  TEXT;
+  BEGIN
+    GET DIAGNOSTICS v_stack = PG_CONTEXT;
+    IF v_stack NOT LIKE '%tst.caller2()%' THEN
+      RAISE WARNING 'Beware: the calling function is not the expected
+one!';
+    END IF;
+    RETURN v_stack;
+  END;
+$$;
+CREATE FUNCTION
+set search_path = tst;
+SET
+show search_path;
+ search_path 
+-------------
+ tst
+(1 row)
+
+
+select caller1() as stack_in_called;
+                     stack_in_called                      
+----------------------------------------------------------
+ PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+
+ PL/pgSQL function tst.caller2() line 1 at RETURN        +
+ PL/pgSQL function tst.caller1() line 1 at RETURN
+(1 row)
+
+
+reset search_path;
+RESET
+show search_path;
+   search_path   
+-----------------
+ "$user", public
+(1 row)
+
+
+select tst.caller1() as stack_in_called;
+                     stack_in_called                      
+----------------------------------------------------------
+ PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+
+ PL/pgSQL function tst.caller2() line 1 at RETURN        +
+ PL/pgSQL function tst.caller1() line 1 at RETURN
+(1 row)
+
+
+==========================================================
+The issue: a search_path is set before creating structures
+==========================================================
+SET search_path = tst;
+SET
+select version();
+                                                version                     
+                          
+-------------------------------------------------------------------------------------------------------
+ PostgreSQL 17.2 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu
+13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit
+(1 row)
+
+
+drop schema if exists tst cascade;
+psql:test_stack.sql:2: NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to function caller1()
+drop cascades to function caller2()
+drop cascades to function called()
+DROP SCHEMA
+create schema tst;
+CREATE SCHEMA
+create function tst.caller1() returns text language plpgsql as 
+$$ BEGIN return tst.caller2(); END; $$;
+CREATE FUNCTION
+create function tst.caller2() returns text language plpgsql as 
+$$ BEGIN return tst.called(); END; $$;
+CREATE FUNCTION
+CREATE OR REPLACE FUNCTION tst.called()
+RETURNS text LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS
+$$
+  DECLARE
+    v_stack                  TEXT;
+  BEGIN
+    GET DIAGNOSTICS v_stack = PG_CONTEXT;
+    IF v_stack NOT LIKE '%tst.caller2()%' THEN
+      RAISE WARNING 'Beware: the calling function is not the expected
+one!';
+    END IF;
+    RETURN v_stack;
+  END;
+$$;
+CREATE FUNCTION
+set search_path = tst;
+SET
+show search_path;
+ search_path 
+-------------
+ tst
+(1 row)
+
+
+select caller1() as stack_in_called;
+psql:test_stack.sql:24: WARNING:  Beware: the calling function is not the
+expected one!
+                     stack_in_called                      
+----------------------------------------------------------
+ PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+
+ PL/pgSQL function caller2() line 1 at RETURN            +
+ PL/pgSQL function caller1() line 1 at RETURN
+(1 row)
+
+
+reset search_path;
+RESET
+show search_path;
+   search_path   
+-----------------
+ "$user", public
+(1 row)
+
+
+select tst.caller1() as stack_in_called;
+psql:test_stack.sql:27: WARNING:  Beware: the calling function is not the
+expected one!
+                     stack_in_called                      
+----------------------------------------------------------
+ PL/pgSQL function tst.called() line 5 at GET DIAGNOSTICS+
+ PL/pgSQL function caller2() line 1 at RETURN            +
+ PL/pgSQL function caller1() line 1 at RETURN
+(1 row)
+
+
+

@@ -1,0 +1,48 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18265
+Logged by:          neil chen
+Email address:      neil(dot)chen(at)protonbase(dot)io
+PostgreSQL version: 14.1
+Operating system:   operating system irrelevant
+Description:        
+
+
+As the docuemnt saied,  for jsonb type, Object > Array > Boolean > Number >
+String > Null, but actually empty json array is sort to be the smallest
+value.
+And this is true only when it is the outmost json value, that is, 
+'[]'::jsonb is less than 'null'::jsonb.
+but when it is a inner element of json array,  the comparison result will
+changed, that is, '[[]]'::jsonb is greater than '[null]'.
+This behavior looks strange, that maybe a mistake in
+compareJsonbContainers().
+						/*
+						 * This could be a "raw scalar" pseudo array.  That's
+						 * a special case here though, since we still want the
+						 * general type-based comparisons to apply, and as far
+						 * as we're concerned a pseudo array is just a scalar.
+						 */
+						if (va.val.array.rawScalar != vb.val.array.rawScalar)
+// Here one is json array, and another is not json array, maybe we should
+simply compare their type.
+// And the comparison result should not be overwritten by the following if
+statement.
+							res = (va.val.array.rawScalar) ? -1 : 1; 
+						if (va.val.array.nElems != vb.val.array.nElems)
+							res = (va.val.array.nElems > vb.val.array.nElems) ? 1 : -1;
+						break;
+postgres=# select * from
+(values('null'::jsonb),('[]'::jsonb),('[null]'::jsonb),('[[]]'::jsonb)) as
+t(j) order by j;
+   j    
+--------
+ []
+ null
+ [null]
+ [[]]
+
+
+

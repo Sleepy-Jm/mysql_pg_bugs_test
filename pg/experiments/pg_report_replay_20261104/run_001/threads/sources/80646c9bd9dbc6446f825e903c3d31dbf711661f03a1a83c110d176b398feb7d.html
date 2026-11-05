@@ -1,0 +1,3386 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17434-d9f7a064ce2a88a3%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-03-11T11:11:54" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="69349d77a2488960f805fcb5a4c139d8">BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202203111111">pgsql-bugs</a></span><span class="listname"><a href="/list/pgsql-hackers/since/202203111111">pgsql-hackers</a></span></td>
+</table>
+
+
+
+<a name="17434-d9f7a064ce2a88a3@postgresql.org"></a>
+<a name="69349d77a2488960f805fcb5a4c139d8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>nagata(at)sraoss(dot)co(dot)jp</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-11 11:11:54</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17434-d9f7a064ce2a88a3%40postgresql.org">17434-d9f7a064ce2a88a3@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17434-d9f7a064ce2a88a3%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17434-d9f7a064ce2a88a3%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17434-d9f7a064ce2a88a3%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17434-d9f7a064ce2a88a3%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203110000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203110000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17434<br>Logged by:          Yugo Nagata<br>Email address:      nagata(at)sraoss(dot)co(dot)jp<br>PostgreSQL version: 14.2<br>Operating system:   Ubuntu<br>Description:        </p>
+
+<p>CREATE/DROP DATABASE can be executed in the same transaction with other<br>commands when we use pipeline mode in pgbench or libpq API. If the<br>transaction aborts, this causes an inconsistency between the system catalog<br>and base directory.</p>
+
+<p>Here is an example using the pgbench /startpipeline meta command.</p>
+
+<p>----------------------------------------------------<br>(1)  Confirm that there are four databases from psql and directories in<br>base.</p>
+
+<p>$ psql -l<br>                                 List of databases<br>   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access<br>privileges   <br>-----------+--------+----------+-------------+-------------+-----------------------<br> postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br> template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>(4 rows)</p>
+
+<p>$ ls data/base/<br>1  13014  13015  16409  pgsql_tmp</p>
+
+<p>(2) Execute CREATE DATABASE in a transaction, and the transaction fails.</p>
+
+<p>$ cat pipeline_createdb.sql <br>\startpipeline<br>create database test;<br>select 1/0;<br>\endpipeline</p>
+
+<p>$ pgbench -t 1 -f pipeline_createdb.sql -M extended<br>pgbench (14.2)<br>starting vacuum...end.<br>pgbench: error: client 0 script 0 aborted in command 3 query 0: <br>....</p>
+
+<p>(3) There are still four databases but a new directory was created in<br>base.</p>
+
+<p>$ psql -l<br>                                 List of databases<br>   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access<br>privileges   <br>-----------+--------+----------+-------------+-------------+-----------------------<br> postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br> template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>(4 rows)</p>
+
+<p>$ ls data/base/<br>1  13014  13015  16409  16411  pgsql_tmp</p>
+
+<p>(4) Next, execute DROP DATABASE in a transaction, and the transaction<br>fails.</p>
+
+<p>$ cat pipeline_dropdb.sql <br>\startpipeline<br>drop database test0;<br>select 1/0;<br>\endpipeline</p>
+
+<p>$ pgbench -t 1 -f pipeline_dropdb.sql -M extended<br>pgbench (14.2)<br>starting vacuum...end.<br>pgbench: error: client 0 script 0 aborted in command 3 query 0:<br>...</p>
+
+<p>(5) There are still four databases but the corresponding directory was<br>deleted in base.</p>
+
+<p>$ psql -l<br>                                 List of databases<br>   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access<br>privileges   <br>-----------+--------+----------+-------------+-------------+-----------------------<br> postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br> template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>     +<br>           |        |          |             |             |<br>&quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br> test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>(4 rows)</p>
+
+<p>$ ls data/base/<br>1  13014  13015  16411  pgsql_tmp</p>
+
+<p>(6) We cannot connect the database &quot;test0&quot;.</p>
+
+<p>$ psql test0<br>psql: error: connection to server on socket &quot;/tmp/.s.PGSQL.25435&quot; failed:<br>FATAL:  database &quot;test0&quot; does not exist<br>DETAIL:  The database subdirectory &quot;base/16409&quot; is missing.<br>----------------------------------------------------</p>
+
+<p>Detailed discussions are here;<br><a href="https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp" rel="nofollow">https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YtCrjN0HLew0w4Ss@momjian.us"></a>
+<a name="e9b4b534343bfa8425044ebda8061ecc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>nagata(at)sraoss(dot)co(dot)jp, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-14 23:49:32</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YtCrjN0HLew0w4Ss%40momjian.us">YtCrjN0HLew0w4Ss@momjian.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YtCrjN0HLew0w4Ss%40momjian.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YtCrjN0HLew0w4Ss%40momjian.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YtCrjN0HLew0w4Ss%40momjian.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YtCrjN0HLew0w4Ss%40momjian.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207140000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207140000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>Did we make any decision on this?</p>
+
+<p>---------------------------------------------------------------------------</p>
+
+<p>On Fri, Mar 11, 2022 at 11:11:54AM +0000, PG Bug reporting form wrote:<br>&gt; The following bug has been logged on the website:<br>&gt; <br>&gt; Bug reference:      17434<br>&gt; Logged by:          Yugo Nagata<br>&gt; Email address:      nagata(at)sraoss(dot)co(dot)jp<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   Ubuntu<br>&gt; Description:        <br>&gt; <br>&gt; CREATE/DROP DATABASE can be executed in the same transaction with other<br>&gt; commands when we use pipeline mode in pgbench or libpq API. If the<br>&gt; transaction aborts, this causes an inconsistency between the system catalog<br>&gt; and base directory.<br>&gt; <br>&gt; Here is an example using the pgbench /startpipeline meta command.<br>&gt; <br>&gt; ----------------------------------------------------<br>&gt; (1)  Confirm that there are four databases from psql and directories in<br>&gt; base.<br>&gt; <br>&gt; $ psql -l<br>&gt;                                  List of databases<br>&gt;    Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access<br>&gt; privileges   <br>&gt; -----------+--------+----------+-------------+-------------+-----------------------<br>&gt;  postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>&gt;  template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>&gt;      +<br>&gt;            |        |          |             |             |<br>&gt; &quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br>&gt;  template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>&gt;      +<br>&gt;            |        |          |             |             |<br>&gt; &quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br>&gt;  test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>&gt; (4 rows)<br>&gt; <br>&gt; $ ls data/base/<br>&gt; 1  13014  13015  16409  pgsql_tmp<br>&gt; <br>&gt; (2) Execute CREATE DATABASE in a transaction, and the transaction fails.<br>&gt; <br>&gt; $ cat pipeline_createdb.sql <br>&gt; \startpipeline<br>&gt; create database test;<br>&gt; select 1/0;<br>&gt; \endpipeline<br>&gt; <br>&gt; $ pgbench -t 1 -f pipeline_createdb.sql -M extended<br>&gt; pgbench (14.2)<br>&gt; starting vacuum...end.<br>&gt; pgbench: error: client 0 script 0 aborted in command 3 query 0: <br>&gt; ....<br>&gt; <br>&gt; (3) There are still four databases but a new directory was created in<br>&gt; base.<br>&gt; <br>&gt; $ psql -l<br>&gt;                                  List of databases<br>&gt;    Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access<br>&gt; privileges   <br>&gt; -----------+--------+----------+-------------+-------------+-----------------------<br>&gt;  postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>&gt;  template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>&gt;      +<br>&gt;            |        |          |             |             |<br>&gt; &quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br>&gt;  template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>&gt;      +<br>&gt;            |        |          |             |             |<br>&gt; &quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br>&gt;  test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>&gt; (4 rows)<br>&gt; <br>&gt; $ ls data/base/<br>&gt; 1  13014  13015  16409  16411  pgsql_tmp<br>&gt; <br>&gt; (4) Next, execute DROP DATABASE in a transaction, and the transaction<br>&gt; fails.<br>&gt; <br>&gt; $ cat pipeline_dropdb.sql <br>&gt; \startpipeline<br>&gt; drop database test0;<br>&gt; select 1/0;<br>&gt; \endpipeline<br>&gt; <br>&gt; $ pgbench -t 1 -f pipeline_dropdb.sql -M extended<br>&gt; pgbench (14.2)<br>&gt; starting vacuum...end.<br>&gt; pgbench: error: client 0 script 0 aborted in command 3 query 0:<br>&gt; ...<br>&gt; <br>&gt; (5) There are still four databases but the corresponding directory was<br>&gt; deleted in base.<br>&gt; <br>&gt; $ psql -l<br>&gt;                                  List of databases<br>&gt;    Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access<br>&gt; privileges   <br>&gt; -----------+--------+----------+-------------+-------------+-----------------------<br>&gt;  postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>&gt;  template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>&gt;      +<br>&gt;            |        |          |             |             |<br>&gt; &quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br>&gt;  template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/&quot;yugo-n&quot;    <br>&gt;      +<br>&gt;            |        |          |             |             |<br>&gt; &quot;yugo-n&quot;=CTc/&quot;yugo-n&quot;<br>&gt;  test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | <br>&gt; (4 rows)<br>&gt; <br>&gt; $ ls data/base/<br>&gt; 1  13014  13015  16411  pgsql_tmp<br>&gt; <br>&gt; (6) We cannot connect the database &quot;test0&quot;.<br>&gt; <br>&gt; $ psql test0<br>&gt; psql: error: connection to server on socket &quot;/tmp/.s.PGSQL.25435&quot; failed:<br>&gt; FATAL:  database &quot;test0&quot; does not exist<br>&gt; DETAIL:  The database subdirectory &quot;base/16409&quot; is missing.<br>&gt; ----------------------------------------------------<br>&gt; <br>&gt; Detailed discussions are here;<br>&gt; <a href="https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp" rel="nofollow">https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp</a><br>&gt; </p>
+
+<p>-- <br>  Bruce Momjian  &lt;bruce(at)momjian(dot)us&gt;        <a href="https://momjian.us" rel="nofollow">https://momjian.us</a><br>  EDB                                      <a href="https://enterprisedb.com" rel="nofollow">https://enterprisedb.com</a></p>
+
+<p>  Indecision is a decision.  Inaction is an action.  Mark Batterson</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3190751.1657845414@sss.pgh.pa.us"></a>
+<a name="2710a7ce29e420f6f7b62a0850495e33"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>nagata(at)sraoss(dot)co(dot)jp, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-15 00:36:54</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3190751.1657845414%40sss.pgh.pa.us">3190751.1657845414@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3190751.1657845414%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3190751.1657845414%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3190751.1657845414%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3190751.1657845414%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207150000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207150000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt; writes:<br>&gt; Did we make any decision on this?</p>
+
+<p>Hmm, that one seems to have slipped past me.  I agree it doesn&#x27;t<br>look good.  But why isn&#x27;t the PreventInTransactionBlock() check<br>blocking the command from even starting?</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwbY_vJWcvJLUz2r+zzwwhkJbjzjojfGx=Mvd9TZ0TTKew@mail.gmail.com"></a>
+<a name="7a6c651616c2698200e75a241b96504a"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-15 02:14:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwbY_vJWcvJLUz2r%2BzzwwhkJbjzjojfGx%3DMvd9TZ0TTKew%40mail.gmail.com">CAKFQuwbY_vJWcvJLUz2r+zzwwhkJbjzjojfGx=Mvd9TZ0TTKew@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwbY_vJWcvJLUz2r%2BzzwwhkJbjzjojfGx%3DMvd9TZ0TTKew%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwbY_vJWcvJLUz2r%2BzzwwhkJbjzjojfGx%3DMvd9TZ0TTKew%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwbY_vJWcvJLUz2r%2BzzwwhkJbjzjojfGx%3DMvd9TZ0TTKew%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwbY_vJWcvJLUz2r%2BzzwwhkJbjzjojfGx%3DMvd9TZ0TTKew%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207150000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207150000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Jul 14, 2022 at 5:37 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; Bruce Momjian &lt;bruce(at)momjian(dot)us&gt; writes:<br>&gt; &gt; Did we make any decision on this?<br>&gt;<br>&gt; Hmm, that one seems to have slipped past me.  I agree it doesn&#x27;t<br>&gt; look good.  But why isn&#x27;t the PreventInTransactionBlock() check<br>&gt; blocking the command from even starting?<br>&gt;<br>&gt;<br>I assume because pgbench never sends a BEGIN command so the create database<br>sees itself in an implicit transaction and happily goes about its business,<br>expecting the system to commit its work immediately after it says it is<br>done.  But that never happens, instead the next command comes along and<br>crashes the implicit transaction it is now sharing with the create database<br>command.  Create database understands how to rollback if it is the one that<br>causes the failure but isn&#x27;t designed to operate in a situation where it<br>has to rollback because of someone else.  That isn&#x27;t how implicit<br>transactions are supposed to work, whether in the middle of a pipeline or<br>otherwise.  Or at least that is my, and apparently CREATE DATABASE&#x27;s,<br>understanding of implicit transactions: one top-level command only.</p>
+
+<p>Slight tangent, but while I&#x27;m trying to get my own head around this I just<br>want to point out that the first sentence of the following doesn&#x27;t make<br>sense given the above understanding of implicit transactions, and the<br>paragraph as a whole is tough to comprehend.</p>
+
+<p>If the pipeline used an implicit transaction, then operations that have<br>already executed are rolled back and operations that were queued to follow<br>the failed operation are skipped entirely. The same behavior holds if the<br>pipeline starts and commits a single explicit transaction (i.e. the first<br>statement is BEGIN and the last is COMMIT) except that the session remains<br>in an aborted transaction state at the end of the pipeline. If a pipeline<br>contains multiple explicit transactions, all transactions that committed<br>prior to the error remain committed, the currently in-progress transaction<br>is aborted, and all subsequent operations are skipped completely, including<br>subsequent transactions. If a pipeline synchronization point occurs with an<br>explicit transaction block in aborted state, the next pipeline will become<br>aborted immediately unless the next command puts the transaction in normal<br>mode with ROLLBACK.</p>
+
+<p><a href="https://www.postgresql.org/docs/current/libpq-pipeline-mode.html#LIBPQ-PIPELINE-USING" rel="nofollow">https://www.postgresql.org/docs/current/libpq-pipeline-mode.html#LIBPQ-PIPELINE-USING</a></p>
+
+<p>I don&#x27;t know what the answer is here but I don&#x27;t think &quot;tell the user not<br>to do that&quot; is appropriate.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3498921.1657919211@sss.pgh.pa.us"></a>
+<a name="cbba7bdcac692a019f6198549f1d881f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-15 21:06:51</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3498921.1657919211%40sss.pgh.pa.us">3498921.1657919211@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3498921.1657919211%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3498921.1657919211%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3498921.1657919211%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3498921.1657919211%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207150000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207150000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; On Thu, Jul 14, 2022 at 5:37 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; Hmm, that one seems to have slipped past me.  I agree it doesn&#x27;t<br>&gt;&gt; look good.  But why isn&#x27;t the PreventInTransactionBlock() check<br>&gt;&gt; blocking the command from even starting?</p>
+
+<p>&gt; I assume because pgbench never sends a BEGIN command so the create database<br>&gt; sees itself in an implicit transaction and happily goes about its business,<br>&gt; expecting the system to commit its work immediately after it says it is<br>&gt; done.</p>
+
+<p>Yeah.  Upon inspection, the fundamental problem here is that in extended<br>query protocol we typically don&#x27;t issue finish_xact_command() until we<br>get a Sync message.  So even though everything looks kosher when<br>PreventInTransactionBlock() runs, the client can send another statement<br>which will be executed in the same transaction, risking trouble.</p>
+
+<p>Here&#x27;s a draft patch to fix this.  We basically just need to force<br>finish_xact_command() in the same way as we do for transaction control<br>statements.  I considered using the same technology as the code uses<br>for transaction control --- that is, statically check for the types of<br>statements that are trouble --- but after reviewing the set of callers<br>of PreventInTransactionBlock() I gave that up as unmaintainable.  So<br>what this does is make PreventInTransactionBlock() set a flag to be<br>checked later, back in exec_execute_message.  I was initially going<br>to make that be a new boolean global, but I happened to notice the<br>MyXactFlags variable which seems entirely suited to this use-case.</p>
+
+<p>One thing that I&#x27;m dithering over is whether to add a check of the<br>new flag in exec_simple_query.  As things currently stand that would<br>be redundant, but it seems like doing things the same way in both<br>of those functions might be more future-proof and understandable.<br>(Note the long para I added to justify not doing it ;-))</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/135563/ensure-immediate-commit-in-extended-protocol-1.patch">ensure-immediate-commit-in-extended-protocol-1.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>4.7 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwa9JQgKgg3Djrx=7p1Phhj68QEq0TWYG72Xv-nPz61r0w@mail.gmail.com"></a>
+<a name="ec63a8e8a83be32c14fe6e064a56b3ee"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-18 19:55:48</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwa9JQgKgg3Djrx%3D7p1Phhj68QEq0TWYG72Xv-nPz61r0w%40mail.gmail.com">CAKFQuwa9JQgKgg3Djrx=7p1Phhj68QEq0TWYG72Xv-nPz61r0w@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwa9JQgKgg3Djrx%3D7p1Phhj68QEq0TWYG72Xv-nPz61r0w%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwa9JQgKgg3Djrx%3D7p1Phhj68QEq0TWYG72Xv-nPz61r0w%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwa9JQgKgg3Djrx%3D7p1Phhj68QEq0TWYG72Xv-nPz61r0w%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwa9JQgKgg3Djrx%3D7p1Phhj68QEq0TWYG72Xv-nPz61r0w%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207180000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207180000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Jul 15, 2022 at 2:06 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; &quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; &gt; On Thu, Jul 14, 2022 at 5:37 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt;&gt; Hmm, that one seems to have slipped past me.  I agree it doesn&#x27;t<br>&gt; &gt;&gt; look good.  But why isn&#x27;t the PreventInTransactionBlock() check<br>&gt; &gt;&gt; blocking the command from even starting?<br>&gt;<br>&gt; &gt; I assume because pgbench never sends a BEGIN command so the create<br>&gt; database<br>&gt; &gt; sees itself in an implicit transaction and happily goes about its<br>&gt; business,<br>&gt; &gt; expecting the system to commit its work immediately after it says it is<br>&gt; &gt; done.<br>&gt;<br>&gt; Yeah.  Upon inspection, the fundamental problem here is that in extended<br>&gt; query protocol we typically don&#x27;t issue finish_xact_command() until we<br>&gt; get a Sync message.  So even though everything looks kosher when<br>&gt; PreventInTransactionBlock() runs, the client can send another statement<br>&gt; which will be executed in the same transaction, risking trouble.</p>
+
+<p>&gt; Here&#x27;s a draft patch to fix this.  We basically just need to force<br>&gt; finish_xact_command() in the same way as we do for transaction control<br>&gt; statements.  I considered using the same technology as the code uses<br>&gt; for transaction control --- that is, statically check for the types of<br>&gt; statements that are trouble --- but after reviewing the set of callers<br>&gt; of PreventInTransactionBlock() I gave that up as unmaintainable.</p>
+
+<p>This seems like too narrow a fix though.  The fact that a sync message is<br>the thing causing the commit of the implicit transaction in the extended<br>query protocol has been exposed as a latent bug in the system by the<br>introduction of the Pipeline functionality in libpq that relies on the<br>&quot;should&quot; in message protocol&#x27;s:</p>
+
+<p>&quot;At completion of each series of extended-query messages, the frontend<br>should issue a Sync message. This parameterless message causes the backend<br>to close the current transaction if it&#x27;s not inside a BEGIN/COMMIT<br>transaction block (“close” meaning to commit if no error, or roll back if<br>error).&quot; [1]</p>
+
+<p>However, the implicit promise of the extended query protocol, which only<br>allows one command to be executed at a time, is that each command, no<br>matter whether it must execute &quot;outside of a transaction&quot;, that executes in<br>the implicit transaction block will commit at the end of the command.</p>
+
+<p>I don&#x27;t see needing to update simple_query_exec to recognize this flag, if<br>it survives, so long as we describe the flag as an implementation detail<br>related to the extended query protocol promise to commit implicit<br>transactions regardless of when the sync command arrives.</p>
+
+<p>Plus, the simple query protocol doesn&#x27;t have the same one command per<br>transaction promise.  Any attempts at equivalency between the two really<br>doesn&#x27;t have a strong foundation to work from.  I could see that code<br>comment you wrote being part of the commit message for why<br>exec_simple_query was not touched but I don&#x27;t find any particular value in<br>having it remain as presented.  If anything, a comment like that would be<br>README scoped describing the differences between the simply and extended<br>protocol.</p>
+
+<p>David J.</p>
+
+<p>[1]<br><a href="https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY" rel="nofollow">https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY</a><br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="805866.1658175624@sss.pgh.pa.us"></a>
+<a name="d670cfdbc56544d332cbe94ef04199f4"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-18 20:20:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/805866.1658175624%40sss.pgh.pa.us">805866.1658175624@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/805866.1658175624%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/805866.1658175624%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/805866.1658175624%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/805866.1658175624%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207180000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207180000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; On Fri, Jul 15, 2022 at 2:06 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; Here&#x27;s a draft patch to fix this.  We basically just need to force<br>&gt;&gt; finish_xact_command() in the same way as we do for transaction control<br>&gt;&gt; statements.  I considered using the same technology as the code uses<br>&gt;&gt; for transaction control --- that is, statically check for the types of<br>&gt;&gt; statements that are trouble --- but after reviewing the set of callers<br>&gt;&gt; of PreventInTransactionBlock() I gave that up as unmaintainable.</p>
+
+<p>&gt; This seems like too narrow a fix though.</p>
+
+<p>I read this, and I have absolutely no idea what you&#x27;re talking about<br>or what you concretely want to do differently.  If it&#x27;s just a<br>documentation question, I agree that I didn&#x27;t address docs yet.<br>Probably we do need to put something in the protocol chapter<br>pointing out that some commands will commit immediately.</p>
+
+<p>I&#x27;m not sure I buy your argument that there&#x27;s a fundamental<br>difference between simple and extended query protocol in this<br>area.  In simple protocol you can wrap an &quot;implicit transaction&quot;<br>around several commands by sending them in one query message.<br>What we&#x27;ve got here is that you can do the same thing in<br>extended protocol by omitting Syncs.  Extended protocol&#x27;s<br>skip-till-Sync-after-error behavior is likewise very much like<br>the fact that simple protocol abandons the rest of the query<br>string after an error.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwYQpm6E4nTgiOZAGRg0JKquHaXQ0JkqruWeHuOQX6-70g@mail.gmail.com"></a>
+<a name="5f6901b7f30098335127cd41af7a94f3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-18 22:17:11</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwYQpm6E4nTgiOZAGRg0JKquHaXQ0JkqruWeHuOQX6-70g%40mail.gmail.com">CAKFQuwYQpm6E4nTgiOZAGRg0JKquHaXQ0JkqruWeHuOQX6-70g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwYQpm6E4nTgiOZAGRg0JKquHaXQ0JkqruWeHuOQX6-70g%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwYQpm6E4nTgiOZAGRg0JKquHaXQ0JkqruWeHuOQX6-70g%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwYQpm6E4nTgiOZAGRg0JKquHaXQ0JkqruWeHuOQX6-70g%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwYQpm6E4nTgiOZAGRg0JKquHaXQ0JkqruWeHuOQX6-70g%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207180000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207180000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Jul 18, 2022 at 1:20 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; &quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; &gt; On Fri, Jul 15, 2022 at 2:06 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt;&gt; Here&#x27;s a draft patch to fix this.  We basically just need to force<br>&gt; &gt;&gt; finish_xact_command() in the same way as we do for transaction control<br>&gt; &gt;&gt; statements.  I considered using the same technology as the code uses<br>&gt; &gt;&gt; for transaction control --- that is, statically check for the types of<br>&gt; &gt;&gt; statements that are trouble --- but after reviewing the set of callers<br>&gt; &gt;&gt; of PreventInTransactionBlock() I gave that up as unmaintainable.<br>&gt;<br>&gt; &gt; This seems like too narrow a fix though.<br>&gt;<br>&gt; I read this, and I have absolutely no idea what you&#x27;re talking about<br>&gt; or what you concretely want to do differently.  If it&#x27;s just a<br>&gt; documentation question, I agree that I didn&#x27;t address docs yet.<br>&gt; Probably we do need to put something in the protocol chapter<br>&gt; pointing out that some commands will commit immediately.<br>&gt;</p>
+
+<p>I guess I am expecting exec_execute_message to have:</p>
+
+<p>if (completed &amp;&amp; use_implicit_block)<br>{<br>    EndImplicitTransactionBlock();<br>    finish_xact_command();<br>} else if (completed) [existing code continues]<br>Or, in terms of the protocol,</p>
+
+<p>&quot;Therefore, an Execute phase is always terminated by the appearance of<br>exactly one of these messages: CommandComplete, EmptyQueryResponse (if the<br>portal was created from an empty query string), ErrorResponse, or<br>PortalSuspended.&quot;</p>
+
+<p>CommandComplete includes an implied commit when the implicit transaction<br>block is in use; which basically means sending Execute while using the<br>implicit transaction block will cause a commit to happen.</p>
+
+<p>I don&#x27;t fully understand PortalSuspended but it seems like it is indeed a<br>valid exception to this rule.</p>
+
+<p>EmptyQueryResponse seems like it should be immaterial.</p>
+
+<p>ErrorResponse seems to preempt all of these.</p>
+
+<p>The implied transaction block does not count for purposes of determining<br>whether a command that must not be executed in a transaction block can be<br>executed.</p>
+
+<p>Now, as you say below, the &quot;multiple commands per implicit transaction<br>block in extended query mode&quot; is an intentional design choice so the above<br>would indeed be incorrect.  However, there is still something fishy here,<br>so please read below.</p>
+
+<p>&gt; I&#x27;m not sure I buy your argument that there&#x27;s a fundamental<br>&gt; difference between simple and extended query protocol in this<br>&gt; area.  In simple protocol you can wrap an &quot;implicit transaction&quot;<br>&gt; around several commands by sending them in one query message.<br>&gt; What we&#x27;ve got here is that you can do the same thing in<br>&gt; extended protocol by omitting Syncs.  Extended protocol&#x27;s<br>&gt; skip-till-Sync-after-error behavior is likewise very much like<br>&gt; the fact that simple protocol abandons the rest of the query<br>&gt; string after an error.<br>&gt;</p>
+
+<p>The fact that SYNC has the side effect of ending the implicit transaction<br>block is a POLA violation to me and the root of my misunderstanding here.<br>I suppose it is too late to change at this point.  I can at least see that<br>giving the client control of the implicit transaction block, even if not<br>through SQL (which I suppose comes with implicit), has merit, even if this<br>choice of implementation is unintuitive.</p>
+
+<p>In any case, I tried to extend the pgbench exercise but don&#x27;t know what<br>went wrong.  I will explain what I think would happen:</p>
+
+<p>For the script:</p>
+
+<p>drop table if exists performupdate;<br>create table performupdate (val integer);<br>insert into performupdate values (2);<br>\startpipeline<br>update performupdate set val = val * 2;<br>--create database benchtest;<br>select 1/0;<br>--rollback<br>\endpipeline<br>DO $$BEGIN RAISE NOTICE &#x27;Value = %&#x27;, (select val from performupdate); END;<br>$$</p>
+
+<p>I get this result - the post-pipeline DO block never executes and I<br>expected that it would.  Uncommenting the rollback made no difference.  I<br>suppose this is just because we are abusing the tool in lieu of writing C<br>code.  That&#x27;s fine.</p>
+
+<p>pgbench: client 0 executing script &quot;/home/vagrant/pipebench.sql&quot;<br>pgbench: client 0 sending drop table if exists performupdate;<br>pgbench: client 0 receiving<br>pgbench: client 0 receiving<br>pgbench: client 0 sending create table performupdate (val integer);<br>pgbench: client 0 receiving<br>pgbench: client 0 receiving<br>pgbench: client 0 sending insert into performupdate values (2);<br>pgbench: client 0 receiving<br>pgbench: client 0 receiving<br>pgbench: client 0 executing \startpipeline<br>pgbench: client 0 sending update performupdate set val = val * 2;<br>pgbench: client 0 sending select 1/0;<br>pgbench: client 0 executing \endpipeline<br>pgbench: client 0 receiving<br>pgbench: client 0 receiving<br>pgbench: client 0 receiving<br>pgbench: error: client 0 script 0 aborted in command 6 query 0:<br>transaction type: /home/vagrant/pipebench.sql<br>scaling factor: 1<br>query mode: extended<br>number of clients: 1<br>number of threads: 1<br>maximum number of tries: 1<br>number of transactions per client: 1<br>number of transactions actually processed: 0/1<br>number of failed transactions: 0 (NaN%)<br>pgbench: error: Run was aborted; the above results are incomplete.</p>
+
+<p>In any case, for the above script, given the definition of pipeline mode, I<br>would expect that the value reported to be 2.  This assumes that when<br>coming out of pipeline mode the system basically goes back to ReadyForQuery.</p>
+
+<p>However, if I now uncomment the create database command the expectation is<br>either:</p>
+
+<p>1. It fails to execute since an existing command is sharing the implicit<br>transaction, and fails the implicit transaction block, thus the reported<br>value is still 2<br>2. It succeeds, the next command executes and fails, the database creation<br>is undone and the update is undone, thus the reported value is still 2</p>
+
+<p>What does happen, IIUC, is that both the preceding update command and the<br>create database are now committed and the returned value is 4</p>
+
+<p>In short, we are saying that issuing a command that cannot be executed in a<br>transaction block within the middle of the implicit transaction block will<br>cause the block to implicitly commit if the command completes successfully.</p>
+
+<p>From this it seems that not only should we issue a commit after executing<br>create database in the implicit transaction block but we also need to<br>commit before attempting to execute the command in the first place.  The<br>mere presence of a such a command basically means:</p>
+
+<p>COMMIT;<br>CREATE DATABASE...;<br>COMMIT;</p>
+
+<p>That is what it means to be unable to be executed in a transaction block -<br>with an outright error if an explicit transaction block has already been<br>established.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="37325fb7-8014-4028-9bcf-60d83f4fe8dd@manitou-mail.org"></a>
+<a name="720c55dd1399c9c459fa63aa360d799c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;Daniel Verite&quot; &lt;daniel(at)manitou-mail(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,
+ Bruce Momjian
+ &lt;bruce(at)momjian(dot)us&gt;,
+ Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,
+ PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+  transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-19 11:16:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/37325fb7-8014-4028-9bcf-60d83f4fe8dd%40manitou-mail.org">37325fb7-8014-4028-9bcf-60d83f4fe8dd@manitou-mail.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/37325fb7-8014-4028-9bcf-60d83f4fe8dd%40manitou-mail.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/37325fb7-8014-4028-9bcf-60d83f4fe8dd%40manitou-mail.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/37325fb7-8014-4028-9bcf-60d83f4fe8dd%40manitou-mail.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/37325fb7-8014-4028-9bcf-60d83f4fe8dd%40manitou-mail.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207190000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207190000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>	David G. Johnston wrote:</p>
+
+<p>&gt; drop table if exists performupdate;<br>&gt; create table performupdate (val integer);<br>&gt; insert into performupdate values (2);<br>&gt; \startpipeline<br>&gt; update performupdate set val = val * 2;<br>&gt; --create database benchtest;<br>&gt; select 1/0;<br>&gt; --rollback<br>&gt; \endpipeline<br>&gt; DO $$BEGIN RAISE NOTICE &#x27;Value = %&#x27;, (select val from performupdate); END;<br>&gt; $$<br>&gt; <br>&gt; I get this result - the post-pipeline DO block never executes and I<br>&gt; expected that it would.  </p>
+
+<p>pgbench stops the script on errors. If the script was reduced to</p>
+
+<p> select 1/0;<br> DO $$BEGIN RAISE NOTICE &#x27;print this; END; $$</p>
+
+<p>the DO statement would not be executed either.<br>When the error happens inside a pipeline section, it&#x27;s the same.<br>The pgbench code collects the results sent by the server to clear up,<br>but the script is aborted at this point, and the DO block is not going<br>to be sent to the server.</p>
+
+<p>Best regards,<br>-- <br>Daniel Vérité<br><a href="https://postgresql.verite.pro/" rel="nofollow">https://postgresql.verite.pro/</a><br>Twitter: @DanielVerite</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2350990.1658848101@sss.pgh.pa.us"></a>
+<a name="61b30803c5b27b2e420922b1427e6220"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-26 15:08:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2350990.1658848101%40sss.pgh.pa.us">2350990.1658848101@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2350990.1658848101%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2350990.1658848101%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2350990.1658848101%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2350990.1658848101%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; I guess I am expecting exec_execute_message to have:</p>
+
+<p>&gt; if (completed &amp;&amp; use_implicit_block)<br>&gt; {<br>&gt;     EndImplicitTransactionBlock();<br>&gt;     finish_xact_command();<br>&gt; } else if (completed) [existing code continues]</p>
+
+<p>The problem with that is &quot;where do we get use_implicit_block from&quot;?<br>In simple query mode it&#x27;s set if the simple-query message contains<br>more than one statement.  But the issue we face in extended mode is<br>precisely that we don&#x27;t know if the client will try to send another<br>statement before Sync.</p>
+
+<p>I spent some time thinking about alternative solutions for this.<br>AFAICS the only other feasible approach is to continue to not do<br>finish_xact_command() until Sync, but change state so that any<br>message that tries to do other work will be rejected.  But that&#x27;s<br>not really at all attractive, for these reasons:</p>
+
+<p>1. Rejecting other message types implies an error (unless we<br>get REALLY weird), which implies a rollback, which gets us into<br>the same inconsistent state as a user-issued rollback.</p>
+
+<p>2. Once we&#x27;ve completed the CREATE DATABASE or whatever, we really<br>have got to commit or we end with inconsistent state.  So it does<br>not seem like a good plan to sit and wait for the client, even if<br>we were certain that it&#x27;d eventually issue Sync.  The longer we<br>sit, the more chance of something interfering --- database shutdown,<br>network connection drop, etc.</p>
+
+<p>3. This approach winds up throwing errors for cases that used<br>to work, eg multiple CREATE DATABASE commands before Sync.<br>The immediate-silent-commit approach doesn&#x27;t.  The only compatibility<br>break is that you can&#x27;t ROLLBACK after CREATE DATABASE ... but that&#x27;s<br>precisely the case that doesn&#x27;t work anyway.</p>
+
+<p>Ideally we&#x27;d dodge all of this mess by making all our DDL fully<br>transactional and getting rid of PreventInTransactionBlock.<br>I&#x27;m not sure that will ever happen; but I am sad that so many<br>new calls of it have been introduced by the logical replication<br>stuff.  (Doesn&#x27;t look like anybody bothered to teach psql&#x27;s<br>command_no_begin() about those, either.)  In any case, that&#x27;s a<br>long-term direction to pursue, not something that could yield<br>a back-patchable fix.</p>
+
+<p>Anyway, here&#x27;s an updated patch, now with docs.  I was surprised<br>to realize that protocol.sgml has no explicit mention of pipelining,<br>even though extended query protocol was intentionally set up to make<br>that possible.  So I added a &lt;sect2&gt; about that, which provides a home<br>for the caveat about immediate-commit commands.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/136012/ensure-immediate-commit-in-extended-protocol-2.patch">ensure-immediate-commit-in-extended-protocol-2.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>7.9 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwYRYhF8iOD9MHp7VuZur_JvVEjDzpMHuUHNeYReB5v2Sw@mail.gmail.com"></a>
+<a name="69ef9731b548122321b645057f5dc764"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-26 15:22:38</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwYRYhF8iOD9MHp7VuZur_JvVEjDzpMHuUHNeYReB5v2Sw%40mail.gmail.com">CAKFQuwYRYhF8iOD9MHp7VuZur_JvVEjDzpMHuUHNeYReB5v2Sw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwYRYhF8iOD9MHp7VuZur_JvVEjDzpMHuUHNeYReB5v2Sw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwYRYhF8iOD9MHp7VuZur_JvVEjDzpMHuUHNeYReB5v2Sw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwYRYhF8iOD9MHp7VuZur_JvVEjDzpMHuUHNeYReB5v2Sw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwYRYhF8iOD9MHp7VuZur_JvVEjDzpMHuUHNeYReB5v2Sw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Jul 26, 2022 at 8:08 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; &quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; &gt; I guess I am expecting exec_execute_message to have:<br>&gt;<br>&gt; &gt; if (completed &amp;&amp; use_implicit_block)<br>&gt; &gt; {<br>&gt; &gt;     EndImplicitTransactionBlock();<br>&gt; &gt;     finish_xact_command();<br>&gt; &gt; } else if (completed) [existing code continues]<br>&gt;<br>&gt; The problem with that is &quot;where do we get use_implicit_block from&quot;?<br>&gt; In simple query mode it&#x27;s set if the simple-query message contains<br>&gt; more than one statement.  But the issue we face in extended mode is<br>&gt; precisely that we don&#x27;t know if the client will try to send another<br>&gt; statement before Sync.<br>&gt; [...]<br>&gt; Anyway, here&#x27;s an updated patch, now with docs.  I was surprised<br>&gt; to realize that protocol.sgml has no explicit mention of pipelining,<br>&gt; even though extended query protocol was intentionally set up to make<br>&gt; that possible.  So I added a &lt;sect2&gt; about that, which provides a home<br>&gt; for the caveat about immediate-commit commands.<br>&gt;<br>&gt;<br>Thanks!  This added section is clear and now affirms the understanding I&#x27;ve<br>come to with this thread, mostly.  I&#x27;m still of the opinion that the<br>definition of &quot;cannot be executed inside a transaction block&quot; means that we<br>must &quot;auto-sync&quot; (implicit commit) before and after the restricted command,<br>not just after, and that the new section should cover this - whether we do<br>or do not - explicitly.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2356216.1658849834@sss.pgh.pa.us"></a>
+<a name="bda2d561f0f73fa4687e863f3940f1b4"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-26 15:37:14</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2356216.1658849834%40sss.pgh.pa.us">2356216.1658849834@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2356216.1658849834%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2356216.1658849834%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2356216.1658849834%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2356216.1658849834%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; Thanks!  This added section is clear and now affirms the understanding I&#x27;ve<br>&gt; come to with this thread, mostly.  I&#x27;m still of the opinion that the<br>&gt; definition of &quot;cannot be executed inside a transaction block&quot; means that we<br>&gt; must &quot;auto-sync&quot; (implicit commit) before and after the restricted command,<br>&gt; not just after, and that the new section should cover this - whether we do<br>&gt; or do not - explicitly.</p>
+
+<p>I&#x27;m not excited about your proposal to auto-commit before starting<br>the command.  In the first place, we can&#x27;t: we do not know whether<br>the command will call PreventInTransactionBlock.  Restructuring to<br>change that seems untenable in view of past cowboy decisions about<br>use of PreventInTransactionBlock in the replication logic.  In the<br>second place, it&#x27;d be a deviation from the current behavior (namely<br>that a failure in CREATE DATABASE et al rolls back previous un-synced<br>commands) that is not necessary to fix a bug, so changing that in<br>the back branches would be a hard sell.  I don&#x27;t even agree that<br>it&#x27;s obviously better than the current behavior, so I&#x27;m not much<br>on board with changing it in HEAD either.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwYxPhPVMGJ-uoV7rq291xAU3dwww2fWwMuaz6EPiruJ5g@mail.gmail.com"></a>
+<a name="c04c44be78d66d64658f791fe067e758"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-26 15:48:23</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwYxPhPVMGJ-uoV7rq291xAU3dwww2fWwMuaz6EPiruJ5g%40mail.gmail.com">CAKFQuwYxPhPVMGJ-uoV7rq291xAU3dwww2fWwMuaz6EPiruJ5g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwYxPhPVMGJ-uoV7rq291xAU3dwww2fWwMuaz6EPiruJ5g%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwYxPhPVMGJ-uoV7rq291xAU3dwww2fWwMuaz6EPiruJ5g%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwYxPhPVMGJ-uoV7rq291xAU3dwww2fWwMuaz6EPiruJ5g%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwYxPhPVMGJ-uoV7rq291xAU3dwww2fWwMuaz6EPiruJ5g%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Jul 26, 2022 at 8:37 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; &quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; &gt; Thanks!  This added section is clear and now affirms the understanding<br>&gt; I&#x27;ve<br>&gt; &gt; come to with this thread, mostly.  I&#x27;m still of the opinion that the<br>&gt; &gt; definition of &quot;cannot be executed inside a transaction block&quot; means that<br>&gt; we<br>&gt; &gt; must &quot;auto-sync&quot; (implicit commit) before and after the restricted<br>&gt; command,<br>&gt; &gt; not just after, and that the new section should cover this - whether we<br>&gt; do<br>&gt; &gt; or do not - explicitly.<br>&gt;<br>&gt; I&#x27;m not excited about your proposal to auto-commit before starting<br>&gt; the command.  In the first place, we can&#x27;t: we do not know whether<br>&gt; the command will call PreventInTransactionBlock.  Restructuring to<br>&gt; change that seems untenable in view of past cowboy decisions about<br>&gt; use of PreventInTransactionBlock in the replication logic.  In the<br>&gt; second place, it&#x27;d be a deviation from the current behavior (namely<br>&gt; that a failure in CREATE DATABASE et al rolls back previous un-synced<br>&gt; commands) that is not necessary to fix a bug, so changing that in<br>&gt; the back branches would be a hard sell.  I don&#x27;t even agree that<br>&gt; it&#x27;s obviously better than the current behavior, so I&#x27;m not much<br>&gt; on board with changing it in HEAD either.<br>&gt;<br>&gt;<br>That leaves us with changing the documentation then, from:</p>
+
+<p>CREATE DATABASE cannot be executed inside a transaction block.</p>
+
+<p>to:</p>
+
+<p>CREATE DATABASE cannot be executed inside an explicit transaction block (it<br>will error in this case), and will commit (or rollback on failure) any<br>implicit transaction it is a part of.</p>
+
+<p>The content of the section you added works fine so long as we are clear<br>regarding the fact it can be executed in a transaction so long as it is<br>implicit.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2361330.1658851386@sss.pgh.pa.us"></a>
+<a name="c4f3fbb7c1cecd3ab2e2611b25b6ea9e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-26 16:03:06</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2361330.1658851386%40sss.pgh.pa.us">2361330.1658851386@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2361330.1658851386%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2361330.1658851386%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2361330.1658851386%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2361330.1658851386%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; That leaves us with changing the documentation then, from:<br>&gt; CREATE DATABASE cannot be executed inside a transaction block.<br>&gt; to:<br>&gt; CREATE DATABASE cannot be executed inside an explicit transaction block (it<br>&gt; will error in this case), and will commit (or rollback on failure) any<br>&gt; implicit transaction it is a part of.</p>
+
+<p>That&#x27;s not going to help anybody unless we also provide a definition of<br>&quot;implicit transaction&quot;, which is a bit far afield for that man page.</p>
+
+<p>I did miss a bet in the proposed pipeline addendum, though.<br>I should have written</p>
+
+<p>    ... However, there<br>    are a few DDL commands (such as &lt;command&gt;CREATE DATABASE&lt;/command&gt;)<br>    that cannot be executed inside a transaction block.  If one of<br>    these is executed in a pipeline, it will, upon success, force an<br>    immediate commit to preserve database consistency.</p>
+
+<p>That ties the info to our standard wording in the per-command man<br>pages.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwYaN+SJyHcXyjAwZ7zRCze+6Xj7ns_hOEg2+fhZEJUOHg@mail.gmail.com"></a>
+<a name="82e5c24d7a907684085ffc4decf53712"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-26 16:11:52</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwYaN%2BSJyHcXyjAwZ7zRCze%2B6Xj7ns_hOEg2%2BfhZEJUOHg%40mail.gmail.com">CAKFQuwYaN+SJyHcXyjAwZ7zRCze+6Xj7ns_hOEg2+fhZEJUOHg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwYaN%2BSJyHcXyjAwZ7zRCze%2B6Xj7ns_hOEg2%2BfhZEJUOHg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwYaN%2BSJyHcXyjAwZ7zRCze%2B6Xj7ns_hOEg2%2BfhZEJUOHg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwYaN%2BSJyHcXyjAwZ7zRCze%2B6Xj7ns_hOEg2%2BfhZEJUOHg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwYaN%2BSJyHcXyjAwZ7zRCze%2B6Xj7ns_hOEg2%2BfhZEJUOHg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Jul 26, 2022 at 9:03 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; &quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; &gt; That leaves us with changing the documentation then, from:<br>&gt; &gt; CREATE DATABASE cannot be executed inside a transaction block.<br>&gt; &gt; to:<br>&gt; &gt; CREATE DATABASE cannot be executed inside an explicit transaction block<br>&gt; (it<br>&gt; &gt; will error in this case), and will commit (or rollback on failure) any<br>&gt; &gt; implicit transaction it is a part of.<br>&gt;<br>&gt; That&#x27;s not going to help anybody unless we also provide a definition of<br>&gt; &quot;implicit transaction&quot;, which is a bit far afield for that man page.<br>&gt;<br>&gt; I did miss a bet in the proposed pipeline addendum, though.<br>&gt; I should have written<br>&gt;<br>&gt;     ... However, there<br>&gt;     are a few DDL commands (such as &lt;command&gt;CREATE DATABASE&lt;/command&gt;)<br>&gt;     that cannot be executed inside a transaction block.  If one of<br>&gt;     these is executed in a pipeline, it will, upon success, force an<br>&gt;     immediate commit to preserve database consistency.<br>&gt;<br>&gt; That ties the info to our standard wording in the per-command man<br>&gt; pages.<br>&gt;<br>&gt;<br>And we are back around to the fact that only by using libpq directly, or<br>via the pipeline feature of pgbench, can one actually exert control over<br>the implicit transaction.  The psql and general SQL interface<br>implementation are just going to Sync after each command and so everything<br>looks like one transaction per command to them and only explicit<br>transactions matter.  From that, the adjustment you describe above is<br>sufficient for me.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2363212.1658852059@sss.pgh.pa.us"></a>
+<a name="1750c89fa19ba19b2886c1313b3acafd"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;, Yugo Nagata &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-26 16:14:19</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2363212.1658852059%40sss.pgh.pa.us">2363212.1658852059@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2363212.1658852059%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2363212.1658852059%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2363212.1658852059%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2363212.1658852059%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207260000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207260000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; And we are back around to the fact that only by using libpq directly, or<br>&gt; via the pipeline feature of pgbench, can one actually exert control over<br>&gt; the implicit transaction.  The psql and general SQL interface<br>&gt; implementation are just going to Sync after each command and so everything<br>&gt; looks like one transaction per command to them and only explicit<br>&gt; transactions matter.</p>
+
+<p>Right.</p>
+
+<p>&gt; From that, the adjustment you describe above is sufficient for me.</p>
+
+<p>Cool, I&#x27;ll set about back-patching.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220728105134.d5ce51dd756b3149e9b9c52c@sraoss.co.jp"></a>
+<a name="1383825b10c3770fe19570ee249bddbd"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Bruce Momjian
+ &lt;bruce(at)momjian(dot)us&gt;,
+        PostgreSQL mailing lists
+ &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-28 01:51:34</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220728105134.d5ce51dd756b3149e9b9c52c%40sraoss.co.jp">20220728105134.d5ce51dd756b3149e9b9c52c@sraoss.co.jp</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220728105134.d5ce51dd756b3149e9b9c52c%40sraoss.co.jp">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220728105134.d5ce51dd756b3149e9b9c52c%40sraoss.co.jp" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220728105134.d5ce51dd756b3149e9b9c52c%40sraoss.co.jp" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220728105134.d5ce51dd756b3149e9b9c52c%40sraoss.co.jp" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207280000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207280000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>Thank you for treating this bug report!</p>
+
+<p>On Tue, 26 Jul 2022 12:14:19 -0400<br>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; &quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; &gt; And we are back around to the fact that only by using libpq directly, or<br>&gt; &gt; via the pipeline feature of pgbench, can one actually exert control over<br>&gt; &gt; the implicit transaction.  The psql and general SQL interface<br>&gt; &gt; implementation are just going to Sync after each command and so everything<br>&gt; &gt; looks like one transaction per command to them and only explicit<br>&gt; &gt; transactions matter.<br>&gt; <br>&gt; Right.<br>&gt; <br>&gt; &gt; From that, the adjustment you describe above is sufficient for me.<br>&gt; <br>&gt; Cool, I&#x27;ll set about back-patching.<br>&gt; <br>&gt; 			regards, tom lane</p>
+
+<p>I&#x27;ve looked at the commited fix. What I wonder is whether a change in<br>IsInTransactionBlock() is necessary or not.</p>
+
+<p> +       /*<br> +        * If we tell the caller we&#x27;re not in a transaction block, then inform<br> +        * postgres.c that it had better commit when the statement is done.<br> +        * Otherwise our report could be a lie.<br> +        */<br> +       MyXactFlags |= XACT_FLAGS_NEEDIMMEDIATECOMMIT;<br> +<br>         return false;</p>
+
+<p>The comment says that is required to prevent the report from being<br>a lie. Indeed, after this function returns false, it is guaranteed<br>that following statements are executed in a separate transaction from<br>that of the current statement. However, there is no guarantee that the<br>current statement is running in a separate transaction from that of<br>the previous statements. The only caller of this function is ANALYZE<br>command, and this is used for the latter purpose. That is, if we are<br>not in a transaction block, ANALYZE can close the current transaction<br>and restart another one without affecting previous transactions. <br>(At least, ANALYZE command seems to assume it.) So,<br>I think the fix does not seem to make a sense.</p>
+
+<p>In fact, the result of IsInTransactionBlock does not make senses at<br>all in pipe-line mode regardless to the fix. ANALYZE could commit all<br>previous commands in pipelining, and this may not be user expected<br>behaviour. Moreover, before the fix ANALYZE didn&#x27;t close and open a<br>transaction if the target is only one table, but after the fix ANALYZE<br>always issues commit regardless to the number of table.</p>
+
+<p>I am not sure if we should fix it to prevent such confusing behavior<br>because this breaks back-compatibility, but I prefer to fixing it. </p>
+
+<p>The idea is to start an implicit transaction block if the server receive<br>more than one Execute messages before receiving Sync as discussed in [1]. <br>I attached the patch for this fix. </p>
+
+<p>If the first command in a pipeline is  DDL commands such as CREATE<br>DATABASE, this is allowed and immediately committed after success, as<br>same as the current behavior. Executing such commands in the middle of<br>pipeline is not allowed because the pipeline is regarded as &quot;an implicit<br>transaction block&quot; at that time. Similarly, ANALYZE in the middle of<br>pipeline can not close and open transaction.</p>
+
+<p>[1] <a href="https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp" rel="nofollow">https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp</a></p>
+
+<p>Regards,<br>Yugo Nagata<br>-- <br>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/136091/implicit_transction_for_pipeline.patch">implicit_transction_for_pipeline.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>3.9 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3214515.1658976655@sss.pgh.pa.us"></a>
+<a name="1d3e8399796f3bbf6befc246073a1fb0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-28 02:50:55</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3214515.1658976655%40sss.pgh.pa.us">3214515.1658976655@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3214515.1658976655%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3214515.1658976655%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3214515.1658976655%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3214515.1658976655%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207280000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207280000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; writes:<br>&gt; I&#x27;ve looked at the commited fix. What I wonder is whether a change in<br>&gt; IsInTransactionBlock() is necessary or not.</p>
+
+<p>I&#x27;ve not examined ANALYZE&#x27;s dependencies on this closely, but it doesn&#x27;t<br>matter really, because I&#x27;m not willing to assume that ANALYZE is the<br>only caller.  There could be external modules with stronger assumptions<br>that IsInTransactionBlock() yielding false provides guarantees equivalent<br>to PreventInTransactionBlock().  It did before this patch, so I think<br>it needs to still do so after.</p>
+
+<p>&gt; In fact, the result of IsInTransactionBlock does not make senses at<br>&gt; all in pipe-line mode regardless to the fix. ANALYZE could commit all<br>&gt; previous commands in pipelining, and this may not be user expected<br>&gt; behaviour.</p>
+
+<p>This seems pretty much isomorphic to the fact that CREATE DATABASE<br>will commit preceding steps in the pipeline.  That&#x27;s not great,<br>I admit; we&#x27;d not have designed it like that if we&#x27;d had complete<br>understanding of the behavior at the beginning.  But it&#x27;s acted<br>like that for a couple of decades now, so changing it seems far<br>more likely to make people unhappy than happy.  The same for<br>ANALYZE in a pipeline.</p>
+
+<p>&gt; If the first command in a pipeline is  DDL commands such as CREATE<br>&gt; DATABASE, this is allowed and immediately committed after success, as<br>&gt; same as the current behavior. Executing such commands in the middle of<br>&gt; pipeline is not allowed because the pipeline is regarded as &quot;an implicit<br>&gt; transaction block&quot; at that time. Similarly, ANALYZE in the middle of<br>&gt; pipeline can not close and open transaction.</p>
+
+<p>I&#x27;m not going there.  If you can persuade some other committer that<br>this is worth breaking backward compatibility for, fine; the user<br>complaints will be their problem.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwaQ-ho0PUyo=H7sfidrhS45-=S5FBbiqewLOZ3oVedGtw@mail.gmail.com"></a>
+<a name="5d39acd7de05e6a6cb969409d5ec72a0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-28 16:13:05</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwaQ-ho0PUyo%3DH7sfidrhS45-%3DS5FBbiqewLOZ3oVedGtw%40mail.gmail.com">CAKFQuwaQ-ho0PUyo=H7sfidrhS45-=S5FBbiqewLOZ3oVedGtw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwaQ-ho0PUyo%3DH7sfidrhS45-%3DS5FBbiqewLOZ3oVedGtw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwaQ-ho0PUyo%3DH7sfidrhS45-%3DS5FBbiqewLOZ3oVedGtw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwaQ-ho0PUyo%3DH7sfidrhS45-%3DS5FBbiqewLOZ3oVedGtw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwaQ-ho0PUyo%3DH7sfidrhS45-%3DS5FBbiqewLOZ3oVedGtw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207280000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202207280000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Jul 27, 2022 at 7:50 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; writes:<br>&gt; &gt; I&#x27;ve looked at the commited fix. What I wonder is whether a change in<br>&gt; &gt; IsInTransactionBlock() is necessary or not.<br>&gt;<br>&gt; &gt; In fact, the result of IsInTransactionBlock does not make senses at<br>&gt; &gt; all in pipe-line mode regardless to the fix. ANALYZE could commit all<br>&gt; &gt; previous commands in pipelining, and this may not be user expected<br>&gt; &gt; behaviour.<br>&gt;<br>&gt; This seems pretty much isomorphic to the fact that CREATE DATABASE<br>&gt; will commit preceding steps in the pipeline.  That&#x27;s not great,<br>&gt; I admit; we&#x27;d not have designed it like that if we&#x27;d had complete<br>&gt; understanding of the behavior at the beginning.  But it&#x27;s acted<br>&gt; like that for a couple of decades now, so changing it seems far<br>&gt; more likely to make people unhappy than happy.  The same for<br>&gt; ANALYZE in a pipeline.<br>&gt;<br>&gt;<br>I agreed to leaving the description of CREATE DATABASE simplified by not<br>introducing the idea of implicit transactions or, equivalently,<br>&quot;autocommit&quot;.</p>
+
+<p>Just tossing out there that we should acknowledge that our wording in the<br>BEGIN Reference should remain status quo based upon the same reasoning.</p>
+
+<p>&quot;By default (without BEGIN), PostgreSQL executes transactions in<br>“autocommit” mode, that is, each statement is executed in its own<br>transaction and a commit is implicitly performed at the end of the<br>statement (if execution was successful, otherwise a rollback is done).&quot;</p>
+
+<p><a href="https://www.postgresql.org/docs/current/sql-begin.html" rel="nofollow">https://www.postgresql.org/docs/current/sql-begin.html</a></p>
+
+<p>Maybe write instead:</p>
+
+<p>&quot;By default (without BEGIN), PostgreSQL creates transactions based upon the<br>underlying messages passed between the client and server.  Typically this<br>means each statement ends up having its own transaction.  In any case,<br>statements that must not execute in a transaction (like CREATE DATABASE)<br>must use the default, and will always cause a commit or rollback to happen<br>upon completion.&quot;</p>
+
+<p>It feels a bit out-of-place, maybe if the content scope is acceptable we<br>can work it better into the Tutorial-Advanced Features-Transaction section<br>and just replace the existing sentence with a link to there?</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220809002102.b815cd4dad20fdc91dff5ce8@sraoss.co.jp"></a>
+<a name="6b6754863fb0ec91551311faff790526"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, pgsql-hackers(at)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Bruce Momjian
+ &lt;bruce(at)momjian(dot)us&gt;,
+        PostgreSQL mailing lists
+ &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-08-08 15:21:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220809002102.b815cd4dad20fdc91dff5ce8%40sraoss.co.jp">20220809002102.b815cd4dad20fdc91dff5ce8@sraoss.co.jp</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220809002102.b815cd4dad20fdc91dff5ce8%40sraoss.co.jp">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220809002102.b815cd4dad20fdc91dff5ce8%40sraoss.co.jp" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220809002102.b815cd4dad20fdc91dff5ce8%40sraoss.co.jp" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220809002102.b815cd4dad20fdc91dff5ce8%40sraoss.co.jp" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202208080000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202208080000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, 27 Jul 2022 22:50:55 -0400<br>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; writes:<br>&gt; &gt; I&#x27;ve looked at the commited fix. What I wonder is whether a change in<br>&gt; &gt; IsInTransactionBlock() is necessary or not.<br>&gt; <br>&gt; I&#x27;ve not examined ANALYZE&#x27;s dependencies on this closely, but it doesn&#x27;t<br>&gt; matter really, because I&#x27;m not willing to assume that ANALYZE is the<br>&gt; only caller.  There could be external modules with stronger assumptions<br>&gt; that IsInTransactionBlock() yielding false provides guarantees equivalent<br>&gt; to PreventInTransactionBlock().  It did before this patch, so I think<br>&gt; it needs to still do so after.</p>
+
+<p>Thank you for your explanation. I understood that IsInTransactionBlock()<br>and PreventInTransactionBlock() share the equivalent assumption.</p>
+
+<p>As to ANALYZE, after investigating the code more, I found that setting XACT_FLAGS_NEEDIMMEDIATECOMMIT in IsInTransactionBlock() is needed indeed.<br>That is, some flags in pg_class such as relhasindex can be safely updated<br>only if ANALYZE is not in a transaction block and never rolled back.  So,<br>in a pipeline, ANALYZE must be immediately committed.</p>
+
+<p>However, I think we need more comments on these functions to clarify what<br>users can expect or not for them.  It is ensured that the statement that<br>calls PreventInTransactionBlock()  or receives false from<br>IsInTransactionBlock() never be rolled back if it finishes successfully.<br>This can eliminate the harmful influence of non-rollback-able side effects.</p>
+
+<p>On the other hand, it cannot ensure that the statement calling these<br>functions is the first or only one in the transaction in pipelining. If<br>there are preceding statements in a pipeline, they are committed in the<br>same transaction of the current statement.</p>
+
+<p>The attached patch tries to add comments explaining it on the functions.</p>
+
+<p>&gt; &gt; In fact, the result of IsInTransactionBlock does not make senses at<br>&gt; &gt; all in pipe-line mode regardless to the fix. ANALYZE could commit all<br>&gt; &gt; previous commands in pipelining, and this may not be user expected<br>&gt; &gt; behaviour.<br>&gt; <br>&gt; This seems pretty much isomorphic to the fact that CREATE DATABASE<br>&gt; will commit preceding steps in the pipeline.  </p>
+
+<p>I am not sure if we can think CREATE DATABASE case and ANLALYZE case<br>similarly. First, CREATE DATABASE is one of the commands that cannot be<br>executed inside a transaction block, but ANALYZE can be. So, users would<br>not be able to know ANALYZE in a pipeline causes a commit from the<br>documentation. Second, ANALYZE issues a commit internally in an early<br>stage not only after it finished successfully. For example, even if<br>ANALYZE is failing because a not-existing column name is specified, it<br>issues a commit before checking the column name. This makes more hard<br>to know which statements will be committed and which statements not<br>committed in a pipeline. Also, as you know, there are other commands<br>that issue internal commits.</p>
+
+<p>&gt; That&#x27;s not great,<br>&gt; I admit; we&#x27;d not have designed it like that if we&#x27;d had complete<br>&gt; understanding of the behavior at the beginning.  But it&#x27;s acted<br>&gt; like that for a couple of decades now, so changing it seems far<br>&gt; more likely to make people unhappy than happy.  The same for<br>&gt; ANALYZE in a pipeline.</p>
+
+<p>&gt; &gt; If the first command in a pipeline is  DDL commands such as CREATE<br>&gt; &gt; DATABASE, this is allowed and immediately committed after success, as<br>&gt; &gt; same as the current behavior. Executing such commands in the middle of<br>&gt; &gt; pipeline is not allowed because the pipeline is regarded as &quot;an implicit<br>&gt; &gt; transaction block&quot; at that time. Similarly, ANALYZE in the middle of<br>&gt; &gt; pipeline can not close and open transaction.<br>&gt; <br>&gt; I&#x27;m not going there.  If you can persuade some other committer that<br>&gt; this is worth breaking backward compatibility for, fine; the user<br>&gt; complaints will be their problem.</p>
+
+<p>I don&#x27;t have no idea how to reduce the complexity explained above and<br>clarify the transactional behavior of pipelining to users other than the<br>fix I proposed in the previous post. However, I also agree that such<br>changing may make some people unhappy. If there is no good way and we<br>would not like to change the behavior, I think it is better to mention<br>the effects of commands that issue internal commits in the documentation<br>at least.</p>
+
+<p>Regards,<br>Yugo Nagata</p>
+
+<p>-- <br>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/136474/comments_on_PreventInTransactionBlock.patch">comments_on_PreventInTransactionBlock.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>1.3 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220930102342.852ad903b9c0418048c07fe5@sraoss.co.jp"></a>
+<a name="f76f6108c93351ecb90e0722b612685f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-hackers(at)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, pgsql-hackers(at)postgresql(dot)org,
+ &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;, Bruce Momjian
+ &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-30 01:23:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220930102342.852ad903b9c0418048c07fe5%40sraoss.co.jp">20220930102342.852ad903b9c0418048c07fe5@sraoss.co.jp</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220930102342.852ad903b9c0418048c07fe5%40sraoss.co.jp">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220930102342.852ad903b9c0418048c07fe5%40sraoss.co.jp" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220930102342.852ad903b9c0418048c07fe5%40sraoss.co.jp" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220930102342.852ad903b9c0418048c07fe5%40sraoss.co.jp" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209300000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202209300000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On Tue, 9 Aug 2022 00:21:02 +0900<br>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; wrote:</p>
+
+<p>&gt; On Wed, 27 Jul 2022 22:50:55 -0400<br>&gt; Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; <br>&gt; &gt; Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; writes:<br>&gt; &gt; &gt; I&#x27;ve looked at the commited fix. What I wonder is whether a change in<br>&gt; &gt; &gt; IsInTransactionBlock() is necessary or not.<br>&gt; &gt; <br>&gt; &gt; I&#x27;ve not examined ANALYZE&#x27;s dependencies on this closely, but it doesn&#x27;t<br>&gt; &gt; matter really, because I&#x27;m not willing to assume that ANALYZE is the<br>&gt; &gt; only caller.  There could be external modules with stronger assumptions<br>&gt; &gt; that IsInTransactionBlock() yielding false provides guarantees equivalent<br>&gt; &gt; to PreventInTransactionBlock().  It did before this patch, so I think<br>&gt; &gt; it needs to still do so after.<br>&gt; <br>&gt; Thank you for your explanation. I understood that IsInTransactionBlock()<br>&gt; and PreventInTransactionBlock() share the equivalent assumption.<br>&gt; <br>&gt; As to ANALYZE, after investigating the code more, I found that setting XACT_FLAGS_NEEDIMMEDIATECOMMIT in IsInTransactionBlock() is needed indeed.<br>&gt; That is, some flags in pg_class such as relhasindex can be safely updated<br>&gt; only if ANALYZE is not in a transaction block and never rolled back.  So,<br>&gt; in a pipeline, ANALYZE must be immediately committed.<br>&gt; <br>&gt; However, I think we need more comments on these functions to clarify what<br>&gt; users can expect or not for them.  It is ensured that the statement that<br>&gt; calls PreventInTransactionBlock()  or receives false from<br>&gt; IsInTransactionBlock() never be rolled back if it finishes successfully.<br>&gt; This can eliminate the harmful influence of non-rollback-able side effects.<br>&gt; <br>&gt; On the other hand, it cannot ensure that the statement calling these<br>&gt; functions is the first or only one in the transaction in pipelining. If<br>&gt; there are preceding statements in a pipeline, they are committed in the<br>&gt; same transaction of the current statement.<br>&gt; <br>&gt; The attached patch tries to add comments explaining it on the functions.</p>
+
+<p>I forward it to the hackers list because the patch is to fix comments.<br>Also, I&#x27;ll register it to commitfest.</p>
+
+<p>The past discussion is here.<br><a href="https://www.postgresql.org/message-id/flat/17434-d9f7a064ce2a88a3@postgresql.org" rel="nofollow">https://www.postgresql.org/message-id/flat/17434-d9f7a064ce2a88a3%40postgresql.org</a></p>
+
+<p>&gt; <br>&gt; &gt; &gt; In fact, the result of IsInTransactionBlock does not make senses at<br>&gt; &gt; &gt; all in pipe-line mode regardless to the fix. ANALYZE could commit all<br>&gt; &gt; &gt; previous commands in pipelining, and this may not be user expected<br>&gt; &gt; &gt; behaviour.<br>&gt; &gt; <br>&gt; &gt; This seems pretty much isomorphic to the fact that CREATE DATABASE<br>&gt; &gt; will commit preceding steps in the pipeline.  <br>&gt; <br>&gt; I am not sure if we can think CREATE DATABASE case and ANLALYZE case<br>&gt; similarly. First, CREATE DATABASE is one of the commands that cannot be<br>&gt; executed inside a transaction block, but ANALYZE can be. So, users would<br>&gt; not be able to know ANALYZE in a pipeline causes a commit from the<br>&gt; documentation. Second, ANALYZE issues a commit internally in an early<br>&gt; stage not only after it finished successfully. For example, even if<br>&gt; ANALYZE is failing because a not-existing column name is specified, it<br>&gt; issues a commit before checking the column name. This makes more hard<br>&gt; to know which statements will be committed and which statements not<br>&gt; committed in a pipeline. Also, as you know, there are other commands<br>&gt; that issue internal commits.<br>&gt; <br>&gt; &gt; That&#x27;s not great,<br>&gt; &gt; I admit; we&#x27;d not have designed it like that if we&#x27;d had complete<br>&gt; &gt; understanding of the behavior at the beginning.  But it&#x27;s acted<br>&gt; &gt; like that for a couple of decades now, so changing it seems far<br>&gt; &gt; more likely to make people unhappy than happy.  The same for<br>&gt; &gt; ANALYZE in a pipeline.<br>&gt; <br>&gt; &gt; &gt; If the first command in a pipeline is  DDL commands such as CREATE<br>&gt; &gt; &gt; DATABASE, this is allowed and immediately committed after success, as<br>&gt; &gt; &gt; same as the current behavior. Executing such commands in the middle of<br>&gt; &gt; &gt; pipeline is not allowed because the pipeline is regarded as &quot;an implicit<br>&gt; &gt; &gt; transaction block&quot; at that time. Similarly, ANALYZE in the middle of<br>&gt; &gt; &gt; pipeline can not close and open transaction.<br>&gt; &gt; <br>&gt; &gt; I&#x27;m not going there.  If you can persuade some other committer that<br>&gt; &gt; this is worth breaking backward compatibility for, fine; the user<br>&gt; &gt; complaints will be their problem.<br>&gt; <br>&gt; I don&#x27;t have no idea how to reduce the complexity explained above and<br>&gt; clarify the transactional behavior of pipelining to users other than the<br>&gt; fix I proposed in the previous post. However, I also agree that such<br>&gt; changing may make some people unhappy. If there is no good way and we<br>&gt; would not like to change the behavior, I think it is better to mention<br>&gt; the effects of commands that issue internal commits in the documentation<br>&gt; at least.<br>&gt; <br>&gt; Regards,<br>&gt; Yugo Nagata<br>&gt; <br>&gt; -- <br>&gt; Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</p>
+
+<p>-- <br>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/138517/comments_on_PreventInTransactionBlock.patch">comments_on_PreventInTransactionBlock.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>1.3 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3032689.1667757257@sss.pgh.pa.us"></a>
+<a name="0e90febfe68ba1f62695f69e58e2b34c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-hackers(at)postgresql(dot)org,
+        &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-06 17:54:17</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3032689.1667757257%40sss.pgh.pa.us">3032689.1667757257@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3032689.1667757257%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3032689.1667757257%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3032689.1667757257%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3032689.1667757257%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211060000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211060000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; writes:<br>&gt;&gt; The attached patch tries to add comments explaining it on the functions.</p>
+
+<p>&gt; I forward it to the hackers list because the patch is to fix comments.</p>
+
+<p>What do you think of the attached wording?</p>
+
+<p>I don&#x27;t think the pipeline angle is of concern to anyone who might be<br>reading these comments with the aim of understanding what guarantees<br>they have.  Perhaps there should be more about that in the user-facing<br>docs, though.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/139775/comments_on_PreventInTransactionBlock-2.patch">comments_on_PreventInTransactionBlock-2.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>1.2 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20221109190114.b820cb610cbc23d5ec281eb8@sraoss.co.jp"></a>
+<a name="d5eb33bd51f8d4888471235225ec226a"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-hackers(at)postgresql(dot)org, &quot;David G(dot) Johnston&quot;
+ &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-09 10:01:14</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20221109190114.b820cb610cbc23d5ec281eb8%40sraoss.co.jp">20221109190114.b820cb610cbc23d5ec281eb8@sraoss.co.jp</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20221109190114.b820cb610cbc23d5ec281eb8%40sraoss.co.jp">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20221109190114.b820cb610cbc23d5ec281eb8%40sraoss.co.jp" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20221109190114.b820cb610cbc23d5ec281eb8%40sraoss.co.jp" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20221109190114.b820cb610cbc23d5ec281eb8%40sraoss.co.jp" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211090000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211090000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, 06 Nov 2022 12:54:17 -0500<br>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; writes:<br>&gt; &gt;&gt; The attached patch tries to add comments explaining it on the functions.<br>&gt; <br>&gt; &gt; I forward it to the hackers list because the patch is to fix comments.<br>&gt; <br>&gt; What do you think of the attached wording?</p>
+
+<p>It looks good to me. That describes the expected behaviour exactly.</p>
+
+<p>&gt; I don&#x27;t think the pipeline angle is of concern to anyone who might be<br>&gt; reading these comments with the aim of understanding what guarantees<br>&gt; they have.  Perhaps there should be more about that in the user-facing<br>&gt; docs, though.</p>
+
+<p>I agree with that we don&#x27;t need to mention pipelining in these comments,<br>and that we need more in the documentation. I attached a doc patch to add<br>a mention of commands that do internal commit to the pipelining section.<br>Also, this adds a reference for the pipelining protocol to the libpq doc.</p>
+
+<p>Regards,<br>Yugo Nagata</p>
+
+<p>-- <br>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/139859/pipeline_doc.patch">pipeline_doc.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>1.3 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3993442.1668010649@sss.pgh.pa.us"></a>
+<a name="57e41c6271c86aa240dced8df397a718"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-hackers(at)postgresql(dot)org,
+        &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-09 16:17:29</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3993442.1668010649%40sss.pgh.pa.us">3993442.1668010649@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3993442.1668010649%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3993442.1668010649%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3993442.1668010649%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3993442.1668010649%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211090000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211090000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; writes:<br>&gt; Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; What do you think of the attached wording?</p>
+
+<p>&gt; It looks good to me. That describes the expected behaviour exactly.</p>
+
+<p>Pushed that, then.</p>
+
+<p>&gt;&gt; I don&#x27;t think the pipeline angle is of concern to anyone who might be<br>&gt;&gt; reading these comments with the aim of understanding what guarantees<br>&gt;&gt; they have.  Perhaps there should be more about that in the user-facing<br>&gt;&gt; docs, though.</p>
+
+<p>&gt; I agree with that we don&#x27;t need to mention pipelining in these comments,<br>&gt; and that we need more in the documentation. I attached a doc patch to add<br>&gt; a mention of commands that do internal commit to the pipelining section.<br>&gt; Also, this adds a reference for the pipelining protocol to the libpq doc.</p>
+
+<p>Hmm ... I don&#x27;t really find either of these changes to be improvements.<br>The fact that, say, multi-table ANALYZE uses multiple transactions<br>seems to me to be a property of that statement, not of the protocol.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="65a899dd-aebc-f667-1d0a-abb89ff3abf8@enterprisedb.com"></a>
+<a name="eb0756117d37d7b1a1c6c826b58c981c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,
+ pgsql-hackers(at)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+ Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;,
+ PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-09 16:24:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/65a899dd-aebc-f667-1d0a-abb89ff3abf8%40enterprisedb.com">65a899dd-aebc-f667-1d0a-abb89ff3abf8@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/65a899dd-aebc-f667-1d0a-abb89ff3abf8%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/65a899dd-aebc-f667-1d0a-abb89ff3abf8%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/65a899dd-aebc-f667-1d0a-abb89ff3abf8%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/65a899dd-aebc-f667-1d0a-abb89ff3abf8%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211090000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211090000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 08.08.22 17:21, Yugo NAGATA wrote:<br>&gt;&gt;&gt; In fact, the result of IsInTransactionBlock does not make senses at<br>&gt;&gt;&gt; all in pipe-line mode regardless to the fix. ANALYZE could commit all<br>&gt;&gt;&gt; previous commands in pipelining, and this may not be user expected<br>&gt;&gt;&gt; behaviour.<br>&gt;&gt; This seems pretty much isomorphic to the fact that CREATE DATABASE<br>&gt;&gt; will commit preceding steps in the pipeline.<br>&gt; I am not sure if we can think CREATE DATABASE case and ANLALYZE case<br>&gt; similarly. First, CREATE DATABASE is one of the commands that cannot be<br>&gt; executed inside a transaction block, but ANALYZE can be. So, users would<br>&gt; not be able to know ANALYZE in a pipeline causes a commit from the<br>&gt; documentation. Second, ANALYZE issues a commit internally in an early<br>&gt; stage not only after it finished successfully. For example, even if<br>&gt; ANALYZE is failing because a not-existing column name is specified, it<br>&gt; issues a commit before checking the column name. This makes more hard<br>&gt; to know which statements will be committed and which statements not<br>&gt; committed in a pipeline. Also, as you know, there are other commands<br>&gt; that issue internal commits.</p>
+
+<p>This has broken the following use:</p>
+
+<p>parse: create temporary table t1 (a int) on commit drop<br>bind<br>execute<br>parse: analyze t1<br>bind<br>execute<br>parse: select * from t1<br>bind<br>execute<br>sync</p>
+
+<p>I think the behavior of IsInTransactionBlock() needs to be further <br>refined to support this.  If we are worried about external callers, <br>maybe we need to provide a separate version.  AFAICT, all the callers of <br>IsInTransactionBlock() over time have been in vacuum/analyze-related <br>code, so perhaps in master we should just move it there.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3995893.1668011885@sss.pgh.pa.us"></a>
+<a name="f29245b2842b4c87d8fb3da0f34fb5e8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;, pgsql-hackers(at)postgresql(dot)org,
+        &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-09 16:38:05</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3995893.1668011885%40sss.pgh.pa.us">3995893.1668011885@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3995893.1668011885%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3995893.1668011885%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3995893.1668011885%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3995893.1668011885%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211090000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211090000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt; writes:<br>&gt; This has broken the following use:</p>
+
+<p>&gt; parse: create temporary table t1 (a int) on commit drop<br>&gt; bind<br>&gt; execute<br>&gt; parse: analyze t1<br>&gt; bind<br>&gt; execute<br>&gt; parse: select * from t1<br>&gt; bind<br>&gt; execute<br>&gt; sync</p>
+
+<p>&gt; I think the behavior of IsInTransactionBlock() needs to be further <br>&gt; refined to support this.</p>
+
+<p>Hmm.  Maybe the right way to think about this is &quot;if we have completed an<br>EXECUTE, and not yet received a following SYNC, then report that we are in<br>a transaction block&quot;?  But I&#x27;m not sure if that breaks any other cases.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20221110134919.c92e112be567d637f126d03d@sraoss.co.jp"></a>
+<a name="e5684799713d13670e89d3549b4356cb"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-hackers(at)postgresql(dot)org, &quot;David G(dot) Johnston&quot;
+ &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-10 04:49:19</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20221110134919.c92e112be567d637f126d03d%40sraoss.co.jp">20221110134919.c92e112be567d637f126d03d@sraoss.co.jp</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20221110134919.c92e112be567d637f126d03d%40sraoss.co.jp">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20221110134919.c92e112be567d637f126d03d%40sraoss.co.jp" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20221110134919.c92e112be567d637f126d03d%40sraoss.co.jp" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20221110134919.c92e112be567d637f126d03d%40sraoss.co.jp" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211100000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211100000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, 09 Nov 2022 11:17:29 -0500<br>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; writes:<br>&gt; &gt; Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt;&gt; What do you think of the attached wording?<br>&gt; <br>&gt; &gt; It looks good to me. That describes the expected behaviour exactly.<br>&gt; <br>&gt; Pushed that, then.</p>
+
+<p>Thank you.</p>
+
+<p>&gt; &gt;&gt; I don&#x27;t think the pipeline angle is of concern to anyone who might be<br>&gt; &gt;&gt; reading these comments with the aim of understanding what guarantees<br>&gt; &gt;&gt; they have.  Perhaps there should be more about that in the user-facing<br>&gt; &gt;&gt; docs, though.<br>&gt; <br>&gt; &gt; I agree with that we don&#x27;t need to mention pipelining in these comments,<br>&gt; &gt; and that we need more in the documentation. I attached a doc patch to add<br>&gt; &gt; a mention of commands that do internal commit to the pipelining section.<br>&gt; &gt; Also, this adds a reference for the pipelining protocol to the libpq doc.<br>&gt; <br>&gt; Hmm ... I don&#x27;t really find either of these changes to be improvements.<br>&gt; The fact that, say, multi-table ANALYZE uses multiple transactions<br>&gt; seems to me to be a property of that statement, not of the protocol.</p>
+
+<p>Ok. Then, if we want to notice users that commands using internal commits<br>could unexpectedly close a transaction in pipelining, the proper place is<br>libpq section?</p>
+
+<p>Regards,<br>Yugo Nagata</p>
+
+<p>-- <br>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20221110144859.d9004fdd47396fe64fe032da@sraoss.co.jp"></a>
+<a name="b2b56e9d42a273528cc84b86f749baad"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;,
+ pgsql-hackers(at)postgresql(dot)org, &quot;David G(dot) Johnston&quot;
+ &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-10 05:48:59</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20221110144859.d9004fdd47396fe64fe032da%40sraoss.co.jp">20221110144859.d9004fdd47396fe64fe032da@sraoss.co.jp</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20221110144859.d9004fdd47396fe64fe032da%40sraoss.co.jp">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20221110144859.d9004fdd47396fe64fe032da%40sraoss.co.jp" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20221110144859.d9004fdd47396fe64fe032da%40sraoss.co.jp" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20221110144859.d9004fdd47396fe64fe032da%40sraoss.co.jp" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211100000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211100000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, 09 Nov 2022 11:38:05 -0500<br>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt; writes:<br>&gt; &gt; This has broken the following use:<br>&gt; <br>&gt; &gt; parse: create temporary table t1 (a int) on commit drop<br>&gt; &gt; bind<br>&gt; &gt; execute<br>&gt; &gt; parse: analyze t1<br>&gt; &gt; bind<br>&gt; &gt; execute<br>&gt; &gt; parse: select * from t1<br>&gt; &gt; bind<br>&gt; &gt; execute<br>&gt; &gt; sync<br>&gt; <br>&gt; &gt; I think the behavior of IsInTransactionBlock() needs to be further <br>&gt; &gt; refined to support this.<br>&gt; <br>&gt; Hmm.  Maybe the right way to think about this is &quot;if we have completed an<br>&gt; EXECUTE, and not yet received a following SYNC, then report that we are in<br>&gt; a transaction block&quot;?  But I&#x27;m not sure if that breaks any other cases.</p>
+
+<p>Or, in that case, regarding it as an implicit transaction if multiple commands<br>are executed in a pipeline as proposed in [1] could be another solution, <br>although I have once withdrawn this for not breaking backward compatibility.<br>Attached is the same patch of [1].</p>
+
+<p>[1] <a href="https://www.postgresql.org/message-id/20220728105134.d5ce51dd756b3149e9b9c52c@sraoss.co.jp" rel="nofollow">https://www.postgresql.org/message-id/20220728105134.d5ce51dd756b3149e9b9c52c%40sraoss.co.jp</a></p>
+
+<p>Regards,<br>Yugo Nagata</p>
+
+<p>-- <br>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="229552.1668112417@sss.pgh.pa.us"></a>
+<a name="dbc37d1eb5c57cbe781d6b86293190d3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;,
+        pgsql-hackers(at)postgresql(dot)org,
+        &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-10 20:33:37</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/229552.1668112417%40sss.pgh.pa.us">229552.1668112417@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/229552.1668112417%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/229552.1668112417%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/229552.1668112417%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/229552.1668112417%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211100000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211100000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; writes:<br>&gt; Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; Hmm.  Maybe the right way to think about this is &quot;if we have completed an<br>&gt;&gt; EXECUTE, and not yet received a following SYNC, then report that we are in<br>&gt;&gt; a transaction block&quot;?  But I&#x27;m not sure if that breaks any other cases.</p>
+
+<p>&gt; Or, in that case, regarding it as an implicit transaction if multiple commands<br>&gt; are executed in a pipeline as proposed in [1] could be another solution, <br>&gt; although I have once withdrawn this for not breaking backward compatibility.</p>
+
+<p>I didn&#x27;t like that patch then and I still don&#x27;t.  In particular, it&#x27;s<br>mighty weird to be issuing BeginImplicitTransactionBlock after we&#x27;ve<br>already completed one command of the pipeline.  If that works without<br>obvious warts, it&#x27;s only accidental.</p>
+
+<p>Attached is a draft patch along the lines I speculated about above.<br>It breaks backwards compatibility in that PreventInTransactionBlock<br>commands will now be rejected if they&#x27;re a non-first command in a<br>pipeline.  I think that&#x27;s okay, and arguably desirable, for HEAD<br>but I&#x27;m pretty uncomfortable about back-patching it.</p>
+
+<p>I thought of a variant idea that I think would significantly reduce<br>the risk of breaking working applications, which is to restrict things<br>only in the case of pipelines with previous data-modifying commands.<br>I tried to implement that by having PreventInTransactionBlock test</p>
+
+<p>	if (GetTopTransactionIdIfAny() != InvalidTransactionId)</p>
+
+<p>but it blew up, because we have various (mostly partitioning-related)<br>DDL commands that run PreventInTransactionBlock only after they&#x27;ve<br>acquired an exclusive lock on something, and LogAccessExclusiveLock<br>gets an XID.  (That was always a horrid POLA-violating kluge that<br>would bite us on the rear someday, and now it has.  But I can&#x27;t see<br>trying to change that in back branches.)</p>
+
+<p>Something could still be salvaged of the idea, perhaps: we could<br>adjust this patch so that the tests are like</p>
+
+<p>	if ((MyXactFlags &amp; XACT_FLAGS_PIPELINING) &amp;&amp;<br>	    GetTopTransactionIdIfAny() != InvalidTransactionId)</p>
+
+<p>Maybe that makes it a small enough hazard to be back-patchable.</p>
+
+<p>Another objection that could be raised is the same one I made<br>already, that !IsInTransactionBlock() doesn&#x27;t provide the same<br>guarantee as PreventInTransactionBlock.  I&#x27;m not too happy<br>about that either, but given that we know of no other uses of<br>IsInTransactionBlock besides ANALYZE, maybe it&#x27;s okay.  I&#x27;m<br>not sure it&#x27;s worth trying to avoid it anyway --- we&#x27;d just<br>end up with a probably-dead backwards compatibility stub.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/139887/account-for-pipeline-in-PreventInTransactionBlock-1.patch">account-for-pipeline-in-PreventInTransactionBlock-1.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>3.7 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20221116195302.8404eb58bbea02eaa9250af2@sraoss.co.jp"></a>
+<a name="5331405f9e828284d55edab418933a57"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;,
+ pgsql-hackers(at)postgresql(dot)org, &quot;David G(dot) Johnston&quot;
+ &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-16 10:53:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20221116195302.8404eb58bbea02eaa9250af2%40sraoss.co.jp">20221116195302.8404eb58bbea02eaa9250af2@sraoss.co.jp</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20221116195302.8404eb58bbea02eaa9250af2%40sraoss.co.jp">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20221116195302.8404eb58bbea02eaa9250af2%40sraoss.co.jp" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20221116195302.8404eb58bbea02eaa9250af2%40sraoss.co.jp" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20221116195302.8404eb58bbea02eaa9250af2%40sraoss.co.jp" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211160000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211160000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, 10 Nov 2022 15:33:37 -0500<br>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt; writes:<br>&gt; &gt; Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt;&gt; Hmm.  Maybe the right way to think about this is &quot;if we have completed an<br>&gt; &gt;&gt; EXECUTE, and not yet received a following SYNC, then report that we are in<br>&gt; &gt;&gt; a transaction block&quot;?  But I&#x27;m not sure if that breaks any other cases.<br>&gt; <br>&gt; &gt; Or, in that case, regarding it as an implicit transaction if multiple commands<br>&gt; &gt; are executed in a pipeline as proposed in [1] could be another solution, <br>&gt; &gt; although I have once withdrawn this for not breaking backward compatibility.<br>&gt; <br>&gt; I didn&#x27;t like that patch then and I still don&#x27;t.  In particular, it&#x27;s<br>&gt; mighty weird to be issuing BeginImplicitTransactionBlock after we&#x27;ve<br>&gt; already completed one command of the pipeline.  If that works without<br>&gt; obvious warts, it&#x27;s only accidental.</p>
+
+<p>Ok, I agree with that ugly part of my proposal, so I withdraw it again<br>if there is another acceptable solution.</p>
+
+<p>&gt; Attached is a draft patch along the lines I speculated about above.<br>&gt; It breaks backwards compatibility in that PreventInTransactionBlock<br>&gt; commands will now be rejected if they&#x27;re a non-first command in a<br>&gt; pipeline.  I think that&#x27;s okay, and arguably desirable, for HEAD</p>
+
+<p>That patch seems good to me. It fixes the problem reported from<br>Peter Eisentraut. Also, this seems simple way to define what is<br>&quot;pipelining&quot; in the code. </p>
+
+<p>&gt; but I&#x27;m pretty uncomfortable about back-patching it.</p>
+
+<p>If we want to fix the ANALYZE problem without breaking backward<br>compatibility for back-patching, maybe we could fix only<br>IsInTransactionBlock and remain PreventInTransactionBlock as it is.<br>Obviously, this will break consistency of guarantee between those<br>functions, but if we are abandoning it eventually, it might be okay.</p>
+
+<p>Anyway, if we change PreventInTransactionBlock to forbid execute<br>some DDLs in a pipeline, we also need to modify the doc.</p>
+
+<p>&gt; I thought of a variant idea that I think would significantly reduce<br>&gt; the risk of breaking working applications, which is to restrict things<br>&gt; only in the case of pipelines with previous data-modifying commands.<br>&gt; I tried to implement that by having PreventInTransactionBlock test<br>&gt; <br>&gt; 	if (GetTopTransactionIdIfAny() != InvalidTransactionId)<br>&gt; <br>&gt; but it blew up, because we have various (mostly partitioning-related)<br>&gt; DDL commands that run PreventInTransactionBlock only after they&#x27;ve<br>&gt; acquired an exclusive lock on something, and LogAccessExclusiveLock<br>&gt; gets an XID.  (That was always a horrid POLA-violating kluge that<br>&gt; would bite us on the rear someday, and now it has.  But I can&#x27;t see<br>&gt; trying to change that in back branches.)<br>&gt; <br>&gt; Something could still be salvaged of the idea, perhaps: we could<br>&gt; adjust this patch so that the tests are like<br>&gt; <br>&gt; 	if ((MyXactFlags &amp; XACT_FLAGS_PIPELINING) &amp;&amp;<br>&gt; 	    GetTopTransactionIdIfAny() != InvalidTransactionId)<br>&gt; <br>&gt; Maybe that makes it a small enough hazard to be back-patchable.</p>
+
+<p>In this case, DDLs that call PreventInTransactionBlock would be<br>allowed in a pipeline if any data-modifying commands are yet executed.<br>This specification is a bit complicated and I&#x27;m not sure how many<br>cases are salvaged by this, but I agree that this will reduce the<br>hazard of breaking backward-compatibility.</p>
+
+<p>&gt; Another objection that could be raised is the same one I made<br>&gt; already, that !IsInTransactionBlock() doesn&#x27;t provide the same<br>&gt; guarantee as PreventInTransactionBlock.  I&#x27;m not too happy<br>&gt; about that either, but given that we know of no other uses of<br>&gt; IsInTransactionBlock besides ANALYZE, maybe it&#x27;s okay.  I&#x27;m<br>&gt; not sure it&#x27;s worth trying to avoid it anyway --- we&#x27;d just<br>&gt; end up with a probably-dead backwards compatibility stub.</p>
+
+<p>One way to fix the ANALYZE problem while maintaining the<br>backward-compatibility for third-party tools using IsInTransactionBlock<br>might be to rename the function (ex. IsInTransactionBlockWithoutCommit)<br>and define a new function with the original name. </p>
+
+<p>For example, define the followin for third party tools,</p>
+
+<p>bool IsInTransactionBlock()<br>{<br>    if (!IsInTransactionBlockWithoutCommit())<br>     {<br>        MyXactFlags |= XACT_FLAGS_NEEDIMMEDIATECOMMIT;<br>        return false;<br>     }<br>    else<br>        return true;<br>}</p>
+
+<p>and use IsInTransactionBlockWithoutCommit in ANALYZE.</p>
+
+<p>Regards,<br>Yugo Nagata</p>
+
+<p>-- <br>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAO_rXXCqRiPLWjAKxP5P4RfTHWhwn-eo-uZeURib1umQSaEoag@mail.gmail.com"></a>
+<a name="9bb67c646682596ca9be844682b35a67"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Israel Barth Rubio &lt;barthisrael(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,  Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;, pgsql-hackers(at)postgresql(dot)org,  &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;, Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-25 15:17:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAO_rXXCqRiPLWjAKxP5P4RfTHWhwn-eo-uZeURib1umQSaEoag%40mail.gmail.com">CAO_rXXCqRiPLWjAKxP5P4RfTHWhwn-eo-uZeURib1umQSaEoag@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAO_rXXCqRiPLWjAKxP5P4RfTHWhwn-eo-uZeURib1umQSaEoag%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAO_rXXCqRiPLWjAKxP5P4RfTHWhwn-eo-uZeURib1umQSaEoag%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAO_rXXCqRiPLWjAKxP5P4RfTHWhwn-eo-uZeURib1umQSaEoag%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAO_rXXCqRiPLWjAKxP5P4RfTHWhwn-eo-uZeURib1umQSaEoag%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211250000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211250000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; Attached is a draft patch along the lines I speculated about above.<br>&gt; It breaks backwards compatibility in that PreventInTransactionBlock<br>&gt; commands will now be rejected if they&#x27;re a non-first command in a<br>&gt; pipeline.  I think that&#x27;s okay, and arguably desirable, for HEAD<br>&gt; but I&#x27;m pretty uncomfortable about back-patching it.</p>
+
+<p>I attempted to run these using HEAD, and it fails:</p>
+
+<p>    parse: create temporary table t1 (a int) on commit drop<br>    bind<br>    execute<br>    parse: analyze t1<br>    bind<br>    execute<br>    parse: select * from t1<br>    bind<br>    execute<br>    sync</p>
+
+<p>It then works fine after applying your patch!</p>
+
+<p>Just for some context, this was brought by Peter E. based on an issue<br>reported by a customer. They are using PostgreSQL 11, and the issue<br>was observed after upgrading to PostgreSQL 11.17, which includes the<br>commit 9e3e1ac458abcda5aa03fa2a136e6fa492d58bd6. As a workaround<br>they downgraded the binaries to 11.16.</p>
+
+<p>It would be great if we can back-patch this to all supported versions,<br>as the issue itself is currently affecting them all.</p>
+
+<p>Regards,<br>Israel.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="4066263.1669395975@sss.pgh.pa.us"></a>
+<a name="9ee0dfe13d36c2e979215124be30737e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Israel Barth Rubio &lt;barthisrael(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;,
+        Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;,
+        pgsql-hackers(at)postgresql(dot)org,
+        &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-11-25 17:06:15</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/4066263.1669395975%40sss.pgh.pa.us">4066263.1669395975@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/4066263.1669395975%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/4066263.1669395975%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/4066263.1669395975%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/4066263.1669395975%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202211250000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202211250000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Israel Barth Rubio &lt;barthisrael(at)gmail(dot)com&gt; writes:<br>&gt; It would be great if we can back-patch this to all supported versions,<br>&gt; as the issue itself is currently affecting them all.</p>
+
+<p>In my mind, this is waiting for Peter to opine on whether it satisfies<br>his concern.</p>
+
+<p>I&#x27;m also looking for input on whether to reject if</p>
+
+<p>    if ((MyXactFlags &amp; XACT_FLAGS_PIPELINING) &amp;&amp;<br>        GetTopTransactionIdIfAny() != InvalidTransactionId)</p>
+
+<p>rather than just the bare</p>
+
+<p>    if (MyXactFlags &amp; XACT_FLAGS_PIPELINING)</p>
+
+<p>tests in the patch-as-posted.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="be36e954-b343-decf-69b9-8850f3acafef@enterprisedb.com"></a>
+<a name="996764897dae76ffffae986d99f9dece"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, Israel Barth Rubio &lt;barthisrael(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;, pgsql-hackers(at)postgresql(dot)org,
+ &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+ Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same
+ transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-12-12 19:16:32</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/be36e954-b343-decf-69b9-8850f3acafef%40enterprisedb.com">be36e954-b343-decf-69b9-8850f3acafef@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/be36e954-b343-decf-69b9-8850f3acafef%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/be36e954-b343-decf-69b9-8850f3acafef%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/be36e954-b343-decf-69b9-8850f3acafef%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/be36e954-b343-decf-69b9-8850f3acafef%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202212120000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202212120000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 25.11.22 18:06, Tom Lane wrote:<br>&gt; Israel Barth Rubio &lt;barthisrael(at)gmail(dot)com&gt; writes:<br>&gt;&gt; It would be great if we can back-patch this to all supported versions,<br>&gt;&gt; as the issue itself is currently affecting them all.<br>&gt; <br>&gt; In my mind, this is waiting for Peter to opine on whether it satisfies<br>&gt; his concern.</p>
+
+<p>The case I was working on is the same as Israel&#x27;s.  He has confirmed <br>that this fixes the issue we have been working on.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2207596.1670880178@sss.pgh.pa.us"></a>
+<a name="93f7d290211b1aaa8ec0cdc336ead725"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Israel Barth Rubio &lt;barthisrael(at)gmail(dot)com&gt;,
+        Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;, pgsql-hackers(at)postgresql(dot)org,
+        &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-12-12 21:22:58</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2207596.1670880178%40sss.pgh.pa.us">2207596.1670880178@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2207596.1670880178%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2207596.1670880178%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2207596.1670880178%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2207596.1670880178%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202212120000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202212120000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt; writes:<br>&gt; On 25.11.22 18:06, Tom Lane wrote:<br>&gt;&gt; In my mind, this is waiting for Peter to opine on whether it satisfies<br>&gt;&gt; his concern.</p>
+
+<p>&gt; The case I was working on is the same as Israel&#x27;s.  He has confirmed <br>&gt; that this fixes the issue we have been working on.</p>
+
+<p>OK, I&#x27;ll make this happen soon.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2495271.1670959618@sss.pgh.pa.us"></a>
+<a name="df03528b5e606c0f35b4d0718a04c75c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Israel Barth Rubio &lt;barthisrael(at)gmail(dot)com&gt;,
+        Yugo NAGATA &lt;nagata(at)sraoss(dot)co(dot)jp&gt;, pgsql-hackers(at)postgresql(dot)org,
+        &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17434: CREATE/DROP DATABASE can be executed in the same transaction with other commands</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-12-13 19:26:58</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2495271.1670959618%40sss.pgh.pa.us">2495271.1670959618@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2495271.1670959618%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2495271.1670959618%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2495271.1670959618%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2495271.1670959618%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202212130000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202212130000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I wrote:<br>&gt; Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt; writes:<br>&gt;&gt; The case I was working on is the same as Israel&#x27;s.  He has confirmed <br>&gt;&gt; that this fixes the issue we have been working on.</p>
+
+<p>&gt; OK, I&#x27;ll make this happen soon.</p>
+
+<p>Pushed.  I left out the idea of making this conditional on whether<br>any preceding command had performed data modification, as that seemed<br>to greatly complicate the explanation (since &quot;have we performed any<br>data modification&quot; is a rather squishy question from a user&#x27;s viewpoint).</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

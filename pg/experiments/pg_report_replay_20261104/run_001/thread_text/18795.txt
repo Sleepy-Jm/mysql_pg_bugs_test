@@ -1,0 +1,224 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18795
+Logged by:          Øystein Monsrud Arneson
+Email address:      oystein(dot)arneson(at)cloudberries(dot)no
+PostgreSQL version: 17.2
+Operating system:   Windows
+Description:        
+
+
+I downloaded the latest installer for windows and tried to install a local
+database server with locale Norwegian Bokmål. Looks like this bug is back in
+version 17? Or maybe it's windows 11 that is causing it? 
+Either way I can't from that link figure out how to install properly with an
+alias instead:
+https://wiki.postgresql.org/wiki/Changes_To_Norwegian_Locale
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> I downloaded the latest installer for windows and tried to install a local
+> database server with locale Norwegian Bokmål. Looks like this bug is back in
+> version 17? Or maybe it's windows 11 that is causing it? 
+
+
+Sigh, did they rename it again?  Our last commit log entry about
+this explains
+
+
+    It emerges that recent versions of Windows (at least 2016 Standard)
+    spell this locale name as "Norwegian Bokmål_Norway.1252", defeating
+    our mapping code that translates "Norwegian (Bokmål)_Norway" to
+    something that's all-ASCII (cf commits db29620d4 and aa1d2fc5e).
+    Add another mapping entry to handle this spelling.
+
+
+Can you identify how it's spelled in W11?  Also, what failure
+are you seeing *exactly*?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+I wrote:
+> PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+>> I downloaded the latest installer for windows and tried to install a local
+>> database server with locale Norwegian Bokmål. Looks like this bug is back in
+>> version 17? Or maybe it's windows 11 that is causing it? 
+
+
+> Sigh, did they rename it again?
+
+
+Oh, never mind that.  I'd forgotten about this recent change:
+
+
+     <para>
+      Disallow locale names containing non-ASCII characters (Thomas Munro)
+     </para>
+
+
+     <para>
+      This is only an issue on Windows, as such locale names are not used
+      elsewhere.  They are problematic because it's quite unclear what
+      encoding such names are represented in (since the locale itself
+      defines the encoding to use).  In
+      recent <productname>PostgreSQL</productname> releases, an abort in
+      the Windows runtime library could occur because of confusion about
+      that.
+     </para>
+
+
+     <para>
+      Anyone who encounters the new error message should either create a
+      new duplicated locale with an ASCII-only name using Windows Locale
+      Builder, or consider using BCP 47-compliant locale names
+      like <literal>tr-TR</literal>.
+     </para>
+
+
+So your fix is to specify the locale explicitly to initdb,
+along the lines of "--locale=no-NO" (I'm guessing about the
+Norwegian locale to use, but it's probably close to that).
+
+
+Was the error you got not sufficiently clear about this?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+Nope, I had to dig into the logs to figure out what was wrong. I was just
+running the assisted installer. From there it became clear it was initdb
+that was failing. There's no "free text" alternative field to input locale,
+it's only possible to choose from a drop down. Ideally it would be possible
+to input that by ourselves (or just replace the drop-down value with the
+correct one).
+Regards Øystein (good luck trying to install Python with Ø in your Windows
+home folder btw).
+
+
+On Wed, 5 Feb 2025, 17:22 Tom Lane, <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> I wrote:
+> > PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> >> I downloaded the latest installer for windows and tried to install a
+> local
+> >> database server with locale Norwegian Bokmål. Looks like this bug is
+> back in
+> >> version 17? Or maybe it's windows 11 that is causing it?
+>
+> > Sigh, did they rename it again?
+>
+> Oh, never mind that.  I'd forgotten about this recent change:
+>
+>      <para>
+>       Disallow locale names containing non-ASCII characters (Thomas Munro)
+>      </para>
+>
+>      <para>
+>       This is only an issue on Windows, as such locale names are not used
+>       elsewhere.  They are problematic because it's quite unclear what
+>       encoding such names are represented in (since the locale itself
+>       defines the encoding to use).  In
+>       recent <productname>PostgreSQL</productname> releases, an abort in
+>       the Windows runtime library could occur because of confusion about
+>       that.
+>      </para>
+>
+>      <para>
+>       Anyone who encounters the new error message should either create a
+>       new duplicated locale with an ASCII-only name using Windows Locale
+>       Builder, or consider using BCP 47-compliant locale names
+>       like <literal>tr-TR</literal>.
+>      </para>
+>
+> So your fix is to specify the locale explicitly to initdb,
+> along the lines of "--locale=no-NO" (I'm guessing about the
+> Norwegian locale to use, but it's probably close to that).
+>
+> Was the error you got not sufficiently clear about this?
+>
+>                         regards, tom lane
+>
+
+
+
+### MESSAGE 4
+On Wed, Feb 5, 2025 at 3:41 PM PG Bug reporting form <noreply(at)postgresql(dot)org>
+wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      18795
+> Logged by:          Øystein Monsrud Arneson
+> Email address:      oystein(dot)arneson(at)cloudberries(dot)no
+> PostgreSQL version: 17.2
+> Operating system:   Windows
+> Description:
+>
+> I downloaded the latest installer for windows and tried to install a local
+> database server with locale Norwegian Bokmål. Looks like this bug is back
+> in
+> version 17? Or maybe it's windows 11 that is causing it?
+> Either way I can't from that link figure out how to install properly with
+> an
+> alias instead:
+> https://wiki.postgresql.org/wiki/Changes_To_Norwegian_Locale
+>
+>
+Hi,
+
+
+We are working on a fix for this issue of locales containing non-ascii
+characters and prepared a *test/snapshot installer*.
+Can you please test this installer and let us know if it works?
+https://get.enterprisedb.com/test-installers/postgresql-17.2-0.0snapshot13154625551.1107.1.f6efa78.3-windows-x64.exe
+
+
+
+### MESSAGE 5
+=?UTF-8?Q?=C3=98ystein_Monsrud_Arneson?= <oystein(dot)arneson(at)cloudberries(dot)no> writes:
+> Nope, I had to dig into the logs to figure out what was wrong. I was just
+> running the assisted installer. From there it became clear it was initdb
+> that was failing. There's no "free text" alternative field to input locale,
+> it's only possible to choose from a drop down.
+
+
+Got it.  Sounds like EDB is working on improving the installer though,
+would you help them test it?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 6
+On Thu, Feb 6, 2025 at 5:23 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> So your fix is to specify the locale explicitly to initdb,
+> along the lines of "--locale=no-NO" (I'm guessing about the
+> Norwegian locale to use, but it's probably close to that).
+
+
+I guess it should be nb-NO for Bokmål (cf nn-NO for Nynorsk)?
+
+
+

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17478: Missing documents in the index after CREATE INDEX CONCURRENTLY (but existing in the table)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17478-c422e68d010b951d%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-05-09T15:28:12" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17478: Missing documents in the index after CREATE INDEX CONCURRENTLY (but existing in the table)" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17478 Logged by: Stefan Pastrilov Email address: spastrilov@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17478: Missing documents in the index after CREATE INDEX CONCURRENTLY (but existing in the table)</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>spastrilov(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17478: Missing documents in the index after CREATE INDEX CONCURRENTLY (but existing in the table)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 15:28:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17478-c422e68d010b951d%40postgresql.org">17478-c422e68d010b951d@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17478-c422e68d010b951d%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17478-c422e68d010b951d%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17478-c422e68d010b951d%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17478-c422e68d010b951d%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17478-c422e68d010b951d%40postgresql.org" selected="selected">2022-05-09 15:28:12 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="CAK-MWwT1wt%3DzK%2Bpu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q%40mail.gmail.com">&nbsp;2022-05-09 16:24:22 from Maxim Boguk &lt;maxim(dot)boguk(at)gmail(dot)com&gt;</option>
+  <option value="3816955.1652113943%40sss.pgh.pa.us">&nbsp;&nbsp;2022-05-09 16:32:23 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAG0pUfv5X27qbwctRZ8-ZPSKEnJ_KEH6CFtmkvMJcwqZ5h-FMw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2022-05-10 18:17:16 from Stefan Pastrilov &lt;spastrilov(at)gmail(dot)com&gt;</option>
+  <option value="AA6FED00-794F-410B-B0C0-01E40BC1B7E2%40yandex-team.ru">&nbsp;&nbsp;&nbsp;&nbsp;2022-05-20 18:44:21 from Andrey Borodin &lt;x4mmm(at)yandex-team(dot)ru&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17478<br>Logged by:          Stefan Pastrilov<br>Email address:      spastrilov(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>Hello,</p>
+
+<p>We’re observing a strange bug, according to me. We’ve got native logical<br>replication where the master host is running on PostgreSQL 13.3 and the<br>logical replica host is running on PostgreSQL 14.1. And the problem is:<br>  when we start to reindex concurrently the primary key of an 800M heavily<br>inserted/updated(on the master)table on the logical replica database,<br>several documents that have been inserted and existing in the master<br>database during the index rebuild on the replica, are missing from the index<br>structure on the replica host. What do I mean? If you try to search them by<br>where id = 5 the index returns no records, but when you force a sequential<br>scan (where id + 0 = 5)the row is returned. Usually, we’re messing around<br>10-100 documents from the index after each concurrent re-index. When we<br>rebuild the index again, they are found by an index look-up, but a new set<br>of ids are missing. So the problem is easily reproducible, but you should<br>have a heavily loaded table. Do you have any ideas about this? The newly<br>created index is valid and fully functional, with no signs of a corrupted<br>one…</p>
+
+<p>To be clear, the index rebuild is done on the subscribed table(slave<br>host).</p>
+
+<p>master host:<br>PostgreSQL 13.3 (Ubuntu 13.3-1.pgdg20.04+1) on x86_64-pc-linux-gnu, compiled<br>by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit<br>slave host:<br>PostgreSQL 14.1 (Ubuntu 14.1-2.pgdg20.04+1) on x86_64-pc-linux-gnu, compiled<br>by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAK-MWwT1wt%3DzK%2Bpu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q%40mail.gmail.com">Re: BUG #17478: Missing documents in the index after CREATE INDEX
+ CONCURRENTLY (but existing in the table)</a> at 2022-05-09 16:24:22 from Maxim Boguk
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAK-MWwT1wt%3DzK%2Bpu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q%40mail.gmail.com">Next Message</a></th>
+            <td>Maxim Boguk</td>
+            <td>2022-05-09 16:24:22</td>
+            <td><a href="/message-id/CAK-MWwT1wt%3DzK%2Bpu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q%40mail.gmail.com">Re: BUG #17478: Missing documents in the index after CREATE INDEX
+ CONCURRENTLY (but existing in the table)</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/3809468.1652109938%40sss.pgh.pa.us">Previous Message</a></th>
+            <td>Tom Lane</td>
+            <td>2022-05-09 15:25:38</td>
+            <td><a href="/message-id/3809468.1652109938%40sss.pgh.pa.us">Re: BUG #17477: A crash bug in transformValuesClause()</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

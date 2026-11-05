@@ -1,0 +1,199 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17357
+Logged by:          Muhammadxon Najimov
+Email address:      muhammadxonnajimov(at)outlook(dot)com
+PostgreSQL version: 14.1
+Operating system:   Fedora 35 (Workstation Edition)
+Description:        
+
+
+Hi,
+
+
+1. I created table like this:
+
+
+create table elements (
+     id serial primary key,
+     priority smallint default 0
+);
+// CREATE TABLE      [OK]
+
+
+2. And insterted some rows:
+insert into elements (priority) values
+    (1), (2), (3), (0), (0),
+    (3), (2), (1), (0), (0),
+    (0), (0), (0), (0), (0),
+    (1), (1), (2), (2), (3)
+;
+// INSERT 0 20     [OK]
+
+
+3. Wrote Query
+select
+     *,
+     row_number() over(
+     partition by priority order by priority desc
+) as n
+from elements
+;
+
+
+4. and the result was as follows:
+// (20 rows)      [OK]
+
+
+All is well. then I took the result to a virtual table:
+select *
+    from (
+         select
+             *,
+             row_number() over(
+                 partition by priority order by priority desc
+         ) as n
+from elements
+) as tmp
+;
+
+
+// (20 rows)       [OK]
+
+
+The result is the same, but here WHERE clause is not working properly:
+select *
+    from (
+         select
+             *,
+             row_number() over(
+                 partition by priority order by priority desc
+         ) as n
+from elements
+) as tmp
+WHERE n = 1 AND priority = 3
+;
+
+
+Is that logical?
+if you look at the picture above, the id number of the record with n = 1 and
+pr = 3 is not 3. Ok priority equals to 3 but n not equals 1.
+
+
+
+
+
+### MESSAGE 1
+On Fri, Jan 7, 2022 at 11:06 AM PG Bug reporting form <
+noreply(at)postgresql(dot)org> wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17357
+> Logged by:          Muhammadxon Najimov
+> Email address:      muhammadxonnajimov(at)outlook(dot)com
+> PostgreSQL version: 14.1
+> Operating system:   Fedora 35 (Workstation Edition)
+> Description:
+>
+> Hi,
+>
+> 1. I created table like this:
+>
+> create table elements (
+>      id serial primary key,
+>      priority smallint default 0
+> );
+> // CREATE TABLE      [OK]
+>
+> 2. And insterted some rows:
+> insert into elements (priority) values
+>     (1), (2), (3), (0), (0),
+>     (3), (2), (1), (0), (0),
+>     (0), (0), (0), (0), (0),
+>     (1), (1), (2), (2), (3)
+> ;
+> // INSERT 0 20     [OK]
+>
+> 3. Wrote Query
+> select
+>      *,
+>      row_number() over(
+>      partition by priority order by priority desc
+> ) as n
+> from elements
+> ;
+>
+> 4. and the result was as follows:
+> // (20 rows)      [OK]
+>
+> All is well. then I took the result to a virtual table:
+> select *
+>     from (
+>          select
+>              *,
+>              row_number() over(
+>                  partition by priority order by priority desc
+>          ) as n
+> from elements
+> ) as tmp
+> ;
+>
+> // (20 rows)       [OK]
+>
+> The result is the same, but here WHERE clause is not working properly:
+> select *
+>     from (
+>          select
+>              *,
+>              row_number() over(
+>                  partition by priority order by priority desc
+>          ) as n
+> from elements
+> ) as tmp
+> WHERE n = 1 AND priority = 3
+> ;
+>
+> Is that logical?
+> if you look at the picture above, the id number of the record with n = 1
+> and
+> pr = 3 is not 3. Ok priority equals to 3 but n not equals 1.
+>
+
+
+This is not a bug.
+Your ORDER BY inside the window function is not deterministic:
+
+
+     over(
+       partition by priority order by priority desc
+     )
+
+
+The rows with same priority are ordered based on the (same) priority value
+so the optimizer is free to choose any order to assign row numbers. In one
+query it chooses to some order, in the second it chooses a different one.
+
+
+Try using a deterministic ordering and you'll get consistent results, eg:
+
+
+     over(
+       partition by priority order by id desc
+     )
+
+
+or
+
+
+     over(
+       partition by priority order by id
+     )
+
+
+Best regards
+Pantelis Theodosiou
+

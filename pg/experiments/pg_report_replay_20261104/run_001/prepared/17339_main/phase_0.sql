@@ -1,0 +1,2 @@
+CREATE SEQUENCE seq;
+CREATE TABLE range_parted(a int) PARTITION BY RANGE(a);

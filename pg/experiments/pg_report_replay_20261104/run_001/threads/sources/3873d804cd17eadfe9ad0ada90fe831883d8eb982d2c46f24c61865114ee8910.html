@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17357: When working with the window_function, the Where Clause does not work properly!</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17357-02bf57d4d89bf972%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-07T00:51:40" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17357: When working with the window_function, the Where Clause does not work properly!" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="c697eaf2aeac93990f7355d4a3be0e70">BUG #17357: When working with the window_function, the Where Clause does not work properly!</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202201070051">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17357-02bf57d4d89bf972@postgresql.org"></a>
+<a name="c697eaf2aeac93990f7355d4a3be0e70"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>muhammadxonnajimov(at)outlook(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17357: When working with the window_function, the Where Clause does not work properly!</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-07 00:51:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17357-02bf57d4d89bf972%40postgresql.org">17357-02bf57d4d89bf972@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17357-02bf57d4d89bf972%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17357-02bf57d4d89bf972%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17357-02bf57d4d89bf972%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17357-02bf57d4d89bf972%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17357<br>Logged by:          Muhammadxon Najimov<br>Email address:      muhammadxonnajimov(at)outlook(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Fedora 35 (Workstation Edition)<br>Description:        </p>
+
+<p>Hi,</p>
+
+<p>1. I created table like this:</p>
+
+<p>create table elements (<br>     id serial primary key,<br>     priority smallint default 0<br>);<br>// CREATE TABLE      [OK]</p>
+
+<p>2. And insterted some rows:<br>insert into elements (priority) values<br>    (1), (2), (3), (0), (0),<br>    (3), (2), (1), (0), (0),<br>    (0), (0), (0), (0), (0),<br>    (1), (1), (2), (2), (3)<br>;<br>// INSERT 0 20     [OK]</p>
+
+<p>3. Wrote Query<br>select<br>     *,<br>     row_number() over(<br>     partition by priority order by priority desc<br>) as n<br>from elements<br>;</p>
+
+<p>4. and the result was as follows:<br>// (20 rows)      [OK]</p>
+
+<p>All is well. then I took the result to a virtual table:<br>select *<br>    from (<br>         select<br>             *,<br>             row_number() over(<br>                 partition by priority order by priority desc<br>         ) as n<br>from elements<br>) as tmp<br>;</p>
+
+<p>// (20 rows)       [OK]</p>
+
+<p>The result is the same, but here WHERE clause is not working properly:<br>select *<br>    from (<br>         select<br>             *,<br>             row_number() over(<br>                 partition by priority order by priority desc<br>         ) as n<br>from elements<br>) as tmp<br>WHERE n = 1 AND priority = 3<br>;</p>
+
+<p>Is that logical?<br>if you look at the picture above, the id number of the record with n = 1 and<br>pr = 3 is not 3. Ok priority equals to 3 but n not equals 1.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAE3TBxxV6-pSB-F6Js+FLOVc4s0=5OfoW0qLeK-yASGAtCMD5w@mail.gmail.com"></a>
+<a name="dcc77eb2f2142c9c413a7c45788944b3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Pantelis Theodosiou &lt;ypercube(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>muhammadxonnajimov(at)outlook(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17357: When working with the window_function, the Where
+ Clause does not work properly!</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-07 11:39:18</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAE3TBxxV6-pSB-F6Js%2BFLOVc4s0%3D5OfoW0qLeK-yASGAtCMD5w%40mail.gmail.com">CAE3TBxxV6-pSB-F6Js+FLOVc4s0=5OfoW0qLeK-yASGAtCMD5w@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAE3TBxxV6-pSB-F6Js%2BFLOVc4s0%3D5OfoW0qLeK-yASGAtCMD5w%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAE3TBxxV6-pSB-F6Js%2BFLOVc4s0%3D5OfoW0qLeK-yASGAtCMD5w%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAE3TBxxV6-pSB-F6Js%2BFLOVc4s0%3D5OfoW0qLeK-yASGAtCMD5w%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAE3TBxxV6-pSB-F6Js%2BFLOVc4s0%3D5OfoW0qLeK-yASGAtCMD5w%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Jan 7, 2022 at 11:06 AM PG Bug reporting form &lt;<br>noreply(at)postgresql(dot)org&gt; wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17357<br>&gt; Logged by:          Muhammadxon Najimov<br>&gt; Email address:      muhammadxonnajimov(at)outlook(dot)com<br>&gt; PostgreSQL version: 14.1<br>&gt; Operating system:   Fedora 35 (Workstation Edition)<br>&gt; Description:<br>&gt;<br>&gt; Hi,<br>&gt;<br>&gt; 1. I created table like this:<br>&gt;<br>&gt; create table elements (<br>&gt;      id serial primary key,<br>&gt;      priority smallint default 0<br>&gt; );<br>&gt; // CREATE TABLE      [OK]<br>&gt;<br>&gt; 2. And insterted some rows:<br>&gt; insert into elements (priority) values<br>&gt;     (1), (2), (3), (0), (0),<br>&gt;     (3), (2), (1), (0), (0),<br>&gt;     (0), (0), (0), (0), (0),<br>&gt;     (1), (1), (2), (2), (3)<br>&gt; ;<br>&gt; // INSERT 0 20     [OK]<br>&gt;<br>&gt; 3. Wrote Query<br>&gt; select<br>&gt;      *,<br>&gt;      row_number() over(<br>&gt;      partition by priority order by priority desc<br>&gt; ) as n<br>&gt; from elements<br>&gt; ;<br>&gt;<br>&gt; 4. and the result was as follows:<br>&gt; // (20 rows)      [OK]<br>&gt;<br>&gt; All is well. then I took the result to a virtual table:<br>&gt; select *<br>&gt;     from (<br>&gt;          select<br>&gt;              *,<br>&gt;              row_number() over(<br>&gt;                  partition by priority order by priority desc<br>&gt;          ) as n<br>&gt; from elements<br>&gt; ) as tmp<br>&gt; ;<br>&gt;<br>&gt; // (20 rows)       [OK]<br>&gt;<br>&gt; The result is the same, but here WHERE clause is not working properly:<br>&gt; select *<br>&gt;     from (<br>&gt;          select<br>&gt;              *,<br>&gt;              row_number() over(<br>&gt;                  partition by priority order by priority desc<br>&gt;          ) as n<br>&gt; from elements<br>&gt; ) as tmp<br>&gt; WHERE n = 1 AND priority = 3<br>&gt; ;<br>&gt;<br>&gt; Is that logical?<br>&gt; if you look at the picture above, the id number of the record with n = 1<br>&gt; and<br>&gt; pr = 3 is not 3. Ok priority equals to 3 but n not equals 1.<br>&gt;</p>
+
+<p>This is not a bug.<br>Your ORDER BY inside the window function is not deterministic:</p>
+
+<p>     over(<br>       partition by priority order by priority desc<br>     )</p>
+
+<p>The rows with same priority are ordered based on the (same) priority value<br>so the optimizer is free to choose any order to assign row numbers. In one<br>query it chooses to some order, in the second it chooses a different one.</p>
+
+<p>Try using a deterministic ordering and you&#x27;ll get consistent results, eg:</p>
+
+<p>     over(<br>       partition by priority order by id desc<br>     )</p>
+
+<p>or</p>
+
+<p>     over(<br>       partition by priority order by id<br>     )</p>
+
+<p>Best regards<br>Pantelis Theodosiou<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

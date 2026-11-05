@@ -1,0 +1,183 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18760
+Logged by:          Thomas Petazzoni
+Email address:      thomas(dot)petazzoni(at)bootlin(dot)com
+PostgreSQL version: 17.2
+Operating system:   Linux
+Description:        
+
+
+When building PostgreSQL 17.2 on a Linux host machine (within a Debian
+Bullseye container), the build fails with:
+
+
+../doc/src/sgml/postgres.sgml:24: element book: validity error : No
+declaration for attribute id of element book
+<book id="postgres">
+                   ^
+../doc/src/sgml/postgres.sgml:25: element title: validity error : No
+declaration for element title
+ <title>PostgreSQL &version; Documentation</title>
+
+
+and many other similar failures. Complete build log available at
+http://autobuild.buildroot.net/results/378/378027db50fdcb311b420ad6886795dd8c2888f6/build-end.log.
+
+
+Passing -Ddocs=disabled -Ddocs_pdf=disabled does not fix the issue: indeed
+despite those options, the PostgreSQL build system detects that xmllint and
+xsltproc are available, and uses them nevertheless. Passing bogus
+-DXMLLINT=/nowhere -DXSLTPROC=/nowhere options prevents PostgreSQL from
+finding xmllint and xsltproc, which makes it skip build the documentation,
+and gets a successful build, but that's really more a hack than a correct
+solution.
+
+
+It looks like doc/src/sgml/meson.build would need some changes to properly
+obey to the "docs" and "docs_pdf" meson options.
+
+
+
+
+
+### MESSAGE 1
+On Tue, Dec 31, 2024 at 4:45 AM PG Bug reporting form <
+noreply(at)postgresql(dot)org> wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      18760
+> Logged by:          Thomas Petazzoni
+> Email address:      thomas(dot)petazzoni(at)bootlin(dot)com
+> PostgreSQL version: 17.2
+> Operating system:   Linux
+> Description:
+>
+> When building PostgreSQL 17.2 on a Linux host machine (within a Debian
+> Bullseye container), the build fails with:
+>
+> ../doc/src/sgml/postgres.sgml:24: element book: validity error : No
+> declaration for attribute id of element book
+> <book id="postgres">
+>
+
+
+The only error that really matters here is:
+
+
+I/O error : Attempt to load network entity:
+http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd
+../doc/src/sgml/postgres.sgml:22: warning: failed to load external entity "
+http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"
+
+
+Everything else stems from that.
+
+
+Passing -Ddocs=disabled -Ddocs_pdf=disabled does not fix the issue:
+
+
+This does seem like a bug but the build log you linked to (not inlining
+only relevant content in the email may be part of why this went unresponded
+to) doesn't show these disables and so it tried to build the documentation
+and failed because of the above.
+
+
+The IO error seems to be environmental, outside what we can fix from a bug
+perspective.  Following up on that in -general may yield fruit.
+
+
+If you want to repost a current attempt at disabling documentation builds
+then seeing the aforementioned error you can do that here.  That is a bug
+we'd be in a position to try and fix at least.
+
+
+David J.
+
+
+
+### MESSAGE 2
+"David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> The only error that really matters here is:
+
+
+> I/O error : Attempt to load network entity:
+> http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd
+> ../doc/src/sgml/postgres.sgml:22: warning: failed to load external entity "
+> http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"
+
+
+> Everything else stems from that.
+
+
+Ah, indeed.  Our docs are fairly clear[1] that you need a
+locally-installed copy of the DocBook DTDs to build the docs.
+It used to be the case that xmllint and friends could pull down
+the DTDs using the given URL, but that stopped working a couple
+of years ago[2].  (Experimenting just now by removing the -nonet
+switches, it seems like the failure symptoms are a bit different than
+they were in 2023.  But it still fails, so the details are academic,
+except maybe to someone who could fix www.oasis-open.org.  Which is
+not us.)
+
+
+>> Passing -Ddocs=disabled -Ddocs_pdf=disabled does not fix the issue:
+
+
+If real, that's a bug in our Meson scripts, but evidence seems lacking.
+
+
+			regards, tom lane
+
+
+[1] https://www.postgresql.org/docs/current/docguide-toolsets.html
+[2] https://www.postgresql.org/message-id/flat/CAJ7c6TO8Aro2nxg%3DEQsVGiSDe-TstP4EsSvDHd7DSRsP40PgGA%40mail.gmail.com
+
+
+
+
+
+### MESSAGE 3
+This error occurs because the docbook-xsl package is missing, which is 
+required in the documentation. After installation, the build is 
+performed correctly.
+
+
+> "David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+>> The only error that really matters here is:
+>> I/O error : Attempt to load network entity:
+>> http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd
+>> ../doc/src/sgml/postgres.sgml:22: warning: failed to load external entity "
+>> http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"
+>> Everything else stems from that.
+> Ah, indeed.  Our docs are fairly clear[1] that you need a
+> locally-installed copy of the DocBook DTDs to build the docs.
+> It used to be the case that xmllint and friends could pull down
+> the DTDs using the given URL, but that stopped working a couple
+> of years ago[2].  (Experimenting just now by removing the -nonet
+> switches, it seems like the failure symptoms are a bit different than
+> they were in 2023.  But it still fails, so the details are academic,
+> except maybe to someone who could fix www.oasis-open.org.  Which is
+> not us.)
+>
+>>> Passing -Ddocs=disabled -Ddocs_pdf=disabled does not fix the issue:
+> If real, that's a bug in our Meson scripts, but evidence seems lacking.
+>
+> 			regards, tom lane
+>
+> [1] https://www.postgresql.org/docs/current/docguide-toolsets.html
+> [2] https://www.postgresql.org/message-id/flat/CAJ7c6TO8Aro2nxg%3DEQsVGiSDe-TstP4EsSvDHd7DSRsP40PgGA%40mail.gmail.com
+>
+>
+>
+>
+-- 
+Andrey Teplitskiy
+Postgres Professional
+
+
+

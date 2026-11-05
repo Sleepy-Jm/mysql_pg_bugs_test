@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17413: update of partitioned table via postgres_fdw updates to much rows</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17413-106983288639aa44%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-02-22T10:03:02" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17413: update of partitioned table via postgres_fdw updates to much rows" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="a779b2bf925eb00c98905a5f7bb655a0">BUG #17413: update of partitioned table via postgres_fdw updates to much rows</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202202221003">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17413-106983288639aa44@postgresql.org"></a>
+<a name="a779b2bf925eb00c98905a5f7bb655a0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>stepya(at)ukr(dot)net</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17413: update of partitioned table via postgres_fdw updates to much rows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-22 10:03:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17413-106983288639aa44%40postgresql.org">17413-106983288639aa44@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17413-106983288639aa44%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17413-106983288639aa44%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17413-106983288639aa44%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17413-106983288639aa44%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17413<br>Logged by:          Stepan Yankevych<br>Email address:      stepya(at)ukr(dot)net<br>PostgreSQL version: 14.2<br>Operating system:   CentOS<br>Description:        </p>
+
+<p>We noticed that update foreign table in some cases passes following update<br>to the remote DB <br>update part_update_test<br>set field=$2<br>where ctid=$1<br>In that case one row from each partition can be updated. <br>See steps to reproduce</p>
+
+<p>-- pgprod1 <br>drop table if exists trash.part_update_test;</p>
+
+<p>CREATE TABLE trash.part_update_test (<br>	id serial,<br>	date_id int4 NOT NULL,<br>	simple_text varchar<br>) PARTITION BY RANGE (date_id);</p>
+
+<p>CREATE TABLE trash.part_update_test_20220221 PARTITION OF<br>trash.part_update_test FOR VALUES FROM (20220221) TO (20220222);<br>CREATE TABLE trash.part_update_test_20220222 PARTITION OF<br>trash.part_update_test FOR VALUES FROM (20220222) TO (20220223);<br>CREATE TABLE trash.part_update_test_20220223 PARTITION OF<br>trash.part_update_test FOR VALUES FROM (20220223) TO (20220224);</p>
+
+<p>insert into trash.part_update_test (date_id, simple_text)<br>values (20220221, &#x27;Im 20220221&#x27;),(20220222, &#x27;I amd 20220222&#x27;),(20220223, &#x27;I<br>am the third row &#x27;);</p>
+
+<p>select ctid, *<br>from trash.part_update_test;</p>
+
+<p>ctid |id|date_id |simple_text        |<br>-----+--+--------+-------------------+<br>(0,1)| 1|20220221|Im 20220221        |<br>(0,1)| 2|20220222|I amd 20220222     |<br>(0,1)| 3|20220223|I am the third row |</p>
+
+<p>--  pgprod2 <br>DROP FOREIGN TABLE if EXISTS staging.part_update_test;<br>IMPORT FOREIGN SCHEMA &quot;trash&quot; LIMIT TO (part_update_test)<br>FROM SERVER postgresprod<br>into staging;</p>
+
+<p>with ids as materialized (select 1 as id, 20220221 as date_id  )<br>update staging.part_update_test t<br>set simple_text = &#x27;I am  updated version of 20220221 &#x27;<br>from ids<br>where t.id = ids.id<br>and t.date_id = ids.date_id ;</p>
+
+<p>select ctid, *<br>from staging.part_update_test;</p>
+
+<p> ctid |id|date_id |simple_text                       |<br>-----+--+--------+----------------------------------+<br>(0,2)| 1|20220221|I am  updated version of 20220221 |<br>(0,2)| 2|20220222|I am  updated version of 20220221 |<br>(0,2)| 3|20220223|I am  updated version of 20220221 |</p>
+
+<p>As you can see all of rows that had (0,1) where updated , but the only first<br>row with ID =1 had to be updated .<br>The same was reproducible at least in PG14.1</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="MEYP282MB16691CFD2F1D5EC5A80F2201B63B9@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM"></a>
+<a name="3ff0fda462c6e4a02c340aaa46989126"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>stepya(at)ukr(dot)net, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17413: update of partitioned table via postgres_fdw
+ updates to much rows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-22 17:09:13</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/MEYP282MB16691CFD2F1D5EC5A80F2201B63B9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">MEYP282MB16691CFD2F1D5EC5A80F2201B63B9@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/MEYP282MB16691CFD2F1D5EC5A80F2201B63B9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/MEYP282MB16691CFD2F1D5EC5A80F2201B63B9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/MEYP282MB16691CFD2F1D5EC5A80F2201B63B9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/MEYP282MB16691CFD2F1D5EC5A80F2201B63B9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Tue, 22 Feb 2022 at 18:03, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17413<br>&gt; Logged by:          Stepan Yankevych<br>&gt; Email address:      stepya(at)ukr(dot)net<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   CentOS<br>&gt; Description:        <br>&gt;<br>&gt; We noticed that update foreign table in some cases passes following update<br>&gt; to the remote DB <br>&gt; update part_update_test<br>&gt; set field=$2<br>&gt; where ctid=$1<br>&gt; In that case one row from each partition can be updated. <br>&gt; See steps to reproduce<br>&gt;<br>&gt; -- pgprod1 <br>&gt; drop table if exists trash.part_update_test;<br>&gt;<br>&gt; CREATE TABLE trash.part_update_test (<br>&gt; 	id serial,<br>&gt; 	date_id int4 NOT NULL,<br>&gt; 	simple_text varchar<br>&gt; ) PARTITION BY RANGE (date_id);<br>&gt;<br>&gt; CREATE TABLE trash.part_update_test_20220221 PARTITION OF<br>&gt; trash.part_update_test FOR VALUES FROM (20220221) TO (20220222);<br>&gt; CREATE TABLE trash.part_update_test_20220222 PARTITION OF<br>&gt; trash.part_update_test FOR VALUES FROM (20220222) TO (20220223);<br>&gt; CREATE TABLE trash.part_update_test_20220223 PARTITION OF<br>&gt; trash.part_update_test FOR VALUES FROM (20220223) TO (20220224);<br>&gt;<br>&gt; insert into trash.part_update_test (date_id, simple_text)<br>&gt; values (20220221, &#x27;Im 20220221&#x27;),(20220222, &#x27;I amd 20220222&#x27;),(20220223, &#x27;I<br>&gt; am the third row &#x27;);<br>&gt;<br>&gt; select ctid, *<br>&gt; from trash.part_update_test;<br>&gt;<br>&gt; ctid |id|date_id |simple_text        |<br>&gt; -----+--+--------+-------------------+<br>&gt; (0,1)| 1|20220221|Im 20220221        |<br>&gt; (0,1)| 2|20220222|I amd 20220222     |<br>&gt; (0,1)| 3|20220223|I am the third row |<br>&gt;<br>&gt; --  pgprod2 <br>&gt; DROP FOREIGN TABLE if EXISTS staging.part_update_test;<br>&gt; IMPORT FOREIGN SCHEMA &quot;trash&quot; LIMIT TO (part_update_test)<br>&gt; FROM SERVER postgresprod<br>&gt; into staging;<br>&gt;<br>&gt;<br>&gt; with ids as materialized (select 1 as id, 20220221 as date_id  )<br>&gt; update staging.part_update_test t<br>&gt; set simple_text = &#x27;I am  updated version of 20220221 &#x27;<br>&gt; from ids<br>&gt; where t.id = ids.id<br>&gt; and t.date_id = ids.date_id ;<br>&gt;<br>&gt; select ctid, *<br>&gt; from staging.part_update_test;<br>&gt;<br>&gt;  ctid |id|date_id |simple_text                       |<br>&gt; -----+--+--------+----------------------------------+<br>&gt; (0,2)| 1|20220221|I am  updated version of 20220221 |<br>&gt; (0,2)| 2|20220222|I am  updated version of 20220221 |<br>&gt; (0,2)| 3|20220223|I am  updated version of 20220221 |<br>&gt;<br>&gt; As you can see all of rows that had (0,1) where updated , but the only first<br>&gt; row with ID =1 had to be updated .<br>&gt; The same was reproducible at least in PG14.1</p>
+
+<p>Yeah, it is a bug IMO.  The deparseUpdateSql() function assume that the tuple<br>id is as unique, however, it ignores the partitioned table, in which the tuple<br>id may be duplicated.</p>
+
+<p>-- <br>Regrads,<br>Japin Li.<br>ChengDu WenWu Information Technology Co.,Ltd.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="AM9PR03MB7631F60AA9274EE4D957D76B923B9@AM9PR03MB7631.eurprd03.prod.outlook.com"></a>
+<a name="cd2b13163a51d92df42169de9ff84210"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Stepan Yankevych &lt;Stepan_Yankevych(at)epam(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;, &quot;stepya(at)ukr(dot)net&quot; &lt;stepya(at)ukr(dot)net&gt;,
+        &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>RE: BUG #17413: update of partitioned table via postgres_fdw updates
+ to much rows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-22 17:28:04</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/AM9PR03MB7631F60AA9274EE4D957D76B923B9%40AM9PR03MB7631.eurprd03.prod.outlook.com">AM9PR03MB7631F60AA9274EE4D957D76B923B9@AM9PR03MB7631.eurprd03.prod.outlook.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/AM9PR03MB7631F60AA9274EE4D957D76B923B9%40AM9PR03MB7631.eurprd03.prod.outlook.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/AM9PR03MB7631F60AA9274EE4D957D76B923B9%40AM9PR03MB7631.eurprd03.prod.outlook.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/AM9PR03MB7631F60AA9274EE4D957D76B923B9%40AM9PR03MB7631.eurprd03.prod.outlook.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/AM9PR03MB7631F60AA9274EE4D957D76B923B9%40AM9PR03MB7631.eurprd03.prod.outlook.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>I propose to add secondary check of all field values from the where condition. <br>So in that particular case it could be something like that </p>
+
+<p>update part_update_test <br>set field=$2 <br>where  ctid=$1<br>and id = $3<br>and date_id = $4;</p>
+
+<p>Generally speaking it can even improve performance dur to partition pruning. </p>
+
+<p>-----Original Message-----<br>From: Japin Li &lt;japinli(at)hotmail(dot)com&gt; <br>Sent: Tuesday, February 22, 2022 7:09 PM<br>To: stepya(at)ukr(dot)net; pgsql-bugs(at)lists(dot)postgresql(dot)org<br>Subject: Re: BUG #17413: update of partitioned table via postgres_fdw updates to much rows</p>
+
+<p>On Tue, 22 Feb 2022 at 18:03, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17413<br>&gt; Logged by:          Stepan Yankevych<br>&gt; Email address:      stepya(at)ukr(dot)net<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   CentOS<br>&gt; Description:        <br>&gt;<br>&gt; We noticed that update foreign table in some cases passes following <br>&gt; update to the remote DB update part_update_test set field=$2 where <br>&gt; ctid=$1 In that case one row from each partition can be updated.<br>&gt; See steps to reproduce<br>&gt;<br>&gt; -- pgprod1<br>&gt; drop table if exists trash.part_update_test;<br>&gt;<br>&gt; CREATE TABLE trash.part_update_test (<br>&gt; 	id serial,<br>&gt; 	date_id int4 NOT NULL,<br>&gt; 	simple_text varchar<br>&gt; ) PARTITION BY RANGE (date_id);<br>&gt;<br>&gt; CREATE TABLE trash.part_update_test_20220221 PARTITION OF <br>&gt; trash.part_update_test FOR VALUES FROM (20220221) TO (20220222); <br>&gt; CREATE TABLE trash.part_update_test_20220222 PARTITION OF <br>&gt; trash.part_update_test FOR VALUES FROM (20220222) TO (20220223); <br>&gt; CREATE TABLE trash.part_update_test_20220223 PARTITION OF <br>&gt; trash.part_update_test FOR VALUES FROM (20220223) TO (20220224);<br>&gt;<br>&gt; insert into trash.part_update_test (date_id, simple_text) values <br>&gt; (20220221, &#x27;Im 20220221&#x27;),(20220222, &#x27;I amd 20220222&#x27;),(20220223, &#x27;I <br>&gt; am the third row &#x27;);<br>&gt;<br>&gt; select ctid, *<br>&gt; from trash.part_update_test;<br>&gt;<br>&gt; ctid |id|date_id |simple_text        |<br>&gt; -----+--+--------+-------------------+<br>&gt; (0,1)| 1|20220221|Im 20220221        |<br>&gt; (0,1)| 2|20220222|I amd 20220222     |<br>&gt; (0,1)| 3|20220223|I am the third row |<br>&gt;<br>&gt; --  pgprod2<br>&gt; DROP FOREIGN TABLE if EXISTS staging.part_update_test; IMPORT FOREIGN <br>&gt; SCHEMA &quot;trash&quot; LIMIT TO (part_update_test) FROM SERVER postgresprod <br>&gt; into staging;<br>&gt;<br>&gt;<br>&gt; with ids as materialized (select 1 as id, 20220221 as date_id  ) <br>&gt; update staging.part_update_test t set simple_text = &#x27;I am  updated <br>&gt; version of 20220221 &#x27;<br>&gt; from ids<br>&gt; where t.id = ids.id<br>&gt; and t.date_id = ids.date_id ;<br>&gt;<br>&gt; select ctid, *<br>&gt; from staging.part_update_test;<br>&gt;<br>&gt;  ctid |id|date_id |simple_text                       |<br>&gt; -----+--+--------+----------------------------------+<br>&gt; (0,2)| 1|20220221|I am  updated version of 20220221 | (0,2)| <br>&gt; 2|20220222|I am  updated version of 20220221 | (0,2)| 3|20220223|I am  <br>&gt; updated version of 20220221 |<br>&gt;<br>&gt; As you can see all of rows that had (0,1) where updated , but the only <br>&gt; first row with ID =1 had to be updated .<br>&gt; The same was reproducible at least in PG14.1</p>
+
+<p>Yeah, it is a bug IMO.  The deparseUpdateSql() function assume that the tuple id is as unique, however, it ignores the partitioned table, in which the tuple id may be duplicated.</p>
+
+<p>--<br>Regrads,<br>Japin Li.<br>ChengDu WenWu Information Technology Co.,Ltd.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK150QauH--kOaV4bnrJvMg7ngQSuP4+bGkOh2Yoa8KPyvQ@mail.gmail.com"></a>
+<a name="f402a2cc43bc246a545839410e5bd3d6"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>stepya(at)ukr(dot)net, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17413: update of partitioned table via postgres_fdw updates
+ to much rows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-23 07:40:49</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK150QauH--kOaV4bnrJvMg7ngQSuP4%2BbGkOh2Yoa8KPyvQ%40mail.gmail.com">CAPmGK150QauH--kOaV4bnrJvMg7ngQSuP4+bGkOh2Yoa8KPyvQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK150QauH--kOaV4bnrJvMg7ngQSuP4%2BbGkOh2Yoa8KPyvQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK150QauH--kOaV4bnrJvMg7ngQSuP4%2BbGkOh2Yoa8KPyvQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK150QauH--kOaV4bnrJvMg7ngQSuP4%2BbGkOh2Yoa8KPyvQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK150QauH--kOaV4bnrJvMg7ngQSuP4%2BbGkOh2Yoa8KPyvQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202230000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Feb 23, 2022 at 2:09 AM Japin Li &lt;japinli(at)hotmail(dot)com&gt; wrote:<br>&gt; On Tue, 22 Feb 2022 at 18:03, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt; &gt; The following bug has been logged on the website:</p>
+
+<p>&gt; &gt; See steps to reproduce<br>&gt; &gt;<br>&gt; &gt; -- pgprod1<br>&gt; &gt; drop table if exists trash.part_update_test;<br>&gt; &gt;<br>&gt; &gt; CREATE TABLE trash.part_update_test (<br>&gt; &gt;       id serial,<br>&gt; &gt;       date_id int4 NOT NULL,<br>&gt; &gt;       simple_text varchar<br>&gt; &gt; ) PARTITION BY RANGE (date_id);<br>&gt; &gt;<br>&gt; &gt; CREATE TABLE trash.part_update_test_20220221 PARTITION OF<br>&gt; &gt; trash.part_update_test FOR VALUES FROM (20220221) TO (20220222);<br>&gt; &gt; CREATE TABLE trash.part_update_test_20220222 PARTITION OF<br>&gt; &gt; trash.part_update_test FOR VALUES FROM (20220222) TO (20220223);<br>&gt; &gt; CREATE TABLE trash.part_update_test_20220223 PARTITION OF<br>&gt; &gt; trash.part_update_test FOR VALUES FROM (20220223) TO (20220224);<br>&gt; &gt;<br>&gt; &gt; insert into trash.part_update_test (date_id, simple_text)<br>&gt; &gt; values (20220221, &#x27;Im 20220221&#x27;),(20220222, &#x27;I amd 20220222&#x27;),(20220223, &#x27;I<br>&gt; &gt; am the third row &#x27;);<br>&gt; &gt;<br>&gt; &gt; select ctid, *<br>&gt; &gt; from trash.part_update_test;<br>&gt; &gt;<br>&gt; &gt; ctid |id|date_id |simple_text        |<br>&gt; &gt; -----+--+--------+-------------------+<br>&gt; &gt; (0,1)| 1|20220221|Im 20220221        |<br>&gt; &gt; (0,1)| 2|20220222|I amd 20220222     |<br>&gt; &gt; (0,1)| 3|20220223|I am the third row |<br>&gt; &gt;<br>&gt; &gt; --  pgprod2<br>&gt; &gt; DROP FOREIGN TABLE if EXISTS staging.part_update_test;<br>&gt; &gt; IMPORT FOREIGN SCHEMA &quot;trash&quot; LIMIT TO (part_update_test)<br>&gt; &gt; FROM SERVER postgresprod<br>&gt; &gt; into staging;<br>&gt; &gt;<br>&gt; &gt;<br>&gt; &gt; with ids as materialized (select 1 as id, 20220221 as date_id  )<br>&gt; &gt; update staging.part_update_test t<br>&gt; &gt; set simple_text = &#x27;I am  updated version of 20220221 &#x27;<br>&gt; &gt; from ids<br>&gt; &gt; where t.id = ids.id<br>&gt; &gt; and t.date_id = ids.date_id ;<br>&gt; &gt;<br>&gt; &gt; select ctid, *<br>&gt; &gt; from staging.part_update_test;<br>&gt; &gt;<br>&gt; &gt;  ctid |id|date_id |simple_text                       |<br>&gt; &gt; -----+--+--------+----------------------------------+<br>&gt; &gt; (0,2)| 1|20220221|I am  updated version of 20220221 |<br>&gt; &gt; (0,2)| 2|20220222|I am  updated version of 20220221 |<br>&gt; &gt; (0,2)| 3|20220223|I am  updated version of 20220221 |<br>&gt; &gt;<br>&gt; &gt; As you can see all of rows that had (0,1) where updated , but the only first<br>&gt; &gt; row with ID =1 had to be updated .<br>&gt; &gt; The same was reproducible at least in PG14.1<br>&gt;<br>&gt; Yeah, it is a bug IMO.  The deparseUpdateSql() function assume that the tuple<br>&gt; id is as unique, however, it ignores the partitioned table, in which the tuple<br>&gt; id may be duplicated.</p>
+
+<p>Yeah, this is a known issue [1].  I created a patch for the issue, but<br>the patch needs more work.  It’s on my TODO list to revisit the patch.</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p>[1] <a href="https://www.postgresql.org/message-id/CAFjFpRfcgwsHRmpvoOK-GUQi-n8MgAS+OxcQo=aBDn1COywmcg@mail.gmail.com" rel="nofollow">https://www.postgresql.org/message-id/CAFjFpRfcgwsHRmpvoOK-GUQi-n8MgAS%2BOxcQo%3DaBDn1COywmcg%40mail.gmail.com</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

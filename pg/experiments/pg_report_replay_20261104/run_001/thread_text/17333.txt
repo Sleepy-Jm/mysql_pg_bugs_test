@@ -1,0 +1,164 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17333
+Logged by:          Eric Meygret
+Email address:      eric(dot)meygret(at)free(dot)fr
+PostgreSQL version: 14.1
+Operating system:   Ubuntu 20.04
+Description:        
+
+
+Hello,
+first I want to say that this bug could delete all data, and second sorry
+for my bad English.
+
+
+I tried to upgrade a database from 9.6 to 14(but I think it is the same for
+any migrations). 
+in /etc/postgresql/9.6/main/postgresql.conf I have to times data_directory
+first default value:
+data_directory = '/var/lib/postgresql/9.6/main' 
+and at the end of file
+data_directory = '/postgresql/9.6/main/' 
+
+
+postgresql ignore first value.
+
+
+when I launch upgrade with 
+pg_upgradecluster -v 14 --method=link --link 9.6 main /postgresql/14/main/
+
+
+upgrade copy /etc/postgresql/9.6/main/postgresql.conf  to
+/etc/postgresql/14/main/postgresql.conf 
+and replace first occurrence  so I have :
+data_directory = '/postgresql/14/main/' 
+and at then end of the configuration file : 
+data_directory = '/postgresql/9.6/main/' 
+
+
+the upgrade failed and start a pg_dropcluster 14 main and this one use the
+last occurrence so delete /postgresql/9.6/main/
+
+
+and now all data are lost. (thanks to backup before upgrade :) ) 
+
+
+hope that my explanation is correct and understandable.
+
+
+
+
+
+### MESSAGE 1
+On Friday, December 10, 2021, PG Bug reporting form <noreply(at)postgresql(dot)org>
+wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17333
+> Logged by:          Eric Meygret
+> Email address:      eric(dot)meygret(at)free(dot)fr
+> PostgreSQL version: 14.1
+> Operating system:   Ubuntu 20.04
+> Description:
+>
+> postgresql ignore first value.
+
+
+As documented
+
+
+>
+> when I launch upgrade with
+> pg_upgradecluster -v 14 --method=link --link 9.6 main /postgresql/14/main/
+
+
+That script isn’t part of the core project so this list may not be the best
+place to report complaints.
+
+
+>
+> upgrade copy /etc/postgresql/9.6/main/postgresql.conf  to
+> /etc/postgresql/14/main/postgresql.conf
+> and replace first occurrence  so I have :
+> data_directory = '/postgresql/14/main/'
+
+
+Yep, you’ve gone and done some manual edits that the supplied tools do not
+account for.
+
+
+> and now all data are lost. (thanks to backup before upgrade :) )
+
+
+Doing testing on in a test environment first is another useful exercise.
+
+
+>
+> hope that my explanation is correct and understandable.
+>
+
+
+If you are going to go do customizations the fact that the scripts that are
+built without those customizations in mind fail to work properly isn’t a
+bug.  I’d suggest you simply use the pg_upgrade tool directly if you don’t
+like (or adhere to) the assumptions built into the distro-specific scripts.
+
+
+David J.
+
+
+
+### MESSAGE 2
+>> That script isn’t part of the core project so this list may not be the best place to report complaints. 
+sorry I was thinking that you mange also pgdg repository, where I can report that, I am afraid that to have same answer by the Debian team? 
+
+
+>> Doing testing on in a test environment first is another useful exercise. 
+That was on a test environnement :) 
+
+
+>> If you are going to go do customizations the fact that the scripts that are built without those customizations in mind fail to work properly isn’t a bug. I’d suggest you simply use the pg_upgrade tool directly if you don’t like (or adhere to) the assumptions built into the distro-specific scripts. 
+I like this tools, but I don't think that it is a choice to not follow "your" assumptions(I mean ignore first value), especially if it could lead to the deletion of data, but maybe I wrong. 
+
+
+thanks for your answer.
+Eric
+
+
+
+
+
+### MESSAGE 3
+On Fri, Dec 10, 2021 at 12:55 PM Eric Meygret <eric(dot)meygret(at)free(dot)fr> wrote:
+
+
+> >> If you are going to go do customizations the fact that the scripts that
+> are built without those customizations in mind fail to work properly isn’t
+> a bug. I’d suggest you simply use the pg_upgrade tool directly if you don’t
+> like (or adhere to) the assumptions built into the distro-specific scripts.
+> I like this tools, but I don't think that it is a choice to not follow
+> "your" assumptions(I mean ignore first value), especially if it could lead
+> to the deletion of data, but maybe I wrong.
+>
+>
+It assumes that the directory configuration only appears once (I suspect
+this violation is the true cause) and, I'm assuming here, that its choice
+for where to place the various files (i.e., /var, not /postgres) is
+maintained.  I agree that the script is seemingly not as robust as it could
+be.
+
+
+As for working toward improvement - the main Apt page on the PostgreSQL
+Wiki has the relevant information:
+
+
+https://wiki.postgresql.org/wiki/Apt
+
+
+David J.
+

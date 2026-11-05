@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17385-9ee529fb091f0ce5%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-28T09:07:40" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17385 Logged by: Andrew Bille Email address: andrewbille@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>andrewbille(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-28 09:07:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17385-9ee529fb091f0ce5%40postgresql.org">17385-9ee529fb091f0ce5@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17385-9ee529fb091f0ce5%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17385-9ee529fb091f0ce5%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17385-9ee529fb091f0ce5%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17385-9ee529fb091f0ce5%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17385-9ee529fb091f0ce5%40postgresql.org" selected="selected">2022-01-28 09:07:40 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="b22395d2-d432-f211-0bed-1f466df75152%40postgrespro.ru">&nbsp;2022-01-28 15:26:08 from Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;	&#x1f4ce;</option>
+  <option value="CAD21AoCkwsb_Hz6JYbG0X8Jf_VEMheiib0FXpR2kc3UATVCPNQ%40mail.gmail.com">&nbsp;&nbsp;2022-02-04 08:48:41 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="CAFiTN-sYZ0Cuyeygp7z8xfoFPhqTAbtnV%2Bk2W9OHp8s0xus5vw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2022-02-04 10:14:46 from Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;</option>
+  <option value="f97d670d-2b03-9d47-6b64-09e6ed2f4d84%40postgrespro.ru">&nbsp;&nbsp;&nbsp;&nbsp;2022-02-06 07:37:47 from Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;</option>
+  <option value="CAFiTN-sCr6mYg8A_BBiRz0N68M9QY3uoBWHhbPgHDM-goLJGwg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-06 08:29:24 from Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;</option>
+  <option value="6e31c4ef-de9a-960b-1a21-e3b6ff0fa9c2%40postgrespro.ru">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-06 21:21:39 from Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;	&#x1f4ce;</option>
+  <option value="CAD21AoB8acvjt%2B52iwffAi7Ary_fyMD70X371hVX1JULrc-meQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-07 02:41:26 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="2733419.1644789029%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-13 21:50:29 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="2735166.1644790175%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-13 22:09:35 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAD21AoCSXKoTJuSBKxzQ%2BE7m4%2BNJbnWtTsFfFy9YGkYjSBJ5tw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-14 05:17:58 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="CAD21AoCxz%3DhU3c%2B6aB3OMNn%2B9NpH33WEMwOYmCOwh6EzOktYoA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-14 05:13:27 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="2778050.1644817168%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-14 05:39:28 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAD21AoAVuQ%3DTCCqA1D%3DeVqG3G_bKLq2zpNeYVV34Ucu2208Hmg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-15 16:47:56 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="3054063.1644944122%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-15 16:55:22 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAD21AoD5MsR_GR5iipc8TnGa3grzQbPLpwZcSn8Fq2dZbar_6g%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-09 02:26:42 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="515672.1646838707%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-09 15:11:47 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAD21AoAEHLAJ3%3D_zoCicyaPSf9-2PnJBb8HixLwPN-rLA6wzNQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-09 23:36:35 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="CAD21AoA2sivebwQw9602CBf8URFWGKY0%3DqE6%3D2wDkm2YhRKnOw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-11 15:39:53 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="982894.1647028392%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-11 19:53:12 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAD21AoBpW8i8TfNoCm_iSxSZ8eZp_Tf10q1h-7wDmWCPiXGYYw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-14 08:12:18 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="20220314.173000.398225758850773114.horikyota.ntt%40gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-14 08:30:00 from Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</option>
+  <option value="170696.1647265517%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-14 13:45:17 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="212334.1647284377%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-14 18:59:37 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAD21AoDxTVKHFNBPOPY4XaMcVAxmpegbPp4WoW7Ts330G0cKAw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-23 08:48:43 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="CAD21AoDWHkBBGvvJuLEBqMjiPiYOiVJ6voFBWYbOBsU%2B-Cot2A%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-24 14:23:57 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="20220628003720.GG19662%40telsasoft.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-06-28 00:37:20 from Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;</option>
+  <option value="CAD21AoBz4xZ3uOZS%2BxYENsYta4PPPkGYPDzzPqqw5GJgrQC7hg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-06-28 06:58:41 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="Yrq0ualb2MFVm1Ti%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-06-28 07:58:49 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="Yrv1nRsfasco768G%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-06-29 06:47:57 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="CAD21AoC8FQqHY8knG7%2B6-eQe39wjXPtqyki29OAb5OHhq7-p%2BQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-01 05:11:47 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="CAD21AoD6n62NXB5OuYSONYHKNkR%3DfqvJ5%2B82y%3D4Z%3D-KuFeOV0w%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-22 02:03:24 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="2604497.1664053071%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-24 20:57:51 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;	&#x1f4ce;</option>
+  <option value="YzEfR9UUb3gqRjoA%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-26 03:40:55 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="3268290.1664165270%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-26 04:07:50 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="YzJwcL71yaWqCVJ1%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-27 03:39:28 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="3667394.1664287017%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-27 13:56:57 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="3269450.1664165784%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-26 04:16:24 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="YzF286gtXNEluOKe%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-26 09:54:59 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="3334938.1664189987%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-26 10:59:47 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAD21AoATXMxvmnf%2BC554mQyTheoCkcwDoJOQnhN0EZ2ro%3DOCYg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-27 01:26:11 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="3797194.1664293905%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-27 15:51:45 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAD21AoAf6mmMG1tCQ53ccrTkNPS%3DpzN3m_maaGkL_31a_G_zxg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-28 02:23:16 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="20220315.113333.1974856655620066857.horikyota.ntt%40gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-15 02:33:33 from Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17385<br>Logged by:          Andrew Bille<br>Email address:      andrewbille(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>Hi!</p>
+
+<p>&quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert<br>at the transaction end.<br>For example (on REL_10_STABLE) the following query:<br>CREATE TABLE abc (a int);<br>BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;<br>        SELECT * FROM abc;<br>        RESET transaction_isolation;<br>END;</p>
+
+<p>causes an assertion failure with the following stack:</p>
+
+<p>[New LWP 839017]<br>[Thread debugging using libthread_db enabled]<br>Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.<br>Core was generated by `postgres: andrew regression [local] COMMIT           <br>                        &#x27;.<br>Program terminated with signal SIGABRT, Aborted.<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>50      ../sysdeps/unix/sysv/linux/raise.c: No such file or directory.<br>(gdb) bt<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>#1  0x00007f14b7f59859 in __GI_abort () at abort.c:79<br>#2  0x00005586da82c4d2 in ExceptionalCondition (conditionName=0x5586daa01e42<br>&quot;IsolationIsSerializable()&quot;, errorType=0x5586daa0195c &quot;FailedAssertion&quot;,<br>fileName=0x5586daa01950 &quot;predicate.c&quot;, lineNumber=4838) at assert.c:69<br>#3  0x00005586da659b2f in PreCommit_CheckForSerializationFailure () at<br>predicate.c:4838<br>#4  0x00005586da20f32e in CommitTransaction () at xact.c:2168<br>#5  0x00005586da21020c in CommitTransactionCommand () at xact.c:3015<br>#6  0x00005586da66afcb in finish_xact_command () at postgres.c:2721<br>#7  0x00005586da668643 in exec_simple_query (query_string=0x5586dada1020<br>&quot;END;&quot;) at postgres.c:1239<br>#8  0x00005586da66d4db in PostgresMain (argc=1, argv=0x7fffefd1c050,<br>dbname=0x5586dadcc168 &quot;regression&quot;, username=0x5586dadcc148 &quot;andrew&quot;) at<br>postgres.c:4486<br>#9  0x00005586da591be3 in BackendRun (port=0x5586dadc2010) at<br>postmaster.c:4530<br>#10 0x00005586da59143e in BackendStartup (port=0x5586dadc2010) at<br>postmaster.c:4252<br>#11 0x00005586da58d233 in ServerLoop () at postmaster.c:1745<br>#12 0x00005586da58c990 in PostmasterMain (argc=3, argv=0x5586dad9b240) at<br>postmaster.c:1417<br>#13 0x00005586da47be9d in main (argc=3, argv=0x5586dad9b240) at main.c:209</p>
+
+<p>Reproduced on REL_10_STABLE..master.<br>However SET transaction_isolation=&#x27;read committed&#x27; inside transaction just<br>emits<br>&quot;ERROR:  SET TRANSACTION ISOLATION LEVEL must be called before any query&quot;.</p>
+
+<p>Regards, Andrew!</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/b22395d2-d432-f211-0bed-1f466df75152%40postgrespro.ru">Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</a> at 2022-01-28 15:26:08 from Dmitry Koval
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/TYCPR01MB704195AAABCC36433438BCA2EA229%40TYCPR01MB7041.jpnprd01.prod.outlook.com">Next Message</a></th>
+            <td>ideriha.takeshi@fujitsu.com</td>
+            <td>2022-01-28 10:51:27</td>
+            <td><a href="/message-id/TYCPR01MB704195AAABCC36433438BCA2EA229%40TYCPR01MB7041.jpnprd01.prod.outlook.com">RE: The follwing error sometimes happened while updating partitioned
+ table using inheritance; ERROR: attribute xxx of type record has wrong type</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CALTnk7uOrMztNfzjNOZe3TdquAXDPD3vZKjWFWj%3D-Fv-gmROUQ%40mail.gmail.com">Previous Message</a></th>
+            <td>Pragati Agarwal</td>
+            <td>2022-01-28 08:41:26</td>
+            <td><a href="/message-id/CALTnk7uOrMztNfzjNOZe3TdquAXDPD3vZKjWFWj%3D-Fv-gmROUQ%40mail.gmail.com">Postgresql error : PANIC: could not locate a valid checkpoint record</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

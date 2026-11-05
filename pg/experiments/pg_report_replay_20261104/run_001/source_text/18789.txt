@@ -1,0 +1,61 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18789
+Logged by:          Sachin Konde-Deshmukh
+Email address:      sachinkonde3(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Oracle Linux 8.9
+Description:        
+
+
+We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.
+When I do failover 2nd or third time or more than once, it fails to transfer
+or move logical replication slot to new Primary.
+postgres=# select slot_name,slot_type, failover,
+synced,confirmed_flush_lsn,active from pg_replication_slots;
+     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+active
+--------------------+-----------+----------+--------+---------------------+--------
+psoel89pgcluster01 | physical  | f        | f      |                     |
+t
+mysub              | logical   | t        | t      | 0/4000AB8           |
+t
+(2 rows)
+After First Failover -->
+postgres=# select slot_name,slot_type, failover,
+synced,confirmed_flush_lsn,active from pg_replication_slots;
+     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+active
+--------------------+-----------+----------+--------+---------------------+--------
+psoel89pgcluster02 | physical  | f        | f      |                     |
+t
+mysub              | logical   | f        | f      | 0/50001E0           |
+t
+(2 rows)
+After 2nd Failover -->
+select slot_name,slot_type, failover, synced,confirmed_flush_lsn,active from
+pg_replication_slots;
+     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+active
+--------------------+-----------+----------+--------+---------------------+--------
+psoel89pgcluster01 | physical  | f        | f      |                     |
+t
+mysub              | logical   | f        | f      | 0/60002B0           |
+t
+After 3rd failover -->
+postgres=# select slot_name,slot_type, failover,
+synced,confirmed_flush_lsn,active from pg_replication_slots;
+     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |
+active
+--------------------+-----------+----------+--------+---------------------+--------
+psoel89pgcluster02 | physical  | f        | f      |                     |
+t
+(1 row)
+has context menu
+
+
+has context menu
+
+
+

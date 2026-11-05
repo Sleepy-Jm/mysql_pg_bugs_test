@@ -1,0 +1,37 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17479
+Logged by:          Michael J. Sullivan
+Email address:      sully(at)msully(dot)net
+PostgreSQL version: 14.2
+Operating system:   Linux
+Description:        
+
+
+The following query produces "plan should not reference subplan's
+variable"
+
+
+create table Card (id uuid);
+
+
+SELECT
+    -- This line causes "variable not found in subplan target list"
+    -- grouping(res.cnt)
+    -- This line causes "plan should not reference subplan's variable"
+   (SELECT grouping(res.cnt))
+FROM Card
+CROSS JOIN LATERAL
+(SELECT
+    (SELECT Card.id) AS cnt
+) AS res
+GROUP BY
+    res.cnt
+
+
+As the comment says, a slight change instead errors with "variable not found
+in subplan target list".
+
+
+

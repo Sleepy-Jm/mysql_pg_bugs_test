@@ -1,0 +1,45 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17478
+Logged by:          Stefan Pastrilov
+Email address:      spastrilov(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   Ubuntu 20.04
+Description:        
+
+
+Hello,
+
+
+We’re observing a strange bug, according to me. We’ve got native logical
+replication where the master host is running on PostgreSQL 13.3 and the
+logical replica host is running on PostgreSQL 14.1. And the problem is:
+  when we start to reindex concurrently the primary key of an 800M heavily
+inserted/updated(on the master)table on the logical replica database,
+several documents that have been inserted and existing in the master
+database during the index rebuild on the replica, are missing from the index
+structure on the replica host. What do I mean? If you try to search them by
+where id = 5 the index returns no records, but when you force a sequential
+scan (where id + 0 = 5)the row is returned. Usually, we’re messing around
+10-100 documents from the index after each concurrent re-index. When we
+rebuild the index again, they are found by an index look-up, but a new set
+of ids are missing. So the problem is easily reproducible, but you should
+have a heavily loaded table. Do you have any ideas about this? The newly
+created index is valid and fully functional, with no signs of a corrupted
+one…
+
+
+To be clear, the index rebuild is done on the subscribed table(slave
+host).
+
+
+master host:
+PostgreSQL 13.3 (Ubuntu 13.3-1.pgdg20.04+1) on x86_64-pc-linux-gnu, compiled
+by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit
+slave host:
+PostgreSQL 14.1 (Ubuntu 14.1-2.pgdg20.04+1) on x86_64-pc-linux-gnu, compiled
+by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit
+
+
+

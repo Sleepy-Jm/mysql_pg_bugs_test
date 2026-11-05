@@ -1,0 +1,43 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18805
+Logged by:          weijie JL
+Email address:      weijie1006jl(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Rocky Linux release 8.10 (Green Obsidian)
+Description:        
+
+
+Executing a specific SQL query in the database consistently results in a
+"signal 11: Segmentation fault" error, and other connections report the
+error: FATAL: 57P03: the database system is in recovery mode.
+
+
+When the error occurs, the system log shows: kernel: XFS (dm-2): Corruption
+of in-memory data (0x8) detected at xfs_trans_cancel+0xc6/0x130 [xfs]
+(fs/xfs/xfs_trans.c:958). Shutting down filesystem. This indicates in-memory
+data corruption in the XFS system, and the issue appears after this error.
+
+
+We conducted the following tests:
+
+
+Yesterday, we restored a backup using pgBackRest to another instance and
+configured streaming replication. Initially, the issue did not reoccur, and
+we switched to using this instance as the primary database. Since the
+business team had adjusted the SQL, everything worked fine. However, when we
+tested the problematic SQL again today, the issue reappeared.
+On the problematic virtual machine, we tried restarting, reinstalling the
+database software, and repairing the filesystem with xfs_repair, but the
+issue persisted.
+We moved the pgdata directory to a new disk space, but the issue still
+persisted after starting the database.
+We reinstalled the PostgreSQL software, but the issue persisted.
+We uploaded the PostgreSQL source code to a test environment for debugging
+and eventually identified that the issue was caused by the
+enable_partitionwise_join parameter. Disabling the enable_partitionwise_join
+parameter in the database prevented the issue from recurring.
+
+
+

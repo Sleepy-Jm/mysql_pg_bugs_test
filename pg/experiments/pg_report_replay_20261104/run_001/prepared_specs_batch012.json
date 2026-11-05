@@ -1,0 +1,54 @@
+[
+  {
+    "report_id": "18792",
+    "scenario_id": "18792_linked_config_nocassert",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18792-1d848ad538b1033c%40postgresql.org",
+    "parts": [
+      {
+        "text": "postgres=# alter system set synchronized_standby_slots='standby_slot';\nALTER SYSTEM\npostgres=# select pg_reload_conf();\n pg_reload_conf\n----------------\n t\n(1 row);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18792.txt",
+        "start_offset": 437,
+        "end_offset": 600,
+        "start_line": 19,
+        "end_line": 25,
+        "excerpt_sha256": "4f0c8bcf0c07365966c11aba854f70c7355746da13e030048ad18e0293163160",
+        "transformations": [
+          "trim outer whitespace",
+          "append SQL terminator at excerpt boundary"
+        ],
+        "material_kind": "source_configuration_steps"
+      },
+      {
+        "text": "To reproduce, simply start with no synchronized_standby_slots setting\nand logging_collector=on, then change the value in postgresql.conf and\nreload.;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\materials\\18792_related_thread.txt",
+        "start_offset": 546,
+        "end_offset": 694,
+        "excerpt_sha256": "52727597ad888eb5330730adf231fe3a4067fbfecca38df84e857d5ba6f2997e",
+        "transformations": [
+          "append SQL terminator at excerpt boundary"
+        ],
+        "material_kind": "linked_configuration_steps"
+      }
+    ],
+    "mode": "config_reload",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "system logger process .*terminated by signal 11",
+      "reported_phenomenon": "报告明确链接的讨论中，开启logging_collector后修改postgresql.conf的同步槽参数并SIGHUP导致logger SIGSEGV",
+      "author_expected_behavior": "logger不崩溃"
+    },
+    "config": {
+      "logging_collector": "on",
+      "log_directory": "'log'",
+      "log_filename": "'replay.log'"
+    },
+    "notes": "原报告明确引用的官方讨论给出直接编辑postgresql.conf再reload的复现步骤。采用该有来源路径和值standby_slot，不创建原文缺失的复制槽；不是原SQL ALTER SYSTEM路径成功的证明。与18810可能同根因，不计独立bug。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "build_variant": "jit_nocassert",
+    "reload_slot_value": "standby_slot",
+    "linked_source_url": "https://www.postgresql.org/message-id/flat/202411281216.sutbxtr6idnn%40alvherre.pgsql",
+    "spec_sha256": "7a64fde4152cfc9102f88731b5c932566824921563ae4af7bbfcfedc6c29c3cf"
+  }
+]

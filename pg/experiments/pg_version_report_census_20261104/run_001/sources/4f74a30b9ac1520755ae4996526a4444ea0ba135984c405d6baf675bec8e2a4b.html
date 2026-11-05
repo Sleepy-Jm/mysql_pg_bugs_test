@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17477: A crash bug in transformValuesClause()</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17477-0af3c6ac6b0a6ae0%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-05-09T10:28:31" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17477: A crash bug in transformValuesClause()" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17477 Logged by: Wang Ke Email address: krking@zju.edu.cn PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17477: A crash bug in transformValuesClause()</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>krking(at)zju(dot)edu(dot)cn</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17477: A crash bug in transformValuesClause()</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 10:28:31</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17477-0af3c6ac6b0a6ae0%40postgresql.org">17477-0af3c6ac6b0a6ae0@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17477-0af3c6ac6b0a6ae0%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17477-0af3c6ac6b0a6ae0%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17477-0af3c6ac6b0a6ae0%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17477-0af3c6ac6b0a6ae0%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17477-0af3c6ac6b0a6ae0%40postgresql.org" selected="selected">2022-05-09 10:28:31 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="CAD21AoCF5EWSXUR6MOGUWeqqo5bGw%3D_4LHDbwhPjO4x%2BxQn9QA%40mail.gmail.com">&nbsp;2022-05-09 14:03:56 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="3809468.1652109938%40sss.pgh.pa.us">&nbsp;&nbsp;2022-05-09 15:25:38 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;	&#x1f4ce;</option>
+  <option value="6f7f0d34-0f58-41a9-98b5-bf86e1960165%40postgresql.org">&nbsp;&nbsp;&nbsp;2022-05-09 17:20:23 from &quot;Jonathan S(dot) Katz&quot; &lt;jkatz(at)postgresql(dot)org&gt;</option>
+  <option value="3824037.1652118122%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;2022-05-09 17:42:02 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAD21AoDuQYcLmmPGe8-0ZoU%3D2VgvYAh1godFwYoNbSXe6TP0Qg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2022-05-09 18:15:04 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="3910641.1652121218%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-05-09 18:33:38 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="202205092055.n227skur4e3a%40alvherre.pgsql">&nbsp;&nbsp;&nbsp;2022-05-09 20:55:06 from Alvaro Herrera &lt;alvherre(at)alvh(dot)no-ip(dot)org&gt;</option>
+  <option value="3927831.1652130535%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;2022-05-09 21:08:55 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17477<br>Logged by:          Wang Ke<br>Email address:      krking(at)zju(dot)edu(dot)cn<br>PostgreSQL version: 14.2<br>Operating system:   Ubuntu 20.04.4 LTS x86_64<br>Description:        </p>
+
+<p>Hello, I found a security bug recently in the latest release version of<br>Postgresql server(14.2) which causes a segmentation fault caused by a READ<br>memory access, the detail is as follow:</p>
+
+<p>Reported by:<br>Wang Ke of Zhejiang University</p>
+
+<p>OS version and name:<br>Linux ubuntu 5.13.0-40-generic #45~20.04.1-Ubuntu SMP Mon Apr 4 09:38:31 UTC<br>2022 x86_64 x86_64 x86_64 GNU/Linux</p>
+
+<p>PoC:</p>
+
+<p>CREATE VIEW v0 AS SELECT ;<br>SELECT INTO GLOBAL TEMP TABLE v0 FROM v0 v1 ;<br>SET SESSION AUTHORIZATION &#x27;x&#x27; ;<br>CREATE TEMP TABLE v1 ( v2 ) ON COMMIT DELETE ROWS AS VALUES ( &#x27;x&#x27; ) , ( &#x27;x&#x27;<br>) , ( &#x27;x&#x27; ) ;<br>SELECT v2 , v2 FROM v0 AS v2 GROUP BY DISTINCT CUBE ( ( VALUES ( ( v2 . * )<br>) FOR READ ONLY ) ) ;</p>
+
+<p>Crash Log:</p>
+
+<p>2022-05-09 17:00:56.605 CST [245199] LOG:  statement: SELECT v2 , v2 FROM v0<br>AS v2 GROUP BY DISTINCT CUBE ( ( VALUES ( ( v2 . * ) ) FOR READ ONLY ) ) ;<br>AddressSanitizer:DEADLYSIGNAL<br>=================================================================<br>==245199==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000082<br>(pc 0x55e7ed66ad51 bp 0x7fff1c8b3cd0 sp 0x7fff1c8b3b10 T0)<br>==245199==The signal is caused by a READ memory access.<br>==245199==Hint: address points to the zero page.<br>    #0 0x55e7ed66ad50 in transformValuesClause<br>postgresql-14.2/bld/../src/backend/parser/analyze.c:1512<br>    #1 0x55e7ed66ad50 in transformStmt<br>postgresql-14.2/bld/../src/backend/parser/analyze.c:321<br>    #2 0x55e7ed670b70 in parse_sub_analyze<br>postgresql-14.2/bld/../src/backend/parser/analyze.c:198<br>    #3 0x55e7ed6ce7d0 in transformSubLink<br>postgresql-14.2/bld/../src/backend/parser/parse_expr.c:1797<br>    #4 0x55e7ed6ce7d0 in transformExprRecurse<br>postgresql-14.2/bld/../src/backend/parser/parse_expr.c:229<br>    #5 0x55e7ed6cab66 in transformExpr<br>postgresql-14.2/bld/../src/backend/parser/parse_expr.c:104<br>    #6 0x55e7ed6a90b8 in findTargetlistEntrySQL99<br>postgresql-14.2/bld/../src/backend/parser/parse_clause.c:2071<br>    #7 0x55e7ed6a9639 in findTargetlistEntrySQL92<br>postgresql-14.2/bld/../src/backend/parser/parse_clause.c:2040<br>    #8 0x55e7ed6b25f1 in transformGroupClauseExpr<br>postgresql-14.2/bld/../src/backend/parser/parse_clause.c:2264<br>    #9 0x55e7ed6b2aca in transformGroupingSet<br>postgresql-14.2/bld/../src/backend/parser/parse_clause.c:2449<br>    #10 0x55e7ed6b30fa in transformGroupClause<br>postgresql-14.2/bld/../src/backend/parser/parse_clause.c:2571<br>    #11 0x55e7ed66b9cd in transformSelectStmt<br>postgresql-14.2/bld/../src/backend/parser/analyze.c:1299<br>    #12 0x55e7ed66b9cd in transformStmt<br>postgresql-14.2/bld/../src/backend/parser/analyze.c:323<br>    #13 0x55e7ed672aab in transformOptionalSelectInto<br>postgresql-14.2/bld/../src/backend/parser/analyze.c:268<br>    #14 0x55e7ed672d21 in transformTopLevelStmt<br>postgresql-14.2/bld/../src/backend/parser/analyze.c:218<br>    #15 0x55e7ed672e69 in parse_analyze<br>postgresql-14.2/bld/../src/backend/parser/analyze.c:127<br>    #16 0x55e7edd5dadd in pg_analyze_and_rewrite<br>postgresql-14.2/bld/../src/backend/tcop/postgres.c:657<br>    #17 0x55e7edd5ecbd in exec_simple_query<br>postgresql-14.2/bld/../src/backend/tcop/postgres.c:1130<br>    #18 0x55e7edd606f1 in PostgresMain<br>postgresql-14.2/bld/../src/backend/tcop/postgres.c:4486<br>    #19 0x55e7edbc765d in BackendRun<br>postgresql-14.2/bld/../src/backend/postmaster/postmaster.c:4530<br>    #20 0x55e7edbc765d in BackendStartup<br>postgresql-14.2/bld/../src/backend/postmaster/postmaster.c:4252<br>    #21 0x55e7edbc765d in ServerLoop<br>postgresql-14.2/bld/../src/backend/postmaster/postmaster.c:1745<br>    #22 0x55e7edbca087 in PostmasterMain<br>postgresql-14.2/bld/../src/backend/postmaster/postmaster.c:1417<br>    #23 0x55e7ed9c046e in main<br>postgresql-14.2/bld/../src/backend/main/main.c:209<br>    #24 0x7ffaf632f0b2 in __libc_start_main<br>(/lib/x86_64-linux-gnu/libc.so.6+0x240b2)<br>    #25 0x55e7ed37c5ed in _start (/usr/local/pgsql/bin/postgres+0x38d5ed)</p>
+
+<p>AddressSanitizer can not provide additional info.<br>SUMMARY: AddressSanitizer: SEGV<br>postgresql-14.2/bld/../src/backend/parser/analyze.c:1512 in<br>transformValuesClause<br>==245199==ABORTING<br>2022-05-09 17:00:56.655 CST [245188] DEBUG:  reaping dead processes<br>2022-05-09 17:00:56.655 CST [245188] DEBUG:  server process (PID 245199)<br>exited with exit code 1<br>2022-05-09 17:00:56.655 CST [245188] DETAIL:  Failed process was running:<br>SELECT v2 , v2 FROM v0 AS v2 GROUP BY DISTINCT CUBE ( ( VALUES ( ( v2 . * )<br>) FOR READ ONLY ) ) ;<br>2022-05-09 17:00:56.655 CST [245188] LOG:  server process (PID 245199)<br>exited with exit code 1<br>2022-05-09 17:00:56.655 CST [245188] DETAIL:  Failed process was running:<br>SELECT v2 , v2 FROM v0 AS v2 GROUP BY DISTINCT CUBE ( ( VALUES ( ( v2 . * )<br>) FOR READ ONLY ) ) ;<br>2022-05-09 17:00:56.655 CST [245188] LOG:  terminating any other active<br>server processes<br>2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process<br>245196<br>2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process<br>245192<br>2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process<br>245191<br>2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process<br>245193<br>2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process<br>245194<br>2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process<br>245195<br>2022-05-09 17:00:56.656 CST [245188] DEBUG:  forked new backend, pid=245200<br>socket=9<br>2022-05-09 17:00:56.656 CST [245195] DEBUG:  writing stats file<br>&quot;pg_stat/global.stat&quot;<br>2022-05-09 17:00:56.656 CST [245195] DEBUG:  writing stats file<br>&quot;pg_stat/db_32931.stat&quot;<br>2022-05-09 17:00:56.656 CST [245200] FATAL:  the database system is in<br>recovery mode<br>2022-05-09 17:00:56.656 CST [245195] DEBUG:  removing temporary stats file<br>&quot;pg_stat_tmp/db_32931.stat&quot;<br>2022-05-09 17:00:56.656 CST [245195] DEBUG:  writing stats file<br>&quot;pg_stat/db_13012.stat&quot;<br>2022-05-09 17:00:56.656 CST [245200] DEBUG:  shmem_exit(1): 0<br>before_shmem_exit callbacks to make<br>2022-05-09 17:00:56.656 CST [245200] DEBUG:  shmem_exit(1): 0 on_shmem_exit<br>callbacks to make<br>2022-05-09 17:00:56.656 CST [245200] DEBUG:  proc_exit(1): 1 callbacks to<br>make<br>2022-05-09 17:00:56.656 CST [245200] DEBUG:  exit(1)<br>2022-05-09 17:00:56.656 CST [245195] DEBUG:  removing temporary stats file<br>&quot;pg_stat_tmp/db_13012.stat&quot;<br>2022-05-09 17:00:56.656 CST [245195] DEBUG:  writing stats file<br>&quot;pg_stat/db_0.stat&quot;<br>2022-05-09 17:00:56.656 CST [245200] DEBUG:  shmem_exit(-1): 0<br>before_shmem_exit callbacks to make<br>2022-05-09 17:00:56.656 CST [245200] DEBUG:  shmem_exit(-1): 0 on_shmem_exit<br>callbacks to make<br>2022-05-09 17:00:56.656 CST [245200] DEBUG:  proc_exit(-1): 0 callbacks to<br>make<br>2022-05-09 17:00:56.656 CST [245195] DEBUG:  removing temporary stats file<br>&quot;pg_stat_tmp/db_0.stat&quot;<br>2022-05-09 17:00:56.657 CST [245195] DEBUG:  shmem_exit(-1): 0<br>before_shmem_exit callbacks to make<br>2022-05-09 17:00:56.657 CST [245195] DEBUG:  shmem_exit(-1): 0 on_shmem_exit<br>callbacks to make<br>2022-05-09 17:00:56.657 CST [245195] DEBUG:  proc_exit(-1): 0 callbacks to<br>make<br>2022-05-09 17:00:56.658 CST [245188] DEBUG:  reaping dead processes<br>2022-05-09 17:00:56.658 CST [245188] DEBUG:  reaping dead processes<br>2022-05-09 17:00:56.659 CST [245188] DEBUG:  reaping dead processes<br>2022-05-09 17:00:56.659 CST [245188] DEBUG:  server process (PID 245200)<br>exited with exit code 1<br>2022-05-09 17:00:56.659 CST [245188] LOG:  all server processes terminated;<br>reinitializing<br>2022-05-09 17:00:56.660 CST [245188] DEBUG:  shmem_exit(1): 0<br>before_shmem_exit callbacks to make<br>2022-05-09 17:00:56.660 CST [245188] DEBUG:  shmem_exit(1): 5 on_shmem_exit<br>callbacks to make<br>2022-05-09 17:00:56.660 CST [245188] DEBUG:  cleaning up dynamic shared<br>memory control segment with ID 3198822830<br>2022-05-09 17:00:56.661 CST [245188] DEBUG:  invoking<br>IpcMemoryCreate(size=148815872)<br>2022-05-09 17:00:56.661 CST [245188] DEBUG:  mmap(148897792) with<br>MAP_HUGETLB failed, huge pages disabled: Cannot allocate memory<br>2022-05-09 17:00:56.666 CST [245188] DEBUG:  dynamic shared memory system<br>will support 674 segments<br>2022-05-09 17:00:56.667 CST [245188] DEBUG:  created dynamic shared memory<br>control segment 1631943408 (26976 bytes)<br>2022-05-09 17:00:56.668 CST [245201] LOG:  database system was interrupted;<br>last known up at 2022-05-09 17:00:07 CST<br>2022-05-09 17:00:56.668 CST [245201] DEBUG:  removing all temporary WAL<br>segments<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  checkpoint record is at<br>0/D97D880<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  redo record is at 0/D97D880;<br>shutdown true<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  next transaction ID: 954; next<br>OID: 73880<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  next MultiXactId: 1; next<br>MultiXactOffset: 0<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  oldest unfrozen transaction ID:<br>726, in database 1<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  oldest MultiXactId: 1, in<br>database 1<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  commit timestamp Xid<br>oldest/newest: 0/0<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  transaction ID wrap limit is<br>2147484373, limited by database with OID 1<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  MultiXactId wrap limit is<br>2147483648, limited by database with OID 1<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  starting up replication slots<br>2022-05-09 17:00:56.679 CST [245201] DEBUG:  starting up replication origin<br>progress state<br>2022-05-09 17:00:56.679 CST [245201] LOG:  database system was not properly<br>shut down; automatic recovery in progress</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAD21AoCF5EWSXUR6MOGUWeqqo5bGw%3D_4LHDbwhPjO4x%2BxQn9QA%40mail.gmail.com">Re: BUG #17477: A crash bug in transformValuesClause()</a> at 2022-05-09 14:03:56 from Masahiko Sawada
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAD21AoCF5EWSXUR6MOGUWeqqo5bGw%3D_4LHDbwhPjO4x%2BxQn9QA%40mail.gmail.com">Next Message</a></th>
+            <td>Masahiko Sawada</td>
+            <td>2022-05-09 14:03:56</td>
+            <td><a href="/message-id/CAD21AoCF5EWSXUR6MOGUWeqqo5bGw%3D_4LHDbwhPjO4x%2BxQn9QA%40mail.gmail.com">Re: BUG #17477: A crash bug in transformValuesClause()</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAFj8pRDRoZGjqG2RNcd5L7qzL2HGauBEZGeHmSnr0NywBKxurw%40mail.gmail.com">Previous Message</a></th>
+            <td>Pavel Stehule</td>
+            <td>2022-05-09 10:25:10</td>
+            <td><a href="/message-id/CAFj8pRDRoZGjqG2RNcd5L7qzL2HGauBEZGeHmSnr0NywBKxurw%40mail.gmail.com">Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot;
+ when running SELECT COUNT(*)</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

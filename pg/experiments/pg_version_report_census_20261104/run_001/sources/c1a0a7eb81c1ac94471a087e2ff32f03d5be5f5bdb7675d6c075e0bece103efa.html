@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17462: Invalid memory access in heapam_tuple_lock</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17462-9c98a0f00df9bd36%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-04-11T07:46:41" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17462: Invalid memory access in heapam_tuple_lock" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17462 Logged by: Daniil Anisimov Email address: anisimow.d@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17462: Invalid memory access in heapam_tuple_lock</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>anisimow(dot)d(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17462: Invalid memory access in heapam_tuple_lock</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-11 07:46:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17462-9c98a0f00df9bd36%40postgresql.org">17462-9c98a0f00df9bd36@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17462-9c98a0f00df9bd36%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17462-9c98a0f00df9bd36%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17462-9c98a0f00df9bd36%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17462-9c98a0f00df9bd36%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17462-9c98a0f00df9bd36%40postgresql.org" selected="selected">2022-04-11 07:46:41 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="286748.1649692519%40sss.pgh.pa.us">&nbsp;2022-04-11 15:55:19 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="288544.1649693991%40sss.pgh.pa.us">&nbsp;&nbsp;2022-04-11 16:19:51 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20220411173417.ocwjn5xrkqqjiysl%40alap3.anarazel.de">&nbsp;&nbsp;&nbsp;2022-04-11 17:34:17 from Andres Freund &lt;andres(at)anarazel(dot)de&gt;</option>
+  <option value="352840.1649699498%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;2022-04-11 17:51:38 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20220411190042.o5ebdhc5qsejleff%40alap3.anarazel.de">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-11 19:00:42 from Andres Freund &lt;andres(at)anarazel(dot)de&gt;</option>
+  <option value="496872.1649705112%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-11 19:25:12 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20220411194051.sovwssdawxoh4m5h%40alap3.anarazel.de">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-11 19:40:51 from Andres Freund &lt;andres(at)anarazel(dot)de&gt;</option>
+  <option value="530434.1649707170%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-11 19:59:30 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20220411203203.avlrzwy526j4yfas%40alap3.anarazel.de">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-11 20:32:03 from Andres Freund &lt;andres(at)anarazel(dot)de&gt;</option>
+  <option value="708918.1649718451%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-11 23:07:31 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;	&#x1f4ce;</option>
+  <option value="995052.1649799605%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-12 21:40:05 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;	&#x1f4ce;</option>
+  <option value="CAH2-Wzmsm4sBXM%2BbdG_U48sWq8R5XY%3DfF%3DZqnL5vKeqDK4X0bA%40mail.gmail.com">&nbsp;&nbsp;2022-04-11 16:25:48 from Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</option>
+  <option value="290412.1649694952%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;2022-04-11 16:35:52 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAH2-Wzmxcidt0u4_7pfXZ_ExEOKa_Epb-b3vAcM_D899WAO2rA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2022-04-11 16:48:51 from Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17462<br>Logged by:          Daniil Anisimov<br>Email address:      anisimow(dot)d(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Ubuntu 20.04.4 LTS<br>Description:        </p>
+
+<p>When running parallel queries using pgbench with valgrind-enabled server:<br>pgbench -i -s 1<br>pgbench -t 1000 -c 10 -j 10</p>
+
+<p>I get:<br>==00:00:03:09.642 456530== Invalid read of size 2<br>==00:00:03:09.642 456530==    at 0x23820E: heapam_tuple_lock<br>(heapam_handler.c:509)<br>==00:00:03:09.642 456530==    by 0x41B07F: table_tuple_lock<br>(tableam.h:1554)<br>==00:00:03:09.642 456530==    by 0x41B07F: ExecUpdate<br>(nodeModifyTable.c:1851)<br>==00:00:03:09.642 456530==    by 0x41C7DA: ExecModifyTable<br>(nodeModifyTable.c:2594)<br>==00:00:03:09.642 456530==    by 0x3EF0AE: ExecProcNodeFirst<br>(execProcnode.c:463)<br>==00:00:03:09.642 456530==    by 0x3E7278: ExecProcNode (executor.h:257)<br>==00:00:03:09.642 456530==    by 0x3E7278: ExecutePlan (execMain.c:1551)<br>==00:00:03:09.642 456530==    by 0x3E7E90: standard_ExecutorRun<br>(execMain.c:361)<br>==00:00:03:09.642 456530==    by 0x3E7F5E: ExecutorRun (execMain.c:305)<br>==00:00:03:09.642 456530==    by 0x5A7CAD: ProcessQuery (pquery.c:160)<br>==00:00:03:09.642 456530==    by 0x5A888B: PortalRunMulti (pquery.c:1274)<br>==00:00:03:09.642 456530==    by 0x5A8E3C: PortalRun (pquery.c:788)<br>==00:00:03:09.642 456530==    by 0x5A5029: exec_simple_query<br>(postgres.c:1214)<br>==00:00:03:09.642 456530==    by 0x5A6FEF: PostgresMain (postgres.c:4496)<br>==00:00:03:09.642 456530==  Address 0x6ea7f74 is in a rw- anonymous<br>segment<br>==00:00:03:09.642 456530==<br>{<br>   &lt;insert_a_suppression_name_here&gt;<br>   Memcheck:Addr2<br>   fun:heapam_tuple_lock<br>   fun:table_tuple_lock<br>   fun:ExecUpdate<br>   fun:ExecModifyTable<br>   fun:ExecProcNodeFirst<br>   fun:ExecProcNode<br>   fun:ExecutePlan<br>   fun:standard_ExecutorRun<br>   fun:ExecutorRun<br>   fun:ProcessQuery<br>   fun:PortalRunMulti<br>   fun:PortalRun<br>   fun:exec_simple_query<br>   fun:PostgresMain<br>}<br>==00:00:03:09.642 456530==<br>==00:00:03:09.642 456530== Exit program on first error<br>(--exit-on-first-error=yes)</p>
+
+<p>This starts happening at commit 1e0dfd166b3fa7fc79e4fad73b6fae056bab598a</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/286748.1649692519%40sss.pgh.pa.us">Re: BUG #17462: Invalid memory access in heapam_tuple_lock</a> at 2022-04-11 15:55:19 from Tom Lane
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/dff776f7-fd73-6b14-a6c0-fba8c3858735%40fujitsu.com">Next Message</a></th>
+            <td>wangsh.fnst@fujitsu.com</td>
+            <td>2022-04-11 10:24:26</td>
+            <td><a href="/message-id/dff776f7-fd73-6b14-a6c0-fba8c3858735%40fujitsu.com">Re: &quot;unexpected duplicate for tablespace&quot; problem in logical
+ replication</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/TYCPR01MB8373616AF8BA3C819535B998EDEA9%40TYCPR01MB8373.jpnprd01.prod.outlook.com">Previous Message</a></th>
+            <td>osumi.takamichi@fujitsu.com</td>
+            <td>2022-04-11 07:40:11</td>
+            <td><a href="/message-id/TYCPR01MB8373616AF8BA3C819535B998EDEA9%40TYCPR01MB8373.jpnprd01.prod.outlook.com">RE: &quot;unexpected duplicate for tablespace&quot; problem in logical
+ replication</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

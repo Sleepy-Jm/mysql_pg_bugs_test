@@ -1,0 +1,500 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17462
+Logged by:          Daniil Anisimov
+Email address:      anisimow(dot)d(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Ubuntu 20.04.4 LTS
+Description:        
+
+
+When running parallel queries using pgbench with valgrind-enabled server:
+pgbench -i -s 1
+pgbench -t 1000 -c 10 -j 10
+
+
+I get:
+==00:00:03:09.642 456530== Invalid read of size 2
+==00:00:03:09.642 456530==    at 0x23820E: heapam_tuple_lock
+(heapam_handler.c:509)
+==00:00:03:09.642 456530==    by 0x41B07F: table_tuple_lock
+(tableam.h:1554)
+==00:00:03:09.642 456530==    by 0x41B07F: ExecUpdate
+(nodeModifyTable.c:1851)
+==00:00:03:09.642 456530==    by 0x41C7DA: ExecModifyTable
+(nodeModifyTable.c:2594)
+==00:00:03:09.642 456530==    by 0x3EF0AE: ExecProcNodeFirst
+(execProcnode.c:463)
+==00:00:03:09.642 456530==    by 0x3E7278: ExecProcNode (executor.h:257)
+==00:00:03:09.642 456530==    by 0x3E7278: ExecutePlan (execMain.c:1551)
+==00:00:03:09.642 456530==    by 0x3E7E90: standard_ExecutorRun
+(execMain.c:361)
+==00:00:03:09.642 456530==    by 0x3E7F5E: ExecutorRun (execMain.c:305)
+==00:00:03:09.642 456530==    by 0x5A7CAD: ProcessQuery (pquery.c:160)
+==00:00:03:09.642 456530==    by 0x5A888B: PortalRunMulti (pquery.c:1274)
+==00:00:03:09.642 456530==    by 0x5A8E3C: PortalRun (pquery.c:788)
+==00:00:03:09.642 456530==    by 0x5A5029: exec_simple_query
+(postgres.c:1214)
+==00:00:03:09.642 456530==    by 0x5A6FEF: PostgresMain (postgres.c:4496)
+==00:00:03:09.642 456530==  Address 0x6ea7f74 is in a rw- anonymous
+segment
+==00:00:03:09.642 456530==
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr2
+   fun:heapam_tuple_lock
+   fun:table_tuple_lock
+   fun:ExecUpdate
+   fun:ExecModifyTable
+   fun:ExecProcNodeFirst
+   fun:ExecProcNode
+   fun:ExecutePlan
+   fun:standard_ExecutorRun
+   fun:ExecutorRun
+   fun:ProcessQuery
+   fun:PortalRunMulti
+   fun:PortalRun
+   fun:exec_simple_query
+   fun:PostgresMain
+}
+==00:00:03:09.642 456530==
+==00:00:03:09.642 456530== Exit program on first error
+(--exit-on-first-error=yes)
+
+
+This starts happening at commit 1e0dfd166b3fa7fc79e4fad73b6fae056bab598a
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> When running parallel queries using pgbench with valgrind-enabled server:
+> pgbench -i -s 1
+> pgbench -t 1000 -c 10 -j 10
+> I get:
+> ==00:00:03:09.642 456530== Invalid read of size 2
+
+
+Reproduced here.  It's surprising that nobody noticed this before,
+because AFAICS the bug is pretty old: it dates to somebody foolishly
+deciding that heap_fetch didn't need its keep_buf argument, which
+evidently happened in v12 (didn't track down the exact commit yet).
+As you say, valgrind would not have caught this problem before
+1e0dfd166, but that's not so new anymore either.
+
+
+In principle, this is showing an actual bug, because once we drop
+the buffer pin somebody could replace the page before we get done
+examining the tuple.  I'm not sure what the odds are of that happening
+in the field, but they're probably mighty low because a just-accessed
+buffer should not be high priority for replacement.
+
+
+My inclination for a fix is to revert the removal of the keep_buf argument
+and go back to having heapam_tuple_lock and other callers release the
+buffer after they are done.  However, that's problematic in released
+branches, because it seems likely that there are outside callers of
+heap_fetch.  Can we get away with only fixing this in HEAD?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+I wrote:
+> Reproduced here.  It's surprising that nobody noticed this before,
+> because AFAICS the bug is pretty old: it dates to somebody foolishly
+> deciding that heap_fetch didn't need its keep_buf argument, which
+> evidently happened in v12 (didn't track down the exact commit yet).
+
+
+The blame falls on Andres' commit 5db6df0c0.  There is no commentary
+there justifying this change, and I judge the amount of thought that
+went into it by noting that that commit removed the argument without
+removing the header comment explaining it.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+On Mon, Apr 11, 2022 at 8:55 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> In principle, this is showing an actual bug, because once we drop
+> the buffer pin somebody could replace the page before we get done
+> examining the tuple.  I'm not sure what the odds are of that happening
+> in the field, but they're probably mighty low because a just-accessed
+> buffer should not be high priority for replacement.
+
+
+I imagine that the greater risk comes from concurrent opportunistic
+pruning. The other backend's page defragmentation step (from pruning)
+would render our backend's HeapTuple pointer invalid. Presumably it
+would just look like an invalid/non-matching xmin in our backend, at
+the point of control flow that Valgrind complains about
+(heapam_handler.c:509).
+
+
+-- 
+Peter Geoghegan
+
+
+
+
+
+### MESSAGE 4
+Peter Geoghegan <pg(at)bowt(dot)ie> writes:
+> On Mon, Apr 11, 2022 at 8:55 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+>> In principle, this is showing an actual bug, because once we drop
+>> the buffer pin somebody could replace the page before we get done
+>> examining the tuple.  I'm not sure what the odds are of that happening
+>> in the field, but they're probably mighty low because a just-accessed
+>> buffer should not be high priority for replacement.
+
+
+> I imagine that the greater risk comes from concurrent opportunistic
+> pruning.
+
+
+Good point.  I'm afraid that means we need a back-branch fix, which
+I guess requires an alternate entry point.
+
+
+> The other backend's page defragmentation step (from pruning)
+> would render our backend's HeapTuple pointer invalid. Presumably it
+> would just look like an invalid/non-matching xmin in our backend, at
+> the point of control flow that Valgrind complains about
+> (heapam_handler.c:509).
+
+
+Right, but there are other accesses below, and in any case match
+failure isn't necessarily the right thing.  What that code is
+trying to do is chain up to the latest version of the tuple, and
+the likely end result would be to incorrectly conclude that there
+isn't one, resulting in failure to update a tuple that should
+have been updated.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 5
+On Mon, Apr 11, 2022 at 9:35 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> > The other backend's page defragmentation step (from pruning)
+> > would render our backend's HeapTuple pointer invalid. Presumably it
+> > would just look like an invalid/non-matching xmin in our backend, at
+> > the point of control flow that Valgrind complains about
+> > (heapam_handler.c:509).
+>
+> Right, but there are other accesses below, and in any case match
+> failure isn't necessarily the right thing.
+
+
+That's what I meant -- it very likely would have been a match if the
+same scenario played out, but without any concurrent pruning. With a
+concurrent prune, xmin won't ever be a match (barring a
+near-miraculous coincidence). That behavior is definitely wrong, but
+also quite subtle (compared to what might happen if we got past the
+xmin/xmax check). I think that that explains why it took this long to
+notice the bug.
+
+
+-- 
+Peter Geoghegan
+
+
+
+
+
+### MESSAGE 6
+Hi,
+
+
+On 2022-04-11 12:19:51 -0400, Tom Lane wrote:
+> I wrote:
+> > Reproduced here.  It's surprising that nobody noticed this before,
+> > because AFAICS the bug is pretty old: it dates to somebody foolishly
+> > deciding that heap_fetch didn't need its keep_buf argument, which
+> > evidently happened in v12 (didn't track down the exact commit yet).
+> 
+> The blame falls on Andres' commit 5db6df0c0.  There is no commentary
+> there justifying this change, and I judge the amount of thought that
+> went into it by noting that that commit removed the argument without
+> removing the header comment explaining it.
+
+
+I've only just had a first coffee, so I'm a bit foggy still. There were a few
+different attempts at making tuple locking fit into some form abstraction, not
+making it easy to remember...
+
+
+Hm. It looks like the problem only can happen when the tuple is filtered out
+by the snapshot. We don't need the xmin in line 509 from the tuple, we have it
+in SnapshotDirty. The problem is we need t_ctid too.
+
+
+Ah. I dimly recall that for a while the patchset had a ctid in SnapshotData
+too, for SnapshotDirty purposes. That might be the origin of the problem.
+
+
+One way to address it in a way not requiring an API break would be to pass
+SnapshotAny to heap_fetch and then do an explicit visibility check "ourselves"
+in heapam_lock_tuple().
+
+
+Greetings,
+
+
+Andres Freund
+
+
+
+
+
+### MESSAGE 7
+Andres Freund <andres(at)anarazel(dot)de> writes:
+> One way to address it in a way not requiring an API break would be to pass
+> SnapshotAny to heap_fetch and then do an explicit visibility check "ourselves"
+> in heapam_lock_tuple().
+
+
+I'm not really interested in fixing this without an API break (going
+forward anyway), because as it stands heap_fetch is just an invitation
+to make this same mistake again.  It should never return a tuple pointer
+if we don't keep the pin on the associated buffer.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 8
+Hi,
+
+
+On 2022-04-11 13:51:38 -0400, Tom Lane wrote:
+> Andres Freund <andres(at)anarazel(dot)de> writes:
+> > One way to address it in a way not requiring an API break would be to pass
+> > SnapshotAny to heap_fetch and then do an explicit visibility check "ourselves"
+> > in heapam_lock_tuple().
+> 
+> I'm not really interested in fixing this without an API break (going
+> forward anyway), because as it stands heap_fetch is just an invitation
+> to make this same mistake again.
+
+
+My suggestion was about the back branch situation... But it seems viable going
+forward as well, if we we reset tuple->t_data in the !valid case. As you say:
+
+
+> It should never return a tuple pointer if we don't keep the pin on the
+> associated buffer.
+
+
+Agreed. If tuple->t_data were reset in the !valid case, not just the
+!ItemIdIsNormal() case, bug would have been noticed immediately (isolation
+tests do fail, I checked).
+
+
+Another approach is to extend the SatisfiesDirty approach and store the tid of
+the next tuple version in addition the xmin/xmax we already store. And have
+heap_fetch() always set t_data to NULL if the snapshot check fails.
+
+
+Greetings,
+
+
+Andres Freund
+
+
+
+
+
+### MESSAGE 9
+Andres Freund <andres(at)anarazel(dot)de> writes:
+> Another approach is to extend the SatisfiesDirty approach and store the tid of
+> the next tuple version in addition the xmin/xmax we already store. And have
+> heap_fetch() always set t_data to NULL if the snapshot check fails.
+
+
+That seems like a fairly clean idea, although I think we can't use it
+in the back branches without an ABI break.  We're not going to find a
+TID's worth of padding space in struct SnapshotData.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 10
+Hi,
+
+
+On 2022-04-11 15:25:12 -0400, Tom Lane wrote:
+> Andres Freund <andres(at)anarazel(dot)de> writes:
+> > Another approach is to extend the SatisfiesDirty approach and store the tid of
+> > the next tuple version in addition the xmin/xmax we already store. And have
+> > heap_fetch() always set t_data to NULL if the snapshot check fails.
+>
+> That seems like a fairly clean idea, although I think we can't use it
+> in the back branches without an ABI break.  We're not going to find a
+> TID's worth of padding space in struct SnapshotData.
+
+
+Right. There's enough space on x86-64, just not contiuous. But not on 32bit
+x86, so even if we were willing to live with the ugliness of splitting
+ItemPointerData across fields temporarily (which I don't think we would)...
+
+
+I guess we could put members of SnapshotData into a union with ItemPointerData
+that aren't used by InitDirtySnapshot()/HeapTupleSatisfiesDirty().
+
+
+E.g. ph_node - which fairly fundamentally won't be used by dirty snapshots,
+and seems unlikely to be used by any extensions? And even if, it'd cause a
+compile-time breakage for such extensions, not a silent ABI breakage...
+
+
+Greetings,
+
+
+Andres Freund
+
+
+
+
+
+### MESSAGE 11
+Andres Freund <andres(at)anarazel(dot)de> writes:
+> On 2022-04-11 15:25:12 -0400, Tom Lane wrote:
+>> That seems like a fairly clean idea, although I think we can't use it
+>> in the back branches without an ABI break.  We're not going to find a
+>> TID's worth of padding space in struct SnapshotData.
+
+
+> I guess we could put members of SnapshotData into a union with ItemPointerData
+> that aren't used by InitDirtySnapshot()/HeapTupleSatisfiesDirty().
+
+
+Yeah, that could work.  You want to draft a patch, or shall I?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 12
+Hi,
+
+
+On 2022-04-11 15:59:30 -0400, Tom Lane wrote:
+> Andres Freund <andres(at)anarazel(dot)de> writes:
+> > On 2022-04-11 15:25:12 -0400, Tom Lane wrote:
+> >> That seems like a fairly clean idea, although I think we can't use it
+> >> in the back branches without an ABI break.  We're not going to find a
+> >> TID's worth of padding space in struct SnapshotData.
+> 
+> > I guess we could put members of SnapshotData into a union with ItemPointerData
+> > that aren't used by InitDirtySnapshot()/HeapTupleSatisfiesDirty().
+> 
+> Yeah, that could work.  You want to draft a patch, or shall I?
+
+
+If you would, I'd appreciate it.  I've to finish a talk I'm giving tomorrow,
+and I want to fix the recovery conflict bug - it's triggering the bug like
+half the time on CI...
+
+
+Greetings,
+
+
+Andres Freund
+
+
+
+
+
+### MESSAGE 13
+Andres Freund <andres(at)anarazel(dot)de> writes:
+> On 2022-04-11 15:59:30 -0400, Tom Lane wrote:
+>> Yeah, that could work.  You want to draft a patch, or shall I?
+
+
+> If you would, I'd appreciate it.
+
+
+I abandoned that idea after noticing that heapam_tuple_lock needs
+not only the tuple's xmin and ctid, but usually also the result of
+HeapTupleHeaderGetUpdateXid, which is expensive (it can require a
+multixact lookup).  I do not think it's a great idea to expect
+HeapTupleSatisfiesDirty to compute that.  So the attached patch goes back
+to my original idea of reverting the removal of the keep_buf argument.
+This worked out pretty cleanly, with minimal code changes.  In HEAD,
+we might want to avoid the extra heap_fetch_extended layer by
+adding that argument back to heap_fetch, but having the extra layer
+avoids an API break for the back branches.
+
+
+As written here, even though there's no obvious API break, there is
+a subtle change: heap_fetch will now return tuple->t_data = NULL after
+a snapshot failure.  I'm of two minds whether to back-patch that part
+(not doing so would require more changes in heapam_tuple_lock, though).
+I'm concerned that some caller might be using that legitimately, say
+by testing for pointer nullness without actually dereferencing it.
+And even if they are unsafely dereferencing it, I'm not sure people
+would thank us for converting a subtle low-probability failure into a
+subtle higher-probability one.  Thoughts?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 14
+I wrote:
+> As written here, even though there's no obvious API break, there is
+> a subtle change: heap_fetch will now return tuple->t_data = NULL after
+> a snapshot failure.  I'm of two minds whether to back-patch that part
+> (not doing so would require more changes in heapam_tuple_lock, though).
+
+
+After further thought I think we shouldn't back-patch that part: it
+could easily break code that's functionally correct today, and there
+isn't any case that it makes better without caller-code changes.
+
+
+(I'm not sure what made me think it'd affect heapam_tuple_lock; that
+function only cares about the behavior with keep_buf = true.)
+
+
+Hence, I end up with two different patches for HEAD and the back branches.
+In HEAD, we explicitly break heap_fetch compatibility by adding a new
+argument, and we can make the commit message note the more subtle change
+too.  In the back branches, the behavior of heap_fetch is unchanged
+and heapam_tuple_lock has to use heap_fetch_extended.
+
+
+			regards, tom lane
+
+
+

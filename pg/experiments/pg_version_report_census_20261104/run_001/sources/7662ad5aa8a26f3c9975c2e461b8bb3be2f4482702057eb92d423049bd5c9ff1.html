@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17452: IN caluse behaves differently when there is one item comapred to when multiple</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17452-d10a023545015922%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-03-31T13:42:05" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17452: IN caluse behaves differently when there is one item comapred to when multiple" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17452 Logged by: Andreas Karlsson Email address: andreas@proxel.se PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17452: IN caluse behaves differently when there is one item comapred to when multiple</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>andreas(at)proxel(dot)se</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17452: IN caluse behaves differently when there is one item comapred to when multiple</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-31 13:42:05</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17452-d10a023545015922%40postgresql.org">17452-d10a023545015922@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17452-d10a023545015922%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17452-d10a023545015922%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17452-d10a023545015922%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17452-d10a023545015922%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17452-d10a023545015922%40postgresql.org" selected="selected">2022-03-31 13:42:05 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="CAKFQuwbDUPuXe6VjQim8G%2B%3Dem6Rk%3DarFgpcYRQ3a2f1eWi%3Dyaw%40mail.gmail.com">&nbsp;2022-03-31 16:06:16 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203310000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17452<br>Logged by:          Andreas Karlsson<br>Email address:      andreas(at)proxel(dot)se<br>PostgreSQL version: 14.2<br>Operating system:   Linux and Mac at least<br>Description:        </p>
+
+<p>Hi,</p>
+
+<p>I noticed that the optimization (in transformAExprIn()) for the case where<br>there is an IN (...) with only one item breaks certain queries. Of course it<br>is also possible that it is the single-item case which is correct and the<br>multiple-item case which is broken. The case where I found this behavior was<br>caused by the casting rules around the reg* types but there could be other<br>similar issues.</p>
+
+<p>Here is a simplified example based on a real query:</p>
+
+<p># SELECT version();<br>                                                        version             <br>                                           <br>------------------------------------------------------------------------------------------------------------------------<br> PostgreSQL 14.2 (Debian 14.2-1.pgdg120+1+b2) on x86_64-pc-linux-gnu,<br>compiled by gcc (Debian 11.2.0-18) 11.2.0, 64-bit<br>(1 row)</p>
+
+<p># SELECT &#x27;version&#x27;::regproc IN (&#x27;version&#x27;);<br>ERROR:  invalid input syntax for type oid: &quot;version&quot;<br>LINE 1: SELECT &#x27;version&#x27;::regproc IN (&#x27;version&#x27;);<br>                                      ^<br># SELECT &#x27;version&#x27;::regproc IN (&#x27;version&#x27;, &#x27;version&#x27;);<br> ?column? <br>----------<br> t<br>(1 row)</p>
+
+<p>Best regards,<br>Andreas</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAKFQuwbDUPuXe6VjQim8G%2B%3Dem6Rk%3DarFgpcYRQ3a2f1eWi%3Dyaw%40mail.gmail.com">Re: BUG #17452: IN caluse behaves differently when there is one item
+ comapred to when multiple</a> at 2022-03-31 16:06:16 from David G. Johnston
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAM-sOH9Dxd32Hf%3DcDxS%3Dz_hSWteik5zCvrgTf3p8GkJiGTq7sA%40mail.gmail.com">Next Message</a></th>
+            <td>Pierre Forstmann</td>
+            <td>2022-03-31 16:04:10</td>
+            <td><a href="/message-id/CAM-sOH9Dxd32Hf%3DcDxS%3Dz_hSWteik5zCvrgTf3p8GkJiGTq7sA%40mail.gmail.com">Re: BUG #17393: Delete database after recovery with point-in-time is
+ still missing datafiles</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAOe0RDwJsLHAjs%2BXfCPYFz4Uy3_nZtCj9SnOCQ1JLM6PgwxeTA%40mail.gmail.com">Previous Message</a></th>
+            <td>Sergey Belyashov</td>
+            <td>2022-03-31 12:53:27</td>
+            <td><a href="/message-id/CAOe0RDwJsLHAjs%2BXfCPYFz4Uy3_nZtCj9SnOCQ1JLM6PgwxeTA%40mail.gmail.com">Re: BUG #17438: Logical replication hangs on master after huge DB load</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

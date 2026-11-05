@@ -1,0 +1,428 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17445
+Logged by:          Yaser Amiri
+Email address:      yaser(dot)amiri95(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   openSUSE Leap 15.3 / Kernel: 5.3.18-150300.59.49-d
+Description:        
+
+
+Hi,
+I think I found a bug or at least a confusing behavior that I can't find any
+documentation about.
+
+
+Summary:
+I have an INSERT query that has an "ON CONFLICT" and a "WHERE" clause which
+suppose to hit a partial multicolumn unique index.
+When I try to insert some records in a transaction (one insert per record)
+When I pass the parameter which is used in the "WHERE" condition in prepared
+statement params, the transaction fails, but if I hard code it, everything
+will be OK (no rollback or errors).
+Error: `ERROR:  there is no unique or exclusion constraint matching the ON
+CONFLICT specification`
+
+
+Here's another weird thing, in the situation in which transaction fails, If
+I reduce the inserts to less than 6, it doesn't fail! (It fails on 6th
+execution)
+
+
+How to reproduce:
+I tested this on postgres:14.2 docker image and a couple of other versions.
+(This is my first report and I'm doing this with the submit form of the
+website. I don't know if it escapes characters or not, so I just write some
+raw things, sorry!)
+
+
+I start Postgres:
+docker run --rm -p 5432:5432 --name pg -e 'POSGRES_USER=postgres' -e
+'POSTGRES_DB=postgres' -e 'POSTGRES_PASSWORD=postgres' -d postgres:14.2
+
+
+This is the schema file (which contains a table named balance and a partial
+index and some configs)
+https://paste.opensuse.org/19058183
+
+
+I import  it:
+cat schema.sql | docker exec -i pg psql -U postgres -d postgres
+
+
+This is the query that is OK, It commits successfully and we'll have one
+record in the table, I run it:
+https://paste.opensuse.org/61559625
+cat works.sql | docker exec -i pg psql -U postgres -d postgres
+Note: In line 8 you can see I don't pass '2025-01-01' as prepared statement
+parameter.
+
+
+And I make it a parameter and it fails:
+https://paste.opensuse.org/44857745
+ERROR:  there is no unique or exclusion constraint matching the ON CONFLICT
+specification
+If you delete one of the executions (one of the lines between 14 and 19) and
+reduce them to 5 calls, It won't raise an error and works as it should!
+
+
+Extra info:
+Docker Image Name: postgres:14.2
+Host Kernel: Linux 5.3.18-150300.59.49-default
+
+
+Let me know if you need anything else.
+Thank you.
+
+
+
+
+
+### MESSAGE 1
+On Mon, Mar 21, 2022 at 2:11 PM PG Bug reporting form <
+noreply(at)postgresql(dot)org> wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17445
+> Logged by:          Yaser Amiri
+> Email address:      yaser(dot)amiri95(at)gmail(dot)com
+> PostgreSQL version: 14.2
+> Operating system:   openSUSE Leap 15.3 / Kernel: 5.3.18-150300.59.49-d
+> Description:
+>
+> Hi,
+> I think I found a bug or at least a confusing behavior that I can't find
+> any
+> documentation about.
+>
+> Summary:
+> I have an INSERT query that has an "ON CONFLICT" and a "WHERE" clause which
+> suppose to hit a partial multicolumn unique index.
+> When I try to insert some records in a transaction (one insert per record)
+> When I pass the parameter which is used in the "WHERE" condition in
+> prepared
+> statement params, the transaction fails, but if I hard code it, everything
+> will be OK (no rollback or errors).
+> Error: `ERROR:  there is no unique or exclusion constraint matching the ON
+> CONFLICT specification`
+>
+
+
+IIUC, and this could probably be spelled out a bit better in the
+documentation, the inference of the arbiter index is chosen at planning
+time.  IOW, each row doesn't get to decide which index it is checked
+against.  This is a general behavior of the system and doesn't get called
+out in individual sections like the INSERT command.  I would suggest we
+make an exception here and explicitly note that inference happens during
+planning and so does not play well with parameters (which only matters in
+the partial index case anyway).  I think we could even go further and emit
+a more useful error message but the technical details of that are outside
+my skill set.
+
+
+What that all means is the system doesn't really support your example -
+though it doesn't reliably fail either due to planner optimizations.
+
+
+For the partial index predicate: WHERE "time" > 'some known point in
+time'::timestamp
+
+
+The plan predicate:
+
+
+WHERE "time" > $# (where $# is only known at execution time)
+
+
+Is not a valid inference choice since the value of $# could very well be "<
+'some known point in time'" thus making the partial index unsuitable.
+
+
+> Here's another weird thing, in the situation in which transaction fails, If
+> I reduce the inserts to less than 6, it doesn't fail! (It fails on 6th
+> execution)
+>
+
+
+This is to be expected given how prepared statements and the planner
+interact.  Some queries perform better overall if the generic parameterized
+plan is ignored and a hard-coded plan using the known parameter values is
+used instead.  In that case the plan predicate changes to:
+
+
+WHERE "time" > 'the actual value of $# during this execution'
+
+
+And so long as that actual value is ">= 'some known point in time'" the
+partial index will be used.  You will still get the observed failure if the
+supplied value for $# is "< 'some known point in time'" though...
+
+
+David J.
+
+
+
+### MESSAGE 2
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> I have an INSERT query that has an "ON CONFLICT" and a "WHERE" clause which
+> suppose to hit a partial multicolumn unique index.
+
+
+I'd say the answer is "don't do that".
+
+
+Personally, I'm quite surprised that even your base case works.
+I thought that ON CONFLICT would resolve which index to use
+long before considering any WHERE clauses.  Apparently, that
+happens late enough that the planner has determined which partial
+indexes' predicates are provably true for the query, so the
+partial unique index becomes a candidate to use in ON CONFLICT.
+But if the WHERE clause doesn't provably imply the index predicate,
+you lose.  And that means that no generic plan is even possible
+if there's a parameter in that WHERE clause.
+
+
+If I were tasked with "fixing" this, I'd fix it by rejecting partial
+indexes as ON CONFLICT arbiters outright.  I'm not totally convinced
+that that's safe at all, even in the simplest case.  It certainly
+doesn't seem like something that's useful enough to expose this
+sort of implementation detail for.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+On Mon, Mar 21, 2022 at 3:24 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> > I have an INSERT query that has an "ON CONFLICT" and a "WHERE" clause
+> which
+> > suppose to hit a partial multicolumn unique index.
+>
+> I'd say the answer is "don't do that".
+>
+>
+Partial unique indexes are useful, no reason to assume that leveraging them
+for ON CONFLICT purposes would impose any sort of problem, and isn't it
+generally the project policy that different features work together in a
+sane manner?  That's all I see happening here on the development side even
+if there isn't a clear-cut use case for the pairing.
+
+
+But yes, combining the partial index feature with parameters is a "not
+supported" combination presently.  One can infer as much from the existing
+documentation (as a whole) though it isn't obvious (I had a good inkling of
+what was going on here and still took probably an hour and source code dive
+to get my head around it enough to say I really understood what was going
+on.  And that was after reading the docs for ON CONLICT a couple of
+times...).
+
+
+> But if the WHERE clause doesn't provably imply the index predicate,
+> you lose.  And that means that no generic plan is even possible
+> if there's a parameter in that WHERE clause.
+>
+
+
+Correct.  Making this more obvious in the docs, and ideally the error
+message, would help.  The main question is whether to break queries that
+work today because of the optimization - the benefit being a reliable
+failure for when parameters are used in the predicate, we can just report
+that they are not allowed.
+
+
+> If I were tasked with "fixing" this, I'd fix it by rejecting partial
+> indexes as ON CONFLICT arbiters outright.  I'm not totally convinced
+> that that's safe at all, even in the simplest case.  It certainly
+> doesn't seem like something that's useful enough to expose this
+> sort of implementation detail for.
+>
+>
+It's not like this happened by accident, it has its own clause to make it
+work.
+
+
+index_predicate
+Used to allow inference of partial unique indexes. Any indexes that satisfy
+the predicate (which need not actually be partial indexes) can be inferred.
+Follows CREATE INDEX format. SELECT privilege on any column appearing
+within index_predicate is required.
+
+
+I don't feel there is anything to fix here today.  But it seems like there
+is room for improvement, likely with not too much effort, if someone wants
+to improve things.  This being the first report of this nature I can recall
+seeing, and the size of our ToDo list, my expectations are low.
+
+
+David J.
+
+
+
+### MESSAGE 4
+On Mon, Mar 21, 2022 at 3:24 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> I'd say the answer is "don't do that".
+
+
+This isn't the first complaint about this exact behavior (including
+the detail about it sometimes working at random), FWIW:
+
+
+https://www.postgresql.org/message-id/20170202140701.1401.31196%40wrigleys.postgresql.org
+
+
+> If I were tasked with "fixing" this, I'd fix it by rejecting partial
+> indexes as ON CONFLICT arbiters outright.  I'm not totally convinced
+> that that's safe at all, even in the simplest case.
+
+
+I think that it depends on what you expect. Offhand I can't think of
+any problem scenarios that cannot be simplified to a test case that
+doesn't involve a partial unique index. (Except for this one, that
+is.)
+
+
+> It certainly
+> doesn't seem like something that's useful enough to expose this
+> sort of implementation detail for.
+
+
+Back when I was an application developer, I used partial unique
+indexes quite a bit. My sense is that supporting them in ON CONFLICT
+has real value, even if the syntax for that needs to be messy.
+
+
+That being said, I *don't* think that it makes sense to support
+paramaters in conflict_target's WHERE clause -- that should be static,
+not dynamic. ISTM that it would be somewhat useful to have that case
+throw an error, in an immediate and obvious way, with an accompanying
+HINT.
+
+
+-- 
+Peter Geoghegan
+
+
+
+
+
+### MESSAGE 5
+Peter Geoghegan <pg(at)bowt(dot)ie> writes:
+> That being said, I *don't* think that it makes sense to support
+> paramaters in conflict_target's WHERE clause -- that should be static,
+> not dynamic. ISTM that it would be somewhat useful to have that case
+> throw an error, in an immediate and obvious way, with an accompanying
+> HINT.
+
+
+Hm.  I don't have an opinion on whether this'd be a useful case to
+support, but I agree that actually doing so is not terribly feasible.
+Perhaps a specific error message would be worth the trouble.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 6
+On Mon, Mar 21, 2022 at 4:03 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> Hm.  I don't have an opinion on whether this'd be a useful case to
+> support, but I agree that actually doing so is not terribly feasible.
+
+
+In general the semantics of the INSERT might depend upon which
+particular partial unique index the user intended for us to infer, which
+would have to vary with the parameter (I suppose). Those semantics seem
+wildly unreasonable to me, in roughly the same way as parameterizing
+the target table's name would be.
+
+
+> Perhaps a specific error message would be worth the trouble.
+
+
+I'm not sure how difficult it would be offhand, so I can't commit to it now.
+
+
+--
+Peter Geoghegan
+
+
+
+
+
+### MESSAGE 7
+Peter Geoghegan <pg(at)bowt(dot)ie> writes:
+> On Mon, Mar 21, 2022 at 4:03 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+>> Perhaps a specific error message would be worth the trouble.
+
+
+> I'm not sure how difficult it would be offhand, so I can't commit to it now.
+
+
+Searching that expression tree for an EXTERN Param surely wouldn't take
+much code.  What's not clear to me though is whether that's the full
+extent of problematic cases.  (Picking a user-friendly wording for the
+error message might be hard too.)
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 8
+On Mon, Mar 21, 2022 at 4:27 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> What's not clear to me though is whether that's the full
+> extent of problematic cases.
+
+
+What other cases were you thinking of?
+
+
+Allowing parameters here just seems wrong to me. Rejecting them
+outright is strictly better than what we have today IMV.
+
+
+Perhaps there are other problems, but ISTM that they can be treated as
+independent problems.
+
+
+> (Picking a user-friendly wording for the
+> error message might be hard too.)
+
+
+True (I struggle with that stuff at the best of times). OTOH beating
+the current behavior might not be too hard.
+
+
+I don't feel strongly about any of this -- just providing you with the
+context, in case it helps.
+
+
+I suspect that most users work out how to fix their INSERT statement
+intuitively already, without seeing any HINT. Sometimes it's easy to
+do that because it's your particular application, and involves one
+particular table that only has one or two partial unique indexes. It's
+probably much harder to describe what's going on (or what the user
+ought to be doing) in very general terms, while actually getting the
+idea across. (Also, it doesn't take that much trial and error to
+figure out what to do here.)
+
+
+-- 
+Peter Geoghegan
+
+
+

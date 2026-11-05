@@ -1,0 +1,109 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18730
+Logged by:          Nat Makarevitch
+Email address:      nat(at)makarevitch(dot)org
+PostgreSQL version: 17.2
+Operating system:   Linux
+Description:        
+
+
+Hi!
+
+
+create table test_smallint(smint smallint);
+
+
+insert into test_smallint values (-1);
+
+
+select * from test_smallint where smint<>-2;
+ smint 
+═══════
+    -1
+(1 row)
+
+
+BEWARE: there is a space between '=' and '-':
+select * from test_smallint where smint!= -2;
+ smint 
+═══════
+    -1
+(1 row)
+
+
+So far, so good.
+
+
+BEWARE: there isn't any space between '=' and '-':
+select * from test_smallint where smint!=-2;
+ERROR:  operator does not exist: smallint !=- integer
+LINE 1: select * from test_smallint where smint!=-2;
+                                               ^
+HINT:  No operator matches the given name and argument types. You might need
+to add explicit type casts.
+
+
+Isn't the operator "!=" theoritically "an alias, which is converted to <> at
+a very early stage of parsing" (as per
+https://www.postgresql.org/docs/17/functions-comparison.html )?
+
+
+AFAIK there is no "=-" alias/macro, and I can't see any reason to implicitly
+cast "-2" to INTEGER while "2" type stays inferred.
+
+
+Thank you!
+
+
+
+
+
+### MESSAGE 1
+On Monday, December 2, 2024, PG Bug reporting form <noreply(at)postgresql(dot)org>
+wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      18730
+> Logged by:          Nat Makarevitch
+> Email address:      nat(at)makarevitch(dot)org
+> PostgreSQL version: 17.2
+> Operating system:   Linux
+> Description:
+>
+> BEWARE: there isn't any space between '=' and '-':
+> select * from test_smallint where smint!=-2;
+> ERROR:  operator does not exist: smallint !=- integer
+> LINE 1: select * from test_smallint where smint!=-2;
+>                                                ^
+> HINT:  No operator matches the given name and argument types. You might
+> need
+> to add explicit type casts.
+
+
+The operator !=- is allowed per [1], since it contains !, so the parser
+captures the - as per of the operator as opposed to leaving - as a break
+character.
+
+
+1.
+https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-OPERATORS
+
+
+> Isn't the operator "!=" theoritically "an alias, which is converted to <>
+> at
+> a very early stage of parsing" (as per
+> https://www.postgresql.org/docs/17/functions-comparison.html )?
+
+
+The != operator and !=- operators are two different operators.  Only the
+former is converted to <>, and not any symbol subsequence of those two
+characters.
+
+
+David J.
+

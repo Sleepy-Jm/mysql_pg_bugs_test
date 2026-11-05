@@ -1,0 +1,38 @@
+[
+  {
+    "report_id": "18801",
+    "scenario_id": "18801_module_count_revision1",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18801-8657563d6f52110b%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table test(a float, b float);\ninsert into test select a, a % 10 from generate_series(1, 10000) a;\n\n\ncreate function custom_max(float8, float8) returns float8 as\n$$\n  select case when $1 > $2 then $1 else $2 end\n$$\nlanguage sql;\n\n\ncreate aggregate custom_agg_max(float8)\n(\n    sfunc = custom_max,\n    stype = float8,\n    initcond = 0\n);\n\n\nset jit = on;\nset jit_above_cost = 0;\nset jit_dump_bitcode = on;\nexplain analyze select custom_agg_max(a)  from\ntest;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18801.txt",
+        "start_offset": 366,
+        "end_offset": 828,
+        "start_line": 18,
+        "end_line": 41,
+        "excerpt_sha256": "5d649ae4903a8b4e1ee6b4e2adfdf4eb1ae5f83091e447092e60b20134abf2c3",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "jit_bitcode",
+    "oracle": {
+      "kind": "output",
+      "pattern": "(?m)^BITCODE_FILES=10001$",
+      "reported_phenomenon": "10000行的自定义聚合产生10001个LLVM bitcode文件",
+      "author_expected_behavior": "聚合内部SQL函数不应为每行重复JIT编译"
+    },
+    "config": {},
+    "notes": "逐字使用报告代码；LLVM10、debug非cassert构建。以报告原文文件数判定，不以共享服务器执行时间判定。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "build_variant": "jit_nocassert",
+    "supersedes_spec_sha256": "088819105538383fcb3bb07e08760a8dcca214ed11643ba275df8a4569365e05",
+    "revision_reason": "Measurement correction: LLVM source writes PID.generation.bc and PID.generation.optimized.bc for each module. Count the unoptimized PID.generation.bc files referenced by original report examples, preserve total and optimized counts separately. Oracle expected count10001 and original SQL unchanged. Re-execute all three versions.",
+    "bitcode_count_policy": "unoptimized_module_files",
+    "spec_sha256": "c4851cecae8d01fb252ac503f8c1df2bc7cbb10f6f4f6502d5119a1accff7a53"
+  }
+]

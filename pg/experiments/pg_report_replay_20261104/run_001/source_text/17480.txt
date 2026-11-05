@@ -1,0 +1,105 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17480
+Logged by:          Wang Ke
+Email address:      krking(at)zju(dot)edu(dot)cn
+PostgreSQL version: 14.2
+Operating system:   Ubuntu 20.04.4 LTS x86_64
+Description:        
+
+
+Hello developers, I found an assertion failure in both postgresql 14.2 and
+HEAD version. The detail is as follows:
+
+
+Reported by:
+Wang Ke of Zhejiang University
+
+
+OS version and name:
+Linux ubuntu 5.13.0-40-generic #45~20.04.1-Ubuntu SMP Mon Apr 4 09:38:31
+UTC
+2022 x86_64 x86_64 x86_64 GNU/Linux
+
+
+Testcase:
+```
+CREATE TABLE v0 ( v3 INT , v2 VARCHAR , v1 INT , UNIQUE ( v1 , v3 ) ) ;
+ VALUES ( - - -128 , - - - - 127 , NULL ) ;
+SELECT FROM LATERAL XMLTABLE ( ROW ( ) PASSING NULL BY VALUE COLUMNS v1
+TIMESTAMP WITHOUT TIME ZONE ARRAY ) AS DELETE ( v3 , v3 , v2 , v3 , v1 ,
+FIRST , v1 , FLOAT , INT , v2 , v3 , VERSION , v2 , FLOAT , INT , v1 , NO ,
+ROW , v3 , v2 ) ORDER BY v2 , v2 ;
+```
+
+
+Position:
+(HEAD version) src/backend/parser/parse_relation.c:1310
+1309        /* colnames must have the same number of entries as the nsitem
+*/
+1310        Assert(maxattrs == list_length(rte->eref->colnames));
+
+
+Crash log:
+TRAP: FailedAssertion("maxattrs == list_length(rte->eref->colnames)", File:
+"/postgres/bld/../src/backend/parser/parse_relation.c", Line: 1310, PID:
+284194)
+/lib/x86_64-linux-gnu/libasan.so.5(+0x6cd40)[0x7f05b592ad40]
+postgres: krking test [local]
+SELECT(ExceptionalCondition+0x147)[0x5626dd114b23]
+postgres: krking test [local] SELECT(+0x739303)[0x5626dc729303]
+postgres: krking test [local]
+SELECT(addRangeTableEntryForTableFunc+0x536)[0x5626dc72fcf9]
+postgres: krking test [local] SELECT(+0x6f5d42)[0x5626dc6e5d42]
+postgres: krking test [local]
+SELECT(transformFromClause+0x184)[0x5626dc6e9b71]
+postgres: krking test [local] SELECT(transformStmt+0x3eef)[0x5626dc6a0c54]
+postgres: krking test [local] SELECT(+0x6b7f4c)[0x5626dc6a7f4c]
+postgres: krking test [local]
+SELECT(transformTopLevelStmt+0x31)[0x5626dc6a81c2]
+postgres: krking test [local]
+SELECT(parse_analyze_fixedparams+0x8d)[0x5626dc6a830a]
+postgres: krking test [local]
+SELECT(pg_analyze_and_rewrite_fixedparams+0x64)[0x5626dcdd9385]
+postgres: krking test [local] SELECT(+0xdea58b)[0x5626dcdda58b]
+postgres: krking test [local] SELECT(PostgresMain+0x14ad)[0x5626dcddbdf1]
+postgres: krking test [local] SELECT(+0xc422c4)[0x5626dcc322c4]
+postgres: krking test [local]
+SELECT(PostmasterMain+0x21aa)[0x5626dcc34d88]
+postgres: krking test [local] SELECT(main+0x605)[0x5626dca26578]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf3)[0x7f05b55500b3]
+postgres: krking test [local] SELECT(_start+0x2e)[0x5626dc39f64e]
+2022-05-10 16:11:44.220 CST [284180] LOG:  server process (PID 284194) was
+terminated by signal 6: aborted
+2022-05-10 16:11:44.220 CST [284180] DETAIL:  Failed process was running:
+SELECT FROM LATERAL XMLTABLE ( ROW ( ) PASSING NULL BY VALUE COLUMNS v1
+TIMESTAMP WITHOUT TIME ZONE ARRAY ) AS DELETE ( v3 , v3 , v2 , v3 , v1 ,
+FIRST , v1 , FLOAT , INT , v2 , v3 , VERSION , v2 , FLOAT , INT , v1 , NO ,
+ROW , v3 , v2 ) ORDER BY v2 , v2 ;
+2022-05-10 16:11:44.220 CST [284180] LOG:  terminating any other active
+server processes
+2022-05-10 16:11:44.221 CST [284195] FATAL:  the database system is in
+recovery mode
+2022-05-10 16:11:44.225 CST [284180] LOG:  all server processes terminated;
+reinitializing
+2022-05-10 16:11:44.235 CST [284196] LOG:  database system was interrupted;
+last known up at 2022-05-10 16:11:00 CST
+2022-05-10 16:11:44.261 CST [284196] LOG:  database system was not properly
+shut down; automatic recovery in progress
+2022-05-10 16:11:44.263 CST [284196] LOG:  redo starts at 0/1498B68
+2022-05-10 16:11:44.279 CST [284196] LOG:  invalid record length at
+0/1C6B348: wanted 24, got 0
+2022-05-10 16:11:44.279 CST [284196] LOG:  redo done at 0/1C6ADD0 system
+usage: CPU: user: 0.00 s, system: 0.01 s, elapsed: 0.01 s
+2022-05-10 16:11:44.303 CST [284197] LOG:  checkpoint starting:
+end-of-recovery immediate wait
+2022-05-10 16:11:44.339 CST [284197] LOG:  checkpoint complete: wrote 1480
+buffers (9.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.034 s,
+sync=0.002 s, total=0.037 s; sync files=350, longest=0.001 s, average=0.001
+s; distance=8010 kB, estimate=8010 kB
+2022-05-10 16:11:44.346 CST [284180] LOG:  database system is ready to
+accept connections
+
+
+

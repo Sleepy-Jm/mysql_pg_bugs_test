@@ -1,0 +1,173 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18793
+Logged by:          Ugur YILMAZ
+Email address:      ugurlu2001(at)hotmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Windows 11 Pro
+Description:        
+
+
+I have a set of "Functions" that I created dynamically with PLPgSQL and are
+connected to each other in a chain.
+
+
+The first function dynamically creates the second function. The second
+function returns a set of values with a dynamic "Return Query" statement and
+a reference to "Returns Table (field1 type1, field2 type2 .... )".
+
+
+Basically, the result set seems to return exactly the desired result. The
+exception is the varchar(n) fixed-length data type. Although the result set
+is expected to be varchar(n) -a fixed-length value is expected-, a result of
+type character varying (length indeterminate) is obtained.
+
+
+You can see the dynamically created function example that I use below. In
+addition to the sample function, I am also sharing the "Basic SQL" sentence
+that returns "character varying (length indeterminate)" data. It also
+returns the correct result.
+
+
+I have been trying to solve this seemingly simple problem for a few days.
+However, I have a special restriction on the Varchar(254) limit in my
+development environment.
+
+
+Correctly working SQL script:
+
+
+-- kodx > returning character varying :: length indeterminate
+ SELECT idx,kodx, guidx   
+	 ,round(has_toplam::numeric,2) as has
+	,round(gumus_toplam::numeric,2) as gumus
+	,round(usd_toplam::numeric,2) as usd
+	,round(eur_toplam::numeric,2) as eur
+	,round(trl_toplam::numeric,2) as trl
+	,round(gbp_toplam::numeric,2) as gbp
+	,round(chf_toplam::numeric,2) as chf
+	,round(platin_toplam::numeric,2) as platin
+	,round(alloy_toplam::numeric,2) as alloy 
+	   FROM crosstab(' 
+		 SELECT idx, kodx, guidx, bt_kod, toplam_miktar FROM   
+		 ( 
+		 SELECT cma.company_master_id as idx, bt.kod AS bt_kod, bt.sys_default,
+SUM(cma.miktar) as toplam_miktar, cm.kod as kodx, cma.company_master_guid as
+guidx FROM company_master_amounts AS cma  
+		 	LEFT OUTER JOIN balance_types as bt ON cma.balance_types_guid = bt.guid
+
+
+		 	LEFT OUTER JOIN company_master as cm ON cm.id = cma.company_master_id 
+		 	WHERE company_master_id = 3
+		 	GROUP BY cma.company_master_id, bt.kod, bt.sys_default, cm.kod,
+cma.company_master_guid 
+		 ) ORDER BY idx, sys_default DESC, bt_kod 
+		'::TEXT, 
+		' SELECT kod as kodx FROM balance_types ORDER BY sys_default DESC, kod, id
+'::TEXT) 
+		crosstab(idx integer, kodx character varying(200), guidx uuid
+					,has_toplam numeric(22,6),gumus_toplam numeric(22,6)
+					,usd_toplam numeric(22,6),eur_toplam numeric(22,6)
+					,trl_toplam numeric(22,6),gbp_toplam numeric(22,6)
+					,chf_toplam numeric(22,6),platin_toplam numeric(22,6)
+					,alloy_toplam numeric(22,6))
+ GROUP BY
+has_toplam,gumus_toplam,usd_toplam,eur_toplam,trl_toplam,gbp_toplam,chf_toplam,platin_toplam,alloy_toplam,kodx,guidx,idx
+
+
+		  ORDER BY kodx; 
+		  
+
+
+A function that returns a result of indefinite length in the form of
+"character varying" instead of "Code ::varchar(200)". A "Returns Query"
+function that creates a dynamic SQL script and returns a value in the "Table
+Type" (second level - needed by the end user):
+
+
+-- kodx ( field name kod on "return table" ) > returning character varying
+(200)
+/* 
+FUNCTION: public.get_balance_pivot_1c(integer)
+DROP FUNCTION IF EXISTS public.get_balance_pivot_1c(integer);
+Select * from get_balance_pivot_1c(3) ; 
+*/ 
+CREATE OR REPLACE FUNCTION public.get_balance_pivot_1c(
+	pintcompany_id integer)
+    RETURNS TABLE(id integer, kod varchar(200), guid uuid, has numeric,
+gumus numeric, usd numeric, eur numeric, trl numeric, gbp numeric, chf
+numeric, platin numeric, alloy numeric) 
+    LANGUAGE 'plpgsql'
+    COST 100
+	STABLE PARALLEL SAFE
+    ROWS 1000 
+
+
+AS $BODY$ 
+ BEGIN 
+ RETURN QUERY 
+
+
+ SELECT idx,kodx::varchar(200), guidx   
+	 ,round(has_toplam::numeric,2) as has
+	,round(gumus_toplam::numeric,2) as gumus
+	,round(usd_toplam::numeric,2) as usd
+	,round(eur_toplam::numeric,2) as eur
+	,round(trl_toplam::numeric,2) as trl
+	,round(gbp_toplam::numeric,2) as gbp
+	,round(chf_toplam::numeric,2) as chf
+	,round(platin_toplam::numeric,2) as platin
+	,round(alloy_toplam::numeric,2) as alloy 
+	   FROM crosstab(' 
+		 SELECT idx, kodx, guidx, bt_kod, toplam_miktar FROM   
+		 ( 
+		 SELECT cma.company_master_id as idx, bt.kod AS bt_kod, bt.sys_default,
+SUM(cma.miktar) as toplam_miktar, cm.kod as kodx, cma.company_master_guid as
+guidx FROM company_master_amounts AS cma  
+		 	LEFT OUTER JOIN balance_types as bt ON cma.balance_types_guid = bt.guid
+
+
+		 	LEFT OUTER JOIN company_master as cm ON cm.id = cma.company_master_id 
+		 	WHERE company_master_id = 3
+		 	GROUP BY cma.company_master_id, bt.kod, bt.sys_default, cm.kod,
+cma.company_master_guid 
+		 ) ORDER BY idx, sys_default DESC, bt_kod 
+		'::TEXT, 
+		' SELECT kod as kodx FROM balance_types ORDER BY sys_default DESC, kod, id
+'::TEXT) crosstab(idx integer, kodx character varying(200), guidx uuid,
+has_toplam numeric(22,6),gumus_toplam numeric(22,6),usd_toplam
+numeric(22,6),eur_toplam numeric(22,6),trl_toplam numeric(22,6),gbp_toplam
+numeric(22,6),chf_toplam numeric(22,6),platin_toplam
+numeric(22,6),alloy_toplam numeric(22,6))
+ GROUP BY
+has_toplam,gumus_toplam,usd_toplam,eur_toplam,trl_toplam,gbp_toplam,chf_toplam,platin_toplam,alloy_toplam,kodx,guidx,idx
+
+
+		  ORDER BY kodx; 
+	/* WHERE company_master_id = ' || pintcompany_id || ' */ 
+	/* WHERE company_master_id = ' || '3' || ' */ 
+
+
+  END ; 
+ 
+$BODY$;
+
+
+ALTER FUNCTION public.get_balance_pivot_1c(integer)
+    OWNER TO postgres;
+
+
+As far as I have determined, the Postgresql database engine somehow returns
+the varchar(n) - Fixed Length - data type as a "character varying" -
+indefinite length data type.
+
+
+I hope this situation, which I observed as a problem, will be fixed as soon
+as possible.
+
+
+Best wishes...
+
+
+

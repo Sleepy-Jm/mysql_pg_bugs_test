@@ -1,0 +1,149 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17434
+Logged by:          Yugo Nagata
+Email address:      nagata(at)sraoss(dot)co(dot)jp
+PostgreSQL version: 14.2
+Operating system:   Ubuntu
+Description:        
+
+
+CREATE/DROP DATABASE can be executed in the same transaction with other
+commands when we use pipeline mode in pgbench or libpq API. If the
+transaction aborts, this causes an inconsistency between the system catalog
+and base directory.
+
+
+Here is an example using the pgbench /startpipeline meta command.
+
+
+----------------------------------------------------
+(1)  Confirm that there are four databases from psql and directories in
+base.
+
+
+$ psql -l
+                                 List of databases
+   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access
+privileges   
+-----------+--------+----------+-------------+-------------+-----------------------
+ postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+ template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+(4 rows)
+
+
+$ ls data/base/
+1  13014  13015  16409  pgsql_tmp
+
+
+(2) Execute CREATE DATABASE in a transaction, and the transaction fails.
+
+
+$ cat pipeline_createdb.sql 
+\startpipeline
+create database test;
+select 1/0;
+\endpipeline
+
+
+$ pgbench -t 1 -f pipeline_createdb.sql -M extended
+pgbench (14.2)
+starting vacuum...end.
+pgbench: error: client 0 script 0 aborted in command 3 query 0: 
+....
+
+
+(3) There are still four databases but a new directory was created in
+base.
+
+
+$ psql -l
+                                 List of databases
+   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access
+privileges   
+-----------+--------+----------+-------------+-------------+-----------------------
+ postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+ template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+(4 rows)
+
+
+$ ls data/base/
+1  13014  13015  16409  16411  pgsql_tmp
+
+
+(4) Next, execute DROP DATABASE in a transaction, and the transaction
+fails.
+
+
+$ cat pipeline_dropdb.sql 
+\startpipeline
+drop database test0;
+select 1/0;
+\endpipeline
+
+
+$ pgbench -t 1 -f pipeline_dropdb.sql -M extended
+pgbench (14.2)
+starting vacuum...end.
+pgbench: error: client 0 script 0 aborted in command 3 query 0:
+...
+
+
+(5) There are still four databases but the corresponding directory was
+deleted in base.
+
+
+$ psql -l
+                                 List of databases
+   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access
+privileges   
+-----------+--------+----------+-------------+-------------+-----------------------
+ postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+ template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+(4 rows)
+
+
+$ ls data/base/
+1  13014  13015  16411  pgsql_tmp
+
+
+(6) We cannot connect the database "test0".
+
+
+$ psql test0
+psql: error: connection to server on socket "/tmp/.s.PGSQL.25435" failed:
+FATAL:  database "test0" does not exist
+DETAIL:  The database subdirectory "base/16409" is missing.
+----------------------------------------------------
+
+
+Detailed discussions are here;
+https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp
+
+
+

@@ -1,0 +1,53 @@
+{
+  "report_id": "18882",
+  "scenario_id": "18882_main",
+  "target_version": "17.2",
+  "source_url": "https://www.postgresql.org/message-id/18882-d30fd598ffc3fbb2%40postgresql.org",
+  "parts": [
+    {
+      "text": "CREATE TABLE tJ6mtoSl (ID INT, VAL INT, c0 REAL  UNIQUE PRIMARY KEY NOT\nNULL, c1 INT  NULL , c2 TEXT );\nCREATE TABLE tEJybmqs (ID INT, VAL INT, c0 BOOLEAN , c1 BOOLEAN , c2\nDECIMAL(50, 28) );\nINSERT INTO tJ6mtoSl (ID, VAL, c0, c1, c2) VALUES (14710, 16726, 3795.9601,\n9535, '-636554895');\nINSERT INTO tJ6mtoSl (ID, VAL, c0, c1, c2) VALUES (14691, 16705, 4091.6018,\n1351, '');\nINSERT INTO tJ6mtoSl (ID, VAL, c0, c1, c2) VALUES (14711, 16727, 9685.3172,\n2824, '<');\nINSERT INTO tEJybmqs (ID, VAL, c0, c1, c2) VALUES (14714, 16730, TRUE,\nFALSE, 4074.8459);\nINSERT INTO tEJybmqs (ID, VAL, c0, c1, c2) VALUES (14715, 16731, FALSE,\nFALSE, 7592.0412);",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18882.txt",
+      "start_offset": 697,
+      "end_offset": 1344,
+      "start_line": 23,
+      "end_line": 39,
+      "excerpt_sha256": "e66129b515cdada99f8583371b460c92bd3af8e21e9f80c5e875b7993e9ad7e7",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    },
+    {
+      "text": "conn1 = psycopg2.connect(**dbconfig)\nconn2 = psycopg2.connect(**dbconfig)\ncur1 = conn1.cursor()\ncur2 = conn2.cursor()\ntry:\n    cur1.execute(\"SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE;\")\n    cur1.execute(\"START TRANSACTION;\")\n\n\n    cur2.execute(\"SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE;\")\n    cur2.execute(\"START TRANSACTION;\")\n\n\n    cur1.execute(\"SELECT * FROM tJ6mtoSl WHERE ( tJ6mtoSl.c1 < 1646 AND tJ6mtoSl.c1 >= 1061 ) AND (tJ6mtoSl.c0 >= 100) ORDER BY tJ6mtoSl.ID;\")\n    print(cur1.fetchall())\n\n\n    cur2.execute(\"SELECT * FROM tEJybmqs WHERE ( tEJybmqs.c1 = FALSE ) ORDER BY tEJybmqs.ID;\")\n    print(cur2.fetchall())\n    cur2.execute(\"UPDATE tJ6mtoSl SET VAL = 16732 WHERE ( tJ6mtoSl.c1 < 1646 AND tJ6mtoSl.c1 >= 1061 ) AND (tJ6mtoSl.c0 >= 100);\")\n    cur2.execute(\"COMMIT;\")\n\n\n    cur1.execute(\"DELETE FROM tEJybmqs WHERE ( tEJybmqs.c1 = FALSE );\")\n    cur1.execute(\"COMMIT;\")\nexcept Exception as e:\n    print(e)\ncur1.close()\ncur2.close();",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18882.txt",
+      "start_offset": 1352,
+      "end_offset": 2362,
+      "start_line": 40,
+      "end_line": 76,
+      "excerpt_sha256": "62b933aa6d78bca33fbbc7fe12c546a90f298ad7f5d69f22d6631fdbf24cc8af",
+      "transformations": [
+        "trim outer whitespace",
+        "join display-wrapped Python string literal lines only",
+        "append SQL terminator at excerpt boundary"
+      ]
+    }
+  ],
+  "mode": "python_source",
+  "oracle": {
+    "kind": "output",
+    "pattern": "(?s)14691, 16705.*14714, 16730.*14715, 16731",
+    "reported_phenomenon": "原文 psycopg2 代码没有序列化失败",
+    "author_expected_behavior": "作者期望出现序列化失败"
+  },
+  "config": {},
+  "notes": "仅用私有集群连接参数替换 dbconfig；保留原文隐式事务行为，不调用 set_isolation_level。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "additional_oracle_checks": [
+    {
+      "stream": "stdout",
+      "pattern": "could not serialize|ERROR|Traceback",
+      "count": 0
+    }
+  ],
+  "spec_sha256": "984c86931e50309e2d0cec48d93ef01203297218c26f3da2cc767289626bafd4"
+}

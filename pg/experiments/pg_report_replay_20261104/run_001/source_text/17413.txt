@@ -1,0 +1,87 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17413
+Logged by:          Stepan Yankevych
+Email address:      stepya(at)ukr(dot)net
+PostgreSQL version: 14.2
+Operating system:   CentOS
+Description:        
+
+
+We noticed that update foreign table in some cases passes following update
+to the remote DB 
+update part_update_test
+set field=$2
+where ctid=$1
+In that case one row from each partition can be updated. 
+See steps to reproduce
+
+
+-- pgprod1 
+drop table if exists trash.part_update_test;
+
+
+CREATE TABLE trash.part_update_test (
+	id serial,
+	date_id int4 NOT NULL,
+	simple_text varchar
+) PARTITION BY RANGE (date_id);
+
+
+CREATE TABLE trash.part_update_test_20220221 PARTITION OF
+trash.part_update_test FOR VALUES FROM (20220221) TO (20220222);
+CREATE TABLE trash.part_update_test_20220222 PARTITION OF
+trash.part_update_test FOR VALUES FROM (20220222) TO (20220223);
+CREATE TABLE trash.part_update_test_20220223 PARTITION OF
+trash.part_update_test FOR VALUES FROM (20220223) TO (20220224);
+
+
+insert into trash.part_update_test (date_id, simple_text)
+values (20220221, 'Im 20220221'),(20220222, 'I amd 20220222'),(20220223, 'I
+am the third row ');
+
+
+select ctid, *
+from trash.part_update_test;
+
+
+ctid |id|date_id |simple_text        |
+-----+--+--------+-------------------+
+(0,1)| 1|20220221|Im 20220221        |
+(0,1)| 2|20220222|I amd 20220222     |
+(0,1)| 3|20220223|I am the third row |
+
+
+--  pgprod2 
+DROP FOREIGN TABLE if EXISTS staging.part_update_test;
+IMPORT FOREIGN SCHEMA "trash" LIMIT TO (part_update_test)
+FROM SERVER postgresprod
+into staging;
+
+
+with ids as materialized (select 1 as id, 20220221 as date_id  )
+update staging.part_update_test t
+set simple_text = 'I am  updated version of 20220221 '
+from ids
+where t.id = ids.id
+and t.date_id = ids.date_id ;
+
+
+select ctid, *
+from staging.part_update_test;
+
+
+ ctid |id|date_id |simple_text                       |
+-----+--+--------+----------------------------------+
+(0,2)| 1|20220221|I am  updated version of 20220221 |
+(0,2)| 2|20220222|I am  updated version of 20220221 |
+(0,2)| 3|20220223|I am  updated version of 20220221 |
+
+
+As you can see all of rows that had (0,1) where updated , but the only first
+row with ID =1 had to be updated .
+The same was reproducible at least in PG14.1
+
+
+

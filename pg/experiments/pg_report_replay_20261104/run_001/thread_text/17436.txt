@@ -1,0 +1,181 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17436
+Logged by:          Dustin Keate
+Email address:      dkeate(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Docker/Raspberry Pi OS 64 bit
+Description:        
+
+
+Dockerfile contents:
+
+
+FROM postgres
+USER postgres
+RUN initdb
+RUN pg_ctl -D /var/lib/postgresql/data -l /var/lib/postgresql/data/logfile
+start
+RUN pg_restore --dbname=dvdrental --create --verbose /var/dvdrental.tar
+
+
+executing 'docker build .' throws the following error:
+
+
+Step 4/5 : RUN pg_ctl -D /var/lib/postgresql/data -l
+/var/lib/postgresql/data/logfile start
+ ---> Running in 8561ab2addbe
+pg_ctl: directory "/var/lib/postgresql/data" is not a database cluster
+directory
+
+
+However, starting a new container and running identical commands works.
+
+
+docker run -it postgres sh
+gosu postgres sh
+initdb
+pg_ctl -D /var/lib/postgresql/data -l /var/lib/postgresql/data/logfile
+start
+waiting for server to start.... done
+server started
+
+
+To me, these are identical processes, but I may be wrong because docker is
+docker. 
+
+
+There are no volumes attached. These are the only instructions and I
+couldn't distill this problem any farther. These are the only commands I am
+giving. Something is changing in the intermediate images, somehow.
+
+
+
+
+
+### MESSAGE 1
+Hi,
+
+
+On Sat, Mar 12, 2022 at 11:40:28PM +0000, PG Bug reporting form wrote:
+>
+> Dockerfile contents:
+>
+> FROM postgres
+> USER postgres
+> RUN initdb
+> RUN pg_ctl -D /var/lib/postgresql/data -l /var/lib/postgresql/data/logfile
+> start
+> RUN pg_restore --dbname=dvdrental --create --verbose /var/dvdrental.tar
+>
+> executing 'docker build .' throws the following error:
+>
+> Step 4/5 : RUN pg_ctl -D /var/lib/postgresql/data -l
+> /var/lib/postgresql/data/logfile start
+>  ---> Running in 8561ab2addbe
+> pg_ctl: directory "/var/lib/postgresql/data" is not a database cluster
+> directory
+>
+> However, starting a new container and running identical commands works.
+>
+> docker run -it postgres sh
+> gosu postgres sh
+> initdb
+> pg_ctl -D /var/lib/postgresql/data -l /var/lib/postgresql/data/logfile
+> start
+> waiting for server to start.... done
+> server started
+>
+> To me, these are identical processes, but I may be wrong because docker is
+> docker.
+>
+> There are no volumes attached. These are the only instructions and I
+> couldn't distill this problem any farther. These are the only commands I am
+> giving. Something is changing in the intermediate images, somehow.
+
+
+This is not a postgres bug.  That being said, according to
+https://github.com/docker-library/postgres/blob/master/Dockerfile-debian.template#L192
+the target directory is a volume, so that can't work at build time.
+
+
+
+
+
+### MESSAGE 2
+On Sat, Mar 12, 2022 at 6:02 PM PG Bug reporting form <
+noreply(at)postgresql(dot)org> wrote:
+
+
+> However, starting a new container and running identical commands works.
+>
+
+
+You will need to explain how the equivalent of postgres.sh is being run in
+the build variant.
+
+
+> docker run -it postgres sh
+>
+> To me, these are identical processes, but I may be wrong because docker is
+> docker.
+>
+>
+I don't think docker is really the issue here.
+
+
+Though I am curious that initdb didn't fail during the build since it
+doesn't seem like either -D or PGDATA have been set and one of those is
+required.  I suppose it ended up using an unexpected location that didn't
+match up with the -D option to pg_ctl.  I'll admit I don't know the exact
+environment changes being done in the build environment via USER and the
+runtime environment via gosu.  But in any case the claim that the two
+setups are identical is simply wrong.
+
+
+It is indeed possible to do what you are trying - to bake in an active
+database into the docker image, and not rely on a separate mounted volume
+for the database.  But that also isn't really how the existing image is
+setup to be used and so you will need to figure out the customizations
+needed to make it do what you want - the documentation and scripts will
+probably get you close but probably not exactly at your destination.
+
+
+And as noted, this is not a bug, and even if it was, the core project would
+not be the team responsible for addressing it.  In addition to posting to
+the docker specific resources if you do want to reach the broader community
+for help the -general list is what you would want to use.
+
+
+David J.
+
+
+
+### MESSAGE 3
+On Sat, Mar 12, 2022 at 07:24:26PM -0700, David G. Johnston wrote:
+>
+> Though I am curious that initdb didn't fail during the build since it
+> doesn't seem like either -D or PGDATA have been set and one of those is
+> required.  I suppose it ended up using an unexpected location that didn't
+> match up with the -D option to pg_ctl.
+
+
+If you look a few lines above the link I sent you can see the PGDATA env being
+set to the same location.  The problem is only that this location is a volume.
+
+
+> It is indeed possible to do what you are trying - to bake in an active
+> database into the docker image, and not rely on a separate mounted volume
+> for the database.  But that also isn't really how the existing image is
+> setup to be used and so you will need to figure out the customizations
+> needed to make it do what you want
+
+
+Also using the container layer to write data will perform ridiculously bad.  If
+the goal is only to read the data that might be ok, but maybe not.  I think the
+OP should better ask on Docker specific lists for guidance.
+
+
+

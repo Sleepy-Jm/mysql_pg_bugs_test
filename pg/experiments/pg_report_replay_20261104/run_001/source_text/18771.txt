@@ -1,0 +1,52 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18771
+Logged by:          Ruben Ruiz
+Email address:      ruben(dot)ruizcuadrado(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Debian Linux 12.2
+Description:        
+
+
+When using the 'rules' option of CREATE COLLATION to create a custom icu
+collation it seems that, if you include inside the rules a change to the
+comparison strength, it is ignored. You can reproduce this by creating two
+collations that should behave the same, regarding accents and case, but one
+has the strength option as part of the locale (ks-level) and the other has
+it inside the rules:
+
+
+-- Create two custom collations that should be case and accent insensitive
+postgres=# CREATE COLLATION custom_ci_ai (provider=icu,
+locale='und-u-ks-level1', deterministic=false);
+CREATE COLLATION
+postgres=# CREATE COLLATION custom_ci_ai_with_rules (provider=icu,
+locale='und', deterministic=false, rules = '[strength 1]');
+CREATE COLLATION
+
+
+-- Test: both comparisons should be true
+postgres=# SELECT 'a'='á' COLLATE custom_ci_ai as no_rules, 'a'='á' COLLATE
+custom_ci_ai_with_rules as with_rules;
+ no_rules | with_rules 
+----------+------------
+ t        | f
+(1 row)
+
+
+I think the problem might reside in the call to ucol_openRules inside the
+make_icu_collator function at pg_locale_icu.c
+(https://github.com/postgres/postgres/blob/master/src/backend/utils/adt/pg_locale_icu.c#L367)
+Apparently if you pass UCOL_DEFAULT_STRENGTH to the 'stregth' parameter, the
+resulting collator will use the default strength (which in my case was
+equivalent to level3), even if you specify a different value inside the
+rules. But if you pass UCOL_DEFAULT, it will use the strength option within
+the rules and, if not specified, will fall back to the default strength.
+
+
+I tested changing the parameter value to UCOL_DEFAULT, and it seems to work
+as expected.
+
+
+

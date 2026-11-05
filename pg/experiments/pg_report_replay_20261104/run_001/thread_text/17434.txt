@@ -1,0 +1,2058 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17434
+Logged by:          Yugo Nagata
+Email address:      nagata(at)sraoss(dot)co(dot)jp
+PostgreSQL version: 14.2
+Operating system:   Ubuntu
+Description:        
+
+
+CREATE/DROP DATABASE can be executed in the same transaction with other
+commands when we use pipeline mode in pgbench or libpq API. If the
+transaction aborts, this causes an inconsistency between the system catalog
+and base directory.
+
+
+Here is an example using the pgbench /startpipeline meta command.
+
+
+----------------------------------------------------
+(1)  Confirm that there are four databases from psql and directories in
+base.
+
+
+$ psql -l
+                                 List of databases
+   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access
+privileges   
+-----------+--------+----------+-------------+-------------+-----------------------
+ postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+ template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+(4 rows)
+
+
+$ ls data/base/
+1  13014  13015  16409  pgsql_tmp
+
+
+(2) Execute CREATE DATABASE in a transaction, and the transaction fails.
+
+
+$ cat pipeline_createdb.sql 
+\startpipeline
+create database test;
+select 1/0;
+\endpipeline
+
+
+$ pgbench -t 1 -f pipeline_createdb.sql -M extended
+pgbench (14.2)
+starting vacuum...end.
+pgbench: error: client 0 script 0 aborted in command 3 query 0: 
+....
+
+
+(3) There are still four databases but a new directory was created in
+base.
+
+
+$ psql -l
+                                 List of databases
+   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access
+privileges   
+-----------+--------+----------+-------------+-------------+-----------------------
+ postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+ template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+(4 rows)
+
+
+$ ls data/base/
+1  13014  13015  16409  16411  pgsql_tmp
+
+
+(4) Next, execute DROP DATABASE in a transaction, and the transaction
+fails.
+
+
+$ cat pipeline_dropdb.sql 
+\startpipeline
+drop database test0;
+select 1/0;
+\endpipeline
+
+
+$ pgbench -t 1 -f pipeline_dropdb.sql -M extended
+pgbench (14.2)
+starting vacuum...end.
+pgbench: error: client 0 script 0 aborted in command 3 query 0:
+...
+
+
+(5) There are still four databases but the corresponding directory was
+deleted in base.
+
+
+$ psql -l
+                                 List of databases
+   Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access
+privileges   
+-----------+--------+----------+-------------+-------------+-----------------------
+ postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+ template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+     +
+           |        |          |             |             |
+"yugo-n"=CTc/"yugo-n"
+ test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+(4 rows)
+
+
+$ ls data/base/
+1  13014  13015  16411  pgsql_tmp
+
+
+(6) We cannot connect the database "test0".
+
+
+$ psql test0
+psql: error: connection to server on socket "/tmp/.s.PGSQL.25435" failed:
+FATAL:  database "test0" does not exist
+DETAIL:  The database subdirectory "base/16409" is missing.
+----------------------------------------------------
+
+
+Detailed discussions are here;
+https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp
+
+
+
+
+
+### MESSAGE 1
+
+Did we make any decision on this?
+
+
+---------------------------------------------------------------------------
+
+
+On Fri, Mar 11, 2022 at 11:11:54AM +0000, PG Bug reporting form wrote:
+> The following bug has been logged on the website:
+> 
+> Bug reference:      17434
+> Logged by:          Yugo Nagata
+> Email address:      nagata(at)sraoss(dot)co(dot)jp
+> PostgreSQL version: 14.2
+> Operating system:   Ubuntu
+> Description:        
+> 
+> CREATE/DROP DATABASE can be executed in the same transaction with other
+> commands when we use pipeline mode in pgbench or libpq API. If the
+> transaction aborts, this causes an inconsistency between the system catalog
+> and base directory.
+> 
+> Here is an example using the pgbench /startpipeline meta command.
+> 
+> ----------------------------------------------------
+> (1)  Confirm that there are four databases from psql and directories in
+> base.
+> 
+> $ psql -l
+>                                  List of databases
+>    Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access
+> privileges   
+> -----------+--------+----------+-------------+-------------+-----------------------
+>  postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+>  template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+>      +
+>            |        |          |             |             |
+> "yugo-n"=CTc/"yugo-n"
+>  template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+>      +
+>            |        |          |             |             |
+> "yugo-n"=CTc/"yugo-n"
+>  test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+> (4 rows)
+> 
+> $ ls data/base/
+> 1  13014  13015  16409  pgsql_tmp
+> 
+> (2) Execute CREATE DATABASE in a transaction, and the transaction fails.
+> 
+> $ cat pipeline_createdb.sql 
+> \startpipeline
+> create database test;
+> select 1/0;
+> \endpipeline
+> 
+> $ pgbench -t 1 -f pipeline_createdb.sql -M extended
+> pgbench (14.2)
+> starting vacuum...end.
+> pgbench: error: client 0 script 0 aborted in command 3 query 0: 
+> ....
+> 
+> (3) There are still four databases but a new directory was created in
+> base.
+> 
+> $ psql -l
+>                                  List of databases
+>    Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access
+> privileges   
+> -----------+--------+----------+-------------+-------------+-----------------------
+>  postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+>  template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+>      +
+>            |        |          |             |             |
+> "yugo-n"=CTc/"yugo-n"
+>  template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+>      +
+>            |        |          |             |             |
+> "yugo-n"=CTc/"yugo-n"
+>  test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+> (4 rows)
+> 
+> $ ls data/base/
+> 1  13014  13015  16409  16411  pgsql_tmp
+> 
+> (4) Next, execute DROP DATABASE in a transaction, and the transaction
+> fails.
+> 
+> $ cat pipeline_dropdb.sql 
+> \startpipeline
+> drop database test0;
+> select 1/0;
+> \endpipeline
+> 
+> $ pgbench -t 1 -f pipeline_dropdb.sql -M extended
+> pgbench (14.2)
+> starting vacuum...end.
+> pgbench: error: client 0 script 0 aborted in command 3 query 0:
+> ...
+> 
+> (5) There are still four databases but the corresponding directory was
+> deleted in base.
+> 
+> $ psql -l
+>                                  List of databases
+>    Name    | Owner  | Encoding |   Collate   |    Ctype    |   Access
+> privileges   
+> -----------+--------+----------+-------------+-------------+-----------------------
+>  postgres  | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+>  template0 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+>      +
+>            |        |          |             |             |
+> "yugo-n"=CTc/"yugo-n"
+>  template1 | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | =c/"yugo-n"    
+>      +
+>            |        |          |             |             |
+> "yugo-n"=CTc/"yugo-n"
+>  test0     | yugo-n | UTF8     | ja_JP.UTF-8 | ja_JP.UTF-8 | 
+> (4 rows)
+> 
+> $ ls data/base/
+> 1  13014  13015  16411  pgsql_tmp
+> 
+> (6) We cannot connect the database "test0".
+> 
+> $ psql test0
+> psql: error: connection to server on socket "/tmp/.s.PGSQL.25435" failed:
+> FATAL:  database "test0" does not exist
+> DETAIL:  The database subdirectory "base/16409" is missing.
+> ----------------------------------------------------
+> 
+> Detailed discussions are here;
+> https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp
+> 
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  Indecision is a decision.  Inaction is an action.  Mark Batterson
+
+
+
+
+
+### MESSAGE 2
+Bruce Momjian <bruce(at)momjian(dot)us> writes:
+> Did we make any decision on this?
+
+
+Hmm, that one seems to have slipped past me.  I agree it doesn't
+look good.  But why isn't the PreventInTransactionBlock() check
+blocking the command from even starting?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+On Thu, Jul 14, 2022 at 5:37 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Bruce Momjian <bruce(at)momjian(dot)us> writes:
+> > Did we make any decision on this?
+>
+> Hmm, that one seems to have slipped past me.  I agree it doesn't
+> look good.  But why isn't the PreventInTransactionBlock() check
+> blocking the command from even starting?
+>
+>
+I assume because pgbench never sends a BEGIN command so the create database
+sees itself in an implicit transaction and happily goes about its business,
+expecting the system to commit its work immediately after it says it is
+done.  But that never happens, instead the next command comes along and
+crashes the implicit transaction it is now sharing with the create database
+command.  Create database understands how to rollback if it is the one that
+causes the failure but isn't designed to operate in a situation where it
+has to rollback because of someone else.  That isn't how implicit
+transactions are supposed to work, whether in the middle of a pipeline or
+otherwise.  Or at least that is my, and apparently CREATE DATABASE's,
+understanding of implicit transactions: one top-level command only.
+
+
+Slight tangent, but while I'm trying to get my own head around this I just
+want to point out that the first sentence of the following doesn't make
+sense given the above understanding of implicit transactions, and the
+paragraph as a whole is tough to comprehend.
+
+
+If the pipeline used an implicit transaction, then operations that have
+already executed are rolled back and operations that were queued to follow
+the failed operation are skipped entirely. The same behavior holds if the
+pipeline starts and commits a single explicit transaction (i.e. the first
+statement is BEGIN and the last is COMMIT) except that the session remains
+in an aborted transaction state at the end of the pipeline. If a pipeline
+contains multiple explicit transactions, all transactions that committed
+prior to the error remain committed, the currently in-progress transaction
+is aborted, and all subsequent operations are skipped completely, including
+subsequent transactions. If a pipeline synchronization point occurs with an
+explicit transaction block in aborted state, the next pipeline will become
+aborted immediately unless the next command puts the transaction in normal
+mode with ROLLBACK.
+
+
+https://www.postgresql.org/docs/current/libpq-pipeline-mode.html#LIBPQ-PIPELINE-USING
+
+
+I don't know what the answer is here but I don't think "tell the user not
+to do that" is appropriate.
+
+
+David J.
+
+
+
+### MESSAGE 4
+"David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> On Thu, Jul 14, 2022 at 5:37 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+>> Hmm, that one seems to have slipped past me.  I agree it doesn't
+>> look good.  But why isn't the PreventInTransactionBlock() check
+>> blocking the command from even starting?
+
+
+> I assume because pgbench never sends a BEGIN command so the create database
+> sees itself in an implicit transaction and happily goes about its business,
+> expecting the system to commit its work immediately after it says it is
+> done.
+
+
+Yeah.  Upon inspection, the fundamental problem here is that in extended
+query protocol we typically don't issue finish_xact_command() until we
+get a Sync message.  So even though everything looks kosher when
+PreventInTransactionBlock() runs, the client can send another statement
+which will be executed in the same transaction, risking trouble.
+
+
+Here's a draft patch to fix this.  We basically just need to force
+finish_xact_command() in the same way as we do for transaction control
+statements.  I considered using the same technology as the code uses
+for transaction control --- that is, statically check for the types of
+statements that are trouble --- but after reviewing the set of callers
+of PreventInTransactionBlock() I gave that up as unmaintainable.  So
+what this does is make PreventInTransactionBlock() set a flag to be
+checked later, back in exec_execute_message.  I was initially going
+to make that be a new boolean global, but I happened to notice the
+MyXactFlags variable which seems entirely suited to this use-case.
+
+
+One thing that I'm dithering over is whether to add a check of the
+new flag in exec_simple_query.  As things currently stand that would
+be redundant, but it seems like doing things the same way in both
+of those functions might be more future-proof and understandable.
+(Note the long para I added to justify not doing it ;-))
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 5
+On Fri, Jul 15, 2022 at 2:06 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> "David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> > On Thu, Jul 14, 2022 at 5:37 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> >> Hmm, that one seems to have slipped past me.  I agree it doesn't
+> >> look good.  But why isn't the PreventInTransactionBlock() check
+> >> blocking the command from even starting?
+>
+> > I assume because pgbench never sends a BEGIN command so the create
+> database
+> > sees itself in an implicit transaction and happily goes about its
+> business,
+> > expecting the system to commit its work immediately after it says it is
+> > done.
+>
+> Yeah.  Upon inspection, the fundamental problem here is that in extended
+> query protocol we typically don't issue finish_xact_command() until we
+> get a Sync message.  So even though everything looks kosher when
+> PreventInTransactionBlock() runs, the client can send another statement
+> which will be executed in the same transaction, risking trouble.
+
+
+> Here's a draft patch to fix this.  We basically just need to force
+> finish_xact_command() in the same way as we do for transaction control
+> statements.  I considered using the same technology as the code uses
+> for transaction control --- that is, statically check for the types of
+> statements that are trouble --- but after reviewing the set of callers
+> of PreventInTransactionBlock() I gave that up as unmaintainable.
+
+
+This seems like too narrow a fix though.  The fact that a sync message is
+the thing causing the commit of the implicit transaction in the extended
+query protocol has been exposed as a latent bug in the system by the
+introduction of the Pipeline functionality in libpq that relies on the
+"should" in message protocol's:
+
+
+"At completion of each series of extended-query messages, the frontend
+should issue a Sync message. This parameterless message causes the backend
+to close the current transaction if it's not inside a BEGIN/COMMIT
+transaction block (“close” meaning to commit if no error, or roll back if
+error)." [1]
+
+
+However, the implicit promise of the extended query protocol, which only
+allows one command to be executed at a time, is that each command, no
+matter whether it must execute "outside of a transaction", that executes in
+the implicit transaction block will commit at the end of the command.
+
+
+I don't see needing to update simple_query_exec to recognize this flag, if
+it survives, so long as we describe the flag as an implementation detail
+related to the extended query protocol promise to commit implicit
+transactions regardless of when the sync command arrives.
+
+
+Plus, the simple query protocol doesn't have the same one command per
+transaction promise.  Any attempts at equivalency between the two really
+doesn't have a strong foundation to work from.  I could see that code
+comment you wrote being part of the commit message for why
+exec_simple_query was not touched but I don't find any particular value in
+having it remain as presented.  If anything, a comment like that would be
+README scoped describing the differences between the simply and extended
+protocol.
+
+
+David J.
+
+
+[1]
+https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY
+
+
+
+### MESSAGE 6
+"David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> On Fri, Jul 15, 2022 at 2:06 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+>> Here's a draft patch to fix this.  We basically just need to force
+>> finish_xact_command() in the same way as we do for transaction control
+>> statements.  I considered using the same technology as the code uses
+>> for transaction control --- that is, statically check for the types of
+>> statements that are trouble --- but after reviewing the set of callers
+>> of PreventInTransactionBlock() I gave that up as unmaintainable.
+
+
+> This seems like too narrow a fix though.
+
+
+I read this, and I have absolutely no idea what you're talking about
+or what you concretely want to do differently.  If it's just a
+documentation question, I agree that I didn't address docs yet.
+Probably we do need to put something in the protocol chapter
+pointing out that some commands will commit immediately.
+
+
+I'm not sure I buy your argument that there's a fundamental
+difference between simple and extended query protocol in this
+area.  In simple protocol you can wrap an "implicit transaction"
+around several commands by sending them in one query message.
+What we've got here is that you can do the same thing in
+extended protocol by omitting Syncs.  Extended protocol's
+skip-till-Sync-after-error behavior is likewise very much like
+the fact that simple protocol abandons the rest of the query
+string after an error.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 7
+On Mon, Jul 18, 2022 at 1:20 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> "David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> > On Fri, Jul 15, 2022 at 2:06 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> >> Here's a draft patch to fix this.  We basically just need to force
+> >> finish_xact_command() in the same way as we do for transaction control
+> >> statements.  I considered using the same technology as the code uses
+> >> for transaction control --- that is, statically check for the types of
+> >> statements that are trouble --- but after reviewing the set of callers
+> >> of PreventInTransactionBlock() I gave that up as unmaintainable.
+>
+> > This seems like too narrow a fix though.
+>
+> I read this, and I have absolutely no idea what you're talking about
+> or what you concretely want to do differently.  If it's just a
+> documentation question, I agree that I didn't address docs yet.
+> Probably we do need to put something in the protocol chapter
+> pointing out that some commands will commit immediately.
+>
+
+
+I guess I am expecting exec_execute_message to have:
+
+
+if (completed && use_implicit_block)
+{
+    EndImplicitTransactionBlock();
+    finish_xact_command();
+} else if (completed) [existing code continues]
+Or, in terms of the protocol,
+
+
+"Therefore, an Execute phase is always terminated by the appearance of
+exactly one of these messages: CommandComplete, EmptyQueryResponse (if the
+portal was created from an empty query string), ErrorResponse, or
+PortalSuspended."
+
+
+CommandComplete includes an implied commit when the implicit transaction
+block is in use; which basically means sending Execute while using the
+implicit transaction block will cause a commit to happen.
+
+
+I don't fully understand PortalSuspended but it seems like it is indeed a
+valid exception to this rule.
+
+
+EmptyQueryResponse seems like it should be immaterial.
+
+
+ErrorResponse seems to preempt all of these.
+
+
+The implied transaction block does not count for purposes of determining
+whether a command that must not be executed in a transaction block can be
+executed.
+
+
+Now, as you say below, the "multiple commands per implicit transaction
+block in extended query mode" is an intentional design choice so the above
+would indeed be incorrect.  However, there is still something fishy here,
+so please read below.
+
+
+> I'm not sure I buy your argument that there's a fundamental
+> difference between simple and extended query protocol in this
+> area.  In simple protocol you can wrap an "implicit transaction"
+> around several commands by sending them in one query message.
+> What we've got here is that you can do the same thing in
+> extended protocol by omitting Syncs.  Extended protocol's
+> skip-till-Sync-after-error behavior is likewise very much like
+> the fact that simple protocol abandons the rest of the query
+> string after an error.
+>
+
+
+The fact that SYNC has the side effect of ending the implicit transaction
+block is a POLA violation to me and the root of my misunderstanding here.
+I suppose it is too late to change at this point.  I can at least see that
+giving the client control of the implicit transaction block, even if not
+through SQL (which I suppose comes with implicit), has merit, even if this
+choice of implementation is unintuitive.
+
+
+In any case, I tried to extend the pgbench exercise but don't know what
+went wrong.  I will explain what I think would happen:
+
+
+For the script:
+
+
+drop table if exists performupdate;
+create table performupdate (val integer);
+insert into performupdate values (2);
+\startpipeline
+update performupdate set val = val * 2;
+--create database benchtest;
+select 1/0;
+--rollback
+\endpipeline
+DO $$BEGIN RAISE NOTICE 'Value = %', (select val from performupdate); END;
+$$
+
+
+I get this result - the post-pipeline DO block never executes and I
+expected that it would.  Uncommenting the rollback made no difference.  I
+suppose this is just because we are abusing the tool in lieu of writing C
+code.  That's fine.
+
+
+pgbench: client 0 executing script "/home/vagrant/pipebench.sql"
+pgbench: client 0 sending drop table if exists performupdate;
+pgbench: client 0 receiving
+pgbench: client 0 receiving
+pgbench: client 0 sending create table performupdate (val integer);
+pgbench: client 0 receiving
+pgbench: client 0 receiving
+pgbench: client 0 sending insert into performupdate values (2);
+pgbench: client 0 receiving
+pgbench: client 0 receiving
+pgbench: client 0 executing \startpipeline
+pgbench: client 0 sending update performupdate set val = val * 2;
+pgbench: client 0 sending select 1/0;
+pgbench: client 0 executing \endpipeline
+pgbench: client 0 receiving
+pgbench: client 0 receiving
+pgbench: client 0 receiving
+pgbench: error: client 0 script 0 aborted in command 6 query 0:
+transaction type: /home/vagrant/pipebench.sql
+scaling factor: 1
+query mode: extended
+number of clients: 1
+number of threads: 1
+maximum number of tries: 1
+number of transactions per client: 1
+number of transactions actually processed: 0/1
+number of failed transactions: 0 (NaN%)
+pgbench: error: Run was aborted; the above results are incomplete.
+
+
+In any case, for the above script, given the definition of pipeline mode, I
+would expect that the value reported to be 2.  This assumes that when
+coming out of pipeline mode the system basically goes back to ReadyForQuery.
+
+
+However, if I now uncomment the create database command the expectation is
+either:
+
+
+1. It fails to execute since an existing command is sharing the implicit
+transaction, and fails the implicit transaction block, thus the reported
+value is still 2
+2. It succeeds, the next command executes and fails, the database creation
+is undone and the update is undone, thus the reported value is still 2
+
+
+What does happen, IIUC, is that both the preceding update command and the
+create database are now committed and the returned value is 4
+
+
+In short, we are saying that issuing a command that cannot be executed in a
+transaction block within the middle of the implicit transaction block will
+cause the block to implicitly commit if the command completes successfully.
+
+
+From this it seems that not only should we issue a commit after executing
+create database in the implicit transaction block but we also need to
+commit before attempting to execute the command in the first place.  The
+mere presence of a such a command basically means:
+
+
+COMMIT;
+CREATE DATABASE...;
+COMMIT;
+
+
+That is what it means to be unable to be executed in a transaction block -
+with an outright error if an explicit transaction block has already been
+established.
+
+
+David J.
+
+
+
+### MESSAGE 8
+	David G. Johnston wrote:
+
+
+> drop table if exists performupdate;
+> create table performupdate (val integer);
+> insert into performupdate values (2);
+> \startpipeline
+> update performupdate set val = val * 2;
+> --create database benchtest;
+> select 1/0;
+> --rollback
+> \endpipeline
+> DO $$BEGIN RAISE NOTICE 'Value = %', (select val from performupdate); END;
+> $$
+> 
+> I get this result - the post-pipeline DO block never executes and I
+> expected that it would.  
+
+
+pgbench stops the script on errors. If the script was reduced to
+
+
+ select 1/0;
+ DO $$BEGIN RAISE NOTICE 'print this; END; $$
+
+
+the DO statement would not be executed either.
+When the error happens inside a pipeline section, it's the same.
+The pgbench code collects the results sent by the server to clear up,
+but the script is aborted at this point, and the DO block is not going
+to be sent to the server.
+
+
+Best regards,
+-- 
+Daniel Vérité
+https://postgresql.verite.pro/
+Twitter: @DanielVerite
+
+
+
+
+
+### MESSAGE 9
+"David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> I guess I am expecting exec_execute_message to have:
+
+
+> if (completed && use_implicit_block)
+> {
+>     EndImplicitTransactionBlock();
+>     finish_xact_command();
+> } else if (completed) [existing code continues]
+
+
+The problem with that is "where do we get use_implicit_block from"?
+In simple query mode it's set if the simple-query message contains
+more than one statement.  But the issue we face in extended mode is
+precisely that we don't know if the client will try to send another
+statement before Sync.
+
+
+I spent some time thinking about alternative solutions for this.
+AFAICS the only other feasible approach is to continue to not do
+finish_xact_command() until Sync, but change state so that any
+message that tries to do other work will be rejected.  But that's
+not really at all attractive, for these reasons:
+
+
+1. Rejecting other message types implies an error (unless we
+get REALLY weird), which implies a rollback, which gets us into
+the same inconsistent state as a user-issued rollback.
+
+
+2. Once we've completed the CREATE DATABASE or whatever, we really
+have got to commit or we end with inconsistent state.  So it does
+not seem like a good plan to sit and wait for the client, even if
+we were certain that it'd eventually issue Sync.  The longer we
+sit, the more chance of something interfering --- database shutdown,
+network connection drop, etc.
+
+
+3. This approach winds up throwing errors for cases that used
+to work, eg multiple CREATE DATABASE commands before Sync.
+The immediate-silent-commit approach doesn't.  The only compatibility
+break is that you can't ROLLBACK after CREATE DATABASE ... but that's
+precisely the case that doesn't work anyway.
+
+
+Ideally we'd dodge all of this mess by making all our DDL fully
+transactional and getting rid of PreventInTransactionBlock.
+I'm not sure that will ever happen; but I am sad that so many
+new calls of it have been introduced by the logical replication
+stuff.  (Doesn't look like anybody bothered to teach psql's
+command_no_begin() about those, either.)  In any case, that's a
+long-term direction to pursue, not something that could yield
+a back-patchable fix.
+
+
+Anyway, here's an updated patch, now with docs.  I was surprised
+to realize that protocol.sgml has no explicit mention of pipelining,
+even though extended query protocol was intentionally set up to make
+that possible.  So I added a <sect2> about that, which provides a home
+for the caveat about immediate-commit commands.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 10
+On Tue, Jul 26, 2022 at 8:08 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> "David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> > I guess I am expecting exec_execute_message to have:
+>
+> > if (completed && use_implicit_block)
+> > {
+> >     EndImplicitTransactionBlock();
+> >     finish_xact_command();
+> > } else if (completed) [existing code continues]
+>
+> The problem with that is "where do we get use_implicit_block from"?
+> In simple query mode it's set if the simple-query message contains
+> more than one statement.  But the issue we face in extended mode is
+> precisely that we don't know if the client will try to send another
+> statement before Sync.
+> [...]
+> Anyway, here's an updated patch, now with docs.  I was surprised
+> to realize that protocol.sgml has no explicit mention of pipelining,
+> even though extended query protocol was intentionally set up to make
+> that possible.  So I added a <sect2> about that, which provides a home
+> for the caveat about immediate-commit commands.
+>
+>
+Thanks!  This added section is clear and now affirms the understanding I've
+come to with this thread, mostly.  I'm still of the opinion that the
+definition of "cannot be executed inside a transaction block" means that we
+must "auto-sync" (implicit commit) before and after the restricted command,
+not just after, and that the new section should cover this - whether we do
+or do not - explicitly.
+
+
+David J.
+
+
+
+### MESSAGE 11
+"David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> Thanks!  This added section is clear and now affirms the understanding I've
+> come to with this thread, mostly.  I'm still of the opinion that the
+> definition of "cannot be executed inside a transaction block" means that we
+> must "auto-sync" (implicit commit) before and after the restricted command,
+> not just after, and that the new section should cover this - whether we do
+> or do not - explicitly.
+
+
+I'm not excited about your proposal to auto-commit before starting
+the command.  In the first place, we can't: we do not know whether
+the command will call PreventInTransactionBlock.  Restructuring to
+change that seems untenable in view of past cowboy decisions about
+use of PreventInTransactionBlock in the replication logic.  In the
+second place, it'd be a deviation from the current behavior (namely
+that a failure in CREATE DATABASE et al rolls back previous un-synced
+commands) that is not necessary to fix a bug, so changing that in
+the back branches would be a hard sell.  I don't even agree that
+it's obviously better than the current behavior, so I'm not much
+on board with changing it in HEAD either.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 12
+On Tue, Jul 26, 2022 at 8:37 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> "David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> > Thanks!  This added section is clear and now affirms the understanding
+> I've
+> > come to with this thread, mostly.  I'm still of the opinion that the
+> > definition of "cannot be executed inside a transaction block" means that
+> we
+> > must "auto-sync" (implicit commit) before and after the restricted
+> command,
+> > not just after, and that the new section should cover this - whether we
+> do
+> > or do not - explicitly.
+>
+> I'm not excited about your proposal to auto-commit before starting
+> the command.  In the first place, we can't: we do not know whether
+> the command will call PreventInTransactionBlock.  Restructuring to
+> change that seems untenable in view of past cowboy decisions about
+> use of PreventInTransactionBlock in the replication logic.  In the
+> second place, it'd be a deviation from the current behavior (namely
+> that a failure in CREATE DATABASE et al rolls back previous un-synced
+> commands) that is not necessary to fix a bug, so changing that in
+> the back branches would be a hard sell.  I don't even agree that
+> it's obviously better than the current behavior, so I'm not much
+> on board with changing it in HEAD either.
+>
+>
+That leaves us with changing the documentation then, from:
+
+
+CREATE DATABASE cannot be executed inside a transaction block.
+
+
+to:
+
+
+CREATE DATABASE cannot be executed inside an explicit transaction block (it
+will error in this case), and will commit (or rollback on failure) any
+implicit transaction it is a part of.
+
+
+The content of the section you added works fine so long as we are clear
+regarding the fact it can be executed in a transaction so long as it is
+implicit.
+
+
+David J.
+
+
+
+### MESSAGE 13
+"David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> That leaves us with changing the documentation then, from:
+> CREATE DATABASE cannot be executed inside a transaction block.
+> to:
+> CREATE DATABASE cannot be executed inside an explicit transaction block (it
+> will error in this case), and will commit (or rollback on failure) any
+> implicit transaction it is a part of.
+
+
+That's not going to help anybody unless we also provide a definition of
+"implicit transaction", which is a bit far afield for that man page.
+
+
+I did miss a bet in the proposed pipeline addendum, though.
+I should have written
+
+
+    ... However, there
+    are a few DDL commands (such as <command>CREATE DATABASE</command>)
+    that cannot be executed inside a transaction block.  If one of
+    these is executed in a pipeline, it will, upon success, force an
+    immediate commit to preserve database consistency.
+
+
+That ties the info to our standard wording in the per-command man
+pages.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 14
+On Tue, Jul 26, 2022 at 9:03 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> "David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> > That leaves us with changing the documentation then, from:
+> > CREATE DATABASE cannot be executed inside a transaction block.
+> > to:
+> > CREATE DATABASE cannot be executed inside an explicit transaction block
+> (it
+> > will error in this case), and will commit (or rollback on failure) any
+> > implicit transaction it is a part of.
+>
+> That's not going to help anybody unless we also provide a definition of
+> "implicit transaction", which is a bit far afield for that man page.
+>
+> I did miss a bet in the proposed pipeline addendum, though.
+> I should have written
+>
+>     ... However, there
+>     are a few DDL commands (such as <command>CREATE DATABASE</command>)
+>     that cannot be executed inside a transaction block.  If one of
+>     these is executed in a pipeline, it will, upon success, force an
+>     immediate commit to preserve database consistency.
+>
+> That ties the info to our standard wording in the per-command man
+> pages.
+>
+>
+And we are back around to the fact that only by using libpq directly, or
+via the pipeline feature of pgbench, can one actually exert control over
+the implicit transaction.  The psql and general SQL interface
+implementation are just going to Sync after each command and so everything
+looks like one transaction per command to them and only explicit
+transactions matter.  From that, the adjustment you describe above is
+sufficient for me.
+
+
+David J.
+
+
+
+### MESSAGE 15
+"David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> And we are back around to the fact that only by using libpq directly, or
+> via the pipeline feature of pgbench, can one actually exert control over
+> the implicit transaction.  The psql and general SQL interface
+> implementation are just going to Sync after each command and so everything
+> looks like one transaction per command to them and only explicit
+> transactions matter.
+
+
+Right.
+
+
+> From that, the adjustment you describe above is sufficient for me.
+
+
+Cool, I'll set about back-patching.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 16
+Hi,
+
+
+Thank you for treating this bug report!
+
+
+On Tue, 26 Jul 2022 12:14:19 -0400
+Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> "David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> > And we are back around to the fact that only by using libpq directly, or
+> > via the pipeline feature of pgbench, can one actually exert control over
+> > the implicit transaction.  The psql and general SQL interface
+> > implementation are just going to Sync after each command and so everything
+> > looks like one transaction per command to them and only explicit
+> > transactions matter.
+> 
+> Right.
+> 
+> > From that, the adjustment you describe above is sufficient for me.
+> 
+> Cool, I'll set about back-patching.
+> 
+> 			regards, tom lane
+
+
+I've looked at the commited fix. What I wonder is whether a change in
+IsInTransactionBlock() is necessary or not.
+
+
+ +       /*
+ +        * If we tell the caller we're not in a transaction block, then inform
+ +        * postgres.c that it had better commit when the statement is done.
+ +        * Otherwise our report could be a lie.
+ +        */
+ +       MyXactFlags |= XACT_FLAGS_NEEDIMMEDIATECOMMIT;
+ +
+         return false;
+
+
+The comment says that is required to prevent the report from being
+a lie. Indeed, after this function returns false, it is guaranteed
+that following statements are executed in a separate transaction from
+that of the current statement. However, there is no guarantee that the
+current statement is running in a separate transaction from that of
+the previous statements. The only caller of this function is ANALYZE
+command, and this is used for the latter purpose. That is, if we are
+not in a transaction block, ANALYZE can close the current transaction
+and restart another one without affecting previous transactions. 
+(At least, ANALYZE command seems to assume it.) So,
+I think the fix does not seem to make a sense.
+
+
+In fact, the result of IsInTransactionBlock does not make senses at
+all in pipe-line mode regardless to the fix. ANALYZE could commit all
+previous commands in pipelining, and this may not be user expected
+behaviour. Moreover, before the fix ANALYZE didn't close and open a
+transaction if the target is only one table, but after the fix ANALYZE
+always issues commit regardless to the number of table.
+
+
+I am not sure if we should fix it to prevent such confusing behavior
+because this breaks back-compatibility, but I prefer to fixing it. 
+
+
+The idea is to start an implicit transaction block if the server receive
+more than one Execute messages before receiving Sync as discussed in [1]. 
+I attached the patch for this fix. 
+
+
+If the first command in a pipeline is  DDL commands such as CREATE
+DATABASE, this is allowed and immediately committed after success, as
+same as the current behavior. Executing such commands in the middle of
+pipeline is not allowed because the pipeline is regarded as "an implicit
+transaction block" at that time. Similarly, ANALYZE in the middle of
+pipeline can not close and open transaction.
+
+
+[1] https://www.postgresql.org/message-id/20220301151704.76adaaefa8ed5d6c12ac3079@sraoss.co.jp
+
+
+Regards,
+Yugo Nagata
+-- 
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp>
+
+
+
+### MESSAGE 17
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> writes:
+> I've looked at the commited fix. What I wonder is whether a change in
+> IsInTransactionBlock() is necessary or not.
+
+
+I've not examined ANALYZE's dependencies on this closely, but it doesn't
+matter really, because I'm not willing to assume that ANALYZE is the
+only caller.  There could be external modules with stronger assumptions
+that IsInTransactionBlock() yielding false provides guarantees equivalent
+to PreventInTransactionBlock().  It did before this patch, so I think
+it needs to still do so after.
+
+
+> In fact, the result of IsInTransactionBlock does not make senses at
+> all in pipe-line mode regardless to the fix. ANALYZE could commit all
+> previous commands in pipelining, and this may not be user expected
+> behaviour.
+
+
+This seems pretty much isomorphic to the fact that CREATE DATABASE
+will commit preceding steps in the pipeline.  That's not great,
+I admit; we'd not have designed it like that if we'd had complete
+understanding of the behavior at the beginning.  But it's acted
+like that for a couple of decades now, so changing it seems far
+more likely to make people unhappy than happy.  The same for
+ANALYZE in a pipeline.
+
+
+> If the first command in a pipeline is  DDL commands such as CREATE
+> DATABASE, this is allowed and immediately committed after success, as
+> same as the current behavior. Executing such commands in the middle of
+> pipeline is not allowed because the pipeline is regarded as "an implicit
+> transaction block" at that time. Similarly, ANALYZE in the middle of
+> pipeline can not close and open transaction.
+
+
+I'm not going there.  If you can persuade some other committer that
+this is worth breaking backward compatibility for, fine; the user
+complaints will be their problem.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 18
+On Wed, Jul 27, 2022 at 7:50 PM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> writes:
+> > I've looked at the commited fix. What I wonder is whether a change in
+> > IsInTransactionBlock() is necessary or not.
+>
+> > In fact, the result of IsInTransactionBlock does not make senses at
+> > all in pipe-line mode regardless to the fix. ANALYZE could commit all
+> > previous commands in pipelining, and this may not be user expected
+> > behaviour.
+>
+> This seems pretty much isomorphic to the fact that CREATE DATABASE
+> will commit preceding steps in the pipeline.  That's not great,
+> I admit; we'd not have designed it like that if we'd had complete
+> understanding of the behavior at the beginning.  But it's acted
+> like that for a couple of decades now, so changing it seems far
+> more likely to make people unhappy than happy.  The same for
+> ANALYZE in a pipeline.
+>
+>
+I agreed to leaving the description of CREATE DATABASE simplified by not
+introducing the idea of implicit transactions or, equivalently,
+"autocommit".
+
+
+Just tossing out there that we should acknowledge that our wording in the
+BEGIN Reference should remain status quo based upon the same reasoning.
+
+
+"By default (without BEGIN), PostgreSQL executes transactions in
+“autocommit” mode, that is, each statement is executed in its own
+transaction and a commit is implicitly performed at the end of the
+statement (if execution was successful, otherwise a rollback is done)."
+
+
+https://www.postgresql.org/docs/current/sql-begin.html
+
+
+Maybe write instead:
+
+
+"By default (without BEGIN), PostgreSQL creates transactions based upon the
+underlying messages passed between the client and server.  Typically this
+means each statement ends up having its own transaction.  In any case,
+statements that must not execute in a transaction (like CREATE DATABASE)
+must use the default, and will always cause a commit or rollback to happen
+upon completion."
+
+
+It feels a bit out-of-place, maybe if the content scope is acceptable we
+can work it better into the Tutorial-Advanced Features-Transaction section
+and just replace the existing sentence with a link to there?
+
+
+David J.
+
+
+
+### MESSAGE 19
+On Wed, 27 Jul 2022 22:50:55 -0400
+Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> writes:
+> > I've looked at the commited fix. What I wonder is whether a change in
+> > IsInTransactionBlock() is necessary or not.
+> 
+> I've not examined ANALYZE's dependencies on this closely, but it doesn't
+> matter really, because I'm not willing to assume that ANALYZE is the
+> only caller.  There could be external modules with stronger assumptions
+> that IsInTransactionBlock() yielding false provides guarantees equivalent
+> to PreventInTransactionBlock().  It did before this patch, so I think
+> it needs to still do so after.
+
+
+Thank you for your explanation. I understood that IsInTransactionBlock()
+and PreventInTransactionBlock() share the equivalent assumption.
+
+
+As to ANALYZE, after investigating the code more, I found that setting XACT_FLAGS_NEEDIMMEDIATECOMMIT in IsInTransactionBlock() is needed indeed.
+That is, some flags in pg_class such as relhasindex can be safely updated
+only if ANALYZE is not in a transaction block and never rolled back.  So,
+in a pipeline, ANALYZE must be immediately committed.
+
+
+However, I think we need more comments on these functions to clarify what
+users can expect or not for them.  It is ensured that the statement that
+calls PreventInTransactionBlock()  or receives false from
+IsInTransactionBlock() never be rolled back if it finishes successfully.
+This can eliminate the harmful influence of non-rollback-able side effects.
+
+
+On the other hand, it cannot ensure that the statement calling these
+functions is the first or only one in the transaction in pipelining. If
+there are preceding statements in a pipeline, they are committed in the
+same transaction of the current statement.
+
+
+The attached patch tries to add comments explaining it on the functions.
+
+
+> > In fact, the result of IsInTransactionBlock does not make senses at
+> > all in pipe-line mode regardless to the fix. ANALYZE could commit all
+> > previous commands in pipelining, and this may not be user expected
+> > behaviour.
+> 
+> This seems pretty much isomorphic to the fact that CREATE DATABASE
+> will commit preceding steps in the pipeline.  
+
+
+I am not sure if we can think CREATE DATABASE case and ANLALYZE case
+similarly. First, CREATE DATABASE is one of the commands that cannot be
+executed inside a transaction block, but ANALYZE can be. So, users would
+not be able to know ANALYZE in a pipeline causes a commit from the
+documentation. Second, ANALYZE issues a commit internally in an early
+stage not only after it finished successfully. For example, even if
+ANALYZE is failing because a not-existing column name is specified, it
+issues a commit before checking the column name. This makes more hard
+to know which statements will be committed and which statements not
+committed in a pipeline. Also, as you know, there are other commands
+that issue internal commits.
+
+
+> That's not great,
+> I admit; we'd not have designed it like that if we'd had complete
+> understanding of the behavior at the beginning.  But it's acted
+> like that for a couple of decades now, so changing it seems far
+> more likely to make people unhappy than happy.  The same for
+> ANALYZE in a pipeline.
+
+
+> > If the first command in a pipeline is  DDL commands such as CREATE
+> > DATABASE, this is allowed and immediately committed after success, as
+> > same as the current behavior. Executing such commands in the middle of
+> > pipeline is not allowed because the pipeline is regarded as "an implicit
+> > transaction block" at that time. Similarly, ANALYZE in the middle of
+> > pipeline can not close and open transaction.
+> 
+> I'm not going there.  If you can persuade some other committer that
+> this is worth breaking backward compatibility for, fine; the user
+> complaints will be their problem.
+
+
+I don't have no idea how to reduce the complexity explained above and
+clarify the transactional behavior of pipelining to users other than the
+fix I proposed in the previous post. However, I also agree that such
+changing may make some people unhappy. If there is no good way and we
+would not like to change the behavior, I think it is better to mention
+the effects of commands that issue internal commits in the documentation
+at least.
+
+
+Regards,
+Yugo Nagata
+
+
+-- 
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp>
+
+
+
+### MESSAGE 20
+Hi,
+
+
+On Tue, 9 Aug 2022 00:21:02 +0900
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> wrote:
+
+
+> On Wed, 27 Jul 2022 22:50:55 -0400
+> Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> 
+> > Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> writes:
+> > > I've looked at the commited fix. What I wonder is whether a change in
+> > > IsInTransactionBlock() is necessary or not.
+> > 
+> > I've not examined ANALYZE's dependencies on this closely, but it doesn't
+> > matter really, because I'm not willing to assume that ANALYZE is the
+> > only caller.  There could be external modules with stronger assumptions
+> > that IsInTransactionBlock() yielding false provides guarantees equivalent
+> > to PreventInTransactionBlock().  It did before this patch, so I think
+> > it needs to still do so after.
+> 
+> Thank you for your explanation. I understood that IsInTransactionBlock()
+> and PreventInTransactionBlock() share the equivalent assumption.
+> 
+> As to ANALYZE, after investigating the code more, I found that setting XACT_FLAGS_NEEDIMMEDIATECOMMIT in IsInTransactionBlock() is needed indeed.
+> That is, some flags in pg_class such as relhasindex can be safely updated
+> only if ANALYZE is not in a transaction block and never rolled back.  So,
+> in a pipeline, ANALYZE must be immediately committed.
+> 
+> However, I think we need more comments on these functions to clarify what
+> users can expect or not for them.  It is ensured that the statement that
+> calls PreventInTransactionBlock()  or receives false from
+> IsInTransactionBlock() never be rolled back if it finishes successfully.
+> This can eliminate the harmful influence of non-rollback-able side effects.
+> 
+> On the other hand, it cannot ensure that the statement calling these
+> functions is the first or only one in the transaction in pipelining. If
+> there are preceding statements in a pipeline, they are committed in the
+> same transaction of the current statement.
+> 
+> The attached patch tries to add comments explaining it on the functions.
+
+
+I forward it to the hackers list because the patch is to fix comments.
+Also, I'll register it to commitfest.
+
+
+The past discussion is here.
+https://www.postgresql.org/message-id/flat/17434-d9f7a064ce2a88a3%40postgresql.org
+
+
+> 
+> > > In fact, the result of IsInTransactionBlock does not make senses at
+> > > all in pipe-line mode regardless to the fix. ANALYZE could commit all
+> > > previous commands in pipelining, and this may not be user expected
+> > > behaviour.
+> > 
+> > This seems pretty much isomorphic to the fact that CREATE DATABASE
+> > will commit preceding steps in the pipeline.  
+> 
+> I am not sure if we can think CREATE DATABASE case and ANLALYZE case
+> similarly. First, CREATE DATABASE is one of the commands that cannot be
+> executed inside a transaction block, but ANALYZE can be. So, users would
+> not be able to know ANALYZE in a pipeline causes a commit from the
+> documentation. Second, ANALYZE issues a commit internally in an early
+> stage not only after it finished successfully. For example, even if
+> ANALYZE is failing because a not-existing column name is specified, it
+> issues a commit before checking the column name. This makes more hard
+> to know which statements will be committed and which statements not
+> committed in a pipeline. Also, as you know, there are other commands
+> that issue internal commits.
+> 
+> > That's not great,
+> > I admit; we'd not have designed it like that if we'd had complete
+> > understanding of the behavior at the beginning.  But it's acted
+> > like that for a couple of decades now, so changing it seems far
+> > more likely to make people unhappy than happy.  The same for
+> > ANALYZE in a pipeline.
+> 
+> > > If the first command in a pipeline is  DDL commands such as CREATE
+> > > DATABASE, this is allowed and immediately committed after success, as
+> > > same as the current behavior. Executing such commands in the middle of
+> > > pipeline is not allowed because the pipeline is regarded as "an implicit
+> > > transaction block" at that time. Similarly, ANALYZE in the middle of
+> > > pipeline can not close and open transaction.
+> > 
+> > I'm not going there.  If you can persuade some other committer that
+> > this is worth breaking backward compatibility for, fine; the user
+> > complaints will be their problem.
+> 
+> I don't have no idea how to reduce the complexity explained above and
+> clarify the transactional behavior of pipelining to users other than the
+> fix I proposed in the previous post. However, I also agree that such
+> changing may make some people unhappy. If there is no good way and we
+> would not like to change the behavior, I think it is better to mention
+> the effects of commands that issue internal commits in the documentation
+> at least.
+> 
+> Regards,
+> Yugo Nagata
+> 
+> -- 
+> Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp>
+
+
+-- 
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp>
+
+
+
+### MESSAGE 21
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> writes:
+>> The attached patch tries to add comments explaining it on the functions.
+
+
+> I forward it to the hackers list because the patch is to fix comments.
+
+
+What do you think of the attached wording?
+
+
+I don't think the pipeline angle is of concern to anyone who might be
+reading these comments with the aim of understanding what guarantees
+they have.  Perhaps there should be more about that in the user-facing
+docs, though.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 22
+On Sun, 06 Nov 2022 12:54:17 -0500
+Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> writes:
+> >> The attached patch tries to add comments explaining it on the functions.
+> 
+> > I forward it to the hackers list because the patch is to fix comments.
+> 
+> What do you think of the attached wording?
+
+
+It looks good to me. That describes the expected behaviour exactly.
+
+
+> I don't think the pipeline angle is of concern to anyone who might be
+> reading these comments with the aim of understanding what guarantees
+> they have.  Perhaps there should be more about that in the user-facing
+> docs, though.
+
+
+I agree with that we don't need to mention pipelining in these comments,
+and that we need more in the documentation. I attached a doc patch to add
+a mention of commands that do internal commit to the pipelining section.
+Also, this adds a reference for the pipelining protocol to the libpq doc.
+
+
+Regards,
+Yugo Nagata
+
+
+-- 
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp>
+
+
+
+### MESSAGE 23
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> writes:
+> Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+>> What do you think of the attached wording?
+
+
+> It looks good to me. That describes the expected behaviour exactly.
+
+
+Pushed that, then.
+
+
+>> I don't think the pipeline angle is of concern to anyone who might be
+>> reading these comments with the aim of understanding what guarantees
+>> they have.  Perhaps there should be more about that in the user-facing
+>> docs, though.
+
+
+> I agree with that we don't need to mention pipelining in these comments,
+> and that we need more in the documentation. I attached a doc patch to add
+> a mention of commands that do internal commit to the pipelining section.
+> Also, this adds a reference for the pipelining protocol to the libpq doc.
+
+
+Hmm ... I don't really find either of these changes to be improvements.
+The fact that, say, multi-table ANALYZE uses multiple transactions
+seems to me to be a property of that statement, not of the protocol.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 24
+On 08.08.22 17:21, Yugo NAGATA wrote:
+>>> In fact, the result of IsInTransactionBlock does not make senses at
+>>> all in pipe-line mode regardless to the fix. ANALYZE could commit all
+>>> previous commands in pipelining, and this may not be user expected
+>>> behaviour.
+>> This seems pretty much isomorphic to the fact that CREATE DATABASE
+>> will commit preceding steps in the pipeline.
+> I am not sure if we can think CREATE DATABASE case and ANLALYZE case
+> similarly. First, CREATE DATABASE is one of the commands that cannot be
+> executed inside a transaction block, but ANALYZE can be. So, users would
+> not be able to know ANALYZE in a pipeline causes a commit from the
+> documentation. Second, ANALYZE issues a commit internally in an early
+> stage not only after it finished successfully. For example, even if
+> ANALYZE is failing because a not-existing column name is specified, it
+> issues a commit before checking the column name. This makes more hard
+> to know which statements will be committed and which statements not
+> committed in a pipeline. Also, as you know, there are other commands
+> that issue internal commits.
+
+
+This has broken the following use:
+
+
+parse: create temporary table t1 (a int) on commit drop
+bind
+execute
+parse: analyze t1
+bind
+execute
+parse: select * from t1
+bind
+execute
+sync
+
+
+I think the behavior of IsInTransactionBlock() needs to be further 
+refined to support this.  If we are worried about external callers, 
+maybe we need to provide a separate version.  AFAICT, all the callers of 
+IsInTransactionBlock() over time have been in vacuum/analyze-related 
+code, so perhaps in master we should just move it there.
+
+
+
+
+
+### MESSAGE 25
+Peter Eisentraut <peter(dot)eisentraut(at)enterprisedb(dot)com> writes:
+> This has broken the following use:
+
+
+> parse: create temporary table t1 (a int) on commit drop
+> bind
+> execute
+> parse: analyze t1
+> bind
+> execute
+> parse: select * from t1
+> bind
+> execute
+> sync
+
+
+> I think the behavior of IsInTransactionBlock() needs to be further 
+> refined to support this.
+
+
+Hmm.  Maybe the right way to think about this is "if we have completed an
+EXECUTE, and not yet received a following SYNC, then report that we are in
+a transaction block"?  But I'm not sure if that breaks any other cases.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 26
+On Wed, 09 Nov 2022 11:17:29 -0500
+Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> writes:
+> > Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> >> What do you think of the attached wording?
+> 
+> > It looks good to me. That describes the expected behaviour exactly.
+> 
+> Pushed that, then.
+
+
+Thank you.
+
+
+> >> I don't think the pipeline angle is of concern to anyone who might be
+> >> reading these comments with the aim of understanding what guarantees
+> >> they have.  Perhaps there should be more about that in the user-facing
+> >> docs, though.
+> 
+> > I agree with that we don't need to mention pipelining in these comments,
+> > and that we need more in the documentation. I attached a doc patch to add
+> > a mention of commands that do internal commit to the pipelining section.
+> > Also, this adds a reference for the pipelining protocol to the libpq doc.
+> 
+> Hmm ... I don't really find either of these changes to be improvements.
+> The fact that, say, multi-table ANALYZE uses multiple transactions
+> seems to me to be a property of that statement, not of the protocol.
+
+
+Ok. Then, if we want to notice users that commands using internal commits
+could unexpectedly close a transaction in pipelining, the proper place is
+libpq section?
+
+
+Regards,
+Yugo Nagata
+
+
+-- 
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp>
+
+
+
+
+
+### MESSAGE 27
+On Wed, 09 Nov 2022 11:38:05 -0500
+Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Peter Eisentraut <peter(dot)eisentraut(at)enterprisedb(dot)com> writes:
+> > This has broken the following use:
+> 
+> > parse: create temporary table t1 (a int) on commit drop
+> > bind
+> > execute
+> > parse: analyze t1
+> > bind
+> > execute
+> > parse: select * from t1
+> > bind
+> > execute
+> > sync
+> 
+> > I think the behavior of IsInTransactionBlock() needs to be further 
+> > refined to support this.
+> 
+> Hmm.  Maybe the right way to think about this is "if we have completed an
+> EXECUTE, and not yet received a following SYNC, then report that we are in
+> a transaction block"?  But I'm not sure if that breaks any other cases.
+
+
+Or, in that case, regarding it as an implicit transaction if multiple commands
+are executed in a pipeline as proposed in [1] could be another solution, 
+although I have once withdrawn this for not breaking backward compatibility.
+Attached is the same patch of [1].
+
+
+[1] https://www.postgresql.org/message-id/20220728105134.d5ce51dd756b3149e9b9c52c%40sraoss.co.jp
+
+
+Regards,
+Yugo Nagata
+
+
+-- 
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp>
+
+
+
+
+
+### MESSAGE 28
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> writes:
+> Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+>> Hmm.  Maybe the right way to think about this is "if we have completed an
+>> EXECUTE, and not yet received a following SYNC, then report that we are in
+>> a transaction block"?  But I'm not sure if that breaks any other cases.
+
+
+> Or, in that case, regarding it as an implicit transaction if multiple commands
+> are executed in a pipeline as proposed in [1] could be another solution, 
+> although I have once withdrawn this for not breaking backward compatibility.
+
+
+I didn't like that patch then and I still don't.  In particular, it's
+mighty weird to be issuing BeginImplicitTransactionBlock after we've
+already completed one command of the pipeline.  If that works without
+obvious warts, it's only accidental.
+
+
+Attached is a draft patch along the lines I speculated about above.
+It breaks backwards compatibility in that PreventInTransactionBlock
+commands will now be rejected if they're a non-first command in a
+pipeline.  I think that's okay, and arguably desirable, for HEAD
+but I'm pretty uncomfortable about back-patching it.
+
+
+I thought of a variant idea that I think would significantly reduce
+the risk of breaking working applications, which is to restrict things
+only in the case of pipelines with previous data-modifying commands.
+I tried to implement that by having PreventInTransactionBlock test
+
+
+	if (GetTopTransactionIdIfAny() != InvalidTransactionId)
+
+
+but it blew up, because we have various (mostly partitioning-related)
+DDL commands that run PreventInTransactionBlock only after they've
+acquired an exclusive lock on something, and LogAccessExclusiveLock
+gets an XID.  (That was always a horrid POLA-violating kluge that
+would bite us on the rear someday, and now it has.  But I can't see
+trying to change that in back branches.)
+
+
+Something could still be salvaged of the idea, perhaps: we could
+adjust this patch so that the tests are like
+
+
+	if ((MyXactFlags & XACT_FLAGS_PIPELINING) &&
+	    GetTopTransactionIdIfAny() != InvalidTransactionId)
+
+
+Maybe that makes it a small enough hazard to be back-patchable.
+
+
+Another objection that could be raised is the same one I made
+already, that !IsInTransactionBlock() doesn't provide the same
+guarantee as PreventInTransactionBlock.  I'm not too happy
+about that either, but given that we know of no other uses of
+IsInTransactionBlock besides ANALYZE, maybe it's okay.  I'm
+not sure it's worth trying to avoid it anyway --- we'd just
+end up with a probably-dead backwards compatibility stub.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 29
+On Thu, 10 Nov 2022 15:33:37 -0500
+Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp> writes:
+> > Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> >> Hmm.  Maybe the right way to think about this is "if we have completed an
+> >> EXECUTE, and not yet received a following SYNC, then report that we are in
+> >> a transaction block"?  But I'm not sure if that breaks any other cases.
+> 
+> > Or, in that case, regarding it as an implicit transaction if multiple commands
+> > are executed in a pipeline as proposed in [1] could be another solution, 
+> > although I have once withdrawn this for not breaking backward compatibility.
+> 
+> I didn't like that patch then and I still don't.  In particular, it's
+> mighty weird to be issuing BeginImplicitTransactionBlock after we've
+> already completed one command of the pipeline.  If that works without
+> obvious warts, it's only accidental.
+
+
+Ok, I agree with that ugly part of my proposal, so I withdraw it again
+if there is another acceptable solution.
+
+
+> Attached is a draft patch along the lines I speculated about above.
+> It breaks backwards compatibility in that PreventInTransactionBlock
+> commands will now be rejected if they're a non-first command in a
+> pipeline.  I think that's okay, and arguably desirable, for HEAD
+
+
+That patch seems good to me. It fixes the problem reported from
+Peter Eisentraut. Also, this seems simple way to define what is
+"pipelining" in the code. 
+
+
+> but I'm pretty uncomfortable about back-patching it.
+
+
+If we want to fix the ANALYZE problem without breaking backward
+compatibility for back-patching, maybe we could fix only
+IsInTransactionBlock and remain PreventInTransactionBlock as it is.
+Obviously, this will break consistency of guarantee between those
+functions, but if we are abandoning it eventually, it might be okay.
+
+
+Anyway, if we change PreventInTransactionBlock to forbid execute
+some DDLs in a pipeline, we also need to modify the doc.
+
+
+> I thought of a variant idea that I think would significantly reduce
+> the risk of breaking working applications, which is to restrict things
+> only in the case of pipelines with previous data-modifying commands.
+> I tried to implement that by having PreventInTransactionBlock test
+> 
+> 	if (GetTopTransactionIdIfAny() != InvalidTransactionId)
+> 
+> but it blew up, because we have various (mostly partitioning-related)
+> DDL commands that run PreventInTransactionBlock only after they've
+> acquired an exclusive lock on something, and LogAccessExclusiveLock
+> gets an XID.  (That was always a horrid POLA-violating kluge that
+> would bite us on the rear someday, and now it has.  But I can't see
+> trying to change that in back branches.)
+> 
+> Something could still be salvaged of the idea, perhaps: we could
+> adjust this patch so that the tests are like
+> 
+> 	if ((MyXactFlags & XACT_FLAGS_PIPELINING) &&
+> 	    GetTopTransactionIdIfAny() != InvalidTransactionId)
+> 
+> Maybe that makes it a small enough hazard to be back-patchable.
+
+
+In this case, DDLs that call PreventInTransactionBlock would be
+allowed in a pipeline if any data-modifying commands are yet executed.
+This specification is a bit complicated and I'm not sure how many
+cases are salvaged by this, but I agree that this will reduce the
+hazard of breaking backward-compatibility.
+
+
+> Another objection that could be raised is the same one I made
+> already, that !IsInTransactionBlock() doesn't provide the same
+> guarantee as PreventInTransactionBlock.  I'm not too happy
+> about that either, but given that we know of no other uses of
+> IsInTransactionBlock besides ANALYZE, maybe it's okay.  I'm
+> not sure it's worth trying to avoid it anyway --- we'd just
+> end up with a probably-dead backwards compatibility stub.
+
+
+One way to fix the ANALYZE problem while maintaining the
+backward-compatibility for third-party tools using IsInTransactionBlock
+might be to rename the function (ex. IsInTransactionBlockWithoutCommit)
+and define a new function with the original name. 
+
+
+For example, define the followin for third party tools,
+
+
+bool IsInTransactionBlock()
+{
+    if (!IsInTransactionBlockWithoutCommit())
+     {
+        MyXactFlags |= XACT_FLAGS_NEEDIMMEDIATECOMMIT;
+        return false;
+     }
+    else
+        return true;
+}
+
+
+and use IsInTransactionBlockWithoutCommit in ANALYZE.
+
+
+Regards,
+Yugo Nagata
+
+
+-- 
+Yugo NAGATA <nagata(at)sraoss(dot)co(dot)jp>
+
+
+
+
+
+### MESSAGE 30
+> Attached is a draft patch along the lines I speculated about above.
+> It breaks backwards compatibility in that PreventInTransactionBlock
+> commands will now be rejected if they're a non-first command in a
+> pipeline.  I think that's okay, and arguably desirable, for HEAD
+> but I'm pretty uncomfortable about back-patching it.
+
+
+I attempted to run these using HEAD, and it fails:
+
+
+    parse: create temporary table t1 (a int) on commit drop
+    bind
+    execute
+    parse: analyze t1
+    bind
+    execute
+    parse: select * from t1
+    bind
+    execute
+    sync
+
+
+It then works fine after applying your patch!
+
+
+Just for some context, this was brought by Peter E. based on an issue
+reported by a customer. They are using PostgreSQL 11, and the issue
+was observed after upgrading to PostgreSQL 11.17, which includes the
+commit 9e3e1ac458abcda5aa03fa2a136e6fa492d58bd6. As a workaround
+they downgraded the binaries to 11.16.
+
+
+It would be great if we can back-patch this to all supported versions,
+as the issue itself is currently affecting them all.
+
+
+Regards,
+Israel.
+
+
+
+### MESSAGE 31
+Israel Barth Rubio <barthisrael(at)gmail(dot)com> writes:
+> It would be great if we can back-patch this to all supported versions,
+> as the issue itself is currently affecting them all.
+
+
+In my mind, this is waiting for Peter to opine on whether it satisfies
+his concern.
+
+
+I'm also looking for input on whether to reject if
+
+
+    if ((MyXactFlags & XACT_FLAGS_PIPELINING) &&
+        GetTopTransactionIdIfAny() != InvalidTransactionId)
+
+
+rather than just the bare
+
+
+    if (MyXactFlags & XACT_FLAGS_PIPELINING)
+
+
+tests in the patch-as-posted.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 32
+On 25.11.22 18:06, Tom Lane wrote:
+> Israel Barth Rubio <barthisrael(at)gmail(dot)com> writes:
+>> It would be great if we can back-patch this to all supported versions,
+>> as the issue itself is currently affecting them all.
+> 
+> In my mind, this is waiting for Peter to opine on whether it satisfies
+> his concern.
+
+
+The case I was working on is the same as Israel's.  He has confirmed 
+that this fixes the issue we have been working on.
+
+
+
+
+
+### MESSAGE 33
+Peter Eisentraut <peter(dot)eisentraut(at)enterprisedb(dot)com> writes:
+> On 25.11.22 18:06, Tom Lane wrote:
+>> In my mind, this is waiting for Peter to opine on whether it satisfies
+>> his concern.
+
+
+> The case I was working on is the same as Israel's.  He has confirmed 
+> that this fixes the issue we have been working on.
+
+
+OK, I'll make this happen soon.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 34
+I wrote:
+> Peter Eisentraut <peter(dot)eisentraut(at)enterprisedb(dot)com> writes:
+>> The case I was working on is the same as Israel's.  He has confirmed 
+>> that this fixes the issue we have been working on.
+
+
+> OK, I'll make this happen soon.
+
+
+Pushed.  I left out the idea of making this conditional on whether
+any preceding command had performed data modification, as that seemed
+to greatly complicate the explanation (since "have we performed any
+data modification" is a rather squishy question from a user's viewpoint).
+
+
+			regards, tom lane
+
+
+

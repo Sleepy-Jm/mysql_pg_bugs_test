@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17370: shmem lost on segfault</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17370-a42a313cf1589256%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-19T03:05:56" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17370: shmem lost on segfault" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="7740bbf026d8ba549bc4d1d886da86bf">BUG #17370: shmem lost on segfault</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202201190305">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17370-a42a313cf1589256@postgresql.org"></a>
+<a name="7740bbf026d8ba549bc4d1d886da86bf"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>rekgrpth(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17370: shmem lost on segfault</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-19 03:05:56</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17370-a42a313cf1589256%40postgresql.org">17370-a42a313cf1589256@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17370-a42a313cf1589256%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17370-a42a313cf1589256%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17370-a42a313cf1589256%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17370-a42a313cf1589256%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17370<br>Logged by:          RekGRpth<br>Email address:      rekgrpth(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   docker alpine<br>Description:        </p>
+
+<p>In developing my <a href="https://github.com/RekGRpth/pg_task" rel="nofollow">https://github.com/RekGRpth/pg_task</a> I found strange<br>behavior of shared memory segment.<br>I setup shared memory segment and give it to background worker, which I<br>start with default restart interval.<br>See<br><a href="https://github.com/RekGRpth/pg_task/blob/d951723b6e556479f9a3fa960a6b3d1fb8f52164/conf.c#L67-L134" rel="nofollow">https://github.com/RekGRpth/pg_task/blob/d951723b6e556479f9a3fa960a6b3d1fb8f52164/conf.c#L67-L134</a><br>And everything works fine, even if background worker exits on error (if for<br>example I drop needed table task), then it restarts and can access to shared<br>memory segment.<br>See<br><a href="https://github.com/RekGRpth/pg_task/blob/d951723b6e556479f9a3fa960a6b3d1fb8f52164/work.c#L742" rel="nofollow">https://github.com/RekGRpth/pg_task/blob/d951723b6e556479f9a3fa960a6b3d1fb8f52164/work.c#L742</a><br>But if third other process terminates by segmentation fault, my background<br>worker restarts fine but can not access to shared memory segment.<br>dsm_attach returns NULL<br>What I need to do to solve this problem?</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220119092828.aiy3sqoa4lwwtm2g@jrouhaud"></a>
+<a name="1ed163f2f60623fc81add1aaade4882b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>rekgrpth(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17370: shmem lost on segfault</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-19 09:28:28</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220119092828.aiy3sqoa4lwwtm2g%40jrouhaud">20220119092828.aiy3sqoa4lwwtm2g@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220119092828.aiy3sqoa4lwwtm2g%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220119092828.aiy3sqoa4lwwtm2g%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220119092828.aiy3sqoa4lwwtm2g%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220119092828.aiy3sqoa4lwwtm2g%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On Wed, Jan 19, 2022 at 03:05:56AM +0000, PG Bug reporting form wrote:<br>&gt; The following bug has been logged on the website:<br>&gt; <br>&gt; Bug reference:      17370<br>&gt; Logged by:          RekGRpth<br>&gt; Email address:      rekgrpth(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.1<br>&gt; Operating system:   docker alpine<br>&gt; Description:        <br>&gt; <br>&gt; In developing my <a href="https://github.com/RekGRpth/pg_task" rel="nofollow">https://github.com/RekGRpth/pg_task</a> I found strange<br>&gt; behavior of shared memory segment.</p>
+
+<p>This is not a postgres bug.  If you need help with developing an extension you<br>should send a message to -hackers.</p>
+
+<p>That being said, in case of unclean shutdown (which happens if a process<br>segfaults), the postmaster will restart and any shared memory will be lost, so<br>I&#x27;m assuming that you somehow serialize a handle which isn&#x27;t valid anymore<br>after a restart, unclean or not.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPgh2mKshsFNZ4mKAYHtjntK9wtaevbJvTp6d0BU=-MbiYCT2w@mail.gmail.com"></a>
+<a name="d8e7e12bf71caa29b3e36bb7618a992c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>RekGRpth &lt;rekgrpth(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17370: shmem lost on segfault</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-19 09:34:13</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPgh2mKshsFNZ4mKAYHtjntK9wtaevbJvTp6d0BU%3D-MbiYCT2w%40mail.gmail.com">CAPgh2mKshsFNZ4mKAYHtjntK9wtaevbJvTp6d0BU=-MbiYCT2w@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPgh2mKshsFNZ4mKAYHtjntK9wtaevbJvTp6d0BU%3D-MbiYCT2w%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPgh2mKshsFNZ4mKAYHtjntK9wtaevbJvTp6d0BU%3D-MbiYCT2w%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPgh2mKshsFNZ4mKAYHtjntK9wtaevbJvTp6d0BU%3D-MbiYCT2w%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPgh2mKshsFNZ4mKAYHtjntK9wtaevbJvTp6d0BU%3D-MbiYCT2w%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Ok, thanks.</p>
+
+<p>What I should do in this case (postmaster restarts my background<br>worker and shared memory is lost)?<br>When I storage in bgw_extra field - everything is ok (with restarting<br>after segfault), but it size too small.</p>
+
+<p>ср, 19 янв. 2022 г. в 14:28, Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;:<br>&gt;<br>&gt; Hi,<br>&gt;<br>&gt; On Wed, Jan 19, 2022 at 03:05:56AM +0000, PG Bug reporting form wrote:<br>&gt; &gt; The following bug has been logged on the website:<br>&gt; &gt;<br>&gt; &gt; Bug reference:      17370<br>&gt; &gt; Logged by:          RekGRpth<br>&gt; &gt; Email address:      rekgrpth(at)gmail(dot)com<br>&gt; &gt; PostgreSQL version: 14.1<br>&gt; &gt; Operating system:   docker alpine<br>&gt; &gt; Description:<br>&gt; &gt;<br>&gt; &gt; In developing my <a href="https://github.com/RekGRpth/pg_task" rel="nofollow">https://github.com/RekGRpth/pg_task</a> I found strange<br>&gt; &gt; behavior of shared memory segment.<br>&gt;<br>&gt; This is not a postgres bug.  If you need help with developing an extension you<br>&gt; should send a message to -hackers.<br>&gt;<br>&gt; That being said, in case of unclean shutdown (which happens if a process<br>&gt; segfaults), the postmaster will restart and any shared memory will be lost, so<br>&gt; I&#x27;m assuming that you somehow serialize a handle which isn&#x27;t valid anymore<br>&gt; after a restart, unclean or not.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220119094607.vdsrbseqfpruuiuk@jrouhaud"></a>
+<a name="8eb08b02246dbe749b3ebe953c0b7f86"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>RekGRpth &lt;rekgrpth(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17370: shmem lost on segfault</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-19 09:46:07</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220119094607.vdsrbseqfpruuiuk%40jrouhaud">20220119094607.vdsrbseqfpruuiuk@jrouhaud</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220119094607.vdsrbseqfpruuiuk%40jrouhaud">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220119094607.vdsrbseqfpruuiuk%40jrouhaud" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220119094607.vdsrbseqfpruuiuk%40jrouhaud" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220119094607.vdsrbseqfpruuiuk%40jrouhaud" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On Wed, Jan 19, 2022 at 02:34:13PM +0500, RekGRpth wrote:<br>&gt; Ok, thanks.<br>&gt; <br>&gt; What I should do in this case (postmaster restarts my background<br>&gt; worker and shared memory is lost)?<br>&gt; When I storage in bgw_extra field - everything is ok (with restarting<br>&gt; after segfault), but it size too small.</p>
+
+<p>I don&#x27;t know, and as I said you should ask on -hackers, ideally with a good<br>description of how everything works or a minimal code to reproduce your<br>problem as it&#x27;s not really clear right now.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

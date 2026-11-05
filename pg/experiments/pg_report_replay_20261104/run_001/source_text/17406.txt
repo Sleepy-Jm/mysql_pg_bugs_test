@@ -1,0 +1,211 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17406
+Logged by:          Victor Yegorov
+Email address:      vyegorov(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Ubuntu 18.04.6 LTS (bionic)
+Description:        
+
+
+KVM guest, on Intel(R) Xeon(R) CPU E5-2697 v2.
+
+
+PostgreSQL 12.9 had been upgraded to 14.2 using
+
+
+pg_upgradecluster -k  -m link 12 main /mnt/postgres/14/
+
+
+After that, one of the queries is crashing with Segmentation Fault.
+However, after REINDEX problem will be fixed. I thought I should report
+still.
+
+
+explain
+SELECT r.id, r.name, r.map_center_y, r.map_center_x,
+       COALESCE ((SELECT string_agg(id::TEXT, ',') FROM v3_region AS r2
+WHERE r2.id != r.id AND r2.ltree_path <@ r.ltree_path), '') AS children
+  FROM v3_region AS r;
+                                                 QUERY PLAN
+-------------------------------------------------------------------------------------------------------------
+ Seq Scan on v3_region r  (cost=0.00..3207.31 rows=349 width=580)
+   SubPlan 1
+     ->  Aggregate  (cost=8.17..8.18 rows=1 width=32)
+           ->  Index Scan using region_ltree_path_idx_gist on v3_region r2 
+(cost=0.14..8.16 rows=1 width=4)
+                 Index Cond: (ltree_path <@ r.ltree_path)
+                 Filter: (id <> r.id)
+(6 rows)
+
+
+Here is backtrace:
+#0  __memmove_sse2_unaligned_erms () at
+../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:435
+#1  0x00007f129244c266 in memcpy (__len=<optimized out>,
+__src=0x55bbbd430f4a, __dest=<optimized out>) at
+/usr/include/x86_64-linux-gnu/bits/string_fortified.h:34
+#2  copy_ltree (src=0x55bbbd430f4a) at
+./build/../contrib/ltree/ltree_gist.c:446
+#3  0x00007f129244db51 in gist_ischild (siglen=28, query=0x55bbbd410cb8,
+key=0x55bbbd430f18) at ./build/../contrib/ltree/ltree_gist.c:454
+#4  ltree_consistent (fcinfo=0x7ffdac2e3e20) at
+./build/../contrib/ltree/ltree_gist.c:674
+#5  0x000055bbbb944a5d in FunctionCall5Coll
+(flinfo=flinfo(at)entry=0x55bbbd416b20, collation=<optimized out>,
+arg1=arg1(at)entry=140727492165472, arg2=<optimized out>, arg3=<optimized out>,
+arg4=<optimized out>, arg5=140727492165471)
+    at ./build/../src/backend/utils/fmgr/fmgr.c:1241
+#6  0x000055bbbb4db72d in gistindex_keytest (recheck_distances_p=<synthetic
+pointer>, recheck_p=<synthetic pointer>, offset=4, page=0x7f1293a45180
+"K\313\003", tuple=0x7f1293a47058, scan=0x55bbbd4196c8)
+    at ./build/../src/backend/access/gist/gistget.c:222
+#7  gistScanPage (scan=scan(at)entry=0x55bbbd4196c8,
+pageItem=pageItem(at)entry=0x7ffdac2e3fe0, myDistances=myDistances(at)entry=0x0,
+tbm=tbm(at)entry=0x0, ntids=ntids(at)entry=0x0) at
+./build/../src/backend/access/gist/gistget.c:438
+#8  0x000055bbbb4dbf43 in gistgettuple (scan=0x55bbbd4196c8, dir=<optimized
+out>) at ./build/../src/backend/access/gist/gistget.c:639
+#9  0x000055bbbb50cb05 in index_getnext_tid (scan=0x55bbbd4196c8,
+direction=<optimized out>) at
+./build/../src/backend/access/index/indexam.c:533
+#10 0x000055bbbb50ccbd in index_getnext_slot
+(scan=scan(at)entry=0x55bbbd4196c8,
+direction=direction(at)entry=ForwardScanDirection,
+slot=slot(at)entry=0x55bbbd4057a0) at
+./build/../src/backend/access/index/indexam.c:625
+#11 0x000055bbbb6a3042 in IndexNext (node=node(at)entry=0x55bbbd405500) at
+./build/../src/backend/executor/nodeIndexscan.c:133
+#12 0x000055bbbb688281 in ExecScanFetch (recheckMtd=0x55bbbb6a38a0
+<IndexRecheck>, accessMtd=0x55bbbb6a2fd0 <IndexNext>, node=0x55bbbd405500)
+at ./build/../src/backend/executor/execScan.c:133
+#13 ExecScan (node=0x55bbbd405500, accessMtd=0x55bbbb6a2fd0 <IndexNext>,
+recheckMtd=0x55bbbb6a38a0 <IndexRecheck>) at
+./build/../src/backend/executor/execScan.c:199
+#14 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd405500) at
+./build/../src/backend/executor/execProcnode.c:479
+#15 0x000055bbbb68fb9c in ExecProcNode (node=0x55bbbd405500) at
+./build/../src/include/executor/executor.h:257
+#16 fetch_input_tuple (aggstate=aggstate(at)entry=0x55bbbd404ed8) at
+./build/../src/backend/executor/nodeAgg.c:581
+#17 0x000055bbbb692c19 in agg_retrieve_direct (aggstate=0x55bbbd404ed8) at
+./build/../src/backend/executor/nodeAgg.c:2364
+#18 ExecAgg (pstate=0x55bbbd404ed8) at
+./build/../src/backend/executor/nodeAgg.c:2179
+#19 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd404ed8) at
+./build/../src/backend/executor/execProcnode.c:479
+#20 0x000055bbbb6b14a1 in ExecProcNode (node=0x55bbbd404ed8) at
+./build/../src/include/executor/executor.h:257
+#21 ExecScanSubPlan (isNull=0x55bbbd4153dd, econtext=0x55bbbd414c00,
+node=0x55bbbd415c70) at ./build/../src/backend/executor/nodeSubplan.c:323
+#22 ExecSubPlan (node=node(at)entry=0x55bbbd415c70,
+econtext=econtext(at)entry=0x55bbbd414c00, isNull=0x55bbbd4153dd) at
+./build/../src/backend/executor/nodeSubplan.c:89
+#23 0x000055bbbb678ebd in ExecEvalSubPlan (state=state(at)entry=0x55bbbd4153d8,
+op=op(at)entry=0x55bbbd415618, econtext=econtext(at)entry=0x55bbbd414c00) at
+./build/../src/backend/executor/execExprInterp.c:3932
+#24 0x000055bbbb679b42 in ExecInterpExpr (state=0x55bbbd4153d8,
+econtext=0x55bbbd414c00, isnull=<optimized out>) at
+./build/../src/backend/executor/execExprInterp.c:1564
+#25 0x000055bbbb6883d2 in ExecEvalExprSwitchContext (isNull=0x7ffdac2e4457,
+econtext=0x55bbbd414c00, state=0x55bbbd4153d8) at
+./build/../src/include/executor/executor.h:339
+#26 ExecProject (projInfo=0x55bbbd4153d0) at
+./build/../src/include/executor/executor.h:373
+#27 ExecScan (node=<optimized out>, accessMtd=0x55bbbb6afe20 <SeqNext>,
+recheckMtd=0x55bbbb6afdf0 <SeqRecheck>) at
+./build/../src/backend/executor/execScan.c:238
+#28 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd414af0) at
+./build/../src/backend/executor/execProcnode.c:479
+#29 0x000055bbbb67e34d in ExecProcNode (node=0x55bbbd414af0) at
+./build/../src/include/executor/executor.h:257
+#30 ExecutePlan (execute_once=<optimized out>, dest=0x55bbbbdbf260
+<donothingDR>, direction=<optimized out>, numberTuples=0,
+sendTuples=<optimized out>, operation=CMD_SELECT,
+use_parallel_mode=<optimized out>, planstate=0x55bbbd414af0,
+    estate=0x55bbbd404c58) at
+./build/../src/backend/executor/execMain.c:1551
+#31 standard_ExecutorRun (queryDesc=0x55bbbd4037c8, direction=<optimized
+out>, count=0, execute_once=<optimized out>) at
+./build/../src/backend/executor/execMain.c:361
+#32 0x00007f13269e0595 in pgss_ExecutorRun (queryDesc=0x55bbbd4037c8,
+direction=ForwardScanDirection, count=0, execute_once=<optimized out>) at
+./build/../contrib/pg_stat_statements/pg_stat_statements.c:1003
+#33 0x000055bbbb60c3e8 in ExplainOnePlan
+(plannedstmt=plannedstmt(at)entry=0x55bbbd402018, into=into(at)entry=0x0,
+es=es(at)entry=0x55bbbd2e0f78,
+    queryString=queryString(at)entry=0x55bbbd289148 "explain (analyze, buffers)
+SELECT\n", ' ' <repeats 24 times>, "r.id,\n", ' ' <repeats 24 times>,
+"r.name,\n", ' ' <repeats 24 times>, "r.map_center_y,\n", ' ' <repeats 24
+times>, "r.map_center_x,\n", ' '
+<repeats 24 times>..., params=params(at)entry=0x0, queryEnv=<optimized out>,
+planduration=0x7ffdac2e4700, bufusage=0x7ffdac2e4780) at
+./build/../src/backend/commands/explain.c:593
+#34 0x000055bbbb60c7da in ExplainOneQuery (query=<optimized out>,
+cursorOptions=<optimized out>, into=0x0, es=0x55bbbd2e0f78,
+    queryString=0x55bbbd289148 "explain (analyze, buffers) SELECT\n", ' '
+<repeats 24 times>, "r.id,\n", ' ' <repeats 24 times>, "r.name,\n", ' '
+<repeats 24 times>, "r.map_center_y,\n", ' ' <repeats 24 times>,
+"r.map_center_x,\n", ' ' <repeats 24 times>..., params=0x0, queryEnv=0x0) at
+./build/../src/backend/commands/explain.c:410
+#35 0x000055bbbb60ce7d in ExplainQuery (pstate=pstate(at)entry=0x55bbbd3a0230,
+stmt=stmt(at)entry=0x55bbbd3b7840, params=params(at)entry=0x0,
+dest=dest(at)entry=0x55bbbd3a01a0) at
+./build/../src/backend/commands/explain.c:281
+#36 0x000055bbbb806783 in standard_ProcessUtility
+(pstmt=pstmt(at)entry=0x55bbbd3b7fa8,
+    queryString=queryString(at)entry=0x55bbbd289148 "explain (analyze, buffers)
+SELECT\n", ' ' <repeats 24 times>, "r.id,\n", ' ' <repeats 24 times>,
+"r.name,\n", ' ' <repeats 24 times>, "r.map_center_y,\n", ' ' <repeats 24
+times>, "r.map_center_x,\n", ' '
+<repeats 24 times>..., readOnlyTree=<optimized out>,
+context=context(at)entry=PROCESS_UTILITY_TOPLEVEL, params=params(at)entry=0x0,
+queryEnv=queryEnv(at)entry=0x0, dest=0x55bbbd3a01a0, qc=0x7ffdac2e4c70) at
+./build/../src/backend/tcop/utility.c:862
+#37 0x00007f13269e2221 in pgss_ProcessUtility (pstmt=0x55bbbd3b7fa8,
+    queryString=0x55bbbd289148 "explain (analyze, buffers) SELECT\n", ' '
+<repeats 24 times>, "r.id,\n", ' ' <repeats 24 times>, "r.name,\n", ' '
+<repeats 24 times>, "r.map_center_y,\n", ' ' <repeats 24 times>,
+"r.map_center_x,\n", ' ' <repeats 24 times>..., readOnlyTree=<optimized
+out>, context=PROCESS_UTILITY_TOPLEVEL, params=0x0, queryEnv=0x0,
+dest=0x55bbbd3a01a0, qc=0x7ffdac2e4c70) at
+./build/../contrib/pg_stat_statements/pg_stat_statements.c:1135
+#38 0x000055bbbb804935 in PortalRunUtility
+(portal=portal(at)entry=0x55bbbd373888, pstmt=0x55bbbd3b7fa8,
+isTopLevel=isTopLevel(at)entry=true,
+setHoldSnapshot=setHoldSnapshot(at)entry=true, dest=dest(at)entry=0x55bbbd3a01a0,
+qc=qc(at)entry=0x7ffdac2e4c70)
+    at ./build/../src/backend/tcop/pquery.c:1155
+#39 0x000055bbbb804cab in FillPortalStore
+(portal=portal(at)entry=0x55bbbd373888, isTopLevel=isTopLevel(at)entry=true) at
+./build/../src/backend/tcop/pquery.c:1028
+#40 0x000055bbbb8050bf in PortalRun (portal=portal(at)entry=0x55bbbd373888,
+count=count(at)entry=9223372036854775807, isTopLevel=isTopLevel(at)entry=true,
+run_once=run_once(at)entry=true, dest=dest(at)entry=0x55bbbd3cec48,
+altdest=altdest(at)entry=0x55bbbd3cec48,
+    qc=0x7ffdac2e4e80) at ./build/../src/backend/tcop/pquery.c:760
+#41 0x000055bbbb8008e9 in exec_simple_query (
+    query_string=0x55bbbd289148 "explain (analyze, buffers) SELECT\n", ' '
+<repeats 24 times>, "r.id,\n", ' ' <repeats 24 times>, "r.name,\n", ' '
+<repeats 24 times>, "r.map_center_y,\n", ' ' <repeats 24 times>,
+"r.map_center_x,\n", ' ' <repeats 24 times>...) at
+./build/../src/backend/tcop/postgres.c:1214
+#42 0x000055bbbb802c4c in PostgresMain (argc=argc(at)entry=1,
+argv=argv(at)entry=0x7ffdac2e5340, dbname=<optimized out>, username=<optimized
+out>) at ./build/../src/backend/tcop/postgres.c:4486
+#43 0x000055bbbb775e2a in BackendRun (port=<optimized out>, port=<optimized
+out>) at ./build/../src/backend/postmaster/postmaster.c:4530
+#44 BackendStartup (port=<optimized out>) at
+./build/../src/backend/postmaster/postmaster.c:4252
+#45 ServerLoop () at ./build/../src/backend/postmaster/postmaster.c:1745
+#46 0x000055bbbb776c68 in PostmasterMain (argc=5, argv=0x55bbbd281d90) at
+./build/../src/backend/postmaster/postmaster.c:1417
+#47 0x000055bbbb4af83b in main (argc=5, argv=0x55bbbd281d90) at
+./build/../src/backend/main/main.c:209
+
+
+I can reproduce the issue easily, if you need more details.
+
+
+

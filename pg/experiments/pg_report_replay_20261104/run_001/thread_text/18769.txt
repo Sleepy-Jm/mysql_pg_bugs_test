@@ -1,0 +1,197 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18769
+Logged by:          Laurenz Albe
+Email address:      laurenz(dot)albe(at)cybertec(dot)at
+PostgreSQL version: 17.2
+Operating system:   any
+Description:        
+
+
+For whatever reason, the "ldapscheme" option was forgotten in the function
+pg_hba_file_rules().
+
+
+
+
+
+### MESSAGE 1
+On Thu, 2025-01-09 at 09:45 +0000, PG Bug reporting form wrote:
+> For whatever reason, the "ldapscheme" option was forgotten in the function
+> pg_hba_file_rules().
+
+
+Here is a patch to fix the omission.
+
+
+Yours,
+Laurenz Albe
+
+
+
+### MESSAGE 2
+On Thu, 2025-01-09 at 10:54 +0100, Laurenz Albe wrote:
+> On Thu, 2025-01-09 at 09:45 +0000, PG Bug reporting form wrote:
+> > For whatever reason, the "ldapscheme" option was forgotten in the function
+> > pg_hba_file_rules().
+> 
+> Here is a patch to fix the omission.
+
+
+v2 of the patch has a correct "discussion" URL in the commit message;
+otherwise it is unchanged.
+
+
+Yours,
+Laurenz Albe
+
+
+
+### MESSAGE 3
+> On 9 Jan 2025, at 11:00, Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at> wrote:
+> 
+> On Thu, 2025-01-09 at 10:54 +0100, Laurenz Albe wrote:
+>> On Thu, 2025-01-09 at 09:45 +0000, PG Bug reporting form wrote:
+>>> For whatever reason, the "ldapscheme" option was forgotten in the function
+>>> pg_hba_file_rules().
+>> 
+>> Here is a patch to fix the omission.
+> 
+> v2 of the patch has a correct "discussion" URL in the commit message;
+> otherwise it is unchanged.
+
+
+LGTM.
+
+
+--
+Daniel Gustafsson
+
+
+
+
+
+### MESSAGE 4
+On Thu, 2025-01-09 at 13:09 +0100, Daniel Gustafsson wrote:
+> > On Thu, 2025-01-09 at 10:54 +0100, Laurenz Albe wrote:
+> > > On Thu, 2025-01-09 at 09:45 +0000, PG Bug reporting form wrote:
+> > > > For whatever reason, the "ldapscheme" option was forgotten in the function
+> > > > pg_hba_file_rules().
+> > > 
+> > > Here is a patch to fix the omission.
+> 
+> LGTM.
+
+
+Do you want to commit it, or should I add it to the next commitfest?
+
+
+Yours,
+Laurenz Albe
+
+
+
+
+
+### MESSAGE 5
+> On 10 Jan 2025, at 09:00, Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at> wrote:
+> 
+> On Thu, 2025-01-09 at 13:09 +0100, Daniel Gustafsson wrote:
+>>> On Thu, 2025-01-09 at 10:54 +0100, Laurenz Albe wrote:
+>>>> On Thu, 2025-01-09 at 09:45 +0000, PG Bug reporting form wrote:
+>>>>> For whatever reason, the "ldapscheme" option was forgotten in the function
+>>>>> pg_hba_file_rules().
+>>>> 
+>>>> Here is a patch to fix the omission.
+>> 
+>> LGTM.
+> 
+> Do you want to commit it, or should I add it to the next commitfest?
+
+
+I'm planning to do it today, so no need to add it. Thanks!
+
+
+--
+Daniel Gustafsson
+
+
+
+
+
+### MESSAGE 6
+Daniel Gustafsson <daniel(at)yesql(dot)se> writes:
+> I'm planning to do it today, so no need to add it. Thanks!
+
+
+Our weekly Coverity run complained about this in all branches:
+
+
+*** CID 181934:  Memory - corruptions  (OVERRUN)
+/srv/coverity/git/pgsql-git/13stable/src/backend/libpq/hba.c: 2368 in gethba_options()
+2362     		if (hba->ldapsearchfilter)
+2363     			options[noptions++] =
+2364     				CStringGetTextDatum(psprintf("ldapsearchfilter=%s",
+2365     											 hba->ldapsearchfilter));
+2366     
+2367     		if (hba->ldapscope)
+>>>     CID 181934:  Memory - corruptions  (OVERRUN)
+>>>     Overrunning array "options" of 14 8-byte elements at element index 14 (byte offset 119) using index "noptions++" (which evaluates to 14).
+2368     			options[noptions++] =
+2369     				CStringGetTextDatum(psprintf("ldapscope=%d", hba->ldapscope));
+2370     	}
+2371     
+2372     	if (hba->auth_method == uaRADIUS)
+2373     	{
+
+
+Looks like you should have increased MAX_HBA_OPTIONS.  The comment
+just above that macro needs work too.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 7
+> On 12 Jan 2025, at 16:55, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+> 
+> Daniel Gustafsson <daniel(at)yesql(dot)se> writes:
+>> I'm planning to do it today, so no need to add it. Thanks!
+> 
+> Our weekly Coverity run complained about this in all branches:
+> 
+> *** CID 181934:  Memory - corruptions  (OVERRUN)
+> /srv/coverity/git/pgsql-git/13stable/src/backend/libpq/hba.c: 2368 in gethba_options()
+> 2362      if (hba->ldapsearchfilter)
+> 2363      options[noptions++] =
+> 2364      CStringGetTextDatum(psprintf("ldapsearchfilter=%s",
+> 2365      hba->ldapsearchfilter));
+> 2366     
+> 2367      if (hba->ldapscope)
+>>>>    CID 181934:  Memory - corruptions  (OVERRUN)
+>>>>    Overrunning array "options" of 14 8-byte elements at element index 14 (byte offset 119) using index "noptions++" (which evaluates to 14).
+> 2368      options[noptions++] =
+> 2369      CStringGetTextDatum(psprintf("ldapscope=%d", hba->ldapscope));
+> 2370      }
+> 2371     
+> 2372      if (hba->auth_method == uaRADIUS)
+> 2373      {
+> 
+> Looks like you should have increased MAX_HBA_OPTIONS.  The comment
+> just above that macro needs work too.
+
+
+Ugh, I missed that when reading over the function.  Thanks for the report, I'll
+get it fixed tonight.
+
+
+--
+Daniel Gustafsson
+
+
+

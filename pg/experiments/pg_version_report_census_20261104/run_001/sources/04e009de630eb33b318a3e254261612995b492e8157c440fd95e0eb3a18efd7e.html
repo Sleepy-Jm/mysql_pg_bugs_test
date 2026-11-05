@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18812: Conditional rule: inconsistent check for statement</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/18812-565809b4823e2b68%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-02-14T21:00:09" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18812: Conditional rule: inconsistent check for statement" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 18812 Logged by: Boris Korzun Email address: drtr0jan@yandex.ru PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #18812: Conditional rule: inconsistent check for statement</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>drtr0jan(at)yandex(dot)ru</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18812: Conditional rule: inconsistent check for statement</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-14 21:00:09</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18812-565809b4823e2b68%40postgresql.org">18812-565809b4823e2b68@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18812-565809b4823e2b68%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18812-565809b4823e2b68%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18812-565809b4823e2b68%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18812-565809b4823e2b68%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="18812-565809b4823e2b68%40postgresql.org" selected="selected">2025-02-14 21:00:09 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="3914796.1739573714%40sss.pgh.pa.us">&nbsp;2025-02-14 22:55:14 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="29274cc1-26fa-4382-ae14-60e771d89699%40yandex.ru">&nbsp;&nbsp;2025-02-17 10:58:12 from &quot;Boris P(dot) Korzun&quot; &lt;drtr0jan(at)yandex(dot)ru&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18812<br>Logged by:          Boris Korzun<br>Email address:      drtr0jan(at)yandex(dot)ru<br>PostgreSQL version: 17.2<br>Operating system:   FreeBSD 14-stable<br>Description:        </p>
+
+<p>Conditional rule checks underlying table for the types ignoring the<br>statement.</p>
+
+<p>-----<br>CREATE TABLE t<br>(<br>    c varchar(10) NOT NULL<br>);</p>
+
+<p>CREATE VIEW v AS<br>SELECT NULL::text AS c<br>FROM t;</p>
+
+<p>CREATE RULE &quot;insert&quot; AS ON INSERT TO v<br>    WHERE FALSE<br>    DO INSTEAD<br>    INSERT INTO t (c)<br>    VALUES (new.c);</p>
+
+<p>CREATE RULE &quot;skip&quot; AS ON INSERT TO v DO INSTEAD NOTHING;<br>-----</p>
+
+<p>I&#x27;ve two rules for a view - unconditional INSTEAD (skip) and conditional<br>INSTEAD (always FALSE). But if I trying to insert a type mismatched data to<br>the view, I&#x27;ve got a type constraint error.</p>
+
+<p>-----<br>INSERT INTO v (c) VALUES (&#x27;testtesttest&#x27;);<br>-----<br>[22001] ERROR: value too long for type character varying(10)<br>-----</p>
+
+<p>Why? It seems like a bug.</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/3914796.1739573714%40sss.pgh.pa.us">Re: BUG #18812: Conditional rule: inconsistent check for statement</a> at 2025-02-14 22:55:14 from Tom Lane
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/3914796.1739573714%40sss.pgh.pa.us">Next Message</a></th>
+            <td>Tom Lane</td>
+            <td>2025-02-14 22:55:14</td>
+            <td><a href="/message-id/3914796.1739573714%40sss.pgh.pa.us">Re: BUG #18812: Conditional rule: inconsistent check for statement</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/3663282.1739467987%40sss.pgh.pa.us">Previous Message</a></th>
+            <td>Tom Lane</td>
+            <td>2025-02-13 17:33:07</td>
+            <td><a href="/message-id/3663282.1739467987%40sss.pgh.pa.us">Re: Major Version Upgrade failure due to orphan roles entries in catalog</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

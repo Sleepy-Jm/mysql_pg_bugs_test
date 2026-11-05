@@ -1,0 +1,326 @@
+[
+  {
+    "report_id": "17428",
+    "scenario_id": "17428_revision1",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17428-848dee31a3b899ab%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table mytable (\n    id serial,\n    other int\n);\nselect (select count(*) from mytable), last_value from mytable_id_seq; -- 0 (displayed expected output removed)\ninsert into mytable (other) values (0);\nselect (select count(*) from mytable), last_value from mytable_id_seq; -- 1 (displayed expected output removed)\ninsert into mytable (other) values (0);\nselect (select count(*) from mytable), last_value from mytable_id_seq; -- 2 (displayed expected output removed)\ninsert into mytable (other) values (0);\nselect (select count(*) from mytable), last_value from mytable_id_seq; -- 3 (displayed expected output removed)",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17428.txt",
+        "start_offset": 682,
+        "end_offset": 1173,
+        "start_line": 30,
+        "end_line": 45,
+        "excerpt_sha256": "448a9ac213eca4f30a8ea1b66f229d8d243836e44c8557382cd41f5ad84583b7",
+        "transformations": [
+          "trim outer whitespace",
+          "remove wrapped demonstration-output comment continuation; do not change executable SQL or frozen oracle"
+        ]
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "output",
+      "pattern": "(?s)0\\|1.*1\\|1.*2\\|2.*3\\|3",
+      "reported_phenomenon": "未调用序列时 count=0、last_value=1，后续计数一致",
+      "author_expected_behavior": "作者期望未调用序列值为0"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "supersedes_spec_sha256": "c547bb19192fe54aaaf12ef26c82c713585cfb3b1aa9e2c050820c0657b16a54",
+    "revision_reason": "presentation line wrap left bare numeric expected-output fragments before INSERT; source correction only",
+    "spec_sha256": "2a3350c2a6bb8497690bf471408e7434842cfd7dafd9874110f897b839f0ebd8"
+  },
+  {
+    "report_id": "17443",
+    "scenario_id": "17443_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17443-543da4d6744b8ef2%40postgresql.org",
+    "parts": [
+      {
+        "text": "create temp table teste as\n  select s::int as id1, s::int as id2, quote_ident('Nome ' || to_char(s,\n'FM00000000'))::varchar(15) as nome\n    from generate_series(1,10000000) x(s);\n\n\ncreate index teste1 on teste (id1);\ncreate index teste2 on teste using brin (id2);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17443.txt",
+        "start_offset": 350,
+        "end_offset": 616,
+        "start_line": 16,
+        "end_line": 26,
+        "excerpt_sha256": "4e080255524bbfa25bb0e929c235d72f26113052974c73d861b57ede4f91b753",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "EXPLAIN (analyze on, wal on, verbose on, format text)\n  select id2 from teste where id2 = 1000000;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17443.txt",
+        "start_offset": 717,
+        "end_offset": 815,
+        "start_line": 29,
+        "end_line": 30,
+        "excerpt_sha256": "71ec3d86d22876bf614250f1200e0674a0080e75b256e6badc55656c43111d6a",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "output",
+      "pattern": "Seq Scan on pg_temp\\.teste",
+      "reported_phenomenon": "默认 enable_seqscan=on 时 id2 查询使用顺序扫描",
+      "author_expected_behavior": "作者希望使用 BRIN 索引"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 180,
+    "preparation_status": "ready",
+    "spec_sha256": "e3fc3c2b72d709257f8a9dca55af5af932762979f47f1275f083098c65a2b45e"
+  },
+  {
+    "report_id": "18802",
+    "scenario_id": "18802_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18802-76811f468ad4c4cd%40postgresql.org",
+    "parts": [
+      {
+        "text": "set log_statement to \"all\";",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18802.txt",
+        "start_offset": 227,
+        "end_offset": 254,
+        "start_line": 12,
+        "end_line": 12,
+        "excerpt_sha256": "8cf542d4d2028dd0fd207272380df8b5bfc85e2ca48603c6ca691ed7c84e9766",
+        "transformations": []
+      },
+      {
+        "text": "create user some_user password '123456';",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18802.txt",
+        "start_offset": 257,
+        "end_offset": 297,
+        "start_line": 15,
+        "end_line": 15,
+        "excerpt_sha256": "49c2f953ed090e21c8d39c6d4f390890b1cc8eb6f97b187dc1eba8291fe425f4",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "log",
+      "pattern": "statement: create user some_user password '123456';",
+      "reported_phenomenon": "log_statement=all 将报告示例口令写入日志",
+      "author_expected_behavior": "作者询问是否预期行为；未给出应有行为断言"
+    },
+    "config": {},
+    "notes": "123456 是报告公开测试字面量，不是服务器凭据。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "c0068b0b92595483c0dba68b57b0164f2296e897e371f44f698c149d36df8bc9"
+  },
+  {
+    "report_id": "18792",
+    "scenario_id": "18792_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18792-1d848ad538b1033c%40postgresql.org",
+    "parts": [
+      {
+        "text": "alter system set synchronized_standby_slots='standby_slot';",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18792.txt",
+        "start_offset": 448,
+        "end_offset": 507,
+        "start_line": 19,
+        "end_line": 19,
+        "excerpt_sha256": "7044eaf91f2f5e7c4efe1176c0ccf306b21cb670017af7efb20f361324d58dea",
+        "transformations": []
+      },
+      {
+        "text": "select pg_reload_conf();",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18792.txt",
+        "start_offset": 532,
+        "end_offset": 556,
+        "start_line": 21,
+        "end_line": 21,
+        "excerpt_sha256": "cd7a852829ce5bdbfb3ae50c8610d1733cfbf50dc3d80dec3fbaae509b0f80b8",
+        "transformations": []
+      }
+    ],
+    "mode": "psql",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "system logger process .*terminated by signal 11",
+      "reported_phenomenon": "修改 synchronized_standby_slots 并 reload 导致 logger SIGSEGV",
+      "author_expected_behavior": "logger 不崩溃"
+    },
+    "config": {
+      "logging_collector": "on",
+      "log_directory": "'log'",
+      "log_filename": "'replay.log'"
+    },
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "observation_delay": 3,
+    "spec_sha256": "9ff252087ad82fc446b2a8e12fcabc4d9b13e281abb72d19b8790f8c0e178df0"
+  },
+  {
+    "report_id": "17355",
+    "scenario_id": "17355_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17355-de8e362eb7001a96%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE EXTENSION postgres_fdw;\n\n\nCREATE SERVER testserver1 FOREIGN DATA WRAPPER postgres_fdw;\nDO $d$\n    BEGIN\n        EXECUTE $$CREATE SERVER loopback FOREIGN DATA WRAPPER postgres_fdw\n            OPTIONS (dbname '$$||current_database()||$$',\n                     port '$$||current_setting('port')||$$'\n            )$$;\n    END;\n$d$;\n\n\nCREATE USER MAPPING FOR CURRENT_USER SERVER loopback;\nCREATE TABLE async_pt (a int, b int) PARTITION BY RANGE (a);\nCREATE TABLE base_tbl2 (a int, b int);\nCREATE FOREIGN TABLE async_p2 PARTITION OF async_pt FOR VALUES FROM (2000)\nTO (3000)\n  SERVER loopback OPTIONS (table_name 'base_tbl2');\nCREATE TABLE async_p3 PARTITION OF async_pt FOR VALUES FROM (3000) TO\n(4000);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17355.txt",
+        "start_offset": 357,
+        "end_offset": 1062,
+        "start_line": 15,
+        "end_line": 36,
+        "excerpt_sha256": "00763610884c226c69574109a00bbf557c8b029eed168878dd24afff993840c1",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      },
+      {
+        "text": "INSERT INTO async_pt SELECT i FROM generate_series(3000, 3100) i;\nDELETE FROM async_pt;\nUPDATE async_pt SET a = a;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17355.txt",
+        "start_offset": 1135,
+        "end_offset": 1249,
+        "start_line": 42,
+        "end_line": 44,
+        "excerpt_sha256": "273bbf19a1355531eb5b6b7e575d697c9baa9847f78131f4562ebd3bafe44bd0",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "concurrent",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal 11",
+      "reported_phenomenon": "20 并发会话 INSERT/DELETE/UPDATE 外部分区导致 SIGSEGV",
+      "author_expected_behavior": "不发生服务进程崩溃"
+    },
+    "config": {
+      "max_connections": "100"
+    },
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "workers": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "spec_sha256": "9b1ab977c37c807567ca010359c550910099d724c99f6c931f9a2c2873c80889"
+  },
+  {
+    "report_id": "17372",
+    "scenario_id": "17372_main",
+    "target_version": "14.1",
+    "source_url": "https://www.postgresql.org/message-id/17372-bf3b6e947e35ae77%40postgresql.org",
+    "parts": [
+      {
+        "text": "CREATE TABLE ab1 (a INTEGER, b INTEGER, c INTEGER);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17372.txt",
+        "start_offset": 304,
+        "end_offset": 355,
+        "start_line": 13,
+        "end_line": 13,
+        "excerpt_sha256": "d9b5274843a6185f04c2b2067122cfd1dc58889626a431d1d1f86ca567f98c8b",
+        "transformations": []
+      },
+      {
+        "text": "CREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;\nCREATE STATISTICS ab1_a_b_stats ON a, b FROM\nab1; DROP STATISTICS ab1_a_b_stats;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17372.txt",
+        "start_offset": 432,
+        "end_offset": 512,
+        "start_line": 16,
+        "end_line": 17,
+        "excerpt_sha256": "11ab2deccb77be8912b3a8a8a67a4e46d45855685ae2cc14db2c731233cd04f4",
+        "transformations": [
+          "expand source seq 20 loop"
+        ]
+      },
+      {
+        "text": "ALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;\nALTER STATISTICS ab1_a_b_stats SET\nSTATISTICS -1;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17372.txt",
+        "start_offset": 581,
+        "end_offset": 630,
+        "start_line": 18,
+        "end_line": 19,
+        "excerpt_sha256": "d7613f800acd6eeb5c190fb78465f1b37b8a021adf0dc5dadc701a15a5fdd24f",
+        "transformations": [
+          "expand source seq 20 loop"
+        ]
+      }
+    ],
+    "mode": "concurrent",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "terminated by signal 11",
+      "reported_phenomenon": "并发删除和修改扩展统计导致 SIGSEGV",
+      "author_expected_behavior": "不崩溃"
+    },
+    "config": {},
+    "notes": "",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "workers": [
+      1,
+      2
+    ],
+    "iterations": 100,
+    "iteration_delay": 2,
+    "spec_sha256": "40cc71ba290b69d02dd3496db42123a553f85b4de40e8d6c71c0d67225b4b50c"
+  },
+  {
+    "report_id": "17698",
+    "scenario_id": "17698_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17698-58a6ab8caec496b0%40postgresql.org",
+    "parts": [
+      {
+        "text": "select pg_sleep(1234);",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17698.txt",
+        "start_offset": 309,
+        "end_offset": 330,
+        "start_line": 13,
+        "end_line": 13,
+        "excerpt_sha256": "b7e63594bfa6a41a8d0be8fdebec39a9d91b88099ccf87aad29ef3a5ed437606",
+        "transformations": [
+          "append SQL terminator at excerpt boundary"
+        ]
+      }
+    ],
+    "mode": "signal_client",
+    "oracle": {
+      "kind": "output",
+      "pattern": "^1$",
+      "reported_phenomenon": "SIGTERM 终止 psql 后查询仍活动",
+      "author_expected_behavior": "psql 退出前应取消正在执行的查询"
+    },
+    "config": {
+      "listen_addresses": "'127.0.0.1'"
+    },
+    "notes": "诊断查询 pg_stat_activity 只观测本任务 PGAPPNAME；退出后停止隔离集群。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "spec_sha256": "4b5aa274bab18689e4ad9e0fa3f415470870f26e3bf5afb3aa1bdc75ece937d5"
+  }
+]

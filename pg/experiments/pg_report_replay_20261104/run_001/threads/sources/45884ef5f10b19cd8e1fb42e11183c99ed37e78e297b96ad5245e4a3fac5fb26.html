@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17473: Custom range type with timestamp doesn&#x27;t respect precision</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17473-0b8caedccc6ee7b1%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-04-29T19:19:27" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17473: Custom range type with timestamp doesn&#x27;t respect precision" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="74d0c9fe740befbe2e5e20371d937f67">BUG #17473: Custom range type with timestamp doesn&#x27;t respect precision</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202204291919">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17473-0b8caedccc6ee7b1@postgresql.org"></a>
+<a name="74d0c9fe740befbe2e5e20371d937f67"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>cwikla(at)puzzle(dot)io</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17473: Custom range type with timestamp doesn&#x27;t respect precision</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-29 19:19:27</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17473-0b8caedccc6ee7b1%40postgresql.org">17473-0b8caedccc6ee7b1@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17473-0b8caedccc6ee7b1%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17473-0b8caedccc6ee7b1%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17473-0b8caedccc6ee7b1%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17473-0b8caedccc6ee7b1%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17473<br>Logged by:          John Cwikla<br>Email address:      cwikla(at)puzzle(dot)io<br>PostgreSQL version: 14.2<br>Operating system:   Debian 14.2-1.pgdg110+1<br>Description:        </p>
+
+<p>Are range types supposed to respect precision? There is no mention of<br>precision in the documents that I can find, and it doesn&#x27;t seem to be the<br>case for timestamps.</p>
+
+<p>psql (14.2 (Debian 14.2-1.pgdg110+1))<br>SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits:<br>256, compression: off)<br>Type &quot;help&quot; for help.</p>
+
+<p>postgres=&gt; CREATE TYPE tstzrange3 AS RANGE ( subtype = timestamp(3) with<br>time zone);<br>CREATE TYPE<br>postgres=&gt; select tstzrange3(NOW(), NULL);<br>             tstzrange3<br>------------------------------------<br> [&quot;2022-04-29 19:11:31.920322+00&quot;,)<br>(1 row)</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwbKCL2C_B28MSpH4GedE5HsHJq3npReTGZPiibWRkgt8w@mail.gmail.com"></a>
+<a name="de49f09385cd8ff57aad9dab90e162ad"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>cwikla(at)puzzle(dot)io,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17473: Custom range type with timestamp doesn&#x27;t respect precision</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-29 21:20:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwbKCL2C_B28MSpH4GedE5HsHJq3npReTGZPiibWRkgt8w%40mail.gmail.com">CAKFQuwbKCL2C_B28MSpH4GedE5HsHJq3npReTGZPiibWRkgt8w@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwbKCL2C_B28MSpH4GedE5HsHJq3npReTGZPiibWRkgt8w%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwbKCL2C_B28MSpH4GedE5HsHJq3npReTGZPiibWRkgt8w%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwbKCL2C_B28MSpH4GedE5HsHJq3npReTGZPiibWRkgt8w%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwbKCL2C_B28MSpH4GedE5HsHJq3npReTGZPiibWRkgt8w%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Apr 29, 2022 at 1:53 PM PG Bug reporting form &lt;<br>noreply(at)postgresql(dot)org&gt; wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17473<br>&gt; Logged by:          John Cwikla<br>&gt; Email address:      cwikla(at)puzzle(dot)io<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   Debian 14.2-1.pgdg110+1<br>&gt; Description:<br>&gt;<br>&gt; Are range types supposed to respect precision? There is no mention of<br>&gt; precision in the documents that I can find, and it doesn&#x27;t seem to be the<br>&gt; case for timestamps.<br>&gt;<br>&gt; psql (14.2 (Debian 14.2-1.pgdg110+1))<br>&gt; SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits:<br>&gt; 256, compression: off)<br>&gt; Type &quot;help&quot; for help.<br>&gt;<br>&gt; postgres=&gt; CREATE TYPE tstzrange3 AS RANGE ( subtype = timestamp(3) with<br>&gt; time zone);<br>&gt; CREATE TYPE<br>&gt; postgres=&gt; select tstzrange3(NOW(), NULL);<br>&gt;              tstzrange3<br>&gt; ------------------------------------<br>&gt;  [&quot;2022-04-29 19:11:31.920322+00&quot;,)<br>&gt; (1 row)<br>&gt;<br>&gt;<br>In short, that isn&#x27;t how the type modifier works.  Once you have a value of<br>a given base type you end up passing it around the system as-is.</p>
+
+<p># create function echotime(intime timestamp(3) with time zone) returns<br>timestamp(3) with time zone as $$ select intime; $$ language sql;<br>CREATE FUNCTION<br># select echotime(now());<br>           echotime<br>-------------------------------<br> 2022-04-29 21:04:14.047011+00<br>(1 row)</p>
+
+<p>Though you can explicitly cast an existing value, creating a new one with<br>the newly specified type modifier.</p>
+
+<p># select echotime(now()::timestamptz(3));<br>          echotime<br>----------------------------<br> 2022-04-29 21:04:48.887+00<br>(1 row)</p>
+
+<p>Basically, in most cases the type modifier is simply either documentation<br>or a runtime constraint enforced when first creating a data value.<br>However, one can use &quot;create domain&quot; to actually create a brand new type<br>without a direct modifier but whose underlying base type is constrained.</p>
+
+<p># create domain tstz3 as timestamptz(3);<br>CREATE DOMAIN<br>                                       ^<br># create function echotime3(intime tstz3) returns tstz3 as $$ select<br>intime; $$ language sql;<br>CREATE FUNCTION</p>
+
+<p># select echotime3(now());<br>         echotime3<br>----------------------------<br> 2022-04-29 21:14:56.703+00<br>(1 row)</p>
+
+<p>Not tested, but a range type of that domain should provide the behavior you<br>are looking for.</p>
+
+<p>Domains do have their own idiosyncrasies, particularly when it comes to<br>working out implicit casts and general type resolution, since a domain is<br>also a valid instance of the base type and that fact can be relied upon to<br>make things work, possibly in reliable but unexpected ways (I don&#x27;t have a<br>good example at the moment though...)</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKqYYNYOsVR+p0Ys8ymF1dTAngYGDkqU+zAMha06Bvv4Vs5apA@mail.gmail.com"></a>
+<a name="9145803ce48e287a00a01644506f08e8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>John Cwikla &lt;cwikla(at)puzzle(dot)io&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17473: Custom range type with timestamp doesn&#x27;t respect precision</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-29 22:29:31</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKqYYNYOsVR%2Bp0Ys8ymF1dTAngYGDkqU%2BzAMha06Bvv4Vs5apA%40mail.gmail.com">CAKqYYNYOsVR+p0Ys8ymF1dTAngYGDkqU+zAMha06Bvv4Vs5apA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKqYYNYOsVR%2Bp0Ys8ymF1dTAngYGDkqU%2BzAMha06Bvv4Vs5apA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKqYYNYOsVR%2Bp0Ys8ymF1dTAngYGDkqU%2BzAMha06Bvv4Vs5apA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKqYYNYOsVR%2Bp0Ys8ymF1dTAngYGDkqU%2BzAMha06Bvv4Vs5apA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKqYYNYOsVR%2Bp0Ys8ymF1dTAngYGDkqU%2BzAMha06Bvv4Vs5apA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Groovy, thanks for the thorough explanation.</p>
+
+<p>On Fri, Apr 29, 2022 at 2:20 PM David G. Johnston &lt;<br>david(dot)g(dot)johnston(at)gmail(dot)com&gt; wrote:</p>
+
+<p>&gt; On Fri, Apr 29, 2022 at 1:53 PM PG Bug reporting form &lt;<br>&gt; noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;<br>&gt;&gt; The following bug has been logged on the website:<br>&gt;&gt;<br>&gt;&gt; Bug reference:      17473<br>&gt;&gt; Logged by:          John Cwikla<br>&gt;&gt; Email address:      cwikla(at)puzzle(dot)io<br>&gt;&gt; PostgreSQL version: 14.2<br>&gt;&gt; Operating system:   Debian 14.2-1.pgdg110+1<br>&gt;&gt; Description:<br>&gt;&gt;<br>&gt;&gt; Are range types supposed to respect precision? There is no mention of<br>&gt;&gt; precision in the documents that I can find, and it doesn&#x27;t seem to be the<br>&gt;&gt; case for timestamps.<br>&gt;&gt;<br>&gt;&gt; psql (14.2 (Debian 14.2-1.pgdg110+1))<br>&gt;&gt; SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits:<br>&gt;&gt; 256, compression: off)<br>&gt;&gt; Type &quot;help&quot; for help.<br>&gt;&gt;<br>&gt;&gt; postgres=&gt; CREATE TYPE tstzrange3 AS RANGE ( subtype = timestamp(3) with<br>&gt;&gt; time zone);<br>&gt;&gt; CREATE TYPE<br>&gt;&gt; postgres=&gt; select tstzrange3(NOW(), NULL);<br>&gt;&gt;              tstzrange3<br>&gt;&gt; ------------------------------------<br>&gt;&gt;  [&quot;2022-04-29 19:11:31.920322+00&quot;,)<br>&gt;&gt; (1 row)<br>&gt;&gt;<br>&gt;&gt;<br>&gt; In short, that isn&#x27;t how the type modifier works.  Once you have a value<br>&gt; of a given base type you end up passing it around the system as-is.<br>&gt;<br>&gt; # create function echotime(intime timestamp(3) with time zone) returns<br>&gt; timestamp(3) with time zone as $$ select intime; $$ language sql;<br>&gt; CREATE FUNCTION<br>&gt; # select echotime(now());<br>&gt;            echotime<br>&gt; -------------------------------<br>&gt;  2022-04-29 21:04:14.047011+00<br>&gt; (1 row)<br>&gt;<br>&gt; Though you can explicitly cast an existing value, creating a new one with<br>&gt; the newly specified type modifier.<br>&gt;<br>&gt; # select echotime(now()::timestamptz(3));<br>&gt;           echotime<br>&gt; ----------------------------<br>&gt;  2022-04-29 21:04:48.887+00<br>&gt; (1 row)<br>&gt;<br>&gt; Basically, in most cases the type modifier is simply either documentation<br>&gt; or a runtime constraint enforced when first creating a data value.<br>&gt; However, one can use &quot;create domain&quot; to actually create a brand new type<br>&gt; without a direct modifier but whose underlying base type is constrained.<br>&gt;<br>&gt; # create domain tstz3 as timestamptz(3);<br>&gt; CREATE DOMAIN<br>&gt;                                        ^<br>&gt; # create function echotime3(intime tstz3) returns tstz3 as $$ select<br>&gt; intime; $$ language sql;<br>&gt; CREATE FUNCTION<br>&gt;<br>&gt; # select echotime3(now());<br>&gt;          echotime3<br>&gt; ----------------------------<br>&gt;  2022-04-29 21:14:56.703+00<br>&gt; (1 row)<br>&gt;<br>&gt; Not tested, but a range type of that domain should provide the behavior<br>&gt; you are looking for.<br>&gt;<br>&gt; Domains do have their own idiosyncrasies, particularly when it comes to<br>&gt; working out implicit casts and general type resolution, since a domain is<br>&gt; also a valid instance of the base type and that fact can be relied upon to<br>&gt; make things work, possibly in reliable but unexpected ways (I don&#x27;t have a<br>&gt; good example at the moment though...)<br>&gt;<br>&gt; David J.<br>&gt;<br>&gt;<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

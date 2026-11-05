@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17512: Process running query fails with SIGSEV - nodeMemoize.c:349</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17512-36fa5fab90f48af9%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-06-06T22:36:59" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17512: Process running query fails with SIGSEV - nodeMemoize.c:349" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17512 Logged by: Aleš Zelený Email address: zeleny.ales@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17512: Process running query fails with SIGSEV - nodeMemoize.c:349</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>zeleny(dot)ales(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17512: Process running query fails with SIGSEV - nodeMemoize.c:349</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-06-06 22:36:59</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17512-36fa5fab90f48af9%40postgresql.org">17512-36fa5fab90f48af9@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17512-36fa5fab90f48af9%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17512-36fa5fab90f48af9%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17512-36fa5fab90f48af9%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17512-36fa5fab90f48af9%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17512-36fa5fab90f48af9%40postgresql.org" selected="selected">2022-06-06 22:36:59 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="CAApHDvqohSVm-QgGyJhq6TB1GSN-UeuWdOaQwHTkL6UVQ3xpsg%40mail.gmail.com">&nbsp;2022-06-07 03:17:15 from David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</option>
+  <option value="CAODqTUatpvf7D0e5cykrqEih6j8cGw7NTRLpZhPAZX6%2B-Ec94Q%40mail.gmail.com">&nbsp;&nbsp;2022-06-07 08:29:31 from Aleš Zelený &lt;zeleny(dot)ales(at)gmail(dot)com&gt;</option>
+  <option value="CAODqTUY5DqbnSMxmTB2xWKuOd4Ykg8GEJMPA16jUkPsmx75TrQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2022-06-07 17:04:38 from Aleš Zelený &lt;zeleny(dot)ales(at)gmail(dot)com&gt;</option>
+  <option value="1264308.1654628854%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;2022-06-07 19:07:34 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAODqTUYHqJk8hMYqq6P_%3D%3DnrrWNj51SfKNw0_81UjBKGyTS4Lw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-06-07 20:26:04 from Aleš Zelený &lt;zeleny(dot)ales(at)gmail(dot)com&gt;</option>
+  <option value="CAODqTUY_inHh_t63JpBiihroH5EuAK4VmOKHHGVdaLgBPOEq1w%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-06-08 20:11:12 from Aleš Zelený &lt;zeleny(dot)ales(at)gmail(dot)com&gt;</option>
+  <option value="CAApHDvpxFSTwvoYWT7kmFVSZ9zLAeHb%3DS9vrz%3DRExMgSkQNWqw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-06-07 23:39:41 from David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="1432708.1654645381%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-06-07 23:43:01 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAApHDvp5y2xOpms8XAJU0cbpw00Ds1FYg7jW7v0Pp%2BXANdLVNQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-06-08 00:41:17 from David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202206060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17512<br>Logged by:          Aleš Zelený<br>Email address:      zeleny(dot)ales(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   CentOS 7<br>Description:        </p>
+
+<p>Version information:<br>OS: CentOS Linux release 7.9.2009 (Core)<br>PostgresSQL (RPM installation): PostgreSQL 14.2 on x86_64-pc-linux-gnu,<br>compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-44), 64-bit</p>
+
+<p>PostgreSQL Log:<br>2022-06-06 21:23:21.147 UTC [1647] 629e7049.66f, 1, 0, 0, , [local],<br>[unknown], [unknown], [unknown], 00000,  LOG:  connection received:<br>host=[local]<br>2022-06-06 21:23:21.148 UTC [1647] 629e7049.66f, 2, 0, 0, 5/7, [local],<br>sdp_prod, zelenya, [unknown], 00000, authentication LOG:  connection<br>authenticated: identity=&quot;zelenya&quot; method=peer (/pgsql/sdp/cluster/14<br>/pg_hba.conf:85)<br>2022-06-06 21:23:21.148 UTC [1647] 629e7049.66f, 3, 0, 0, 5/7, [local],<br>sdp_prod, zelenya, [unknown], 00000, authentication LOG:  connection<br>authorized: user=zelenya database=sdp_prod application_name=psql</p>
+
+<p>2022-06-06 21:24:00.695 UTC [1124] 629e7004.464, 22, 0, 0, , , , , , 00000, <br>LOG:  server process (PID 1647) was terminated by signal 11: Segmentation<br>fault<br>2022-06-06 21:24:00.695 UTC [1124] 629e7004.464, 23, 0, 0, , , , , , 00000, <br>DETAIL:  Failed process was running: explain (analyze, buffers)</p>
+
+<p>2022-06-06 21:24:00.695 UTC [1124] 629e7004.464, 24, 0, 0, , , , , , 00000, <br>LOG:  terminating any other active server processes<br>2022-06-06 21:24:00.806 UTC [1124] 629e7004.464, 25, 0, 0, , , , , , 00000, <br>LOG:  all server processes terminated; reinitializing<br>2022-06-06 21:24:01.912 UTC [1655] 629e7071.677, 1, 0, 0, , , , , , 00000, <br>LOG:  database system was interrupted; last known up at 2022-06-06 21:22:12<br>UTC<br>2022-06-06 21:24:02.003 UTC [1655] 629e7071.677, 2, 0, 0, , , , , , 42501, <br>LOG:  could not open directory &quot;pg_tblspc/140428/lost+found&quot;: Permission<br>denied<br>2022-06-06 21:24:02.021 UTC [1655] 629e7071.677, 3, 0, 0, , , , , , 00000, <br>LOG:  database system was not properly shut down; automatic recovery in<br>progress<br>2022-06-06 21:24:02.028 UTC [1655] 629e7071.677, 4, 0, 0, , , , , , 00000, <br>LOG:  redo starts at 121C/190000A0<br>2022-06-06 21:24:02.028 UTC [1655] 629e7071.677, 5, 0, 0, , , , , , 00000, <br>LOG:  invalid record length at 121C/190000D8: wanted 24, got 0<br>2022-06-06 21:24:02.028 UTC [1655] 629e7071.677, 6, 0, 0, , , , , , 00000, <br>LOG:  redo done at 121C/190000A0 system usage: CPU: user: 0.00 s, system:<br>0.00 s, elapsed: 0.00 s<br>2022-06-06 21:24:02.039 UTC [1655] 629e7071.677, 7, 0, 0, , , , , , 00000, <br>LOG:  checkpoint starting: end-of-recovery immediate<br>2022-06-06 21:24:02.208 UTC [1655] 629e7071.677, 8, 0, 0, , , , , , 00000, <br>LOG:  checkpoint complete: wrote 0 buffers (0.0%); 0 WAL file(s) added, 1<br>removed, 0 recycled; write=0.153 s, sync=0.001 s, total=0.1<br>72 s; sync files=0, longest=0.000 s, average=0.000 s; distance=0 kB,<br>estimate=0 kB<br>2022-06-06 21:24:02.227 UTC [1124] 629e7004.464, 26, 0, 0, , , , , , 00000, <br>LOG:  database system is ready to accept connections</p>
+
+<p>The process crash with SIGSEV is reproducible on production, core dump was<br>enabled to get more details:</p>
+
+<p>-bash-4.2$ gdb /usr/pgsql-14/bin/postgres<br>core.postmaster.19645.ip-172-31-1-64.us-east-2.compute.internal.1654522585<br>GNU gdb (GDB) Red Hat Enterprise Linux 7.6.1-120.el7<br>Copyright (C) 2013 Free Software Foundation, Inc.<br>License GPLv3+: GNU GPL version 3 or later<br>&lt;<a href="http://gnu.org/licenses/gpl.html" rel="nofollow">http://gnu.org/licenses/gpl.html</a>&gt;<br>This is free software: you are free to change and redistribute it.<br>There is NO WARRANTY, to the extent permitted by law.  Type &quot;show copying&quot;<br>and &quot;show warranty&quot; for details.<br>This GDB was configured as &quot;x86_64-redhat-linux-gnu&quot;.<br>For bug reporting instructions, please see:<br>&lt;<a href="http://www.gnu.org/software/gdb/bugs/" rel="nofollow">http://www.gnu.org/software/gdb/bugs/</a>&gt;...<br>Reading symbols from /usr/pgsql-14/bin/postgres...Reading symbols from<br>/usr/lib/debug/usr/pgsql-14/bin/postgres.debug...done.<br>done.</p>
+
+<p>warning: core file may not match specified executable file.<br>[New LWP 19645]<br>[Thread debugging using libthread_db enabled]<br>Using host libthread_db library &quot;/lib64/libthread_db.so.1&quot;.<br>Core was generated by `postgres: sdp01: zelenya sdp_prod [local] EXPLAIN   <br>&#x27;.<br>Program terminated with signal 11, Segmentation fault.<br>#0  remove_cache_entry (entry=&lt;optimized out&gt;, mstate=&lt;optimized out&gt;) at<br>nodeMemoize.c:349<br>349	nodeMemoize.c: No such file or directory.<br>Missing separate debuginfos, use: debuginfo-install<br>audit-libs-2.8.5-4.el7.x86_64 bzip2-libs-1.0.6-13.el7.x86_64<br>cyrus-sasl-lib-2.1.26-24.el7_9.x86_64 elfutils-libelf-0.176-5.el7.x86_64<br>elfutils-libs-0.176-5.el7.x86_64 glibc-2.17-325.el7_9.x86_64<br>keyutils-libs-1.5.8-3.el7.x86_64 krb5-libs-1.15.1-51.el7_9.x86_64<br>libattr-2.4.46-13.el7.x86_64 libcap-2.22-11.el7.x86_64<br>libcap-ng-0.7.5-4.el7.x86_64 libcom_err-1.42.9-19.el7.x86_64<br>libedit-3.0-12.20121213cvs.el7.x86_64 libffi-3.0.13-19.el7.x86_64<br>libgcc-4.8.5-44.el7.x86_64 libgcrypt-1.5.3-14.el7.x86_64<br>libgpg-error-1.12-3.el7.x86_64 libicu-50.2-4.el7_7.x86_64<br>libselinux-2.5-15.el7.x86_64 libstdc++-4.8.5-44.el7.x86_64<br>libxml2-2.9.1-6.el7_9.6.x86_64 llvm5.0-libs-5.0.1-7.el7.x86_64<br>lz4-1.8.3-1.el7.x86_64 ncurses-libs-5.9-14.20130511.el7_4.x86_64<br>nspr-4.32.0-1.el7_9.x86_64 nss-3.67.0-4.el7_9.x86_64<br>nss-softokn-freebl-3.67.0-3.el7_9.x86_64 nss-util-3.67.0-1.el7_9.x86_64<br>openldap-2.4.44-25.el7_9.x86_64 openssl-libs-1.0.2k-24.el7_9.x86_64<br>pam-1.1.8-23.el7.x86_64 pcre-8.32-17.el7.x86_64<br>pg_qualstats_14-2.0.4-1.rhel7.x86_64 pg_stat_kcache_14-2.2.0-2.rhel7.x86_64<br>pg_wait_sampling_14-1.1.3-1.rhel7.x86_64 powa_14-4.1.4-1.rhel7.x86_64<br>systemd-libs-219-78.el7_9.5.x86_64 xz-libs-5.2.2-1.el7.x86_64<br>zlib-1.2.7-19.el7_9.x86_64</p>
+
+<p>(gdb) bt<br>#0  remove_cache_entry (entry=&lt;optimized out&gt;, mstate=&lt;optimized out&gt;) at<br>nodeMemoize.c:349<br>#1  cache_reduce_memory (mstate=mstate(at)entry=0x2d0a2a0,<br>specialkey=specialkey(at)entry=0x122614e8) at nodeMemoize.c:468<br>#2  0x0000000000669cce in cache_store_tuple (mstate=mstate(at)entry=0x2d0a2a0,<br>slot=slot(at)entry=0x2d0a7e0) at nodeMemoize.c:635<br>#3  0x000000000066a0ab in ExecMemoize (pstate=0x2d0a2a0) at<br>nodeMemoize.c:850<br>#4  0x0000000000649b28 in ExecProcNodeInstr (node=0x2d0a2a0) at<br>execProcnode.c:479<br>#5  0x00000000006710f5 in ExecProcNode (node=0x2d0a2a0) at<br>../../../src/include/executor/executor.h:257<br>#6  ExecNestLoop (pstate=0x2c70a38) at nodeNestloop.c:160<br>#7  0x0000000000649b28 in ExecProcNodeInstr (node=0x2c70a38) at<br>execProcnode.c:479<br>#8  0x00000000006735a6 in ExecProcNode (node=0x2c70a38) at<br>../../../src/include/executor/executor.h:257<br>#9  ExecSort (pstate=0x2c70828) at nodeSort.c:108<br>#10 0x0000000000649b28 in ExecProcNodeInstr (node=0x2c70828) at<br>execProcnode.c:479<br>#11 0x0000000000653b19 in ExecProcNode (node=0x2c70828) at<br>../../../src/include/executor/executor.h:257<br>#12 fetch_input_tuple (aggstate=aggstate(at)entry=0x2c701c0) at nodeAgg.c:581<br>#13 0x00000000006568f2 in agg_retrieve_direct (aggstate=0x2c701c0) at<br>nodeAgg.c:2364<br>#14 ExecAgg (pstate=0x2c701c0) at nodeAgg.c:2179<br>#15 0x0000000000649b28 in ExecProcNodeInstr (node=0x2c701c0) at<br>execProcnode.c:479<br>#16 0x0000000000670fe9 in ExecProcNode (node=0x2c701c0) at<br>../../../src/include/executor/executor.h:257<br>#17 ExecNestLoop (pstate=0x2c70020) at nodeNestloop.c:109<br>#18 0x0000000000649b28 in ExecProcNodeInstr (node=0x2c70020) at<br>execProcnode.c:479<br>#19 0x00000000006735a6 in ExecProcNode (node=0x2c70020) at<br>../../../src/include/executor/executor.h:257<br>#20 ExecSort (pstate=0x2c6fe10) at nodeSort.c:108<br>#21 0x0000000000649b28 in ExecProcNodeInstr (node=0x2c6fe10) at<br>execProcnode.c:479<br>#22 0x0000000000653b19 in ExecProcNode (node=0x2c6fe10) at<br>../../../src/include/executor/executor.h:257<br>#23 fetch_input_tuple (aggstate=aggstate(at)entry=0x2c6f838) at nodeAgg.c:581<br>#24 0x00000000006568f2 in agg_retrieve_direct (aggstate=0x2c6f838) at<br>nodeAgg.c:2364<br>#25 ExecAgg (pstate=0x2c6f838) at nodeAgg.c:2179<br>#26 0x0000000000649b28 in ExecProcNodeInstr (node=0x2c6f838) at<br>execProcnode.c:479<br>#27 0x00000000006683b3 in ExecProcNode (node=0x2c6f838) at<br>../../../src/include/executor/executor.h:257<br>#28 ExecLimit (pstate=0x2c6f548) at nodeLimit.c:96<br>#29 0x0000000000649b28 in ExecProcNodeInstr (node=0x2c6f548) at<br>execProcnode.c:479<br>#30 0x0000000000643152 in ExecProcNode (node=0x2c6f548) at<br>../../../src/include/executor/executor.h:257<br>#31 ExecutePlan (execute_once=&lt;optimized out&gt;, dest=0xa40d00 &lt;donothingDR&gt;,<br>direction=&lt;optimized out&gt;, numberTuples=0, sendTuples=true,<br>operation=CMD_SELECT, use_parallel_mode=&lt;optimized out&gt;,<br>planstate=0x2c6f548, estate=0x2c6f018) at execMain.c:1551<br>#32 standard_ExecutorRun (queryDesc=0x2ea0188, direction=&lt;optimized out&gt;,<br>count=0, execute_once=&lt;optimized out&gt;) at execMain.c:361<br>#33 0x00007f06ba3e461d in pgss_ExecutorRun (queryDesc=0x2ea0188,<br>direction=ForwardScanDirection, count=0, execute_once=&lt;optimized out&gt;) at<br>pg_stat_statements.c:1003<br>#34 0x00007f06b9fd44c1 in pgsk_ExecutorRun () from<br>/usr/pgsql-14/lib/pg_stat_kcache.so<br>#35 0x00007f06b9dcbfd1 in pgqs_ExecutorRun () from<br>/usr/pgsql-14/lib/pg_qualstats.so<br>#36 0x00000000005d8842 in ExplainOnePlan<br>(plannedstmt=plannedstmt(at)entry=0x2e9cbe8, into=into(at)entry=0x0,<br>es=es(at)entry=0x342d228,<br>    queryString=queryString(at)entry=0x2c72f58 &quot;explain (analyze, buffers)\n&quot;,<br>&#x27; &#x27; &lt;repeats 24 times&gt;, &quot;WITH daily_tech AS (\n&quot;, &#x27; &#x27; &lt;repeats 28 times&gt;,<br>&quot;SELECT\n&quot;, &#x27; &#x27; &lt;repeats 33 times&gt;, &quot;\n&quot;, &#x27; &#x27; &lt;repeats 32 times&gt;,<br>&quot;MAX(dmd_current0.split_adj_&quot;...,<br>    params=params(at)entry=0x0, queryEnv=&lt;optimized out&gt;,<br>planduration=planduration(at)entry=0x7ffc3d75ca60, bufusage=0x7ffc3d75cae0) at<br>explain.c:593<br>#37 0x00000000005d8bdd in ExplainOneQuery (query=&lt;optimized out&gt;,<br>cursorOptions=&lt;optimized out&gt;, into=0x0, es=0x342d228,<br>    queryString=0x2c72f58 &quot;explain (analyze, buffers)\n&quot;, &#x27; &#x27; &lt;repeats 24<br>times&gt;, &quot;WITH daily_tech AS (\n&quot;, &#x27; &#x27; &lt;repeats 28 times&gt;, &quot;SELECT\n&quot;, &#x27; &#x27;<br>&lt;repeats 33 times&gt;, &quot;\n&quot;, &#x27; &#x27; &lt;repeats 32 times&gt;,<br>&quot;MAX(dmd_current0.split_adj_&quot;..., params=0x0, queryEnv=0x0)<br>    at explain.c:410<br>#38 0x00000000005d9285 in ExplainQuery (pstate=pstate(at)entry=0x2c77230,<br>stmt=stmt(at)entry=0x319b468, params=params(at)entry=0x0,<br>dest=dest(at)entry=0x2c771a0) at explain.c:281<br>#39 0x00000000007bc575 in standard_ProcessUtility<br>(pstmt=pstmt(at)entry=0x2e296b0,<br>    queryString=queryString(at)entry=0x2c72f58 &quot;explain (analyze, buffers)\n&quot;,<br>&#x27; &#x27; &lt;repeats 24 times&gt;, &quot;WITH daily_tech AS (\n&quot;, &#x27; &#x27; &lt;repeats 28 times&gt;,<br>&quot;SELECT\n&quot;, &#x27; &#x27; &lt;repeats 33 times&gt;, &quot;\n&quot;, &#x27; &#x27; &lt;repeats 32 times&gt;,<br>&quot;MAX(dmd_current0.split_adj_&quot;...,<br>    readOnlyTree=&lt;optimized out&gt;,<br>context=context(at)entry=PROCESS_UTILITY_TOPLEVEL, params=params(at)entry=0x0,<br>queryEnv=queryEnv(at)entry=0x0, dest=dest(at)entry=0x2c771a0,<br>qc=qc(at)entry=0x7ffc3d75cfb0) at utility.c:862<br>#40 0x00007f06ba3e60a0 in pgss_ProcessUtility (pstmt=0x2e296b0,<br>    queryString=0x2c72f58 &quot;explain (analyze, buffers)\n&quot;, &#x27; &#x27; &lt;repeats 24<br>times&gt;, &quot;WITH daily_tech AS (\n&quot;, &#x27; &#x27; &lt;repeats 28 times&gt;, &quot;SELECT\n&quot;, &#x27; &#x27;<br>&lt;repeats 33 times&gt;, &quot;\n&quot;, &#x27; &#x27; &lt;repeats 32 times&gt;,<br>&quot;MAX(dmd_current0.split_adj_&quot;..., readOnlyTree=&lt;optimized out&gt;,<br>    context=PROCESS_UTILITY_TOPLEVEL, params=0x0, queryEnv=0x0,<br>dest=0x2c771a0, qc=0x7ffc3d75cfb0) at pg_stat_statements.c:1135<br>#41 0x00000000007ba7aa in PortalRunUtility (portal=portal(at)entry=0x2bef9d8,<br>pstmt=0x2e296b0, isTopLevel=isTopLevel(at)entry=true,<br>setHoldSnapshot=setHoldSnapshot(at)entry=true, dest=dest(at)entry=0x2c771a0,<br>qc=qc(at)entry=0x7ffc3d75cfb0) at pquery.c:1155<br>#42 0x00000000007bab11 in FillPortalStore (portal=portal(at)entry=0x2bef9d8,<br>isTopLevel=isTopLevel(at)entry=true) at pquery.c:1028<br>#43 0x00000000007bae8b in PortalRun (portal=&lt;optimized out&gt;,<br>count=9223372036854775807, isTopLevel=&lt;optimized out&gt;, run_once=&lt;optimized<br>out&gt;, dest=0x2e29790, altdest=0x2e29790, qc=0x7ffc3d75d190) at<br>pquery.c:760<br>#44 0x00000000007b6be7 in exec_simple_query (<br>    query_string=0x2c72f58 &quot;explain (analyze, buffers)\n&quot;, &#x27; &#x27; &lt;repeats 24<br>times&gt;, &quot;WITH daily_tech AS (\n&quot;, &#x27; &#x27; &lt;repeats 28 times&gt;, &quot;SELECT\n&quot;, &#x27; &#x27;<br>&lt;repeats 33 times&gt;, &quot;\n&quot;, &#x27; &#x27; &lt;repeats 32 times&gt;,<br>&quot;MAX(dmd_current0.split_adj_&quot;...) at postgres.c:1214<br>#45 0x00000000007b8063 in PostgresMain (argc=argc(at)entry=1,<br>argv=argv(at)entry=0x7ffc3d75d560, dbname=0x2bb78e0 &quot;sdp_prod&quot;,<br>username=&lt;optimized out&gt;) at postgres.c:4486<br>#46 0x000000000048d7ba in BackendRun (port=&lt;optimized out&gt;, port=&lt;optimized<br>out&gt;) at postmaster.c:4530<br>#47 BackendStartup (port=0x2ba6060) at postmaster.c:4252<br>#48 ServerLoop () at postmaster.c:1745<br>#49 0x0000000000735692 in PostmasterMain (argc=argc(at)entry=3,<br>argv=argv(at)entry=0x2b75280) at postmaster.c:1417<br>#50 0x000000000048e8d2 in main (argc=3, argv=0x2b75280) at main.c:209</p>
+
+<p>A small isolated test case is not available so far, the issue occurs on<br>select involving 450GiB table. Currently, production DB is being restored to<br>a separated machine to allow future testing/investigation without affecting<br>other database users.</p>
+
+<p>Thanks for any advice on working around this issue or how to collect better<br>diagnostic data / additional helpful information.</p>
+
+<p>Kind regards Ales Zeleny</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAApHDvqohSVm-QgGyJhq6TB1GSN-UeuWdOaQwHTkL6UVQ3xpsg%40mail.gmail.com">Re: BUG #17512: Process running query fails with SIGSEV - nodeMemoize.c:349</a> at 2022-06-07 03:17:15 from David Rowley
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/975366.1654561211%40sss.pgh.pa.us">Next Message</a></th>
+            <td>Tom Lane</td>
+            <td>2022-06-07 00:20:11</td>
+            <td><a href="/message-id/975366.1654561211%40sss.pgh.pa.us">Re: BUG #17511: Inconsistent permissions on some information_schema tables</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CANwZ8rnHv_Mj6QRVXCnRxKMiqFtR1U4HsYj2qZXwmAY-TzucqQ%40mail.gmail.com">Previous Message</a></th>
+            <td>Kirk Parker</td>
+            <td>2022-06-06 22:12:05</td>
+            <td><a href="/message-id/CANwZ8rnHv_Mj6QRVXCnRxKMiqFtR1U4HsYj2qZXwmAY-TzucqQ%40mail.gmail.com">Re: BUG #17511: Inconsistent permissions on some information_schema tables</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

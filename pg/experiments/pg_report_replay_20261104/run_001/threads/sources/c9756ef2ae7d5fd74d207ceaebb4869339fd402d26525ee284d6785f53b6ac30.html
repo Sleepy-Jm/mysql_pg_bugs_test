@@ -1,0 +1,1194 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17358-89806e7420797025%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-07T10:38:50" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="4c7aae147a089ebe80e2453aa540abde">BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202201071038">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17358-89806e7420797025@postgresql.org"></a>
+<a name="4c7aae147a089ebe80e2453aa540abde"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-07 10:38:50</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17358-89806e7420797025%40postgresql.org">17358-89806e7420797025@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17358-89806e7420797025%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17358-89806e7420797025%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17358-89806e7420797025%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17358-89806e7420797025%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17358<br>Logged by:          Nazir Bilal Yavuz<br>Email address:      byavuz81(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   NetBSD 9.2<br>Description:        </p>
+
+<p>Hi, </p>
+
+<p>While installing PostgreSQL from source code, uuid_ossp test fails on NetBSD<br>9.2.<br>The commands I used are:<br>./configure \<br>--with-uuid=bsd \<br>\<br>--with-includes=/usr/pkg/include --with-libs=/usr/pgk/lib &amp;&amp; \<br>gmake -s world-bin &amp;&amp; gmake -s check-world</p>
+
+<p>OS: <br>NetBSD localhost 9.2 NetBSD 9.2 (GENERIC) #0: Wed May 12 13:15:55 UTC 2021 <br>mkrepro(at)mkrepro(dot)NetBSD(dot)org:/usr/src/sys/arch/amd64/compile/GENERIC amd64</p>
+
+<p>Error message: <br>test uuid                         ... ok           11 ms<br>test uuid                         ... ok           12 ms<br>test uuid_ossp                    ... FAILED       11 ms</p>
+
+<p>Diff:<br>diff -U3 /home/postgres/postgres/contrib/uuid-ossp/expected/uuid_ossp.out<br>/home/postgres/postgres/contrib/uuid-ossp/results/uuid_ossp.out<br>--- /home/postgres/postgres/contrib/uuid-ossp/expected/uuid_ossp.out   <br>2022-01-07 09:54:27.613601852 +0000<br>+++ /home/postgres/postgres/contrib/uuid-ossp/results/uuid_ossp.out    <br>2022-01-07 10:02:25.833291382 +0000<br>@@ -59,7 +59,7 @@<br>        uuid_reserved_bits(uuid_generate_v1());<br>  uuid_version_bits | uuid_reserved_bits <br> -------------------+--------------------<br>- 00010000          | 10000000<br>+ 01000000          | 10000000<br> (1 row)<br> <br> -- Although RFC 4122 only requires the multicast bit to be set in V1MC<br>style<br>@@ -70,20 +70,20 @@<br>        uuid_local_admin_bit(uuid_generate_v1mc());<br>  uuid_version_bits | uuid_reserved_bits | uuid_multicast_bit |<br>uuid_local_admin_bit </p>
+
+<p>-------------------+--------------------+--------------------+----------------------<br>- 00010000          | 10000000           | t                  | t<br>+ 01000000          | 10000000           | t                  | t<br> (1 row)<br> <br> -- timestamp+clock sequence should be monotonic increasing in v1<br> SELECT uuid_timestamp_bits(uuid_generate_v1()) &lt;<br>uuid_timestamp_bits(uuid_generate_v1());<br>  ?column? <br> ----------<br>- t<br>+ f<br> (1 row)<br> <br> SELECT uuid_timestamp_bits(uuid_generate_v1mc()) &lt;<br>uuid_timestamp_bits(uuid_generate_v1mc());<br>  ?column? <br> ----------<br>- t<br>+ f<br> (1 row)<br> <br> -- Ideally, the node value is stable in V1 addresses, but OSSP UUID<br>@@ -96,7 +96,7 @@<br>        END;<br>  case <br> ------<br>- t<br>+ f<br> (1 row)<br> <br> -- In any case, V1MC node addresses should be random.</p>
+
+<p>Thanks,<br>Nazir Bilal Yavuz</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1377833.1641588532@sss.pgh.pa.us"></a>
+<a name="861c97df8afdaffb79716457924415c0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>byavuz81(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-07 20:48:52</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1377833.1641588532%40sss.pgh.pa.us">1377833.1641588532@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1377833.1641588532%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1377833.1641588532%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1377833.1641588532%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1377833.1641588532%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; While installing PostgreSQL from source code, uuid_ossp test fails on NetBSD<br>&gt; 9.2.</p>
+
+<p>Hmm, yeah, reproduced here.  It looks like NetBSD 9 and later have<br>decided to generate version-4 UUIDs instead of the version-1 UUIDs<br>that we&#x27;re expecting uuid_create() to return.  How annoying.</p>
+
+<p>Their uuid_create(3) man page doesn&#x27;t actually commit to anything<br>either way, but I suppose it&#x27;s based on the uuidgen(2) syscall,<br>and that page clearly changed between 8.2 and 9.0:</p>
+
+<p><a href="https://man.netbsd.org/NetBSD-8.2/uuidgen.2" rel="nofollow">https://man.netbsd.org/NetBSD-8.2/uuidgen.2</a><br><a href="https://man.netbsd.org/NetBSD-9.0/uuidgen.2" rel="nofollow">https://man.netbsd.org/NetBSD-9.0/uuidgen.2</a></p>
+
+<p>We hadn&#x27;t noticed because our one NetBSD 9.x buildfarm animal<br>isn&#x27;t building with --with-uuid :-(.</p>
+
+<p>Not sure about how to fix this nicely.  We&#x27;ve tried to avoid<br>writing our own code for V1 UUIDs, but maybe we should just<br>bite the bullet and do that?  The hard part seems like it&#x27;d<br>be to get a MAC address from someplace.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="db547cac-566d-cd32-6143-1d303a67cbdb@mksoft.nu"></a>
+<a name="fcaa737210d480a9ac9d0ca8d908d516"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Mikael Kjellström &lt;mikael(dot)kjellstrom(at)mksoft(dot)nu&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, byavuz81(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test
+ fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 10:28:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/db547cac-566d-cd32-6143-1d303a67cbdb%40mksoft.nu">db547cac-566d-cd32-6143-1d303a67cbdb@mksoft.nu</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/db547cac-566d-cd32-6143-1d303a67cbdb%40mksoft.nu">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/db547cac-566d-cd32-6143-1d303a67cbdb%40mksoft.nu" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/db547cac-566d-cd32-6143-1d303a67cbdb%40mksoft.nu" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/db547cac-566d-cd32-6143-1d303a67cbdb%40mksoft.nu" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p></p>
+
+<p>&gt; We hadn&#x27;t noticed because our one NetBSD 9.x buildfarm animal<br>&gt; isn&#x27;t building with --with-uuid :-(.</p>
+
+<p>Want me to add that or hold off until we have found a work around first?</p>
+
+<p>/Mikael</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1473621.1641657066@sss.pgh.pa.us"></a>
+<a name="6cc96c19c11a6eb57d42a25b3a4e14e8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Mikael Kjellström &lt;mikael(dot)kjellstrom(at)mksoft(dot)nu&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 15:51:06</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1473621.1641657066%40sss.pgh.pa.us">1473621.1641657066@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1473621.1641657066%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1473621.1641657066%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1473621.1641657066%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1473621.1641657066%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>=?UTF-8?Q?Mikael_Kjellstr=c3=b6m?= &lt;mikael(dot)kjellstrom(at)mksoft(dot)nu&gt; writes:<br>&gt;&gt; We hadn&#x27;t noticed because our one NetBSD 9.x buildfarm animal<br>&gt;&gt; isn&#x27;t building with --with-uuid :-(.</p>
+
+<p>&gt; Want me to add that or hold off until we have found a work around first?</p>
+
+<p>Right now you&#x27;d just break the animal, so hold off.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1012b5dd-7235-85ed-a890-43deb361f2bd@mksoft.nu"></a>
+<a name="3dfaade8b368ff9271d692e082a324dd"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Mikael Kjellström &lt;mikael(dot)kjellstrom(at)mksoft(dot)nu&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test
+ fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 19:12:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1012b5dd-7235-85ed-a890-43deb361f2bd%40mksoft.nu">1012b5dd-7235-85ed-a890-43deb361f2bd@mksoft.nu</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1012b5dd-7235-85ed-a890-43deb361f2bd%40mksoft.nu">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1012b5dd-7235-85ed-a890-43deb361f2bd%40mksoft.nu" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1012b5dd-7235-85ed-a890-43deb361f2bd%40mksoft.nu" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1012b5dd-7235-85ed-a890-43deb361f2bd%40mksoft.nu" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>&gt;&gt; Want me to add that or hold off until we have found a work around first?<br>&gt; <br>&gt; Right now you&#x27;d just break the animal, so hold off.</p>
+
+<p>Ok, will hold off then.</p>
+
+<p>/Mikael</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220108194454.kl477tb6km6tyj5r@alap3.anarazel.de"></a>
+<a name="9b5ff4c85e6454c8692cfff835b90c79"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test
+ fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 19:44:54</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220108194454.kl477tb6km6tyj5r%40alap3.anarazel.de">20220108194454.kl477tb6km6tyj5r@alap3.anarazel.de</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220108194454.kl477tb6km6tyj5r%40alap3.anarazel.de">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220108194454.kl477tb6km6tyj5r%40alap3.anarazel.de" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220108194454.kl477tb6km6tyj5r%40alap3.anarazel.de" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220108194454.kl477tb6km6tyj5r%40alap3.anarazel.de" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On 2022-01-07 15:48:52 -0500, Tom Lane wrote:<br>&gt; <a href="https://man.netbsd.org/NetBSD-8.2/uuidgen.2" rel="nofollow">https://man.netbsd.org/NetBSD-8.2/uuidgen.2</a><br>&gt; <a href="https://man.netbsd.org/NetBSD-9.0/uuidgen.2" rel="nofollow">https://man.netbsd.org/NetBSD-9.0/uuidgen.2</a><br>&gt; <br>&gt; We hadn&#x27;t noticed because our one NetBSD 9.x buildfarm animal<br>&gt; isn&#x27;t building with --with-uuid :-(.</p>
+
+<p>It&#x27;s interesting that freebsd seems to continue generating a v1 uuid, given<br>that the manpage for netbsd says that uuidgen() stems from freebsd.</p>
+
+<p>&gt; Not sure about how to fix this nicely.  We&#x27;ve tried to avoid<br>&gt; writing our own code for V1 UUIDs, but maybe we should just<br>&gt; bite the bullet and do that?</p>
+
+<p>It might be the most reasonable approach. We certainly seem to have spent at<br>least as much effort avoiding our own implementation than implementing it<br>ourselves.</p>
+
+<p>We could also just have a configure test rejecting netbsd&#x27;s uuidgen, so that<br>--with-uuid=bsd wouldn&#x27;t support it anymore? Presumably forcing e2fs to be<br>used?</p>
+
+<p>&gt; The hard part seems like it&#x27;d be to get a MAC address from someplace.</p>
+
+<p>We could grab it from ossp-uuid or e2fs - both seem to be compatibly licensed?</p>
+
+<p>Greetings,</p>
+
+<p>Andres Freund</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1581508.1641671996@sss.pgh.pa.us"></a>
+<a name="cf43f3a927674c3b2db240c9adca346b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 19:59:56</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1581508.1641671996%40sss.pgh.pa.us">1581508.1641671996@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1581508.1641671996%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1581508.1641671996%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1581508.1641671996%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1581508.1641671996%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; On 2022-01-07 15:48:52 -0500, Tom Lane wrote:<br>&gt;&gt; Not sure about how to fix this nicely.  We&#x27;ve tried to avoid<br>&gt;&gt; writing our own code for V1 UUIDs, but maybe we should just<br>&gt;&gt; bite the bullet and do that?</p>
+
+<p>&gt; It might be the most reasonable approach. We certainly seem to have spent at<br>&gt; least as much effort avoiding our own implementation than implementing it<br>&gt; ourselves.</p>
+
+<p>Yeah, exactly :-(.  Other than finding a MAC address, it doesn&#x27;t seem<br>like there&#x27;s much there, and we&#x27;ve spent an awful lot of work on<br>supporting N different libraries for this.</p>
+
+<p>&gt; We could grab it from ossp-uuid or e2fs - both seem to be compatibly licensed?</p>
+
+<p>Right, I was planning to have a look at how they&#x27;d done it.  The BSD<br>implementation seems to be inside the kernel, so that&#x27;s not likely<br>to be helpful, but the other two must be in userspace.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220108200643.2ufdoxj5gdfvrrdg@alap3.anarazel.de"></a>
+<a name="bfca2980e6db8f64ed3f9ff5fe9ba2e7"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test
+ fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 20:06:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220108200643.2ufdoxj5gdfvrrdg%40alap3.anarazel.de">20220108200643.2ufdoxj5gdfvrrdg@alap3.anarazel.de</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220108200643.2ufdoxj5gdfvrrdg%40alap3.anarazel.de">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220108200643.2ufdoxj5gdfvrrdg%40alap3.anarazel.de" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220108200643.2ufdoxj5gdfvrrdg%40alap3.anarazel.de" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220108200643.2ufdoxj5gdfvrrdg%40alap3.anarazel.de" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2022-01-08 14:59:56 -0500, Tom Lane wrote:<br>&gt; &gt; We could grab it from ossp-uuid or e2fs - both seem to be compatibly licensed?<br>&gt; <br>&gt; Right, I was planning to have a look at how they&#x27;d done it.  The BSD<br>&gt; implementation seems to be inside the kernel, so that&#x27;s not likely<br>&gt; to be helpful, but the other two must be in userspace.</p>
+
+<p><a href="https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid.c#L240" rel="nofollow">https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid.c#L240</a><br><a href="https://github.com/sean-/ossp-uuid/blob/master/uuid_mac.c#L92" rel="nofollow">https://github.com/sean-/ossp-uuid/blob/master/uuid_mac.c#L92</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1584605.1641674133@sss.pgh.pa.us"></a>
+<a name="1807f60acd43e7617c491cc0f4f94baf"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 20:35:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1584605.1641674133%40sss.pgh.pa.us">1584605.1641674133@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1584605.1641674133%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1584605.1641674133%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1584605.1641674133%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1584605.1641674133%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; On 2022-01-08 14:59:56 -0500, Tom Lane wrote:<br>&gt;&gt; Right, I was planning to have a look at how they&#x27;d done it.  The BSD<br>&gt;&gt; implementation seems to be inside the kernel, so that&#x27;s not likely<br>&gt;&gt; to be helpful, but the other two must be in userspace.</p>
+
+<p>&gt; <a href="https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid.c#L240" rel="nofollow">https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid.c#L240</a><br>&gt; <a href="https://github.com/sean-/ossp-uuid/blob/master/uuid_mac.c#L92" rel="nofollow">https://github.com/sean-/ossp-uuid/blob/master/uuid_mac.c#L92</a></p>
+
+<p>Thanks for the pointers!  I was hoping for a Windows version, but<br>neither one seems to cover that.  OTOH, that means that we can&#x27;t<br>build uuid-ossp on Windows today anyway, so failing to support it<br>makes things no worse than before ... and anybody who wants that<br>can always send a patch.</p>
+
+<p>Before I start writing code, there seem to be two possible approaches<br>here:</p>
+
+<p>1. Rip out all the external-library dependencies, lock stock and<br>barrel.  contrib/uuid-ossp is always built.  --with-uuid configure<br>argument becomes a no-op or an error.</p>
+
+<p>2. contrib/uuid-ossp is always built, but if you say --with-uuid<br>then the existing code for that library is used.  We fall back to<br>homegrown code if you didn&#x27;t say --with-uuid.</p>
+
+<p>The main argument for #2 would be to preserve bug compatibility with<br>the existing behavior, in case (say) we pick a different interface&#x27;s<br>MAC address than you got before.  I suppose also it&#x27;s possible that<br>the existing libraries try harder to avoid collisions across UUIDs<br>generated in different processes than I envision doing in our own<br>version.  (I think v1 UUID uniqueness is snake-oil anyway, so I&#x27;m<br>just thinking of choosing a random &quot;clock sequence&quot; in each process<br>and calling it good.)</p>
+
+<p>Whether these are good enough reasons to continue carrying all<br>that code is unclear to me.  Thoughts?</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220108204528.f7viwyuxamdm2n34@alap3.anarazel.de"></a>
+<a name="dc3847e5a2bac132d786b0625457d0ff"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test
+ fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 20:45:28</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220108204528.f7viwyuxamdm2n34%40alap3.anarazel.de">20220108204528.f7viwyuxamdm2n34@alap3.anarazel.de</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220108204528.f7viwyuxamdm2n34%40alap3.anarazel.de">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220108204528.f7viwyuxamdm2n34%40alap3.anarazel.de" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220108204528.f7viwyuxamdm2n34%40alap3.anarazel.de" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220108204528.f7viwyuxamdm2n34%40alap3.anarazel.de" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>On 2022-01-08 15:35:33 -0500, Tom Lane wrote:<br>&gt; Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; &gt; On 2022-01-08 14:59:56 -0500, Tom Lane wrote:<br>&gt; &gt;&gt; Right, I was planning to have a look at how they&#x27;d done it.  The BSD<br>&gt; &gt;&gt; implementation seems to be inside the kernel, so that&#x27;s not likely<br>&gt; &gt;&gt; to be helpful, but the other two must be in userspace.<br>&gt;<br>&gt; &gt; <a href="https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid.c#L240" rel="nofollow">https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid.c#L240</a><br>&gt; &gt; <a href="https://github.com/sean-/ossp-uuid/blob/master/uuid_mac.c#L92" rel="nofollow">https://github.com/sean-/ossp-uuid/blob/master/uuid_mac.c#L92</a><br>&gt;<br>&gt; Thanks for the pointers!  I was hoping for a Windows version, but<br>&gt; neither one seems to cover that.</p>
+
+<p>e2fs does have something, in a separate file:<br><a href="https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid_nt.c" rel="nofollow">https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid_nt.c</a></p>
+
+<p>but it looks pretty ugly. But it seems like it&#x27;d not be too hard to just use<br>UuidCreateSequential() or UuidCreate() on windows.</p>
+
+<p><a href="https://docs.microsoft.com/en-us/windows/win32/api/rpcdce/nf-rpcdce-uuidcreate" rel="nofollow">https://docs.microsoft.com/en-us/windows/win32/api/rpcdce/nf-rpcdce-uuidcreate</a></p>
+
+<p>&gt; Before I start writing code, there seem to be two possible approaches<br>&gt; here:<br>&gt;<br>&gt; 1. Rip out all the external-library dependencies, lock stock and<br>&gt; barrel.  contrib/uuid-ossp is always built.  --with-uuid configure<br>&gt; argument becomes a no-op or an error.<br>&gt;<br>&gt; 2. contrib/uuid-ossp is always built, but if you say --with-uuid<br>&gt; then the existing code for that library is used.  We fall back to<br>&gt; homegrown code if you didn&#x27;t say --with-uuid.<br>&gt;<br>&gt; The main argument for #2 would be to preserve bug compatibility with<br>&gt; the existing behavior, in case (say) we pick a different interface&#x27;s<br>&gt; MAC address than you got before.  I suppose also it&#x27;s possible that<br>&gt; the existing libraries try harder to avoid collisions across UUIDs<br>&gt; generated in different processes than I envision doing in our own<br>&gt; version.<br>&gt;<br>&gt; Whether these are good enough reasons to continue carrying all<br>&gt; that code is unclear to me.  Thoughts?</p>
+
+<p>I&#x27;m inclined to think that we shouldn&#x27;t carry that much code just for some<br>pretty tenuous backward compatibility reasons.</p>
+
+<p>I wonder if we shouldn&#x27;t just move all the uuid stuff to core, and make<br>uuid-ossp be an empty shell for a few releases. It&#x27;s already pretty<br>confusingly named, with awkward quoting etc. In a few years it&#x27;ll be<br>completely unintelligible.</p>
+
+<p>&gt; (I think v1 UUID uniqueness is snake-oil anyway, so I&#x27;m just thinking of<br>&gt; choosing a random &quot;clock sequence&quot; in each process and calling it good.)</p>
+
+<p>Hm. Not so sure about that... If we go there, why don&#x27;t we just rip out the<br>ability to create v1 UUIDs?</p>
+
+<p>Greetings,</p>
+
+<p>Andres Freund</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1588971.1641677131@sss.pgh.pa.us"></a>
+<a name="28710316af6238754f1456de00d363c5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 21:25:31</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1588971.1641677131%40sss.pgh.pa.us">1588971.1641677131@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1588971.1641677131%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1588971.1641677131%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1588971.1641677131%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1588971.1641677131%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Andres Freund &lt;andres(at)anarazel(dot)de&gt; writes:<br>&gt; On 2022-01-08 15:35:33 -0500, Tom Lane wrote:<br>&gt;&gt; (I think v1 UUID uniqueness is snake-oil anyway, so I&#x27;m just thinking of<br>&gt;&gt; choosing a random &quot;clock sequence&quot; in each process and calling it good.)</p>
+
+<p>&gt; Hm. Not so sure about that... If we go there, why don&#x27;t we just rip out the<br>&gt; ability to create v1 UUIDs?</p>
+
+<p>Well, maybe.  Just considering having our own generator already puts us<br>in a state of sin, because the whole argument for v1 UUID uniqueness<br>hinges on there being just one generator per machine (or per MAC<br>address, anyway).  As soon as there are independent generators using<br>the same MAC address, they can&#x27;t positively guarantee uniqueness.<br>My thought about it is that once you&#x27;ve crossed that boundary, allowing<br>each process to generate UUIDs independently is not much of a leap.</p>
+
+<p>And, of course, the reason that the whole thing is snake oil is that<br>global uniqueness of MAC addresses is a fiction.  I think it probably<br>was from the get-go, but in these days of MAC addresses being just<br>made up on the fly, it certainly is.  (Need I mention macaddr8, and<br>the lack of space for it in v1 UUIDs?)</p>
+
+<p>So maybe what we should really do is follow the lead of NetBSD<br>(and OpenBSD too, it seems) and just desupport v1 UUID.  That<br>still leaves us with two alternatives: throw error, or silently<br>hand back a v4 UUID instead, as they&#x27;re doing.</p>
+
+<p>But I don&#x27;t especially like that, because v4 UUIDs are pretty<br>index-unfriendly, more so than v1 anyway.  I&#x27;d rather continue<br>to support v1 to the extent we can practically do so.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1605935.1641688721@sss.pgh.pa.us"></a>
+<a name="09f526941599d103a996ae31b054d903"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-09 00:38:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1605935.1641688721%40sss.pgh.pa.us">1605935.1641688721@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1605935.1641688721%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1605935.1641688721%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1605935.1641688721%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1605935.1641688721%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I wrote:<br>&gt; Well, maybe.  Just considering having our own generator already puts us<br>&gt; in a state of sin, because the whole argument for v1 UUID uniqueness<br>&gt; hinges on there being just one generator per machine (or per MAC<br>&gt; address, anyway).  As soon as there are independent generators using<br>&gt; the same MAC address, they can&#x27;t positively guarantee uniqueness.<br>&gt; My thought about it is that once you&#x27;ve crossed that boundary, allowing<br>&gt; each process to generate UUIDs independently is not much of a leap.</p>
+
+<p>After a bit of further thought, it seems like a reasonable compromise<br>could be to move the code into core PG and maintain the UUID assignment<br>state in shared memory.  We&#x27;d still set the clock sequence number to<br>something random at shmem initialization, but thereafter all backends<br>would draw from that shared state, allowing us to provide a guarantee<br>of uniqueness across the PG instance rather than just per-process.</p>
+
+<p>(I don&#x27;t see any value in trying to preserve the clock sequence number<br>across restarts.  A restart should take long enough that the timestamp<br>will advance, making it moot.  The main value of the clock sequence number<br>is to make it less likely that we&#x27;ll generate the same UUID as some other<br>generator running on the same machine, so a random choice seems optimal.)</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20727828-66c0-19d8-4b75-ce3ff12bf990@enterprisedb.com"></a>
+<a name="f068e144974f1cd7a1bd13d627cfa7c9"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, Andres Freund &lt;andres(at)anarazel(dot)de&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>byavuz81(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17358: While using --with-uuid=bsd option, uuid_ossp test
+ fails on NetBSD 9.2</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-12 11:12:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20727828-66c0-19d8-4b75-ce3ff12bf990%40enterprisedb.com">20727828-66c0-19d8-4b75-ce3ff12bf990@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20727828-66c0-19d8-4b75-ce3ff12bf990%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20727828-66c0-19d8-4b75-ce3ff12bf990%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20727828-66c0-19d8-4b75-ce3ff12bf990%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20727828-66c0-19d8-4b75-ce3ff12bf990%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 09.01.22 01:38, Tom Lane wrote:<br>&gt; I wrote:<br>&gt;&gt; Well, maybe.  Just considering having our own generator already puts us<br>&gt;&gt; in a state of sin, because the whole argument for v1 UUID uniqueness<br>&gt;&gt; hinges on there being just one generator per machine (or per MAC<br>&gt;&gt; address, anyway).  As soon as there are independent generators using<br>&gt;&gt; the same MAC address, they can&#x27;t positively guarantee uniqueness.<br>&gt;&gt; My thought about it is that once you&#x27;ve crossed that boundary, allowing<br>&gt;&gt; each process to generate UUIDs independently is not much of a leap.<br>&gt; <br>&gt; After a bit of further thought, it seems like a reasonable compromise<br>&gt; could be to move the code into core PG and maintain the UUID assignment<br>&gt; state in shared memory.  We&#x27;d still set the clock sequence number to<br>&gt; something random at shmem initialization, but thereafter all backends<br>&gt; would draw from that shared state, allowing us to provide a guarantee<br>&gt; of uniqueness across the PG instance rather than just per-process.</p>
+
+<p>I look forward to the new more database-friendly UUID versions being <br>standardized:</p>
+
+<p><a href="https://datatracker.ietf.org/doc/html/draft-peabody-dispatch-new-uuid-format-02" rel="nofollow">https://datatracker.ietf.org/doc/html/draft-peabody-dispatch-new-uuid-format-02</a></p>
+
+<p>I don&#x27;t think we need to do a lot of work in the meantime to rescue <br>obsolete UUID versions that no one really uses in practice, based on a <br>problem on one marginal platform.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,69 @@
+{
+  "report_id": "17357",
+  "scenario_id": "17357_main",
+  "target_version": "14.1",
+  "source_url": "https://www.postgresql.org/message-id/17357-02bf57d4d89bf972%40postgresql.org",
+  "parts": [
+    {
+      "text": "create table elements (\n     id serial primary key,\n     priority smallint default 0\n);\ninsert into elements (priority) values\n    (1), (2), (3), (0), (0),\n    (3), (2), (1), (0), (0),\n    (0), (0), (0), (0), (0),\n    (1), (1), (2), (2), (3)\n;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17357.txt",
+      "start_offset": 314,
+      "end_offset": 402,
+      "start_line": 18,
+      "end_line": 22,
+      "excerpt_sha256": "5a70f86e3f220259e99f04166a2325f497b79fd275801a77beac734d2e04e053",
+      "transformations": [
+        "trim outer whitespace",
+        "concatenate explicitly supplied DDL and INSERT, remove displayed command tags"
+      ],
+      "additional_sources": [
+        {
+          "text": "insert into elements (priority) values\n    (1), (2), (3), (0), (0),\n    (3), (2), (1), (0), (0),\n    (0), (0), (0), (0), (0),\n    (1), (1), (2), (2), (3)\n;",
+          "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17357.txt",
+          "start_offset": 458,
+          "end_offset": 614,
+          "start_line": 26,
+          "end_line": 32,
+          "excerpt_sha256": "d1bc1b02f22b4a9fac7f722a9de02d0cfd61db1caf114e0bdac1eb89753b2095",
+          "transformations": [
+            "trim outer whitespace"
+          ]
+        }
+      ]
+    },
+    {
+      "text": "select\n     *,\n     row_number() over(\n     partition by priority order by priority desc\n) as n\nfrom elements\n;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17357.txt",
+      "start_offset": 655,
+      "end_offset": 769,
+      "start_line": 36,
+      "end_line": 45,
+      "excerpt_sha256": "4053a97f6859869209a787fd4416363efb50a3bec7dfabe1daaf3b7de1c31f38",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    },
+    {
+      "text": "select *\n    from (\n         select\n             *,\n             row_number() over(\n                 partition by priority order by priority desc\n         ) as n\nfrom elements\n) as tmp\nWHERE n = 1 AND priority = 3\n;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17357.txt",
+      "start_offset": 1170,
+      "end_offset": 1385,
+      "start_line": 66,
+      "end_line": 76,
+      "excerpt_sha256": "b929c54b2e0696a777cd575d14a07f7ad42f6409f628fb3413c4e06f526b60c7",
+      "transformations": []
+    }
+  ],
+  "mode": "window_compare",
+  "oracle": {
+    "kind": "output",
+    "pattern": "^ROW_CHANGED$",
+    "reported_phenomenon": "增加过滤条件后窗口编号为1的priority3记录id发生变化",
+    "author_expected_behavior": "作者期望过滤前后的编号稳定"
+  },
+  "config": {},
+  "notes": "比较原文两条查询的返回行，不为并列排序补充tie-breaker。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "spec_sha256": "90884dfe4d6dad4e4268f8d3b2a5dab8aa8db306be1c8307c17fd235571b645d"
+}

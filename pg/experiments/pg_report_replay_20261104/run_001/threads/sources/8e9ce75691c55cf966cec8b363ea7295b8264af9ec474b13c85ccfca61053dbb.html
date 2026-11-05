@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17478: Missing documents in the index after CREATE INDEX CONCURRENTLY (but existing in the table)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17478-c422e68d010b951d%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-05-09T15:28:12" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17478: Missing documents in the index after CREATE INDEX CONCURRENTLY (but existing in the table)" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="0a37f8930cc7cbb2368c4105c6d4198e">BUG #17478: Missing documents in the index after CREATE INDEX CONCURRENTLY (but existing in the table)</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202205091528">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17478-c422e68d010b951d@postgresql.org"></a>
+<a name="0a37f8930cc7cbb2368c4105c6d4198e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>spastrilov(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17478: Missing documents in the index after CREATE INDEX CONCURRENTLY (but existing in the table)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 15:28:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17478-c422e68d010b951d%40postgresql.org">17478-c422e68d010b951d@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17478-c422e68d010b951d%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17478-c422e68d010b951d%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17478-c422e68d010b951d%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17478-c422e68d010b951d%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17478<br>Logged by:          Stefan Pastrilov<br>Email address:      spastrilov(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>Hello,</p>
+
+<p>We’re observing a strange bug, according to me. We’ve got native logical<br>replication where the master host is running on PostgreSQL 13.3 and the<br>logical replica host is running on PostgreSQL 14.1. And the problem is:<br>  when we start to reindex concurrently the primary key of an 800M heavily<br>inserted/updated(on the master)table on the logical replica database,<br>several documents that have been inserted and existing in the master<br>database during the index rebuild on the replica, are missing from the index<br>structure on the replica host. What do I mean? If you try to search them by<br>where id = 5 the index returns no records, but when you force a sequential<br>scan (where id + 0 = 5)the row is returned. Usually, we’re messing around<br>10-100 documents from the index after each concurrent re-index. When we<br>rebuild the index again, they are found by an index look-up, but a new set<br>of ids are missing. So the problem is easily reproducible, but you should<br>have a heavily loaded table. Do you have any ideas about this? The newly<br>created index is valid and fully functional, with no signs of a corrupted<br>one…</p>
+
+<p>To be clear, the index rebuild is done on the subscribed table(slave<br>host).</p>
+
+<p>master host:<br>PostgreSQL 13.3 (Ubuntu 13.3-1.pgdg20.04+1) on x86_64-pc-linux-gnu, compiled<br>by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit<br>slave host:<br>PostgreSQL 14.1 (Ubuntu 14.1-2.pgdg20.04+1) on x86_64-pc-linux-gnu, compiled<br>by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAK-MWwT1wt=zK+pu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q@mail.gmail.com"></a>
+<a name="1a0578a0c32433d8bc6818e4bdca66ce"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Maxim Boguk &lt;maxim(dot)boguk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>spastrilov(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17478: Missing documents in the index after CREATE INDEX
+ CONCURRENTLY (but existing in the table)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 16:24:22</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAK-MWwT1wt%3DzK%2Bpu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q%40mail.gmail.com">CAK-MWwT1wt=zK+pu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAK-MWwT1wt%3DzK%2Bpu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAK-MWwT1wt%3DzK%2Bpu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAK-MWwT1wt%3DzK%2Bpu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAK-MWwT1wt%3DzK%2Bpu52qEZnSieYXvx8St6wwwWtOb81eQh6zH7Q%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, May 9, 2022 at 5:58 PM PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;<br>wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17478<br>&gt; Logged by:          Stefan Pastrilov<br>&gt; Email address:      spastrilov(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.1<br>&gt; Operating system:   Ubuntu 20.04<br>&gt; Description:<br>&gt;<br>&gt; Hello,<br>&gt;<br>&gt; We’re observing a strange bug, according to me. We’ve got native logical<br>&gt; replication where the master host is running on PostgreSQL 13.3 and the<br>&gt; logical replica host is running on PostgreSQL 14.1. And the problem is:<br>&gt;   when we start to reindex concurrently the primary key of an 800M heavily<br>&gt; inserted/updated(on the master)table on the logical replica database,<br>&gt; several documents that have been inserted and existing in the master<br>&gt; database during the index rebuild on the replica, are missing from the<br>&gt; index<br>&gt; structure on the replica host. What do I mean? If you try to search them by<br>&gt; where id = 5 the index returns no records, but when you force a sequential<br>&gt; scan (where id + 0 = 5)the row is returned. Usually, we’re messing around<br>&gt; 10-100 documents from the index after each concurrent re-index. When we<br>&gt; rebuild the index again, they are found by an index look-up, but a new set<br>&gt; of ids are missing. So the problem is easily reproducible, but you should<br>&gt; have a heavily loaded table. Do you have any ideas about this? The newly<br>&gt; created index is valid and fully functional, with no signs of a corrupted<br>&gt; one…<br>&gt;<br>&gt; To be clear, the index rebuild is done on the subscribed table(slave<br>&gt; host).<br>&gt;<br>&gt; master host:<br>&gt; PostgreSQL 13.3 (Ubuntu 13.3-1.pgdg20.04+1) on x86_64-pc-linux-gnu,<br>&gt; compiled<br>&gt; by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit<br>&gt; slave host:<br>&gt; PostgreSQL 14.1 (Ubuntu 14.1-2.pgdg20.04+1) on x86_64-pc-linux-gnu,<br>&gt; compiled<br>&gt; by gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0, 64-bit<br>&gt;<br>&gt;<br>Hi Stefan,</p>
+
+<p>Please try to upgrade your slave to 14.2 where this problem was fixed (at<br>least it fixed the same issue for me).</p>
+
+<p>-- <br>Maxim Boguk<br>Senior Postgresql DBA<br><a href="https://dataegret.com/" rel="nofollow">https://dataegret.com/</a></p>
+
+<p>Phone RU: +7  985 433 0000<br>Phone UA: +380 99 143 0000<br>Phone AU: +61  45 218 5678</p>
+
+<p>LinkedIn: <a href="http://www.linkedin.com/pub/maksym-boguk/80/b99/b1b" rel="nofollow">http://www.linkedin.com/pub/maksym-boguk/80/b99/b1b</a><br>Skype: maxim.boguk</p>
+
+<p>&quot;Доктор, вы мне советовали так не делать, но почему мне по-прежнему больно<br>когда я так делаю ещё раз?&quot;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3816955.1652113943@sss.pgh.pa.us"></a>
+<a name="bf4b574e3f803edc38b64a6a5f8265b6"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Maxim Boguk &lt;maxim(dot)boguk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>spastrilov(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17478: Missing documents in the index after CREATE INDEX CONCURRENTLY (but existing in the table)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 16:32:23</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3816955.1652113943%40sss.pgh.pa.us">3816955.1652113943@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3816955.1652113943%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3816955.1652113943%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3816955.1652113943%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3816955.1652113943%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Maxim Boguk &lt;maxim(dot)boguk(at)gmail(dot)com&gt; writes:<br>&gt; On Mon, May 9, 2022 at 5:58 PM PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;<br>&gt; wrote:<br>&gt;&gt; We’re observing a strange bug, according to me. We’ve got native logical<br>&gt;&gt; replication where the master host is running on PostgreSQL 13.3 and the<br>&gt;&gt; logical replica host is running on PostgreSQL 14.1. And the problem is:<br>&gt;&gt; when we start to reindex concurrently the primary key of an 800M heavily<br>&gt;&gt; inserted/updated(on the master)table on the logical replica database,<br>&gt;&gt; several documents that have been inserted and existing in the master<br>&gt;&gt; database during the index rebuild on the replica, are missing from the<br>&gt;&gt; index<br>&gt;&gt; structure on the replica host.</p>
+
+<p>&gt; Please try to upgrade your slave to 14.2 where this problem was fixed (at<br>&gt; least it fixed the same issue for me).</p>
+
+<p>13.6 might do as well, and would be a lot closer to a drop-in upgrade.</p>
+
+<p>The 13.5 and 13.6 release notes both mention problems with REINDEX<br>CONCURRENTLY.  Given the existence of those fixed bugs, nobody is<br>likely to look too closely at this report unless you can still reproduce<br>it on a current minor release.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAG0pUfv5X27qbwctRZ8-ZPSKEnJ_KEH6CFtmkvMJcwqZ5h-FMw@mail.gmail.com"></a>
+<a name="113c3e2ef982ef1aceebee66591c9104"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Stefan Pastrilov &lt;spastrilov(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Maxim Boguk &lt;maxim(dot)boguk(at)gmail(dot)com&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17478: Missing documents in the index after CREATE INDEX
+ CONCURRENTLY (but existing in the table)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-10 18:17:16</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAG0pUfv5X27qbwctRZ8-ZPSKEnJ_KEH6CFtmkvMJcwqZ5h-FMw%40mail.gmail.com">CAG0pUfv5X27qbwctRZ8-ZPSKEnJ_KEH6CFtmkvMJcwqZ5h-FMw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAG0pUfv5X27qbwctRZ8-ZPSKEnJ_KEH6CFtmkvMJcwqZ5h-FMw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAG0pUfv5X27qbwctRZ8-ZPSKEnJ_KEH6CFtmkvMJcwqZ5h-FMw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAG0pUfv5X27qbwctRZ8-ZPSKEnJ_KEH6CFtmkvMJcwqZ5h-FMw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAG0pUfv5X27qbwctRZ8-ZPSKEnJ_KEH6CFtmkvMJcwqZ5h-FMw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello,</p>
+
+<p>Thank you for your answers.</p>
+
+<p>I&#x27;ve upgraded the slave database to 14.2 and after rebuilding the primary<br>key concurrently, sadly but I have missing documents again.<br>The missing documents are created in the master within the time interval<br>while reindex is taking place in the slave, the table is big and it takes<br>around an hour to be rebuilt.</p>
+
+<p>The same documents are visible in the table through other indexes:<br>For example the query:</p>
+
+<p>SELECT * FROM table_name WHERE id = 5 and user_id = 1<br>UNION ALL<br>SELECT * FROM table_name WHERE id + 0 = 5 and user_id = 1</p>
+
+<p>returns only one row(it must return 2):<br> the first query uses the primary key and does not find anything<br> the second query uses the index by user_id and finds the document with id=5</p>
+
+<p>Tom, fixes in 13.5 and 13.6 are included in 14.2, aren&#x27;t they? In my<br>opinion, the problem is in the slave host, which is running 14, not in the<br>master.</p>
+
+<p>Thank you in advance!</p>
+
+<p>Regards,<br>Stefan</p>
+
+<p>On Mon, May 9, 2022 at 7:32 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; Maxim Boguk &lt;maxim(dot)boguk(at)gmail(dot)com&gt; writes:<br>&gt; &gt; On Mon, May 9, 2022 at 5:58 PM PG Bug reporting form &lt;<br>&gt; noreply(at)postgresql(dot)org&gt;<br>&gt; &gt; wrote:<br>&gt; &gt;&gt; We’re observing a strange bug, according to me. We’ve got native logical<br>&gt; &gt;&gt; replication where the master host is running on PostgreSQL 13.3 and the<br>&gt; &gt;&gt; logical replica host is running on PostgreSQL 14.1. And the problem is:<br>&gt; &gt;&gt; when we start to reindex concurrently the primary key of an 800M heavily<br>&gt; &gt;&gt; inserted/updated(on the master)table on the logical replica database,<br>&gt; &gt;&gt; several documents that have been inserted and existing in the master<br>&gt; &gt;&gt; database during the index rebuild on the replica, are missing from the<br>&gt; &gt;&gt; index<br>&gt; &gt;&gt; structure on the replica host.<br>&gt;<br>&gt; &gt; Please try to upgrade your slave to 14.2 where this problem was fixed (at<br>&gt; &gt; least it fixed the same issue for me).<br>&gt;<br>&gt; 13.6 might do as well, and would be a lot closer to a drop-in upgrade.<br>&gt;<br>&gt; The 13.5 and 13.6 release notes both mention problems with REINDEX<br>&gt; CONCURRENTLY.  Given the existence of those fixed bugs, nobody is<br>&gt; likely to look too closely at this report unless you can still reproduce<br>&gt; it on a current minor release.<br>&gt;<br>&gt;                         regards, tom lane<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="AA6FED00-794F-410B-B0C0-01E40BC1B7E2@yandex-team.ru"></a>
+<a name="d05a654b7369dec69b197eeeeec5a9f1"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andrey Borodin &lt;x4mmm(at)yandex-team(dot)ru&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Stefan Pastrilov &lt;spastrilov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,
+ Maxim Boguk &lt;maxim(dot)boguk(at)gmail(dot)com&gt;,
+ PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17478: Missing documents in the index after CREATE INDEX
+ CONCURRENTLY (but existing in the table)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-20 18:44:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/AA6FED00-794F-410B-B0C0-01E40BC1B7E2%40yandex-team.ru">AA6FED00-794F-410B-B0C0-01E40BC1B7E2@yandex-team.ru</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/AA6FED00-794F-410B-B0C0-01E40BC1B7E2%40yandex-team.ru">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/AA6FED00-794F-410B-B0C0-01E40BC1B7E2%40yandex-team.ru" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/AA6FED00-794F-410B-B0C0-01E40BC1B7E2%40yandex-team.ru" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/AA6FED00-794F-410B-B0C0-01E40BC1B7E2%40yandex-team.ru" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p></p>
+
+<p>&gt; On 10 May 2022, at 23:17, Stefan Pastrilov &lt;spastrilov(at)gmail(dot)com&gt; wrote:<br>&gt; <br>&gt; fixes in 13.5 and 13.6 are included in 14.2, aren&#x27;t they? </p>
+
+<p>Yes, fixes are there.<br>Would it be troublesome to try 13.6 too?</p>
+
+<p>The thing is we fixed several CIC bugs in 13.5 and 14.1. But maybe introduced another bug in 14+. This is investigated in bug #17485.</p>
+
+<p>Thank you!</p>
+
+<p>Best regards, Andrey Borodin.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

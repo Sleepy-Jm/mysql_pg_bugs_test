@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17372: Altering statistics during concurrent drop can lead to a server crash</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17372-bf3b6e947e35ae77%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-20T04:00:01" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17372: Altering statistics during concurrent drop can lead to a server crash" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="e24236f90d4a546a2dc3f4991da59fe7">BUG #17372: Altering statistics during concurrent drop can lead to a server crash</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202201200400">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17372-bf3b6e947e35ae77@postgresql.org"></a>
+<a name="e24236f90d4a546a2dc3f4991da59fe7"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17372: Altering statistics during concurrent drop can lead to a server crash</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-20 04:00:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17372-bf3b6e947e35ae77%40postgresql.org">17372-bf3b6e947e35ae77@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17372-bf3b6e947e35ae77%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17372-bf3b6e947e35ae77%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17372-bf3b6e947e35ae77%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17372-bf3b6e947e35ae77%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17372<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>The following script (based on the stats_ext test):<br>psql -c &quot;CREATE TABLE ab1 (a INTEGER, b INTEGER, c INTEGER);&quot;<br>for i in `seq 100`; do<br>echo &quot;iteration $i&quot;<br>( { for n in `seq 20`; do echo &quot;CREATE STATISTICS ab1_a_b_stats ON a, b FROM<br>ab1; DROP STATISTICS ab1_a_b_stats;&quot;; done } | psql ) &gt;psql1.log 2&gt;&amp;1 &amp;<br>( { for n in `seq 20`; do echo &quot;ALTER STATISTICS ab1_a_b_stats SET<br>STATISTICS -1;&quot;; done } | psql ) &gt;psql2.log 2&gt;&amp;1 &amp;</p>
+
+<p>wait<br>sleep 2<br>coredumpctl --no-pager &amp;&amp; break<br>done</p>
+
+<p>causes the server crash with the following stacktrace:<br>Core was generated by `postgres: law regression [local] ALTER STATISTICS    <br>                        &#x27;.<br>Program terminated with signal SIGSEGV, Segmentation fault.<br>#0  0x000055c5f56ff405 in heap_deform_tuple (tuple=0x0,<br>tupleDesc=0x55c5f6c96a40, values=0x55c5f6c4a1a0, <br>    isnull=0x55c5f6c45e08) at heaptuple.c:1252<br>1252            HeapTupleHeader tup = tuple-&gt;t_data;<br>(gdb) bt<br>#0  0x000055c5f56ff405 in heap_deform_tuple (tuple=0x0,<br>tupleDesc=0x55c5f6c96a40, values=0x55c5f6c4a1a0, <br>    isnull=0x55c5f6c45e08) at heaptuple.c:1252<br>#1  0x000055c5f56ff127 in heap_modify_tuple (tuple=0x0,<br>tupleDesc=0x55c5f6c96a40, replValues=0x7ffe4d9f8ee0, <br>    replIsnull=0x7ffe4d9f8ece, doReplace=0x7ffe4d9f8ed7) at<br>heaptuple.c:1139<br>#2  0x000055c5f597293a in AlterStatistics (stmt=0x55c5f6c22360) at<br>statscmds.c:695<br>#3  0x000055c5f5c679ff in ProcessUtilitySlow (pstate=0x55c5f6c431b0,<br>pstmt=0x55c5f6c226b0, <br>    queryString=0x55c5f6c218a0 &quot;ALTER STATISTICS ab1_a_b_stats SET<br>STATISTICS -1;&quot;, context=PROCESS_UTILITY_TOPLEVEL, <br>    params=0x0, queryEnv=0x0, dest=0x55c5f6c227a0, qc=0x7ffe4d9f9700) at<br>utility.c:1883<br>#4  0x000055c5f5c65c13 in standard_ProcessUtility (pstmt=0x55c5f6c226b0, <br>    queryString=0x55c5f6c218a0 &quot;ALTER STATISTICS ab1_a_b_stats SET<br>STATISTICS -1;&quot;, readOnlyTree=false, <br>    context=PROCESS_UTILITY_TOPLEVEL, params=0x0, queryEnv=0x0,<br>dest=0x55c5f6c227a0, qc=0x7ffe4d9f9700)<br>    at utility.c:1066<br>#5  0x000055c5f5c64b83 in ProcessUtility (pstmt=0x55c5f6c226b0, <br>    queryString=0x55c5f6c218a0 &quot;ALTER STATISTICS ab1_a_b_stats SET<br>STATISTICS -1;&quot;, readOnlyTree=false, <br>    context=PROCESS_UTILITY_TOPLEVEL, params=0x0, queryEnv=0x0,<br>dest=0x55c5f6c227a0, qc=0x7ffe4d9f9700) at utility.c:527<br>#6  0x000055c5f5c63422 in PortalRunUtility (portal=0x55c5f6c84210,<br>pstmt=0x55c5f6c226b0, isTopLevel=true, <br>    setHoldSnapshot=false, dest=0x55c5f6c227a0, qc=0x7ffe4d9f9700) at<br>pquery.c:1155<br>#7  0x000055c5f5c636ad in PortalRunMulti (portal=0x55c5f6c84210,<br>isTopLevel=true, setHoldSnapshot=false, <br>    dest=0x55c5f6c227a0, altdest=0x55c5f6c227a0, qc=0x7ffe4d9f9700) at<br>pquery.c:1312<br>#8  0x000055c5f5c62adc in PortalRun (portal=0x55c5f6c84210,<br>count=9223372036854775807, isTopLevel=true, run_once=true, <br>    dest=0x55c5f6c227a0, altdest=0x55c5f6c227a0, qc=0x7ffe4d9f9700) at<br>pquery.c:788<br>#9  0x000055c5f5c5b918 in exec_simple_query (<br>    query_string=0x55c5f6c218a0 &quot;ALTER STATISTICS ab1_a_b_stats SET<br>STATISTICS -1;&quot;) at postgres.c:1214<br>#10 0x000055c5f5c60807 in PostgresMain (argc=1, argv=0x7ffe4d9f9920,<br>dbname=0x55c5f6c4d9f8 &quot;regression&quot;, <br>    username=0x55c5f6c4d9d8 &quot;law&quot;) at postgres.c:4486<br>#11 0x000055c5f5b84fd6 in BackendRun (port=0x55c5f6c46300) at<br>postmaster.c:4530<br>#12 0x000055c5f5b84831 in BackendStartup (port=0x55c5f6c46300) at<br>postmaster.c:4252<br>#13 0x000055c5f5b80626 in ServerLoop () at postmaster.c:1745<br>#14 0x000055c5f5b7fd83 in PostmasterMain (argc=3, argv=0x55c5f6c1b910) at<br>postmaster.c:1417<br>#15 0x000055c5f5a6f2e0 in main (argc=3, argv=0x55c5f6c1b910) at main.c:209</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2615f158-b790-4176-11ad-9711e4fd56c7@enterprisedb.com"></a>
+<a name="6ed6f7b6b874ecd10deec46c83722d33"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>exclusion(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org,
+ PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17372: Altering statistics during concurrent drop can lead
+ to a server crash</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-20 17:57:32</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2615f158-b790-4176-11ad-9711e4fd56c7%40enterprisedb.com">2615f158-b790-4176-11ad-9711e4fd56c7@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2615f158-b790-4176-11ad-9711e4fd56c7%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2615f158-b790-4176-11ad-9711e4fd56c7%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2615f158-b790-4176-11ad-9711e4fd56c7%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2615f158-b790-4176-11ad-9711e4fd56c7%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 1/20/22 05:00, PG Bug reporting form wrote:<br>&gt; The following bug has been logged on the website:<br>&gt; <br>&gt; Bug reference:      17372<br>&gt; Logged by:          Alexander Lakhin<br>&gt; Email address:      exclusion(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.1<br>&gt; Operating system:   Ubuntu 20.04<br>&gt; Description:        <br>&gt; <br>&gt; The following script (based on the stats_ext test):<br>&gt; psql -c &quot;CREATE TABLE ab1 (a INTEGER, b INTEGER, c INTEGER);&quot;<br>&gt; for i in `seq 100`; do<br>&gt; echo &quot;iteration $i&quot;<br>&gt; ( { for n in `seq 20`; do echo &quot;CREATE STATISTICS ab1_a_b_stats ON a, b FROM<br>&gt; ab1; DROP STATISTICS ab1_a_b_stats;&quot;; done } | psql ) &gt;psql1.log 2&gt;&amp;1 &amp;<br>&gt; ( { for n in `seq 20`; do echo &quot;ALTER STATISTICS ab1_a_b_stats SET<br>&gt; STATISTICS -1;&quot;; done } | psql ) &gt;psql2.log 2&gt;&amp;1 &amp;<br>&gt; <br>&gt; wait<br>&gt; sleep 2<br>&gt; coredumpctl --no-pager &amp;&amp; break<br>&gt; done<br>&gt; </p>
+
+<p>Thanks for the report - I&#x27;ve reproduced it using your script (I had to<br>add a short wait before the syscache lookup). The issue is fairly<br>simple, we never check we actually found a tuple in the syscache, i.e.<br>there&#x27;s no HeapTupleIsValid() call. We check the OID earlier, but the<br>tuple may have disappeared since then.</p>
+
+<p>IMO the usual &quot;cache lookup failed&quot; error that we throw in other places<br>in similar cases is good enough. We already fail with other errors<br>(tuple concurrently updated/deleted) here.</p>
+
+<p>Patch attached.</p>
+
+<p>regards</p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/130113/alter-statistics-fix.patch">alter-statistics-fix.patch</a>
+            
+          </th>
+          <td>text/x-patch</td>
+          <td>618 bytes</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="a652653f-b669-cb3a-6116-663e335a5012@gmail.com"></a>
+<a name="010332fcaf651df7e971711e5c7ec83b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;,
+ pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17372: Altering statistics during concurrent drop can lead
+ to a server crash</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-21 06:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/a652653f-b669-cb3a-6116-663e335a5012%40gmail.com">a652653f-b669-cb3a-6116-663e335a5012@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/a652653f-b669-cb3a-6116-663e335a5012%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/a652653f-b669-cb3a-6116-663e335a5012%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/a652653f-b669-cb3a-6116-663e335a5012%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/a652653f-b669-cb3a-6116-663e335a5012%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello Tomas,<br>20.01.2022 20:57, Tomas Vondra wrote:<br>&gt; Thanks for the report - I&#x27;ve reproduced it using your script (I had to<br>&gt; add a short wait before the syscache lookup). The issue is fairly<br>&gt; simple, we never check we actually found a tuple in the syscache, i.e.<br>&gt; there&#x27;s no HeapTupleIsValid() call. We check the OID earlier, but the<br>&gt; tuple may have disappeared since then.<br>&gt;<br>&gt; IMO the usual &quot;cache lookup failed&quot; error that we throw in other places<br>&gt; in similar cases is good enough. We already fail with other errors<br>&gt; (tuple concurrently updated/deleted) here.<br>Yes, the rough, but simple search:<br>grep -Porz<br>&#x27;.*=\s*SearchSysCache1.*\n(?!(.*|.*\n.*|.*\n.*\n.*|.*\n.*\n.*\n.*)HeapTupleIsValid)&#x27;<br>./<br>finds only this place.<br>Your fix works for me.</p>
+
+<p>Thanks!</p>
+
+<p>Best regards,<br>Alexander</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

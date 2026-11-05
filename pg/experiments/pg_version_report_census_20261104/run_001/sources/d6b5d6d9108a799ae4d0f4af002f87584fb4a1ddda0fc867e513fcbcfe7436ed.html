@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17334: Assert failed inside computeDistance() on gist index scanning</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17334-135f485c21739caa%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2021-12-12T16:00:01" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17334: Assert failed inside computeDistance() on gist index scanning" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17334 Logged by: Alexander Lakhin Email address: exclusion@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17334: Assert failed inside computeDistance() on gist index scanning</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17334: Assert failed inside computeDistance() on gist index scanning</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-12 16:00:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17334-135f485c21739caa%40postgresql.org">17334-135f485c21739caa@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17334-135f485c21739caa%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17334-135f485c21739caa%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17334-135f485c21739caa%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17334-135f485c21739caa%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17334-135f485c21739caa%40postgresql.org" selected="selected">2021-12-12 16:00:01 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="7c191fd2-9103-ae81-8f4f-22f39edd3c90%40enterprisedb.com">&nbsp;2021-12-12 22:59:43 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  <option value="746816.1639352241%40sss.pgh.pa.us">&nbsp;&nbsp;2021-12-12 23:37:21 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="6b3cf869-9a30-1005-11a4-fdbeb939bed2%40enterprisedb.com">&nbsp;&nbsp;&nbsp;2021-12-13 02:32:18 from Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</option>
+  <option value="20211213.163305.1371658737708322083.horikyota.ntt%40gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2021-12-13 07:33:05 from Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17334<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>When executing the following queries:<br>CREATE TABLE point_tbl(f1 point);<br>CREATE INDEX gpointind ON point_tbl USING gist(f1);<br>INSERT INTO point_tbl SELECT (&#x27;0,0&#x27;) FROM generate_series(1, 185);<br>INSERT INTO point_tbl VALUES (&#x27;0,NaN&#x27;);<br>SET enable_seqscan=off; SELECT f1 &lt;-&gt; point &#x27;(0,0)&#x27; AS dist FROM point_tbl<br>ORDER BY dist;</p>
+
+<p>I get a failed assertion with the backtrace:<br>Core was generated by `postgres: law regression [local] SELECT              <br>                        &#x27;.<br>Program terminated with signal SIGABRT, Aborted.<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>50      ../sysdeps/unix/sysv/linux/raise.c: No such file or directory.<br>(gdb) bt<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>#1  0x00007ff58e5ff859 in __GI_abort () at abort.c:79<br>#2  0x000055fa508acaaf in ExceptionalCondition (conditionName=0x55fa509407ec<br>&quot;box-&gt;low.y &lt;= box-&gt;high.y&quot;, <br>    errorType=0x55fa5094066a &quot;FailedAssertion&quot;, fileName=0x55fa509406fa<br>&quot;gistproc.c&quot;, lineNumber=1240) at assert.c:69<br>#3  0x000055fa501be673 in computeDistance (isLeaf=false, box=0x7ff5837ff428,<br>point=0x55fa5122ccf8) at gistproc.c:1240<br>#4  0x000055fa501bf265 in gist_point_distance (fcinfo=0x7ffdb02e05d0) at<br>gistproc.c:1466<br>#5  0x000055fa508b85b4 in FunctionCall5Coll (flinfo=0x55fa5123baa0,<br>collation=0, arg1=140727559259904, <br>    arg2=94533591420152, arg3=15, arg4=600, arg5=140727559259823) at<br>fmgr.c:1241<br>#6  0x000055fa501ba284 in gistindex_keytest (scan=0x55fa5123b978,<br>tuple=0x7ff5837ff420, page=0x7ff5837fd480 &quot;&quot;, <br>    offset=2, recheck_p=0x7ffdb02e0779, recheck_distances_p=0x7ffdb02e077a)<br>at gistget.c:286<br>#7  0x000055fa501ba94c in gistScanPage (scan=0x55fa5123b978,<br>pageItem=0x7ffdb02e0830, myDistances=0x0, tbm=0x0, <br>    ntids=0x0) at gistget.c:438<br>#8  0x000055fa501bb0f6 in gistgettuple (scan=0x55fa5123b978,<br>dir=ForwardScanDirection) at gistget.c:639<br>#9  0x000055fa502190c5 in index_getnext_tid (scan=0x55fa5123b978,<br>direction=ForwardScanDirection) at indexam.c:533<br>#10 0x000055fa504a6a85 in IndexOnlyNext (node=0x55fa5123a378) at<br>nodeIndexonlyscan.c:121<br>#11 0x000055fa5047b72a in ExecScanFetch (node=0x55fa5123a378,<br>accessMtd=0x55fa504a64d3 &lt;IndexOnlyNext&gt;, <br>    recheckMtd=0x55fa504a6b31 &lt;IndexOnlyRecheck&gt;) at execScan.c:133<br>#12 0x000055fa5047b7cf in ExecScan (node=0x55fa5123a378,<br>accessMtd=0x55fa504a64d3 &lt;IndexOnlyNext&gt;, <br>    recheckMtd=0x55fa504a6b31 &lt;IndexOnlyRecheck&gt;) at execScan.c:199<br>#13 0x000055fa504a6bfd in ExecIndexOnlyScan (pstate=0x55fa5123a378) at<br>nodeIndexonlyscan.c:317<br>#14 0x000055fa50477458 in ExecProcNodeFirst (node=0x55fa5123a378) at<br>execProcnode.c:463<br>#15 0x000055fa5046af44 in ExecProcNode (node=0x55fa5123a378) at<br>../../../src/include/executor/executor.h:257<br>#16 0x000055fa5046db62 in ExecutePlan (estate=0x55fa5123a140,<br>planstate=0x55fa5123a378, use_parallel_mode=false, <br>    operation=CMD_SELECT, sendTuples=true, numberTuples=0,<br>direction=ForwardScanDirection, dest=0x55fa5122d308, <br>    execute_once=true) at execMain.c:1551<br>#17 0x000055fa5046b67b in standard_ExecutorRun (queryDesc=0x55fa511f8ae0,<br>direction=ForwardScanDirection, count=0, <br>    execute_once=true) at execMain.c:361<br>#18 0x000055fa5046b466 in ExecutorRun (queryDesc=0x55fa511f8ae0,<br>direction=ForwardScanDirection, count=0, <br>    execute_once=true) at execMain.c:305<br>#19 0x000055fa506ee7c0 in PortalRunSelect (portal=0x55fa511c12c0,<br>forward=true, count=0, dest=0x55fa5122d308)<br>    at pquery.c:921<br>#20 0x000055fa506ee3de in PortalRun (portal=0x55fa511c12c0,<br>count=9223372036854775807, isTopLevel=true, run_once=true, <br>    dest=0x55fa5122d308, altdest=0x55fa5122d308, qc=0x7ffdb02e0d70) at<br>pquery.c:765<br>#21 0x000055fa506e7255 in exec_simple_query (<br>    query_string=0x55fa5114e220 &quot;SELECT f1 &lt;-&gt; point &#x27;(0,0)&#x27; AS dist FROM<br>point_tbl ORDER BY dist;&quot;) at postgres.c:1215<br>#22 0x000055fa506ec1ab in PostgresMain (dbname=0x55fa51179b88 &quot;regression&quot;,<br>username=0x55fa51179b68 &quot;law&quot;)<br>    at postgres.c:4498<br>#23 0x000055fa5060cd49 in BackendRun (port=0x55fa5116f640) at<br>postmaster.c:4594<br>#24 0x000055fa5060c5d0 in BackendStartup (port=0x55fa5116f640) at<br>postmaster.c:4322<br>#25 0x000055fa506083b8 in ServerLoop () at postmaster.c:1802<br>#26 0x000055fa50607b15 in PostmasterMain (argc=3, argv=0x55fa511484e0) at<br>postmaster.c:1474<br>#27 0x000055fa504f4d81 in main (argc=3, argv=0x55fa511484e0) at main.c:198</p>
+
+<p>With a server compiled without asserts I get:<br>ERROR:  inconsistent point values</p>
+
+<p>Reproduced on REL_10_STABLE..HEAD.</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/7c191fd2-9103-ae81-8f4f-22f39edd3c90%40enterprisedb.com">Re: BUG #17334: Assert failed inside computeDistance() on gist index
+ scanning</a> at 2021-12-12 22:59:43 from Tomas Vondra
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/7c191fd2-9103-ae81-8f4f-22f39edd3c90%40enterprisedb.com">Next Message</a></th>
+            <td>Tomas Vondra</td>
+            <td>2021-12-12 22:59:43</td>
+            <td><a href="/message-id/7c191fd2-9103-ae81-8f4f-22f39edd3c90%40enterprisedb.com">Re: BUG #17334: Assert failed inside computeDistance() on gist index
+ scanning</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAH2-WzkzuuY0V9xE10LJS1bBH%3DGMuGrV7BMf3q3wQyt-ABFVrQ%40mail.gmail.com">Previous Message</a></th>
+            <td>Peter Geoghegan</td>
+            <td>2021-12-11 22:51:35</td>
+            <td><a href="/message-id/CAH2-WzkzuuY0V9xE10LJS1bBH%3DGMuGrV7BMf3q3wQyt-ABFVrQ%40mail.gmail.com">Re: BUG #17255: Server crashes in index_delete_sort_cmp() due to race
+ condition with vacuum</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

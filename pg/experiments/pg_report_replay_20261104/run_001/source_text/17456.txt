@@ -1,0 +1,89 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17456
+Logged by:          Andrew Grossman
+Email address:      agrossman(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   MacOS 12.3
+Description:        
+
+
+I have a case where an AFTER ROW trigger has a condition comparing two ltree
+fields. The ltree extension is installed in a different schema than the
+triggered table is. Upon restoration, the following error is encountered:
+
+
+psql:/tmp/bugreport.sql:93: ERROR:  42883: operator does not exist:
+util.ltree = util.ltree
+LINE 1: ...N my_schema.my_table FOR EACH ROW WHEN ((new.path IS DISTINC...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need
+to add explicit type casts.
+LOCATION:  op_error, parse_oper.c:731
+
+
+The following sql will reproduce this case:
+
+
+===================================
+
+
+CREATE SCHEMA my_schema;
+CREATE SCHEMA util;
+CREATE EXTENSION ltree WITH SCHEMA util;
+SET SEARCH_PATH=my_schema,util;
+CREATE TABLE my_schema.my_table
+    (path ltree);
+
+
+CREATE FUNCTION my_schema.noop() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN NEW;
+END;
+$$;
+
+
+CREATE TRIGGER path_update_after_trg
+    AFTER UPDATE ON my_schema.my_table
+    FOR EACH ROW WHEN ((new.path IS DISTINCT FROM old.path))
+    EXECUTE FUNCTION my_schema.noop();
+
+
+===================================
+end of reproduction setup sql.
+
+
+Execution looks like:
+===================================
+> createdb my_restore_db; pg_dump my_source_db | psql my_restore_db
+
+
+...
+CREATE TABLE
+Time: 15.558 ms
+ALTER TABLE
+Time: 0.293 ms
+COPY 0
+Time: 0.216 ms
+ERROR:  42883: operator does not exist: util.ltree = util.ltree
+LINE 1: ...N my_schema.my_table FOR EACH ROW WHEN ((new.path IS DISTINC...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need
+to add explicit type casts.
+LOCATION:  op_error, parse_oper.c:731
+Time: 3.546 ms
+
+
+===============================
+
+
+This is against server 13.6 with client 14.2.
+
+
+My workaround for the current bug is to cast the comparison fields to text.
+
+
+

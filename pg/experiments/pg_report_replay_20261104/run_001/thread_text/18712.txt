@@ -1,0 +1,135 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18712
+Logged by:          Denis Feklushkin
+Email address:      denis(dot)feklushkin(at)gmail(dot)com
+PostgreSQL version: 17.1
+Operating system:   Debian
+Description:        
+
+
+I think that statement
+
+
+select '::0.0.0.2'::inet;
+
+
+should return '::0.0.0.2' value, not '::2'
+
+
+I think this is what was intended in the Postgres sources. But it seems that
+this line is never executed:
+https://github.com/postgres/postgres/blob/7b88529f4363994450bd4cd3c172006a8a77e222/src/port/inet_net_ntop.c#L260
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> I think that statement
+> select '::0.0.0.2'::inet;
+> should return '::0.0.0.2' value, not '::2'
+
+
+> I think this is what was intended in the Postgres sources. But it seems that
+> this line is never executed:
+> https://github.com/postgres/postgres/blob/7b88529f4363994450bd4cd3c172006a8a77e222/src/port/inet_net_ntop.c#L260
+
+
+Hmm ... you are right that that code doesn't do what it seems to
+intend to, because by the time that we get to this logic we have
+i == 7 not i == 6.  But I'm not sure if we should change it after
+all this time.  We're about as likely to get complaints as kudos,
+I fear.  And the output isn't incorrect, just not-per-style.
+
+
+I wonder whether ISC ever changed their version?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+вс, 17 нояб. 2024 г. в 20:05, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>:
+
+
+> PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> > I think that statement
+> > select '::0.0.0.2'::inet;
+> > should return '::0.0.0.2' value, not '::2'
+>
+> > I think this is what was intended in the Postgres sources. But it seems
+> that
+> > this line is never executed:
+> >
+> https://github.com/postgres/postgres/blob/7b88529f4363994450bd4cd3c172006a8a77e222/src/port/inet_net_ntop.c#L260
+>
+> Hmm ... you are right that that code doesn't do what it seems to
+> intend to, because by the time that we get to this logic we have
+> i == 7 not i == 6.
+
+
+Yes, this code block should be placed at first place inside of for loop
+
+
+>   But I'm not sure if we should change it after
+> all this time.  We're about as likely to get complaints as kudos,
+> I fear.  And the output isn't incorrect, just not-per-style.
+>
+> I wonder whether ISC ever changed their version?
+>
+
+
+https://github.com/openbsd/src/blob/f7304f605db8e3a4de0a0d1c1488830678f77517/sys/netinet/inet_ntop.c#L196
+Looks, they don't used 0x0001 check, so, they version was always as intended
+
+
+
+### MESSAGE 3
+Denis Feklushkin <feklushkin(dot)denis(at)gmail(dot)com> writes:
+> вс, 17 нояб. 2024 г. в 20:05, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>:
+>> Hmm ... you are right that that code doesn't do what it seems to
+>> intend to, because by the time that we get to this logic we have
+>> i == 7 not i == 6.
+>> But I'm not sure if we should change it after
+>> all this time.  We're about as likely to get complaints as kudos,
+>> I fear.  And the output isn't incorrect, just not-per-style.
+>> 
+>> I wonder whether ISC ever changed their version?
+
+
+> https://github.com/openbsd/src/blob/f7304f605db8e3a4de0a0d1c1488830678f77517/sys/netinet/inet_ntop.c#L196
+> Looks, they don't used 0x0001 check, so, they version was always as intended
+
+
+Well, that's OpenBSD's copy.  I thought that the original code was
+in BIND, but it doesn't seem to be there anymore, though there's
+this tantalizing hint in the changelog from around 9.7.0:
+
+
+bind-9.18.28/ChangeLog:2635.    [bug]           isc_inet_ntop() incorrectly handled 0.0/16 addresses.
+
+
+However, I tried probing the actual behavior of various systems
+with the attached test program.  I got
+
+
+::ff -> ::ff
+::ff:ff -> ::0.255.0.255
+
+
+on Linux, macOS, FreeBSD, NetBSD, and OpenBSD.  So regardless of
+original intent, this behavior seems to be the de facto standard.
+I'm disinclined to make us deviate from it.
+
+
+			regards, tom lane
+
+
+

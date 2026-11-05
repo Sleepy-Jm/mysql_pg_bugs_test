@@ -1,0 +1,1103 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17476
+Logged by:          Milos Urbanek
+Email address:      milos(dot)urbanek(at)email(dot)cz
+PostgreSQL version: 14.2
+Operating system:   Windows 2012 R2 Foundation
+Description:        
+
+
+Trying to run simple SELECT COUNT(*) from some table gives me the following
+error (either running by hand or trying to run EXPLAIN using pgadmin or by
+hand):
+
+
+2022-05-09 00:06:30.428 CEST [1196] ERROR:  variable not found in subplan
+target list
+2022-05-09 00:06:30.428 CEST [1196] STATEMENT:  SELECT COUNT(*) FROM
+"domino_efekty_havarijniprojev"
+2022-05-09 00:06:31.884 CEST [1196] ERROR:  variable not found in subplan
+target list
+2022-05-09 00:06:31.884 CEST [1196] STATEMENT:  EXPLAIN (FORMAT JSON,
+ANALYZE false, VERBOSE false, COSTS false, TIMING false, BUFFERS false,
+SUMMARY false, SETTINGS false) SELECT COUNT(*) FROM
+"domino_efekty_havarijniprojev"
+2022-05-09 00:06:39.820 CEST [1196] ERROR:  variable not found in subplan
+target list
+2022-05-09 00:06:39.820 CEST [1196] STATEMENT:  EXPLAIN SELECT COUNT(*) FROM
+"domino_efekty_havarijniprojev"
+
+
+Differences against standard config:
+shared_buffers = 8192MB
+effective_cache_size = 16GB
+cursor_tuple_fraction = 1.0
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> Trying to run simple SELECT COUNT(*) from some table gives me the following
+> error (either running by hand or trying to run EXPLAIN using pgadmin or by
+> hand):
+
+
+> 2022-05-09 00:06:30.428 CEST [1196] ERROR:  variable not found in subplan
+> target list
+> 2022-05-09 00:06:30.428 CEST [1196] STATEMENT:  SELECT COUNT(*) FROM
+> "domino_efekty_havarijniprojev"
+
+
+Is that really just a table?  I could believe a bug like this for
+some types of views, but it's a bit hard to credit for a plain table.
+
+
+In any case, we can't do much with this report unless you can provide
+a reproducer case --- preferably a SQL script that creates an object
+that triggers the problem.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+
+I have 2 (ordinary) tables in 900+ table database restored from PG 9.6 (with
+PostGIS geometries BTW) where this problem occurs.
+
+
+The count() queries into the other tables are OK.
+
+
+Also the problem happens only at the server but not at my Windows 10 
+workstation with the same PG 14.2.
+
+
+No clue what could be wrong.
+
+
+PGAdmin4 fails even when trying to list SQL creation statement.
+
+
+--
+
+
+Milos Urbanek
+
+
+---------- Původní e-mail ----------
+Od: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>
+Komu: milos(dot)urbanek(at)email(dot)cz
+Datum: 9. 5. 2022 2:22:10
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"PG Bug reporting form <noreply(at)postgresql(dot)org> writes: 
+> Trying to run simple SELECT COUNT(*) from some table gives me the 
+following 
+> error (either running by hand or trying to run EXPLAIN using pgadmin or by
+
+
+> hand): 
+
+
+> 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan 
+> target list 
+> 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM 
+> "domino_efekty_havarijniprojev" 
+
+
+Is that really just a table? I could believe a bug like this for 
+some types of views, but it's a bit hard to credit for a plain table. 
+
+
+In any case, we can't do much with this report unless you can provide 
+a reproducer case --- preferably a SQL script that creates an object 
+that triggers the problem. 
+
+
+regards, tom lane 
+"
+
+
+### MESSAGE 3
+Hi
+
+
+po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+napsal:
+
+
+> I have 2 (ordinary) tables in 900+ table database restored from PG 9.6
+> (with PostGIS geometries BTW) where this problem occurs.
+> The count() queries into the other tables are OK.
+> Also the problem happens only at the server but not at my Windows 10
+> workstation with the same PG 14.2.
+>
+
+
+Is there the same configuration on the server like on your workstation?
+The different configuration can enforce a different execution plan.
+
+
+Regards
+
+
+Pavel
+
+
+No clue what could be wrong.
+>
+> PGAdmin4 fails even when trying to list SQL creation statement.
+>
+> --
+> Milos Urbanek
+>
+> ---------- Původní e-mail ----------
+> Od: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>
+> Komu: milos(dot)urbanek(at)email(dot)cz
+> Datum: 9. 5. 2022 2:22:10
+> Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target
+> list" when running SELECT COUNT(*)
+>
+> PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> > Trying to run simple SELECT COUNT(*) from some table gives me the
+> following
+> > error (either running by hand or trying to run EXPLAIN using pgadmin or
+> by
+> > hand):
+>
+> > 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan
+> > target list
+> > 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM
+> > "domino_efekty_havarijniprojev"
+>
+> Is that really just a table? I could believe a bug like this for
+> some types of views, but it's a bit hard to credit for a plain table.
+>
+> In any case, we can't do much with this report unless you can provide
+> a reproducer case --- preferably a SQL script that creates an object
+> that triggers the problem.
+>
+> regards, tom lane
+>
+>
+
+
+
+### MESSAGE 4
+
+Difference in shared_buffers (1GB) and effective_cache_size (default) only.
+
+
+When I delete all data from the table, SELECT count(*) works..
+
+
+-- 
+
+
+Miloš Urbánek
+
+
+tel.: 736 608 345
+
+
+---------- Původní e-mail ----------
+Od: Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com>
+Komu: Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+Datum: 9. 5. 2022 10:22:16
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"
+
+
+Hi
+
+
+po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz
+(mailto:milos(dot)urbanek(at)email(dot)cz)> napsal:
+
+
+"
+
+
+I have 2 (ordinary) tables in 900+ table database restored from PG 9.6 (with
+PostGIS geometries BTW) where this problem occurs.
+
+
+The count() queries into the other tables are OK.
+
+
+Also the problem happens only at the server but not at my Windows 10 
+workstation with the same PG 14.2.
+
+
+"
+
+
+Is there the same configuration on the server like on your workstation?  The
+different configuration can enforce a different execution plan.
+
+
+Regards
+
+
+Pavel
+
+
+"
+
+
+No clue what could be wrong.
+
+
+PGAdmin4 fails even when trying to list SQL creation statement.
+
+
+--
+
+
+Milos Urbanek
+
+
+---------- Původní e-mail ----------
+Od: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us(mailto:tgl(at)sss(dot)pgh(dot)pa(dot)us)>
+Komu: milos(dot)urbanek(at)email(dot)cz(mailto:milos(dot)urbanek(at)email(dot)cz)
+Datum: 9. 5. 2022 2:22:10
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"PG Bug reporting form <noreply(at)postgresql(dot)org
+(mailto:noreply(at)postgresql(dot)org)> writes: 
+> Trying to run simple SELECT COUNT(*) from some table gives me the 
+following 
+> error (either running by hand or trying to run EXPLAIN using pgadmin or by
+
+
+> hand): 
+
+
+> 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan 
+> target list 
+> 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM 
+> "domino_efekty_havarijniprojev" 
+
+
+Is that really just a table? I could believe a bug like this for 
+some types of views, but it's a bit hard to credit for a plain table. 
+
+
+In any case, we can't do much with this report unless you can provide 
+a reproducer case --- preferably a SQL script that creates an object 
+that triggers the problem. 
+
+
+regards, tom lane 
+"
+"
+
+
+"
+
+
+### MESSAGE 5
+
+I actually pray that my issue is just this one:
+
+
+https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html
+
+
+--
+
+
+Milosh
+
+
+---------- Původní e-mail ----------
+Od: Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com>
+Komu: Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+Datum: 9. 5. 2022 10:22:16
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"
+
+
+Hi
+
+
+po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz
+(mailto:milos(dot)urbanek(at)email(dot)cz)> napsal:
+
+
+"
+
+
+I have 2 (ordinary) tables in 900+ table database restored from PG 9.6 (with
+PostGIS geometries BTW) where this problem occurs.
+
+
+The count() queries into the other tables are OK.
+
+
+Also the problem happens only at the server but not at my Windows 10 
+workstation with the same PG 14.2.
+
+
+"
+
+
+Is there the same configuration on the server like on your workstation?  The
+different configuration can enforce a different execution plan.
+
+
+Regards
+
+
+Pavel
+
+
+"
+
+
+No clue what could be wrong.
+
+
+PGAdmin4 fails even when trying to list SQL creation statement.
+
+
+--
+
+
+Milos Urbanek
+
+
+---------- Původní e-mail ----------
+Od: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us(mailto:tgl(at)sss(dot)pgh(dot)pa(dot)us)>
+Komu: milos(dot)urbanek(at)email(dot)cz(mailto:milos(dot)urbanek(at)email(dot)cz)
+Datum: 9. 5. 2022 2:22:10
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"PG Bug reporting form <noreply(at)postgresql(dot)org
+(mailto:noreply(at)postgresql(dot)org)> writes: 
+> Trying to run simple SELECT COUNT(*) from some table gives me the 
+following 
+> error (either running by hand or trying to run EXPLAIN using pgadmin or by
+
+
+> hand): 
+
+
+> 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan 
+> target list 
+> 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM 
+> "domino_efekty_havarijniprojev" 
+
+
+Is that really just a table? I could believe a bug like this for 
+some types of views, but it's a bit hard to credit for a plain table. 
+
+
+In any case, we can't do much with this report unless you can provide 
+a reproducer case --- preferably a SQL script that creates an object 
+that triggers the problem. 
+
+
+regards, tom lane 
+"
+"
+
+
+"
+
+
+### MESSAGE 6
+
+The problem occurs in test database restored from PG 14 backup. There are 2 
+tables (out of 900 other) where this problem occurs (when running SELECT 
+COUNT(*) on the table).
+
+
+I can not look at the query plan because EXPLAIN fails aswell, but my guess 
+is that planner is trying to use index on the table to count the rows.
+
+
+There are only 10 records in the table. When I run VACUUM FULL, the problem 
+disappears (planner is going to use Seq Scan which works).
+
+
+The database schema for both tables is complex, there are 20+ columns, 3+ 
+spatial data columns, 5 foreign keys, not such an easy task to create some 
+test case for you.
+
+
+But my guess is that the root cause is planner trying to use index scan to 
+count the rows.
+
+
+Therefore I hope that this is just another occurence of https://www.mail-
+archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html.
+
+
+Regards
+
+
+-- 
+
+
+Milosh
+
+
+---------- Původní e-mail ----------
+Od: Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com>
+Komu: Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+Datum: 9. 5. 2022 10:22:16
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"
+
+
+Hi
+
+
+po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz
+(mailto:milos(dot)urbanek(at)email(dot)cz)> napsal:
+
+
+"
+
+
+I have 2 (ordinary) tables in 900+ table database restored from PG 9.6 (with
+PostGIS geometries BTW) where this problem occurs.
+
+
+The count() queries into the other tables are OK.
+
+
+Also the problem happens only at the server but not at my Windows 10 
+workstation with the same PG 14.2.
+
+
+"
+
+
+Is there the same configuration on the server like on your workstation?  The
+different configuration can enforce a different execution plan.
+
+
+Regards
+
+
+Pavel
+
+
+"
+
+
+No clue what could be wrong.
+
+
+PGAdmin4 fails even when trying to list SQL creation statement.
+
+
+--
+
+
+Milos Urbanek
+
+
+---------- Původní e-mail ----------
+Od: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us(mailto:tgl(at)sss(dot)pgh(dot)pa(dot)us)>
+Komu: milos(dot)urbanek(at)email(dot)cz(mailto:milos(dot)urbanek(at)email(dot)cz)
+Datum: 9. 5. 2022 2:22:10
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"PG Bug reporting form <noreply(at)postgresql(dot)org
+(mailto:noreply(at)postgresql(dot)org)> writes: 
+> Trying to run simple SELECT COUNT(*) from some table gives me the 
+following 
+> error (either running by hand or trying to run EXPLAIN using pgadmin or by
+
+
+> hand): 
+
+
+> 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan 
+> target list 
+> 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM 
+> "domino_efekty_havarijniprojev" 
+
+
+Is that really just a table? I could believe a bug like this for 
+some types of views, but it's a bit hard to credit for a plain table. 
+
+
+In any case, we can't do much with this report unless you can provide 
+a reproducer case --- preferably a SQL script that creates an object 
+that triggers the problem. 
+
+
+regards, tom lane 
+"
+"
+
+
+"
+
+
+### MESSAGE 7
+
+When I set:
+
+
+enable_bitmapscan = off
+enable_seqscan = off
+
+
+I can reproduce the problem. The table has 42 columns. Seems like https://
+www.postgresql.org/message-id/2121219.1644607692%40sss.pgh.pa.us
+
+
+I will wait for 9.3 and give it a try.
+
+
+-- 
+
+
+Milosh
+
+
+---------- Původní e-mail ----------
+Od: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>
+Komu: milos(dot)urbanek(at)email(dot)cz
+Datum: 9. 5. 2022 2:22:10
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"PG Bug reporting form <noreply(at)postgresql(dot)org> writes: 
+> Trying to run simple SELECT COUNT(*) from some table gives me the 
+following 
+> error (either running by hand or trying to run EXPLAIN using pgadmin or by
+
+
+> hand): 
+
+
+> 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan 
+> target list 
+> 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM 
+> "domino_efekty_havarijniprojev" 
+
+
+Is that really just a table? I could believe a bug like this for 
+some types of views, but it's a bit hard to credit for a plain table. 
+
+
+In any case, we can't do much with this report unless you can provide 
+a reproducer case --- preferably a SQL script that creates an object 
+that triggers the problem. 
+
+
+regards, tom lane 
+"
+
+
+### MESSAGE 8
+po 9. 5. 2022 v 10:52 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+napsal:
+
+
+> The problem occurs in test database restored from PG 14 backup. There are
+> 2 tables (out of 900 other) where this problem occurs (when running SELECT
+> COUNT(*) on the table).
+>
+> I can not look at the query plan because EXPLAIN fails aswell, but my
+> guess is that planner is trying to use index on the table to count the rows.
+>
+> There are only 10 records in the table. When I run VACUUM FULL, the
+> problem disappears (planner is going to use Seq Scan which works).
+>
+
+
+Did you run ANALYZE?
+
+
+Regads
+
+
+Pavel
+
+
+>
+> The database schema for both tables is complex, there are 20+ columns, 3+
+> spatial data columns, 5 foreign keys, not such an easy task to create some
+> test case for you.
+>
+> But my guess is that the root cause is planner trying to use index scan to
+> count the rows.
+>
+> Therefore I hope that this is just another occurence of
+> https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html.
+>
+> Regards
+>
+> --
+> Milosh
+>
+> ---------- Původní e-mail ----------
+> Od: Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com>
+> Komu: Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+> Datum: 9. 5. 2022 10:22:16
+> Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target
+> list" when running SELECT COUNT(*)
+>
+> Hi
+>
+> po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+> napsal:
+>
+> I have 2 (ordinary) tables in 900+ table database restored from PG 9.6
+> (with PostGIS geometries BTW) where this problem occurs.
+> The count() queries into the other tables are OK.
+> Also the problem happens only at the server but not at my Windows 10
+> workstation with the same PG 14.2.
+>
+>
+> Is there the same configuration on the server like on your workstation?
+> The different configuration can enforce a different execution plan.
+>
+> Regards
+>
+> Pavel
+>
+>
+> No clue what could be wrong.
+>
+> PGAdmin4 fails even when trying to list SQL creation statement.
+>
+> --
+> Milos Urbanek
+>
+> ---------- Původní e-mail ----------
+> Od: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>
+> Komu: milos(dot)urbanek(at)email(dot)cz
+> Datum: 9. 5. 2022 2:22:10
+> Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target
+> list" when running SELECT COUNT(*)
+>
+> PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> > Trying to run simple SELECT COUNT(*) from some table gives me the
+> following
+> > error (either running by hand or trying to run EXPLAIN using pgadmin or
+> by
+> > hand):
+>
+> > 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan
+> > target list
+> > 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM
+> > "domino_efekty_havarijniprojev"
+>
+> Is that really just a table? I could believe a bug like this for
+> some types of views, but it's a bit hard to credit for a plain table.
+>
+> In any case, we can't do much with this report unless you can provide
+> a reproducer case --- preferably a SQL script that creates an object
+> that triggers the problem.
+>
+> regards, tom lane
+>
+>
+
+
+
+### MESSAGE 9
+No. But it would probably work as workaround aswell.
+
+
+-- 
+
+
+Milosh
+
+
+---------- Původní e-mail ----------
+Od: Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com>
+Komu: Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+Datum: 9. 5. 2022 11:51:05
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"
+
+
+po 9. 5. 2022 v 10:52 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz
+(mailto:milos(dot)urbanek(at)email(dot)cz)> napsal:
+
+
+"
+
+
+The problem occurs in test database restored from PG 14 backup. There are 2 
+tables (out of 900 other) where this problem occurs (when running SELECT 
+COUNT(*) on the table).
+
+
+I can not look at the query plan because EXPLAIN fails aswell, but my guess 
+is that planner is trying to use index on the table to count the rows.
+
+
+There are only 10 records in the table. When I run VACUUM FULL, the problem 
+disappears (planner is going to use Seq Scan which works).
+
+
+"
+
+
+Did you run ANALYZE?
+
+
+Regads
+
+
+Pavel
+
+
+ 
+
+
+"
+
+
+The database schema for both tables is complex, there are 20+ columns, 3+ 
+spatial data columns, 5 foreign keys, not such an easy task to create some 
+test case for you.
+
+
+But my guess is that the root cause is planner trying to use index scan to 
+count the rows.
+
+
+Therefore I hope that this is just another occurence of https://www.mail-
+archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html
+(https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html)
+
+
+Regards
+
+
+-- 
+
+
+Milosh
+
+
+---------- Původní e-mail ----------
+Od: Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com(mailto:pavel(dot)stehule(at)gmail(dot)com)>
+Komu: Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz(mailto:milos(dot)urbanek(at)email(dot)cz)>
+Datum: 9. 5. 2022 10:22:16
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"
+
+
+Hi
+
+
+po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz
+(mailto:milos(dot)urbanek(at)email(dot)cz)> napsal:
+
+
+"
+
+
+I have 2 (ordinary) tables in 900+ table database restored from PG 9.6 (with
+PostGIS geometries BTW) where this problem occurs.
+
+
+The count() queries into the other tables are OK.
+
+
+Also the problem happens only at the server but not at my Windows 10 
+workstation with the same PG 14.2.
+
+
+"
+
+
+Is there the same configuration on the server like on your workstation?  The
+different configuration can enforce a different execution plan.
+
+
+Regards
+
+
+Pavel
+
+
+"
+
+
+No clue what could be wrong.
+
+
+PGAdmin4 fails even when trying to list SQL creation statement.
+
+
+--
+
+
+Milos Urbanek
+
+
+---------- Původní e-mail ----------
+Od: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us(mailto:tgl(at)sss(dot)pgh(dot)pa(dot)us)>
+Komu: milos(dot)urbanek(at)email(dot)cz(mailto:milos(dot)urbanek(at)email(dot)cz)
+Datum: 9. 5. 2022 2:22:10
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"PG Bug reporting form <noreply(at)postgresql(dot)org
+(mailto:noreply(at)postgresql(dot)org)> writes: 
+> Trying to run simple SELECT COUNT(*) from some table gives me the 
+following 
+> error (either running by hand or trying to run EXPLAIN using pgadmin or by
+
+
+> hand): 
+
+
+> 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan 
+> target list 
+> 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM 
+> "domino_efekty_havarijniprojev" 
+
+
+Is that really just a table? I could believe a bug like this for 
+some types of views, but it's a bit hard to credit for a plain table. 
+
+
+In any case, we can't do much with this report unless you can provide 
+a reproducer case --- preferably a SQL script that creates an object 
+that triggers the problem. 
+
+
+regards, tom lane 
+"
+"
+
+
+"
+"
+
+
+"
+
+
+### MESSAGE 10
+po 9. 5. 2022 v 12:02 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+napsal:
+
+
+> No. But it would probably work as workaround aswell.
+>
+
+
+Diagnostics of every issue on Postgres should be started by ANALYZE.  And
+after any migration, restore, ... running ANALYZE is really part of best
+practicies
+
+
+Regards
+
+
+Pavel
+
+
+>
+> --
+> Milosh
+>
+> ---------- Původní e-mail ----------
+> Od: Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com>
+> Komu: Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+> Datum: 9. 5. 2022 11:51:05
+> Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target
+> list" when running SELECT COUNT(*)
+>
+>
+>
+> po 9. 5. 2022 v 10:52 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+> napsal:
+>
+> The problem occurs in test database restored from PG 14 backup. There are
+> 2 tables (out of 900 other) where this problem occurs (when running SELECT
+> COUNT(*) on the table).
+>
+> I can not look at the query plan because EXPLAIN fails aswell, but my
+> guess is that planner is trying to use index on the table to count the rows.
+>
+> There are only 10 records in the table. When I run VACUUM FULL, the
+> problem disappears (planner is going to use Seq Scan which works).
+>
+>
+> Did you run ANALYZE?
+>
+> Regads
+>
+> Pavel
+>
+>
+>
+> The database schema for both tables is complex, there are 20+ columns, 3+
+> spatial data columns, 5 foreign keys, not such an easy task to create some
+> test case for you.
+>
+> But my guess is that the root cause is planner trying to use index scan to
+> count the rows.
+>
+> Therefore I hope that this is just another occurence of
+> https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html.
+>
+> Regards
+>
+> --
+> Milosh
+>
+> ---------- Původní e-mail ----------
+> Od: Pavel Stehule <pavel(dot)stehule(at)gmail(dot)com>
+> Komu: Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+> Datum: 9. 5. 2022 10:22:16
+> Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target
+> list" when running SELECT COUNT(*)
+>
+> Hi
+>
+> po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek <milos(dot)urbanek(at)email(dot)cz>
+> napsal:
+>
+> I have 2 (ordinary) tables in 900+ table database restored from PG 9.6
+> (with PostGIS geometries BTW) where this problem occurs.
+> The count() queries into the other tables are OK.
+> Also the problem happens only at the server but not at my Windows 10
+> workstation with the same PG 14.2.
+>
+>
+> Is there the same configuration on the server like on your workstation?
+> The different configuration can enforce a different execution plan.
+>
+> Regards
+>
+> Pavel
+>
+>
+> No clue what could be wrong.
+>
+> PGAdmin4 fails even when trying to list SQL creation statement.
+>
+> --
+> Milos Urbanek
+>
+> ---------- Původní e-mail ----------
+> Od: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>
+> Komu: milos(dot)urbanek(at)email(dot)cz
+> Datum: 9. 5. 2022 2:22:10
+> Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target
+> list" when running SELECT COUNT(*)
+>
+> PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> > Trying to run simple SELECT COUNT(*) from some table gives me the
+> following
+> > error (either running by hand or trying to run EXPLAIN using pgadmin or
+> by
+> > hand):
+>
+> > 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan
+> > target list
+> > 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM
+> > "domino_efekty_havarijniprojev"
+>
+> Is that really just a table? I could believe a bug like this for
+> some types of views, but it's a bit hard to credit for a plain table.
+>
+> In any case, we can't do much with this report unless you can provide
+> a reproducer case --- preferably a SQL script that creates an object
+> that triggers the problem.
+>
+> regards, tom lane
+>
+>
+
+
+
+### MESSAGE 11
+
+Hi,
+
+
+the simplest script is something like:
+
+
+create extension if not exists postgis;
+CREATE TABLE IF NOT EXISTS public.table_with_geom
+(
+    id integer NOT NULL,
+    geom geometry(Point,5514)
+);
+CREATE INDEX IF NOT EXISTS table_with_geom_id ON table_with_geom USING gist 
+(geom);
+SET enable_seqscan = OFF;
+SET enable_bitmapscan = OFF;
+explain select count(*) from table_with_geom;
+
+
+This should print:
+
+
+NOTICE: extension "postgis" already exists, skipping ERROR: variable not 
+found in subplan target list SQL state: XX000
+
+
+Regards
+
+
+-- 
+
+
+Milosh
+
+
+---------- Původní e-mail ----------
+Od: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>
+Komu: milos(dot)urbanek(at)email(dot)cz
+Datum: 9. 5. 2022 2:22:10
+Předmět: Re: BUG #17476: ERROR: "variable not found in subplan target list" 
+when running SELECT COUNT(*) 
+"PG Bug reporting form <noreply(at)postgresql(dot)org> writes: 
+> Trying to run simple SELECT COUNT(*) from some table gives me the 
+following 
+> error (either running by hand or trying to run EXPLAIN using pgadmin or by
+
+
+> hand): 
+
+
+> 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan 
+> target list 
+> 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM 
+> "domino_efekty_havarijniprojev" 
+
+
+Is that really just a table? I could believe a bug like this for 
+some types of views, but it's a bit hard to credit for a plain table. 
+
+
+In any case, we can't do much with this report unless you can provide 
+a reproducer case --- preferably a SQL script that creates an object 
+that triggers the problem. 
+
+
+regards, tom lane 
+"

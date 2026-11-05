@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17546: power() function - value is distorted via automatic type cast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17546-d71fe78a505f9f7b%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-07-11T15:20:21" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17546: power() function - value is distorted via automatic type cast" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="2869f49ea198d4eea2331f0d072ce700">BUG #17546: power() function - value is distorted via automatic type cast</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202207111520">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17546-d71fe78a505f9f7b@postgresql.org"></a>
+<a name="2869f49ea198d4eea2331f0d072ce700"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>su(dot)sinodan(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17546: power() function - value is distorted via automatic type cast</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-11 15:20:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17546-d71fe78a505f9f7b%40postgresql.org">17546-d71fe78a505f9f7b@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17546-d71fe78a505f9f7b%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17546-d71fe78a505f9f7b%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17546-d71fe78a505f9f7b%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17546-d71fe78a505f9f7b%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17546<br>Logged by:          Su Sinodan<br>Email address:      su(dot)sinodan(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Windows Server 2016 (10.0.14393 Build 1439)<br>Description:        </p>
+
+<p>When a certain number (p, s) with a fractional part (specific examples -<br>1.11 and 69.96) is multiplied by a power (10, N), the resulting value is<br>distorted.<br>However, if the power(10, N) is manually converted to an integer, the<br>resulting value is correct.<br>It looks like there is some kind of problem with the automatic type<br>conversion of the power() function.</p>
+
+<p>Test query:<br>with w_degree as (<br>                   select 0::integer as degree union all<br>                   select 1::integer as degree union all<br>                   select 2::integer as degree union all<br>                   select 3::integer as degree union all<br>                   select 4::integer as degree union all<br>                   select 5::integer as degree union all<br>                   select 6::integer as degree union all<br>                   select 7::integer as degree union all<br>                   select 8::integer as degree union all<br>                   select 9::integer as degree<br>                 )<br>select<br>  power(10, w.degree::integer)                                  as<br>&quot;power()&quot;<br>, 1.11::numeric(20, 5) * power(10, w.degree::integer)           as &quot; 1.11 *<br>power()&quot;<br>, 1.11::numeric(20, 5) * power(10, w.degree::integer)::integer  as &quot; 1.11 *<br>power()::integer&quot;<br>, 69.96::numeric(20, 5) * power(10, w.degree::integer)          as &quot;69.96 *<br>power()&quot;<br>, 69.96::numeric(20, 5) * power(10, w.degree::integer)::integer as &quot;69.96 *<br>power()::integer&quot;<br>from w_degree w;</p>
+
+<p>Result:<br>  power()   |   1.11 * power()   |  1.11 * power()::integer |  69.96 *<br>power()  | 69.96 * power()::integer<br>------------+--------------------+--------------------------+-------------------+--------------------------<br>          1 |               1.11 |                  1.11000 |            <br>69.96 |                 69.96000<br>         10 | 11.100000000000001 |                 11.10000 |<br>699.5999999999999 |                699.60000<br>        100 | 111.00000000000001 |                111.00000 |<br>6995.999999999999 |               6996.00000<br>       1000 |               1110 |               1110.00000 |            <br>69960 |              69960.00000<br>      10000 | 11100.000000000002 |              11100.00000 |<br>699599.9999999999 |             699600.00000<br>     100000 | 111000.00000000001 |             111000.00000 |<br>6995999.999999999 |            6996000.00000<br>    1000000 |            1110000 |            1110000.00000 |         <br>69960000 |           69960000.00000<br>   10000000 | 11100000.000000002 |           11100000.00000 |<br>699599999.9999999 |          699600000.00000<br>  100000000 | 111000000.00000001 |          111000000.00000 |<br>6995999999.999999 |         6996000000.00000<br> 1000000000 |         1110000000 |         1110000000.00000 |      <br>69960000000 |        69960000000.00000<br>(10 rows)</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1119193.1657554589@sss.pgh.pa.us"></a>
+<a name="11ff1078cf406c7dad1c8e2f35759f8f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>su(dot)sinodan(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17546: power() function - value is distorted via automatic type cast</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-11 15:49:49</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1119193.1657554589%40sss.pgh.pa.us">1119193.1657554589@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1119193.1657554589%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1119193.1657554589%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1119193.1657554589%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1119193.1657554589%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; When a certain number (p, s) with a fractional part (specific examples -<br>&gt; 1.11 and 69.96) is multiplied by a power (10, N), the resulting value is<br>&gt; distorted.<br>&gt; However, if the power(10, N) is manually converted to an integer, the<br>&gt; resulting value is correct.<br>&gt; It looks like there is some kind of problem with the automatic type<br>&gt; conversion of the power() function.</p>
+
+<p>Your query is invoking the float8 variant of power(), which is<br>necessarily of limited precision.  If I change &quot;w.degree::integer&quot;<br>to &quot;w.degree::numeric&quot;, then it invokes the numeric variant of<br>power(), and I get correctly rounded results (much more slowly<br>unfortunately :-().  So I don&#x27;t see any bug here.</p>
+
+<p>It might be surprising that the parser prefers float8 over numeric<br>when the given function arguments don&#x27;t exactly match either one.<br>But that&#x27;s a very ancient decision that we&#x27;re not going to change.<br>There is support for it in the SQL standard, which directs<br>implementations to prefer inexact numeric types over exact ones<br>when they have to make a choice.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="946851657555377@mail.yandex.ru"></a>
+<a name="8c1855fb259ba3b9a49603663c4b7325"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Антон Потапов &lt;su(dot)sinodan(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17546: power() function - value is distorted via automatic type cast</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-11 16:04:04</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/946851657555377%40mail.yandex.ru">946851657555377@mail.yandex.ru</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/946851657555377%40mail.yandex.ru">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/946851657555377%40mail.yandex.ru" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/946851657555377%40mail.yandex.ru" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/946851657555377%40mail.yandex.ru" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&lt;div&gt;Is there any chance that you will reflect this in the documentation?&lt;/div&gt;&lt;div&gt;Thank you.&lt;/div&gt;&lt;div&gt; &lt;/div&gt;&lt;div&gt;11.07.2022, 18:49, &quot;Tom Lane&quot; &amp;lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&amp;gt;:&lt;/div&gt;&lt;blockquote&gt;&lt;p&gt;PG Bug reporting form &amp;lt;&lt;a href=&quot;mailto:noreply(at)postgresql(dot)org&quot; rel=&quot;noopener noreferrer&quot;&gt;noreply(at)postgresql(dot)org&lt;/a&gt;&amp;gt; writes:&lt;/p&gt;&lt;blockquote&gt; When a certain number (p, s) with a fractional part (specific examples -&lt;br /&gt; 1.11 and 69.96) is multiplied by a power (10, N), the resulting value is&lt;br /&gt; distorted.&lt;br /&gt; However, if the power(10, N) is manually converted to an integer, the&lt;br /&gt; resulting value is correct.&lt;br /&gt; It looks like there is some kind of problem with the automatic type&lt;br /&gt; conversion of the power() function.&lt;/blockquote&gt;&lt;p&gt;&lt;br /&gt;Your query is invoking the float8 variant of power(), which is&lt;br /&gt;necessarily of limited precision. If I change &quot;w.degree::integer&quot;&lt;br /&gt;to &quot;w.degree::numeric&quot;, then it invokes the numeric variant of&lt;br /&gt;power(), and I get correctly rounded results (much more slowly&lt;br /&gt;unfortunately :-(). So I don&#x27;t see any bug here.&lt;br /&gt;&lt;br /&gt;It might be surprising that the parser prefers float8 over numeric&lt;br /&gt;when the given function arguments don&#x27;t exactly match either one.&lt;br /&gt;But that&#x27;s a very ancient decision that we&#x27;re not going to change.&lt;br /&gt;There is support for it in the SQL standard, which directs&lt;br /&gt;implementations to prefer inexact numeric types over exact ones&lt;br /&gt;when they have to make a choice.&lt;br /&gt;&lt;br /&gt;                        regards, tom lane&lt;/p&gt;&lt;/blockquote&gt;</p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/135377/unknown_filename">unknown_filename</a>
+            
+          </th>
+          <td>text/html</td>
+          <td>1.5 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1215877.1657565803@sss.pgh.pa.us"></a>
+<a name="da21506af3bedc79392a5b6bb1dc3a8e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Антон Потапов &lt;su(dot)sinodan(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17546: power() function - value is distorted via automatic type cast</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-11 18:56:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1215877.1657565803%40sss.pgh.pa.us">1215877.1657565803@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1215877.1657565803%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1215877.1657565803%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1215877.1657565803%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1215877.1657565803%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>=?utf-8?B?0JDQvdGC0L7QvSDQn9C+0YLQsNC/0L7Qsg==?= &lt;su(dot)sinodan(at)gmail(dot)com&gt; writes:<br>&gt; Is there any chance that you will reflect this in the documentation?</p>
+
+<p>It is documented --- see under<br>	<a href="https://www.postgresql.org/docs/current/datatype-numeric.html" rel="nofollow">https://www.postgresql.org/docs/current/datatype-numeric.html</a><br>and<br>	<a href="https://www.postgresql.org/docs/current/typeconv.html" rel="nofollow">https://www.postgresql.org/docs/current/typeconv.html</a><br>(particularly example 10.3, which points out that float8 is<br>considered a preferred type).  We are not going to repeat all that<br>material under every single affected function, if that&#x27;s what<br>you&#x27;re asking for.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

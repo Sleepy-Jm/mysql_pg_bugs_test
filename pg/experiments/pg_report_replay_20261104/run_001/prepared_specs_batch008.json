@@ -1,0 +1,110 @@
+[
+  {
+    "report_id": "18801",
+    "scenario_id": "18801_main",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18801-8657563d6f52110b%40postgresql.org",
+    "parts": [
+      {
+        "text": "create table test(a float, b float);\ninsert into test select a, a % 10 from generate_series(1, 10000) a;\n\n\ncreate function custom_max(float8, float8) returns float8 as\n$$\n  select case when $1 > $2 then $1 else $2 end\n$$\nlanguage sql;\n\n\ncreate aggregate custom_agg_max(float8)\n(\n    sfunc = custom_max,\n    stype = float8,\n    initcond = 0\n);\n\n\nset jit = on;\nset jit_above_cost = 0;\nset jit_dump_bitcode = on;\nexplain analyze select custom_agg_max(a)  from\ntest;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18801.txt",
+        "start_offset": 366,
+        "end_offset": 828,
+        "start_line": 18,
+        "end_line": 41,
+        "excerpt_sha256": "5d649ae4903a8b4e1ee6b4e2adfdf4eb1ae5f83091e447092e60b20134abf2c3",
+        "transformations": [
+          "trim outer whitespace"
+        ]
+      }
+    ],
+    "mode": "jit_bitcode",
+    "oracle": {
+      "kind": "output",
+      "pattern": "(?m)^BITCODE_FILES=10001$",
+      "reported_phenomenon": "10000行的自定义聚合产生10001个LLVM bitcode文件",
+      "author_expected_behavior": "聚合内部SQL函数不应为每行重复JIT编译"
+    },
+    "config": {},
+    "notes": "逐字使用报告代码；LLVM10、debug非cassert构建。以报告原文文件数判定，不以共享服务器执行时间判定。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "build_variant": "jit_nocassert",
+    "spec_sha256": "088819105538383fcb3bb07e08760a8dcca214ed11643ba275df8a4569365e05"
+  },
+  {
+    "report_id": "18810",
+    "scenario_id": "18810_nocassert",
+    "target_version": "17.2",
+    "source_url": "https://www.postgresql.org/message-id/18810-226c754a49ea511f%40postgresql.org",
+    "parts": [
+      {
+        "text": "log detail:\n2025-02-13 11:45:28.563 CST    [4015389]LOG:  00000: received SIGHUP,\nreloading configuration files\n2025-02-13 11:45:28.563 CST    [4015389]LOCATION: \nprocess_pm_reload_request, postmaster.c:2104\n2025-02-13 11:45:28.564 CST    [4015389]LOG:  22023: invalid value for\nparameter \"synchronized_standby_slots\": \"slave\"\n2025-02-13 11:45:28.564 CST    [4015389]DETAIL:  replication slot \"slave\"\ndoes not exist\n2025-02-13 11:45:28.564 CST    [4015389]LOCATION:  call_string_check_hook,\nguc.c:6927\n2025-02-13 11:45:28.564 CST    [4015389]LOG:  F0000: configuration file\n\"/data/pgdata/pg5433/data/postgresql.conf\" contains errors; unaffected\nchanges were applied\n2025-02-13 11:45:28.564 CST    [4015389]LOCATION: \nProcessConfigFileInternal, guc.c:616\n2025-02-13 11:45:28.687 CST    [4015389]LOG:  00000: system logger process\n(PID 1511029) was terminated by signal 11: Segmentation fault\n2025-02-13 11:45:28.687 CST    [4015389]LOCATION:  LogChildExit,\npostmaster.c:3097;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18810.txt",
+        "start_offset": 262,
+        "end_offset": 1238,
+        "start_line": 12,
+        "end_line": 34,
+        "excerpt_sha256": "e9716875e5ea833626ba0f82fd637d97cae299ccd0d16db8ca719a82646cc6ef",
+        "transformations": [
+          "trim outer whitespace",
+          "append SQL terminator at excerpt boundary"
+        ],
+        "material_kind": "configuration_log_steps"
+      }
+    ],
+    "mode": "config_reload",
+    "oracle": {
+      "kind": "crash",
+      "pattern": "system logger process .*terminated by signal 11",
+      "reported_phenomenon": "不存在的slave槽配置在SIGHUP重载时使logger SIGSEGV",
+      "author_expected_behavior": "无效配置应正常拒绝而不崩溃"
+    },
+    "config": {
+      "logging_collector": "on",
+      "log_directory": "'log'",
+      "log_filename": "'replay.log'"
+    },
+    "notes": "保留原参数、SIGHUP步骤及SIGSEGV oracle，在非cassert构建复核；与旧断言构建场景并列，不覆盖原异常。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "reload_slot_value": "slave",
+    "build_variant": "jit_nocassert",
+    "spec_sha256": "7868d6496803a018057410c714ceadee8fb88901509a29e4a1c50f6ad90822a7"
+  },
+  {
+    "report_id": "17462",
+    "scenario_id": "17462_main",
+    "target_version": "14.2",
+    "source_url": "https://www.postgresql.org/message-id/17462-9c98a0f00df9bd36%40postgresql.org",
+    "parts": [
+      {
+        "text": "pgbench -i -s 1\npgbench -t 1000 -c 10 -j 10;",
+        "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17462.txt",
+        "start_offset": 327,
+        "end_offset": 370,
+        "start_line": 13,
+        "end_line": 14,
+        "excerpt_sha256": "d2564f08b678e5d739ce199852494f56dede292a07822c426843744394adff5b",
+        "transformations": [
+          "trim outer whitespace",
+          "append SQL terminator at excerpt boundary"
+        ],
+        "material_kind": "pgbench_commands"
+      }
+    ],
+    "mode": "valgrind_pgbench",
+    "oracle": {
+      "kind": "log",
+      "pattern": "Invalid read of size 2[\\s\\S]{0,1000}?heapam_tuple_lock",
+      "reported_phenomenon": "pgbench并发下Valgrind报告heapam_tuple_lock中2字节无效读取",
+      "author_expected_behavior": "不发生该无效内存读取"
+    },
+    "config": {},
+    "notes": "源命令pgbench -i -s1及-t1000 -c10 -j10；任务目录Valgrind3.15，专用--with-valgrind构建。完整保留其他Valgrind输出，不将其他内存告警归为本报告。",
+    "timeout": 45,
+    "preparation_status": "ready",
+    "build_variant": "valgrind",
+    "spec_sha256": "abc4b87707906fc8b95f8a70e3843ecb98cceb7b097f90d9956c47ebfe3d5531"
+  }
+]

@@ -1,0 +1,495 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17477
+Logged by:          Wang Ke
+Email address:      krking(at)zju(dot)edu(dot)cn
+PostgreSQL version: 14.2
+Operating system:   Ubuntu 20.04.4 LTS x86_64
+Description:        
+
+
+Hello, I found a security bug recently in the latest release version of
+Postgresql server(14.2) which causes a segmentation fault caused by a READ
+memory access, the detail is as follow:
+
+
+Reported by:
+Wang Ke of Zhejiang University
+
+
+OS version and name:
+Linux ubuntu 5.13.0-40-generic #45~20.04.1-Ubuntu SMP Mon Apr 4 09:38:31 UTC
+2022 x86_64 x86_64 x86_64 GNU/Linux
+
+
+PoC:
+
+
+CREATE VIEW v0 AS SELECT ;
+SELECT INTO GLOBAL TEMP TABLE v0 FROM v0 v1 ;
+SET SESSION AUTHORIZATION 'x' ;
+CREATE TEMP TABLE v1 ( v2 ) ON COMMIT DELETE ROWS AS VALUES ( 'x' ) , ( 'x'
+) , ( 'x' ) ;
+SELECT v2 , v2 FROM v0 AS v2 GROUP BY DISTINCT CUBE ( ( VALUES ( ( v2 . * )
+) FOR READ ONLY ) ) ;
+
+
+Crash Log:
+
+
+2022-05-09 17:00:56.605 CST [245199] LOG:  statement: SELECT v2 , v2 FROM v0
+AS v2 GROUP BY DISTINCT CUBE ( ( VALUES ( ( v2 . * ) ) FOR READ ONLY ) ) ;
+AddressSanitizer:DEADLYSIGNAL
+=================================================================
+==245199==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000082
+(pc 0x55e7ed66ad51 bp 0x7fff1c8b3cd0 sp 0x7fff1c8b3b10 T0)
+==245199==The signal is caused by a READ memory access.
+==245199==Hint: address points to the zero page.
+    #0 0x55e7ed66ad50 in transformValuesClause
+postgresql-14.2/bld/../src/backend/parser/analyze.c:1512
+    #1 0x55e7ed66ad50 in transformStmt
+postgresql-14.2/bld/../src/backend/parser/analyze.c:321
+    #2 0x55e7ed670b70 in parse_sub_analyze
+postgresql-14.2/bld/../src/backend/parser/analyze.c:198
+    #3 0x55e7ed6ce7d0 in transformSubLink
+postgresql-14.2/bld/../src/backend/parser/parse_expr.c:1797
+    #4 0x55e7ed6ce7d0 in transformExprRecurse
+postgresql-14.2/bld/../src/backend/parser/parse_expr.c:229
+    #5 0x55e7ed6cab66 in transformExpr
+postgresql-14.2/bld/../src/backend/parser/parse_expr.c:104
+    #6 0x55e7ed6a90b8 in findTargetlistEntrySQL99
+postgresql-14.2/bld/../src/backend/parser/parse_clause.c:2071
+    #7 0x55e7ed6a9639 in findTargetlistEntrySQL92
+postgresql-14.2/bld/../src/backend/parser/parse_clause.c:2040
+    #8 0x55e7ed6b25f1 in transformGroupClauseExpr
+postgresql-14.2/bld/../src/backend/parser/parse_clause.c:2264
+    #9 0x55e7ed6b2aca in transformGroupingSet
+postgresql-14.2/bld/../src/backend/parser/parse_clause.c:2449
+    #10 0x55e7ed6b30fa in transformGroupClause
+postgresql-14.2/bld/../src/backend/parser/parse_clause.c:2571
+    #11 0x55e7ed66b9cd in transformSelectStmt
+postgresql-14.2/bld/../src/backend/parser/analyze.c:1299
+    #12 0x55e7ed66b9cd in transformStmt
+postgresql-14.2/bld/../src/backend/parser/analyze.c:323
+    #13 0x55e7ed672aab in transformOptionalSelectInto
+postgresql-14.2/bld/../src/backend/parser/analyze.c:268
+    #14 0x55e7ed672d21 in transformTopLevelStmt
+postgresql-14.2/bld/../src/backend/parser/analyze.c:218
+    #15 0x55e7ed672e69 in parse_analyze
+postgresql-14.2/bld/../src/backend/parser/analyze.c:127
+    #16 0x55e7edd5dadd in pg_analyze_and_rewrite
+postgresql-14.2/bld/../src/backend/tcop/postgres.c:657
+    #17 0x55e7edd5ecbd in exec_simple_query
+postgresql-14.2/bld/../src/backend/tcop/postgres.c:1130
+    #18 0x55e7edd606f1 in PostgresMain
+postgresql-14.2/bld/../src/backend/tcop/postgres.c:4486
+    #19 0x55e7edbc765d in BackendRun
+postgresql-14.2/bld/../src/backend/postmaster/postmaster.c:4530
+    #20 0x55e7edbc765d in BackendStartup
+postgresql-14.2/bld/../src/backend/postmaster/postmaster.c:4252
+    #21 0x55e7edbc765d in ServerLoop
+postgresql-14.2/bld/../src/backend/postmaster/postmaster.c:1745
+    #22 0x55e7edbca087 in PostmasterMain
+postgresql-14.2/bld/../src/backend/postmaster/postmaster.c:1417
+    #23 0x55e7ed9c046e in main
+postgresql-14.2/bld/../src/backend/main/main.c:209
+    #24 0x7ffaf632f0b2 in __libc_start_main
+(/lib/x86_64-linux-gnu/libc.so.6+0x240b2)
+    #25 0x55e7ed37c5ed in _start (/usr/local/pgsql/bin/postgres+0x38d5ed)
+
+
+AddressSanitizer can not provide additional info.
+SUMMARY: AddressSanitizer: SEGV
+postgresql-14.2/bld/../src/backend/parser/analyze.c:1512 in
+transformValuesClause
+==245199==ABORTING
+2022-05-09 17:00:56.655 CST [245188] DEBUG:  reaping dead processes
+2022-05-09 17:00:56.655 CST [245188] DEBUG:  server process (PID 245199)
+exited with exit code 1
+2022-05-09 17:00:56.655 CST [245188] DETAIL:  Failed process was running:
+SELECT v2 , v2 FROM v0 AS v2 GROUP BY DISTINCT CUBE ( ( VALUES ( ( v2 . * )
+) FOR READ ONLY ) ) ;
+2022-05-09 17:00:56.655 CST [245188] LOG:  server process (PID 245199)
+exited with exit code 1
+2022-05-09 17:00:56.655 CST [245188] DETAIL:  Failed process was running:
+SELECT v2 , v2 FROM v0 AS v2 GROUP BY DISTINCT CUBE ( ( VALUES ( ( v2 . * )
+) FOR READ ONLY ) ) ;
+2022-05-09 17:00:56.655 CST [245188] LOG:  terminating any other active
+server processes
+2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process
+245196
+2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process
+245192
+2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process
+245191
+2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process
+245193
+2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process
+245194
+2022-05-09 17:00:56.655 CST [245188] DEBUG:  sending SIGQUIT to process
+245195
+2022-05-09 17:00:56.656 CST [245188] DEBUG:  forked new backend, pid=245200
+socket=9
+2022-05-09 17:00:56.656 CST [245195] DEBUG:  writing stats file
+"pg_stat/global.stat"
+2022-05-09 17:00:56.656 CST [245195] DEBUG:  writing stats file
+"pg_stat/db_32931.stat"
+2022-05-09 17:00:56.656 CST [245200] FATAL:  the database system is in
+recovery mode
+2022-05-09 17:00:56.656 CST [245195] DEBUG:  removing temporary stats file
+"pg_stat_tmp/db_32931.stat"
+2022-05-09 17:00:56.656 CST [245195] DEBUG:  writing stats file
+"pg_stat/db_13012.stat"
+2022-05-09 17:00:56.656 CST [245200] DEBUG:  shmem_exit(1): 0
+before_shmem_exit callbacks to make
+2022-05-09 17:00:56.656 CST [245200] DEBUG:  shmem_exit(1): 0 on_shmem_exit
+callbacks to make
+2022-05-09 17:00:56.656 CST [245200] DEBUG:  proc_exit(1): 1 callbacks to
+make
+2022-05-09 17:00:56.656 CST [245200] DEBUG:  exit(1)
+2022-05-09 17:00:56.656 CST [245195] DEBUG:  removing temporary stats file
+"pg_stat_tmp/db_13012.stat"
+2022-05-09 17:00:56.656 CST [245195] DEBUG:  writing stats file
+"pg_stat/db_0.stat"
+2022-05-09 17:00:56.656 CST [245200] DEBUG:  shmem_exit(-1): 0
+before_shmem_exit callbacks to make
+2022-05-09 17:00:56.656 CST [245200] DEBUG:  shmem_exit(-1): 0 on_shmem_exit
+callbacks to make
+2022-05-09 17:00:56.656 CST [245200] DEBUG:  proc_exit(-1): 0 callbacks to
+make
+2022-05-09 17:00:56.656 CST [245195] DEBUG:  removing temporary stats file
+"pg_stat_tmp/db_0.stat"
+2022-05-09 17:00:56.657 CST [245195] DEBUG:  shmem_exit(-1): 0
+before_shmem_exit callbacks to make
+2022-05-09 17:00:56.657 CST [245195] DEBUG:  shmem_exit(-1): 0 on_shmem_exit
+callbacks to make
+2022-05-09 17:00:56.657 CST [245195] DEBUG:  proc_exit(-1): 0 callbacks to
+make
+2022-05-09 17:00:56.658 CST [245188] DEBUG:  reaping dead processes
+2022-05-09 17:00:56.658 CST [245188] DEBUG:  reaping dead processes
+2022-05-09 17:00:56.659 CST [245188] DEBUG:  reaping dead processes
+2022-05-09 17:00:56.659 CST [245188] DEBUG:  server process (PID 245200)
+exited with exit code 1
+2022-05-09 17:00:56.659 CST [245188] LOG:  all server processes terminated;
+reinitializing
+2022-05-09 17:00:56.660 CST [245188] DEBUG:  shmem_exit(1): 0
+before_shmem_exit callbacks to make
+2022-05-09 17:00:56.660 CST [245188] DEBUG:  shmem_exit(1): 5 on_shmem_exit
+callbacks to make
+2022-05-09 17:00:56.660 CST [245188] DEBUG:  cleaning up dynamic shared
+memory control segment with ID 3198822830
+2022-05-09 17:00:56.661 CST [245188] DEBUG:  invoking
+IpcMemoryCreate(size=148815872)
+2022-05-09 17:00:56.661 CST [245188] DEBUG:  mmap(148897792) with
+MAP_HUGETLB failed, huge pages disabled: Cannot allocate memory
+2022-05-09 17:00:56.666 CST [245188] DEBUG:  dynamic shared memory system
+will support 674 segments
+2022-05-09 17:00:56.667 CST [245188] DEBUG:  created dynamic shared memory
+control segment 1631943408 (26976 bytes)
+2022-05-09 17:00:56.668 CST [245201] LOG:  database system was interrupted;
+last known up at 2022-05-09 17:00:07 CST
+2022-05-09 17:00:56.668 CST [245201] DEBUG:  removing all temporary WAL
+segments
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  checkpoint record is at
+0/D97D880
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  redo record is at 0/D97D880;
+shutdown true
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  next transaction ID: 954; next
+OID: 73880
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  next MultiXactId: 1; next
+MultiXactOffset: 0
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  oldest unfrozen transaction ID:
+726, in database 1
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  oldest MultiXactId: 1, in
+database 1
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  commit timestamp Xid
+oldest/newest: 0/0
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  transaction ID wrap limit is
+2147484373, limited by database with OID 1
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  MultiXactId wrap limit is
+2147483648, limited by database with OID 1
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  starting up replication slots
+2022-05-09 17:00:56.679 CST [245201] DEBUG:  starting up replication origin
+progress state
+2022-05-09 17:00:56.679 CST [245201] LOG:  database system was not properly
+shut down; automatic recovery in progress
+
+
+
+
+
+### MESSAGE 1
+Hi,
+
+
+On Mon, May 9, 2022 at 7:37 PM PG Bug reporting form
+<noreply(at)postgresql(dot)org> wrote:
+>
+> The following bug has been logged on the website:
+>
+> Bug reference:      17477
+> Logged by:          Wang Ke
+> Email address:      krking(at)zju(dot)edu(dot)cn
+> PostgreSQL version: 14.2
+> Operating system:   Ubuntu 20.04.4 LTS x86_64
+> Description:
+>
+> Hello, I found a security bug recently in the latest release version of
+> Postgresql server(14.2) which causes a segmentation fault caused by a READ
+> memory access, the detail is as follow:
+>
+> Reported by:
+> Wang Ke of Zhejiang University
+>
+> OS version and name:
+> Linux ubuntu 5.13.0-40-generic #45~20.04.1-Ubuntu SMP Mon Apr 4 09:38:31 UTC
+> 2022 x86_64 x86_64 x86_64 GNU/Linux
+>
+>
+> PoC:
+
+
+Thank you for reporting the issue! I've confirmed that this can happen
+also on HEAD.
+
+
+>
+> CREATE VIEW v0 AS SELECT ;
+> SELECT INTO GLOBAL TEMP TABLE v0 FROM v0 v1 ;
+> SET SESSION AUTHORIZATION 'x' ;
+> CREATE TEMP TABLE v1 ( v2 ) ON COMMIT DELETE ROWS AS VALUES ( 'x' ) , ( 'x'
+> ) , ( 'x' ) ;
+> SELECT v2 , v2 FROM v0 AS v2 GROUP BY DISTINCT CUBE ( ( VALUES ( ( v2 . * )
+> ) FOR READ ONLY ) ) ;
+
+
+"SELECT INTO GLOBAL TEMP TABLE" seems an extension that is not
+supported in community PostgreSQL. Here is another reproducible step:
+
+
+create table v0();
+select * from v0 group by ((values (v0.*)));
+
+
+Without table creation, SEGV happens also with the following query:
+
+
+select (values (foo.*)) from (select from pg_class) as foo;
+
+
+It seems like transformValuesClause() cannot handle properly the value
+clause having a relation that has an empty column. Should we raise an
+error in this case?
+
+
+Regards,
+
+
+-- 
+Masahiko Sawada
+EDB:  https://www.enterprisedb.com/
+
+
+
+
+
+### MESSAGE 2
+Masahiko Sawada <sawada(dot)mshk(at)gmail(dot)com> writes:
+> It seems like transformValuesClause() cannot handle properly the value
+> clause having a relation that has an empty column. Should we raise an
+> error in this case?
+
+
+Given that we try to support zero-column relations, I'm not sure why
+we'd insist on disallowing zero-column VALUES.  I think the problem
+is that the code in transformValuesClause needs to be tweaked to
+make that work.  The attached quick hack seems to do the trick.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+On 5/9/22 11:25 AM, Tom Lane wrote:
+> Masahiko Sawada <sawada(dot)mshk(at)gmail(dot)com> writes:
+>> It seems like transformValuesClause() cannot handle properly the value
+>> clause having a relation that has an empty column. Should we raise an
+>> error in this case?
+> 
+> Given that we try to support zero-column relations, I'm not sure why
+> we'd insist on disallowing zero-column VALUES.  I think the problem
+> is that the code in transformValuesClause needs to be tweaked to
+> make that work.  The attached quick hack seems to do the trick.
+
+
+Agree with the reasoning.
+
+
+Confirmed reproducing the crash and that this fixes it. I did a short 
+double-take on the error message:
+
+
+	ERROR:  subquery must return only one column
+
+
+but it is accurate, given this is what the subquery must do, and zero != 
+one.
+
+
+I don't see anything glaring in the code (though I'm not that familiar 
+with this part of the codebase), but given this seems like an extreme 
+edge case and protects against a crash, I'm satisfied with this.
+
+
+Jonathan
+
+
+
+### MESSAGE 4
+"Jonathan S. Katz" <jkatz(at)postgresql(dot)org> writes:
+> Confirmed reproducing the crash and that this fixes it. I did a short 
+> double-take on the error message:
+> 	ERROR:  subquery must return only one column
+> but it is accurate, given this is what the subquery must do, and zero != 
+> one.
+
+
+Yeah, that's just an artifact of the strange test case.
+A more straightforward usage might look like
+
+
+create table nocols();
+select * from nocols n, lateral (values(n.*)) v;
+
+
+Anyway, this is not a security issue per our normal standards.
+It is a crash due to SIGSEGV, but I don't see any likelihood
+that it could be exploited for memory disclosure or arbitrary
+code execution, so the effects are limited to momentary denial
+of service.  There are lots of ways to produce DOS if you have
+the ability to issue arbitrary SQL, so we generally don't
+consider that a security issue unless there's the possibility
+of doing more than just crashing one session.  Having said that,
+a crash is unpleasant, so I'm going to take the small risk of
+pushing this not-very-well-vetted patch into today's releases.
+
+
+BTW, if this *had* been a security issue, we'd much rather you'd
+have reported it to security(at)postgresql(dot)org(dot)  The bugs list is
+an open channel.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 5
+On Tue, May 10, 2022 at 2:20 AM Jonathan S. Katz <jkatz(at)postgresql(dot)org> wrote:
+>
+> On 5/9/22 11:25 AM, Tom Lane wrote:
+> > Masahiko Sawada <sawada(dot)mshk(at)gmail(dot)com> writes:
+> >> It seems like transformValuesClause() cannot handle properly the value
+> >> clause having a relation that has an empty column. Should we raise an
+> >> error in this case?
+> >
+> > Given that we try to support zero-column relations, I'm not sure why
+> > we'd insist on disallowing zero-column VALUES.  I think the problem
+> > is that the code in transformValuesClause needs to be tweaked to
+> > make that work.  The attached quick hack seems to do the trick.
+>
+> Agree with the reasoning.
+>
+> Confirmed reproducing the crash and that this fixes it. I did a short
+> double-take on the error message:
+>
+>         ERROR:  subquery must return only one column
+>
+> but it is accurate, given this is what the subquery must do, and zero !=
+> one.
+
+
+Agreed. I've also confirmed that the patch fixes this issue and passed
+the regression tests.
+
+
+Regards,
+
+
+--
+Masahiko Sawada
+EDB:  https://www.enterprisedb.com/
+
+
+
+
+
+### MESSAGE 6
+Masahiko Sawada <sawada(dot)mshk(at)gmail(dot)com> writes:
+> On Tue, May 10, 2022 at 2:20 AM Jonathan S. Katz <jkatz(at)postgresql(dot)org> wrote:
+>> Confirmed reproducing the crash and that this fixes it. I did a short
+>> double-take on the error message:
+>> 
+>> ERROR:  subquery must return only one column
+>> 
+>> but it is accurate, given this is what the subquery must do, and zero !=
+>> one.
+
+
+> Agreed. I've also confirmed that the patch fixes this issue and passed
+> the regression tests.
+
+
+Thanks for checking!  I've pushed the fix now.
+
+
+When we have a little more time, we might want to look into making
+VALUES-with-no-columns be fully supported, that is not a syntax error.
+That's not a crasher bug though, so I feel no desire to deal with
+it under a release deadline.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 7
+Looking at the code, I understand that what your patch is doing is
+making the zeroth case no longer a special one but rather handled it in
+the same loop block as the other cases, which is why the bug is fixed.
+LGTM.
+
+
+-- 
+Álvaro Herrera         PostgreSQL Developer  —  https://www.EnterpriseDB.com/
+"Ed is the standard text editor."
+      http://groups.google.com/group/alt.religion.emacs/msg/8d94ddab6a9b0ad3
+
+
+
+
+
+### MESSAGE 8
+Alvaro Herrera <alvherre(at)alvh(dot)no-ip(dot)org> writes:
+> Looking at the code, I understand that what your patch is doing is
+> making the zeroth case no longer a special one but rather handled it in
+> the same loop block as the other cases, which is why the bug is fixed.
+> LGTM.
+
+
+Thanks for looking!  With the time constraint being what it is,
+the more eyes on the patch the better.
+
+
+			regards, tom lane
+
+
+

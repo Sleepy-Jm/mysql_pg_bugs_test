@@ -1,0 +1,988 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17362
+Logged by:          Pasi Eronen
+Email address:      eronenp(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   CentOS 7
+Description:        
+
+
+When I query a table containing certain Unicode data, using an index that
+has certain collation, I get error message "could not find block containing
+chunk". This is fully reproducible on CentOS 7 using the official RPM. (I
+could not reproduce this on Oracle Linux 8, though):
+
+
+Installing PostgreSQL on new CentOS 7 VM:
+
+
+vagrant init centos/7
+vagrant up
+vagrant ssh
+sudo -i
+yum update -y
+yum install -y
+https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+yum install -y postgresql14-server
+su - postgres
+cd /var/lib/pgsql
+/usr/pgsql-14/bin/initdb data
+/usr/pgsql-14/bin/pg_ctl -D data -l postgres.log start
+
+
+Populating data (bad_strings_data.sql contains non-ASCII characters, so
+using base64 here to ensure they don't get modified in this bug report):
+
+
+/usr/pgsql-14/bin/psql 
+postgres=# CREATE TABLE public.bad_strings (id uuid, value text);
+postgres=# CREATE INDEX bad_strings_lower_idx ON public.bad_strings USING
+btree (lower((value COLLATE "fi-FI-x-icu")));
+base64 -d <<EOF | gunzip > /tmp/bad_strings_data.sql 
+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
+xuQeDuS1Deb1htW8/tUPr/8Ltw0xjodvAAA=
+EOF
+/usr/pgsql-14/bin/psql < /tmp/bad_strings_data.sql
+
+
+Query (using enable_seqscan=off to force index scan):
+
+
+/usr/pgsql-14/bin/psql 
+postgres=# set enable_seqscan=off;
+postgres=# \set VERBOSITY verbose
+postgres=# select id from bad_strings order by lower(value collate
+"fi-FI-x-icu") asc, id;
+ERROR:  XX000: could not find block containing chunk 0x20c2398
+LOCATION:  AllocSetFree, aset.c:1026
+
+
+The version I'm using:
+
+
+postgres=# select version();
+PostgreSQL 14.1 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623
+(Red Hat 4.8.5-44), 64-bit
+
+
+# rpm -qa | egrep 'icu|postgresql'
+postgresql14-server-14.1-1PGDG.rhel7.x86_64
+libicu-50.2-4.el7_7.x86_64
+postgresql14-14.1-1PGDG.rhel7.x86_64
+postgresql14-libs-14.1-1PGDG.rhel7.x86_64
+
+
+Stack trace from "errfinish" (using a version compiled from
+postgresql14-14.1-1PGDG.rhel7.src.rpm)
+
+
+(gdb) bt
+#0  errfinish (filename=filename(at)entry=0xa857b3 "aset.c",
+lineno=lineno(at)entry=1026, funcname=funcname(at)entry=0xa857c0 <__func__.6365>
+"AllocSetFree") at elog.c:514
+#1  0x0000000000902b19 in AllocSetFree (context=<optimized out>,
+pointer=0x254e4b8) at aset.c:1026
+#2  0x00000000008b4728 in varstrfastcmp_locale (a1p=0x2550da9 "a", 'x'
+<repeats 27 times>, len1=28, a2p=0x2550ad9 "axxxxxxx-\245w\256\245q\240g[",
+'x' <repeats 14 times>, "@", 
+    len2=<optimized out>, ssup=0x254c868, ssup=0x254c868) at
+varlena.c:2425
+#3  0x00000000008b47c6 in varlenafastcmp_locale (x=39128488, y=39127768,
+ssup=0x254c868) at varlena.c:2280
+#4  0x0000000000912f55 in ApplySortAbbrevFullComparator (ssup=0x254c868,
+isNull2=<optimized out>, datum2=<optimized out>, isNull1=false,
+datum1=<optimized out>)
+    at ../../../../src/include/utils/sortsupport.h:262
+#5  comparetup_heap (a=<optimized out>, b=<optimized out>, state=0x254c458)
+at tuplesort.c:3791
+#6  0x0000000000911d3b in qsort_tuple (data=<optimized out>, n=<optimized
+out>, compare=0x912d70 <comparetup_heap>, arg=arg(at)entry=0x254c458)
+    at ../../../../src/include/lib/sort_template.h:351
+#7  0x0000000000913eb6 in tuplesort_sort_memtuples
+(state=state(at)entry=0x254c458) at tuplesort.c:3566
+#8  0x0000000000915be4 in tuplesort_performsort
+(state=state(at)entry=0x254c458) at tuplesort.c:2061
+#9  0x0000000000663dfe in ExecIncrementalSort (pstate=0x2535be0) at
+nodeIncrementalSort.c:776
+#10 0x0000000000642232 in ExecProcNode (node=0x2535be0) at
+../../../src/include/executor/executor.h:257
+#11 ExecutePlan (execute_once=<optimized out>, dest=0x253d238,
+direction=<optimized out>, numberTuples=0, sendTuples=true,
+operation=CMD_SELECT, 
+    use_parallel_mode=<optimized out>, planstate=0x2535be0,
+estate=0x25359b8) at execMain.c:1551
+#12 standard_ExecutorRun (queryDesc=0x2540548, direction=<optimized out>,
+count=0, execute_once=<optimized out>) at execMain.c:361
+#13 0x00000000007b60fb in PortalRunSelect (portal=portal(at)entry=0x24de9f8,
+forward=forward(at)entry=true, count=0, count(at)entry=9223372036854775807,
+dest=dest(at)entry=0x253d238)
+    at pquery.c:921
+#14 0x00000000007b7587 in PortalRun (portal=portal(at)entry=0x24de9f8,
+count=count(at)entry=9223372036854775807, isTopLevel=isTopLevel(at)entry=true,
+run_once=run_once(at)entry=true, 
+    dest=dest(at)entry=0x253d238, altdest=altdest(at)entry=0x253d238,
+qc=qc(at)entry=0x7fffaf9db030) at pquery.c:765
+#15 0x00000000007b3337 in exec_simple_query (query_string=0x247afb8 "select
+id from bad_strings order by lower(value collate \"fi-FI-x-icu\") asc, id;")
+at postgres.c:1214
+#16 0x00000000007b47b3 in PostgresMain (argc=argc(at)entry=1,
+argv=argv(at)entry=0x7fffaf9db400, dbname=0x24a6a08 "postgres",
+username=<optimized out>) at postgres.c:4486
+#17 0x000000000048cba5 in BackendRun (port=<optimized out>, port=<optimized
+out>) at postmaster.c:4530
+#18 BackendStartup (port=0x249e1d0) at postmaster.c:4252
+#19 ServerLoop () at postmaster.c:1745
+#20 0x0000000000731e32 in PostmasterMain (argc=argc(at)entry=3,
+argv=argv(at)entry=0x2475b20) at postmaster.c:1417
+#21 0x000000000048dcc2 in main (argc=3, argv=0x2475b20) at main.c:209
+
+
+Best regards,
+Pasi
+
+
+
+
+
+### MESSAGE 1
+On Tue, Jan 11, 2022 at 3:16 AM PG Bug reporting form
+<noreply(at)postgresql(dot)org> wrote:
+> When I query a table containing certain Unicode data, using an index that
+> has certain collation, I get error message "could not find block containing
+> chunk". This is fully reproducible on CentOS 7 using the official RPM. (I
+> could not reproduce this on Oracle Linux 8, though):
+
+
+It looks like you're probably not using utf8 as your database
+encoding, based on the stacktrace -- even though I would expect that
+on your ICU version. What does "show server_encoding;" show you when
+run from psql?
+
+
+My guess is that you can temporarily work around the bug (which looks
+like a bug in our !HAVE_UCOL_STRCOLLUTF8 ICU support) by making sure
+to use UTF-8 as the server encoding.
+
+
+-- 
+Peter Geoghegan
+
+
+
+
+
+### MESSAGE 2
+On Wed, Jan 12, 2022 at 12:20 AM Peter Geoghegan <pg(at)bowt(dot)ie> wrote:
+> It looks like you're probably not using utf8 as your database
+> encoding, based on the stacktrace -- even though I would expect that
+> on your ICU version. What does "show server_encoding;" show you when
+> run from psql?
+
+
+It's UTF8.
+
+
+postgres=# show server_encoding;
+ server_encoding
+-----------------
+ UTF8
+(1 row)
+
+
+Best regards,
+Pasi
+
+
+
+
+
+### MESSAGE 3
+On 11.01.22 23:19, Peter Geoghegan wrote:
+> On Tue, Jan 11, 2022 at 3:16 AM PG Bug reporting form
+> <noreply(at)postgresql(dot)org> wrote:
+>> When I query a table containing certain Unicode data, using an index that
+>> has certain collation, I get error message "could not find block containing
+>> chunk". This is fully reproducible on CentOS 7 using the official RPM. (I
+>> could not reproduce this on Oracle Linux 8, though):
+> 
+> It looks like you're probably not using utf8 as your database
+> encoding, based on the stacktrace -- even though I would expect that
+> on your ICU version. What does "show server_encoding;" show you when
+> run from psql?
+> 
+> My guess is that you can temporarily work around the bug (which looks
+> like a bug in our !HAVE_UCOL_STRCOLLUTF8 ICU support) by making sure
+> to use UTF-8 as the server encoding.
+
+
+It looks like the reporter's system is rhel7, which does not have 
+HAVE_UCOL_STRCOLLUTF8, so it will use the other code independent of the 
+encoding.
+
+
+There could very well be some subtle memory counting bug or similar in 
+icu_to_uchar() perhaps.  Needs more analysis.
+
+
+
+
+
+### MESSAGE 4
+
+On 13.01.22 16:12, Peter Eisentraut wrote:
+> On 11.01.22 23:19, Peter Geoghegan wrote:
+>> On Tue, Jan 11, 2022 at 3:16 AM PG Bug reporting form
+>> <noreply(at)postgresql(dot)org> wrote:
+>>> When I query a table containing certain Unicode data, using an index 
+>>> that
+>>> has certain collation, I get error message "could not find block 
+>>> containing
+>>> chunk". This is fully reproducible on CentOS 7 using the official 
+>>> RPM. (I
+>>> could not reproduce this on Oracle Linux 8, though):
+>>
+>> It looks like you're probably not using utf8 as your database
+>> encoding, based on the stacktrace -- even though I would expect that
+>> on your ICU version. What does "show server_encoding;" show you when
+>> run from psql?
+>>
+>> My guess is that you can temporarily work around the bug (which looks
+>> like a bug in our !HAVE_UCOL_STRCOLLUTF8 ICU support) by making sure
+>> to use UTF-8 as the server encoding.
+> 
+> It looks like the reporter's system is rhel7, which does not have 
+> HAVE_UCOL_STRCOLLUTF8, so it will use the other code independent of the 
+> encoding.
+> 
+> There could very well be some subtle memory counting bug or similar in 
+> icu_to_uchar() perhaps.  Needs more analysis.
+
+
+Ok, I can reproduce this with the given test data and steps if I undef 
+HAVE_UCOL_STRCOLLUTF8 in my build.
+
+
+Interestingly, I couldn't just rebuild and rerun the query.  In order 
+for the error to occur, I had to rebuild the index.
+
+
+
+
+
+### MESSAGE 5
+Hi Peter E & Peter G,
+
+
+Although I have not touched PostgreSQL internals before, I took a stab
+at debugging this, and found something that looks strange (and might
+be related):
+
+
+In varlena.c, ssup_extra->buf1 and buf2 are initialized to 1024-byte
+buffers, allocated from the ssup->ssup_cxt memory context.  That
+strange-looking test string in my bug report just happens to be 1044
+bytes, so a larger buffer is needed at some point.
+
+
+If growing the buffer happens in "varstrfastcmp_locale", it uses
+MemoryContextAlloc(ssup->ssup_cxt, ...). But if growing the buffer
+happens in "varstr_abbrev_convert", it just calls "palloc" - and
+apparently the current memory context is not ssup_cxt at this point
+(at least according to debugging printf's I added).
+
+
+Might this be causing the problem? (changing the palloc to
+MemoryContextAlloc certainly makes the problem go away, but on the
+other hand, it looks like neither memory context has been deleted yet
+when the error occurs, so it shouldn't really matter...?)
+
+
+In other news, I tried tweaking the test data strings (mainly
+replacing "x"s with other ascii characters), and accidentally found a
+version that causes a reproducible segfault (instead of "could not
+find block containing chunk" error). I've included the base64-encoded
+dump below.
+
+
+Best regards,
+Pasi
+
+
+base64 -d <<EOF | gunzip > /tmp/bad_strings_data.sql
+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
+JGj1P/qFLTF6XABiKPgvh28AAA==
+EOF
+
+
+On Thu, Jan 13, 2022 at 5:22 PM Peter Eisentraut
+<peter(dot)eisentraut(at)enterprisedb(dot)com> wrote:
+>
+>
+> On 13.01.22 16:12, Peter Eisentraut wrote:
+> > On 11.01.22 23:19, Peter Geoghegan wrote:
+> >> On Tue, Jan 11, 2022 at 3:16 AM PG Bug reporting form
+> >> <noreply(at)postgresql(dot)org> wrote:
+> >>> When I query a table containing certain Unicode data, using an index
+> >>> that
+> >>> has certain collation, I get error message "could not find block
+> >>> containing
+> >>> chunk". This is fully reproducible on CentOS 7 using the official
+> >>> RPM. (I
+> >>> could not reproduce this on Oracle Linux 8, though):
+> >>
+> >> It looks like you're probably not using utf8 as your database
+> >> encoding, based on the stacktrace -- even though I would expect that
+> >> on your ICU version. What does "show server_encoding;" show you when
+> >> run from psql?
+> >>
+> >> My guess is that you can temporarily work around the bug (which looks
+> >> like a bug in our !HAVE_UCOL_STRCOLLUTF8 ICU support) by making sure
+> >> to use UTF-8 as the server encoding.
+> >
+> > It looks like the reporter's system is rhel7, which does not have
+> > HAVE_UCOL_STRCOLLUTF8, so it will use the other code independent of the
+> > encoding.
+> >
+> > There could very well be some subtle memory counting bug or similar in
+> > icu_to_uchar() perhaps.  Needs more analysis.
+>
+> Ok, I can reproduce this with the given test data and steps if I undef
+> HAVE_UCOL_STRCOLLUTF8 in my build.
+>
+> Interestingly, I couldn't just rebuild and rerun the query.  In order
+> for the error to occur, I had to rebuild the index.
+
+
+
+
+
+### MESSAGE 6
+Hi Peter E & Peter G,
+
+
+I continued my debugging session, and it indeed looks like buf1 is
+allocated from the wrong memory context, and is being used after the
+memory context has been reset (not deleted). And it looks like this
+happens even with HAVE_UCOL_STRCOLLUTF8 (but there the memory
+corruption does not lead to easily noticeable results...).
+
+
+Best regards,
+Pasi
+
+
+On Wed, Feb 2, 2022 at 4:39 PM Pasi Eronen <pe(at)iki(dot)fi> wrote:
+>
+> Hi Peter E & Peter G,
+>
+> Although I have not touched PostgreSQL internals before, I took a stab
+> at debugging this, and found something that looks strange (and might
+> be related):
+>
+> In varlena.c, ssup_extra->buf1 and buf2 are initialized to 1024-byte
+> buffers, allocated from the ssup->ssup_cxt memory context.  That
+> strange-looking test string in my bug report just happens to be 1044
+> bytes, so a larger buffer is needed at some point.
+>
+> If growing the buffer happens in "varstrfastcmp_locale", it uses
+> MemoryContextAlloc(ssup->ssup_cxt, ...). But if growing the buffer
+> happens in "varstr_abbrev_convert", it just calls "palloc" - and
+> apparently the current memory context is not ssup_cxt at this point
+> (at least according to debugging printf's I added).
+>
+> Might this be causing the problem? (changing the palloc to
+> MemoryContextAlloc certainly makes the problem go away, but on the
+> other hand, it looks like neither memory context has been deleted yet
+> when the error occurs, so it shouldn't really matter...?)
+>
+> In other news, I tried tweaking the test data strings (mainly
+> replacing "x"s with other ascii characters), and accidentally found a
+> version that causes a reproducible segfault (instead of "could not
+> find block containing chunk" error). I've included the base64-encoded
+> dump below.
+>
+> Best regards,
+> Pasi
+>
+> base64 -d <<EOF | gunzip > /tmp/bad_strings_data.sql
+> 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
+> JGj1P/qFLTF6XABiKPgvh28AAA==
+> EOF
+>
+> On Thu, Jan 13, 2022 at 5:22 PM Peter Eisentraut
+> <peter(dot)eisentraut(at)enterprisedb(dot)com> wrote:
+> >
+> >
+> > On 13.01.22 16:12, Peter Eisentraut wrote:
+> > > On 11.01.22 23:19, Peter Geoghegan wrote:
+> > >> On Tue, Jan 11, 2022 at 3:16 AM PG Bug reporting form
+> > >> <noreply(at)postgresql(dot)org> wrote:
+> > >>> When I query a table containing certain Unicode data, using an index
+> > >>> that
+> > >>> has certain collation, I get error message "could not find block
+> > >>> containing
+> > >>> chunk". This is fully reproducible on CentOS 7 using the official
+> > >>> RPM. (I
+> > >>> could not reproduce this on Oracle Linux 8, though):
+> > >>
+> > >> It looks like you're probably not using utf8 as your database
+> > >> encoding, based on the stacktrace -- even though I would expect that
+> > >> on your ICU version. What does "show server_encoding;" show you when
+> > >> run from psql?
+> > >>
+> > >> My guess is that you can temporarily work around the bug (which looks
+> > >> like a bug in our !HAVE_UCOL_STRCOLLUTF8 ICU support) by making sure
+> > >> to use UTF-8 as the server encoding.
+> > >
+> > > It looks like the reporter's system is rhel7, which does not have
+> > > HAVE_UCOL_STRCOLLUTF8, so it will use the other code independent of the
+> > > encoding.
+> > >
+> > > There could very well be some subtle memory counting bug or similar in
+> > > icu_to_uchar() perhaps.  Needs more analysis.
+> >
+> > Ok, I can reproduce this with the given test data and steps if I undef
+> > HAVE_UCOL_STRCOLLUTF8 in my build.
+> >
+> > Interestingly, I couldn't just rebuild and rerun the query.  In order
+> > for the error to occur, I had to rebuild the index.
+
+
+
+
+
+### MESSAGE 7
+Pasi Eronen <pe(at)iki(dot)fi> writes:
+> In varlena.c, ssup_extra->buf1 and buf2 are initialized to 1024-byte
+> buffers, allocated from the ssup->ssup_cxt memory context.  That
+> strange-looking test string in my bug report just happens to be 1044
+> bytes, so a larger buffer is needed at some point.
+
+
+> If growing the buffer happens in "varstrfastcmp_locale", it uses
+> MemoryContextAlloc(ssup->ssup_cxt, ...). But if growing the buffer
+> happens in "varstr_abbrev_convert", it just calls "palloc" - and
+> apparently the current memory context is not ssup_cxt at this point
+> (at least according to debugging printf's I added).
+
+
+> Might this be causing the problem?
+
+
+Indeed.  The whole thing seems flat-out wrong to me: repalloc
+would be shorter, safer, and more idiomatic.
+
+
+			regards, tom lane
+
+
+

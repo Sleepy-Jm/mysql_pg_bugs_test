@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18789: logical replication slots are deleted after failovers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18789-0355be214b97e924%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-01-29T12:24:34" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18789: logical replication slots are deleted after failovers" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="af02290b752e1e7f64cd183ba6c91a87">BUG #18789: logical replication slots are deleted after failovers</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202501291224">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18789-0355be214b97e924@postgresql.org"></a>
+<a name="af02290b752e1e7f64cd183ba6c91a87"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sachinkonde3(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18789: logical replication slots are deleted after failovers</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-29 12:24:34</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18789-0355be214b97e924%40postgresql.org">18789-0355be214b97e924@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18789-0355be214b97e924%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18789-0355be214b97e924%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18789-0355be214b97e924%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18789-0355be214b97e924%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18789<br>Logged by:          Sachin Konde-Deshmukh<br>Email address:      sachinkonde3(at)gmail(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Oracle Linux 8.9<br>Description:        </p>
+
+<p>We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.<br>When I do failover 2nd or third time or more than once, it fails to transfer<br>or move logical replication slot to new Primary.<br>postgres=# select slot_name,slot_type, failover,<br>synced,confirmed_flush_lsn,active from pg_replication_slots;<br>     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>active<br>--------------------+-----------+----------+--------+---------------------+--------<br>psoel89pgcluster01 | physical  | f        | f      |                     |<br>t<br>mysub              | logical   | t        | t      | 0/4000AB8           |<br>t<br>(2 rows)<br>After First Failover --&gt;<br>postgres=# select slot_name,slot_type, failover,<br>synced,confirmed_flush_lsn,active from pg_replication_slots;<br>     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>active<br>--------------------+-----------+----------+--------+---------------------+--------<br>psoel89pgcluster02 | physical  | f        | f      |                     |<br>t<br>mysub              | logical   | f        | f      | 0/50001E0           |<br>t<br>(2 rows)<br>After 2nd Failover --&gt;<br>select slot_name,slot_type, failover, synced,confirmed_flush_lsn,active from<br>pg_replication_slots;<br>     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>active<br>--------------------+-----------+----------+--------+---------------------+--------<br>psoel89pgcluster01 | physical  | f        | f      |                     |<br>t<br>mysub              | logical   | f        | f      | 0/60002B0           |<br>t<br>After 3rd failover --&gt;<br>postgres=# select slot_name,slot_type, failover,<br>synced,confirmed_flush_lsn,active from pg_replication_slots;<br>     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>active<br>--------------------+-----------+----------+--------+---------------------+--------<br>psoel89pgcluster02 | physical  | f        | f      |                     |<br>t<br>(1 row)<br>has context menu</p>
+
+<p>has context menu</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoBk-gsJ8z4czP4wmNFhsE=Rgmg7-hf0sVPFY+u8Joo8JA@mail.gmail.com"></a>
+<a name="a0ce5e3c3ec3972a1b9b1c91116f3e2a"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>sachinkonde3(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18789: logical replication slots are deleted after failovers</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-29 19:13:26</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoBk-gsJ8z4czP4wmNFhsE%3DRgmg7-hf0sVPFY%2Bu8Joo8JA%40mail.gmail.com">CAD21AoBk-gsJ8z4czP4wmNFhsE=Rgmg7-hf0sVPFY+u8Joo8JA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoBk-gsJ8z4czP4wmNFhsE%3DRgmg7-hf0sVPFY%2Bu8Joo8JA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoBk-gsJ8z4czP4wmNFhsE%3DRgmg7-hf0sVPFY%2Bu8Joo8JA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoBk-gsJ8z4czP4wmNFhsE%3DRgmg7-hf0sVPFY%2Bu8Joo8JA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoBk-gsJ8z4czP4wmNFhsE%3DRgmg7-hf0sVPFY%2Bu8Joo8JA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Jan 29, 2025 at 7:01 AM PG Bug reporting form<br>&lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;<br>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      18789<br>&gt; Logged by:          Sachin Konde-Deshmukh<br>&gt; Email address:      sachinkonde3(at)gmail(dot)com<br>&gt; PostgreSQL version: 17.2<br>&gt; Operating system:   Oracle Linux 8.9<br>&gt; Description:<br>&gt;<br>&gt; We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.<br>&gt; When I do failover 2nd or third time or more than once, it fails to transfer<br>&gt; or move logical replication slot to new Primary.<br>&gt; postgres=# select slot_name,slot_type, failover,<br>&gt; synced,confirmed_flush_lsn,active from pg_replication_slots;<br>&gt;      slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>&gt; active<br>&gt; --------------------+-----------+----------+--------+---------------------+--------<br>&gt; psoel89pgcluster01 | physical  | f        | f      |                     |<br>&gt; t<br>&gt; mysub              | logical   | t        | t      | 0/4000AB8           |<br>&gt; t<br>&gt; (2 rows)</p>
+
+<p>I guess that this is the list of slots on the primary.</p>
+
+<p>&gt; After First Failover --&gt;<br>&gt; postgres=# select slot_name,slot_type, failover,<br>&gt; synced,confirmed_flush_lsn,active from pg_replication_slots;<br>&gt;      slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>&gt; active<br>&gt; --------------------+-----------+----------+--------+---------------------+--------<br>&gt; psoel89pgcluster02 | physical  | f        | f      |                     |<br>&gt; t<br>&gt; mysub              | logical   | f        | f      | 0/50001E0           |<br>&gt; t<br>&gt; (2 rows)</p>
+
+<p>I guess that this is the list of slots on the new primary after a<br>failover. It seems that a subscriber is receiving logical replication<br>changes from the new primary by using the &#x27;mysub&#x27; slot, which makes<br>sense. However, a problem I can see is that its &#x27;failover&#x27; and<br>&#x27;synced&#x27; fields were false. Was the slot sync worker running on the<br>standby before the first failover?</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>Amazon Web Services: <a href="https://aws.amazon.com" rel="nofollow">https://aws.amazon.com</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="OSCPR01MB1496612E159D0EF49A50A3088F5E92@OSCPR01MB14966.jpnprd01.prod.outlook.com"></a>
+<a name="d614ac7552b8682c3492fb71cf345443"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;Hayato Kuroda (Fujitsu)&quot; &lt;kuroda(dot)hayato(at)fujitsu(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;sachinkonde3(at)gmail(dot)com&quot; &lt;sachinkonde3(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>RE: BUG #18789: logical replication slots are deleted after failovers</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-30 11:48:23</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/OSCPR01MB1496612E159D0EF49A50A3088F5E92%40OSCPR01MB14966.jpnprd01.prod.outlook.com">OSCPR01MB1496612E159D0EF49A50A3088F5E92@OSCPR01MB14966.jpnprd01.prod.outlook.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/OSCPR01MB1496612E159D0EF49A50A3088F5E92%40OSCPR01MB14966.jpnprd01.prod.outlook.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/OSCPR01MB1496612E159D0EF49A50A3088F5E92%40OSCPR01MB14966.jpnprd01.prod.outlook.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/OSCPR01MB1496612E159D0EF49A50A3088F5E92%40OSCPR01MB14966.jpnprd01.prod.outlook.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/OSCPR01MB1496612E159D0EF49A50A3088F5E92%40OSCPR01MB14966.jpnprd01.prod.outlook.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501300000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Dear Sachin,<br>&gt; <br>&gt; We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.<br>&gt; When I do failover 2nd or third time or more than once, it fails to transfer<br>&gt; or move logical replication slot to new Primary.</p>
+
+<p>For better understanding, can you clarify 1) network configuration you created<br>and 2) actual nodes queries were run?<br>Four instances are needed to do a failover third time, but not sure how they connected.</p>
+
+<p>----------<br>Best regards,<br>Haato Kuroda</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAA4eK1LB5a-923n7NGd5FcQaEe=0WmxLvKNU+PdiiskZoqAm-A@mail.gmail.com"></a>
+<a name="d012a7a18fac9b3bf4c61abbeb920491"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sachinkonde3(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18789: logical replication slots are deleted after failovers</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-01 05:35:44</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAA4eK1LB5a-923n7NGd5FcQaEe%3D0WmxLvKNU%2BPdiiskZoqAm-A%40mail.gmail.com">CAA4eK1LB5a-923n7NGd5FcQaEe=0WmxLvKNU+PdiiskZoqAm-A@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAA4eK1LB5a-923n7NGd5FcQaEe%3D0WmxLvKNU%2BPdiiskZoqAm-A%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAA4eK1LB5a-923n7NGd5FcQaEe%3D0WmxLvKNU%2BPdiiskZoqAm-A%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAA4eK1LB5a-923n7NGd5FcQaEe%3D0WmxLvKNU%2BPdiiskZoqAm-A%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAA4eK1LB5a-923n7NGd5FcQaEe%3D0WmxLvKNU%2BPdiiskZoqAm-A%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502010000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Jan 30, 2025 at 12:44 AM Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; On Wed, Jan 29, 2025 at 7:01 AM PG Bug reporting form<br>&gt; &lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt; &gt;<br>&gt; &gt; The following bug has been logged on the website:<br>&gt; &gt;<br>&gt; &gt; Bug reference:      18789<br>&gt; &gt; Logged by:          Sachin Konde-Deshmukh<br>&gt; &gt; Email address:      sachinkonde3(at)gmail(dot)com<br>&gt; &gt; PostgreSQL version: 17.2<br>&gt; &gt; Operating system:   Oracle Linux 8.9<br>&gt; &gt; Description:<br>&gt; &gt;<br>&gt; &gt; We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.<br>&gt; &gt; When I do failover 2nd or third time or more than once, it fails to transfer<br>&gt; &gt; or move logical replication slot to new Primary.<br>&gt; &gt; postgres=# select slot_name,slot_type, failover,<br>&gt; &gt; synced,confirmed_flush_lsn,active from pg_replication_slots;<br>&gt; &gt;      slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>&gt; &gt; active<br>&gt; &gt; --------------------+-----------+----------+--------+---------------------+--------<br>&gt; &gt; psoel89pgcluster01 | physical  | f        | f      |                     |<br>&gt; &gt; t<br>&gt; &gt; mysub              | logical   | t        | t      | 0/4000AB8           |<br>&gt; &gt; t<br>&gt; &gt; (2 rows)<br>&gt;<br>&gt; I guess that this is the list of slots on the primary.<br>&gt;<br>&gt; &gt; After First Failover --&gt;<br>&gt; &gt; postgres=# select slot_name,slot_type, failover,<br>&gt; &gt; synced,confirmed_flush_lsn,active from pg_replication_slots;<br>&gt; &gt;      slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>&gt; &gt; active<br>&gt; &gt; --------------------+-----------+----------+--------+---------------------+--------<br>&gt; &gt; psoel89pgcluster02 | physical  | f        | f      |                     |<br>&gt; &gt; t<br>&gt; &gt; mysub              | logical   | f        | f      | 0/50001E0           |<br>&gt; &gt; t<br>&gt; &gt; (2 rows)<br>&gt;<br>&gt; I guess that this is the list of slots on the new primary after a<br>&gt; failover.<br>&gt;</p>
+
+<p>This data appears suspicious to me because we shouldn&#x27;t be changing<br>the &#x27;failover&#x27; property of the slot. Also, note that physical slot<br>names are different in the above two results. Either the user has<br>changed the &#x27;failover&#x27; property of the slot or the above data is from<br>completely two different clusters one where the &#x27;failover&#x27; property<br>for the slot is enabled and another where it is not enabled.</p>
+
+<p>-- <br>With Regards,<br>Amit Kapila.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAHkC50uxcgmTDL30J8j+i_uFGtK2=0qb2idkMB2dY4U6taeL9Q@mail.gmail.com"></a>
+<a name="5c0f198ef26731257f9a2ba0eecefbbe"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Sachin Konde-Deshmukh &lt;sachinkonde3(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18789: logical replication slots are deleted after failovers</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-03 13:59:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAHkC50uxcgmTDL30J8j%2Bi_uFGtK2%3D0qb2idkMB2dY4U6taeL9Q%40mail.gmail.com">CAHkC50uxcgmTDL30J8j+i_uFGtK2=0qb2idkMB2dY4U6taeL9Q@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAHkC50uxcgmTDL30J8j%2Bi_uFGtK2%3D0qb2idkMB2dY4U6taeL9Q%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAHkC50uxcgmTDL30J8j%2Bi_uFGtK2%3D0qb2idkMB2dY4U6taeL9Q%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAHkC50uxcgmTDL30J8j%2Bi_uFGtK2%3D0qb2idkMB2dY4U6taeL9Q%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAHkC50uxcgmTDL30J8j%2Bi_uFGtK2%3D0qb2idkMB2dY4U6taeL9Q%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi  Hayato,</p>
+
+<p>For better understanding, can you clarify 1) network configuration you<br>created<br>and 2) actual nodes queries were run?<br>Four instances are needed to do a failover third time, but not sure how<br>they connected.</p>
+
+<p>Only 2 nodes are in cluster,</p>
+
+<p>I am using Patroni on these two nodes.</p>
+
+<p>Below is the configuration in patroni.yml file<br>-------------------------------------------------<br>patrony.yml --&gt;</p>
+
+<p>namespace: PostgreSQL_Cluster<br>scope: postgresHA<br>name: psoel89pgcluster01</p>
+
+<p>restapi:<br>   listen: 0.0.0.0:8008<br>   connect_address: 10.3.82.14:8008</p>
+
+<p>etcd3:<br>   hosts: 10.3.82.14:2379,10.3.82.15:2379,10.3.82.16:2379</p>
+
+<p>bootstrap:<br># this section will be written into Etcd:/&lt;namespace&gt;/&lt;scope&gt;/config after<br>initializing new cluster<br>dcs:<br>     ttl: 30<br>     loop_wait: 10<br>     retry_timeout: 10<br>     maximum_lag_on_failover: 1048576</p>
+
+<p>     postgresql:<br>         use_pg_rewind: true<br>         use_slots: true<br>         slots:<br>           mysub:<br>             type: logical<br>             database: postgres<br>             plugin: pgoutput<br>             failover: true<br>             synced: true<br>         parameters:<br>             wal_level: logical<br>             hot_standby: &#x27;on&#x27;<br>             wal_keep_segments: 10<br>             max_wal_senders: 5<br>             max_replication_slots: 10<br>             wal_log_hints: &#x27;on&#x27;<br>             sync_replication_slots: &#x27;on&#x27;<br>             hot_standby_feedback: &#x27;on&#x27;<br>             max_logical_replication_workers: 20<br>             logging_collector: &#x27;on&#x27;<br>             max_wal_size: &#x27;10GB&#x27;<br>             archive_mode: &#x27;on&#x27;<br>             archive_timeout: 600s<br>             archive_command: cp -f %p /home/postgres/archived/%f<br>             shared_preload_libraries: &#x27;pg_failover_slots&#x27;<br># some desired options for &#x27;initdb&#x27;<br>initdb: # Note: It needs to be a list (some options need values, others are<br>switches)<br>     - encoding: UTF8<br>     - data-checksums</p>
+
+<p>pg_hba: # Add following lines to pg_hba.conf after running &#x27;initdb&#x27;<br>     - host replication replicator 127.0.0.1/32 trust<br>     - host replication replicator 0.0.0.0/0 trust<br>     - host all all 0.0.0.0/0 trust<br>     - host all all ::0/0 trust</p>
+
+<p># Some additional users which needs to be created after initializing new<br>cluster<br>users:<br>     admin:<br>         password: ******<br>         options:<br>             - createrole<br>             - createdb<br>     splex:<br>         password: *****<br>         options:<br>             - createrole<br>             - createdb<br>postgresql:<br>   listen: 0.0.0.0:5432<br>   connect_address: 10.3.82.14:5432<br>   data_dir: /u02/app/postgres/17/data<br>   bin_dir: /usr/pgsql-17/bin<br>   pgpass: /tmp/pgpass0<br>   authentication:<br>       replication:<br>           username: replicator<br>           password: **********<br>       superuser:<br>           username: postgres<br>           password: ********<br>   parameters:<br>       unix_socket_directories: /var/run/postgresql/<br>       primary_conninfo: &#x27;host=10.3.82.15 port=5432 user=replicator<br>password=******* dbname=postgres application_name=%p&#x27;<br>   create_replica_methods:<br>       - basebackup<br>   basebackup:<br>       checkpoint: &#x27;fast&#x27;<br>#    replication:<br>   slots:<br>     mysub:<br>       type: logical<br>       database: postgres<br>       plugin: pgoutput<br>       failover: true<br>       synced: true<br>tags:<br>   nofailover: false<br>   noloadbalance: false<br>   clonefrom: false<br>   nosync: false<br>hooks:<br>on_failover: &quot;/etc/patroni/set_all_logical_slot_status.sh&quot;<br>on_switchover: &quot;/etc/patroni/set_all_logical_slot_status.sh&quot;<br>on_start: &quot;/etc/patroni/set_all_logical_slot_status.sh&quot;<br>on_stop: &quot;/etc/patroni/set_all_logical_slot_status.sh&quot;<br>-------------------------------------<br>/etc/patroni/set_all_logical_slot_status.sh<br>#!/bin/bash</p>
+
+<p># PostgreSQL host and credentials (if needed)</p>
+
+<p>PG_HOST=&quot;10.3.82.17&quot;<br>PG_PORT=&quot;5000&quot;<br>PG_USER=&quot;postgres&quot;</p>
+
+<p># Connect to PostgreSQL and list all logical replication slots<br>SLOT_LIST=$(psql -U $PG_USER -h $PG_HOST -p $PG_PORT -t -c &quot;SELECT<br>slot_name, active, pg_is_in_recovery() FROM pg_replication_slots;&quot;)</p>
+
+<p># Loop through each slot and update the failover and synced status if<br>necessary<br>while IFS=&#x27;|&#x27; read -r slot_name active is_in_recovery; do<br>   # Check if the slot is active and if the failover and synced status<br>needs to be updated<br>   if [[ &quot;$active&quot; == &quot;t&quot; &amp;&amp; &quot;$is_in_recovery&quot; == &quot;f&quot; ]]; then<br>       echo &quot;Checking slot: $slot_name&quot;<br>       # Check if the failover and synced status is false (we are assuming<br>you have custom logic for this)<br>       # Update the status if necessary, example query to update<br>       psql -U $PG_USER -h $PG_HOST -p $PG_PORT -c &quot;SELECT<br>pg_create_logical_replication_slot(&#x27;$slot_name&#x27;, &#x27;pgoutput&#x27;, true);&quot;<br>       echo &quot;Updated slot $slot_name to TRUE for failover and synced&quot;<br>   fi<br>done &lt;&lt;&lt; &quot;$SLOT_LIST&quot;</p>
+
+<p>exit 0</p>
+
+<p>--------------------------------------------------<br>I have added the script *set_all_logical_slot_status.sh* later to update<br>the status of slot but its not helping as well.</p>
+
+<p>Hi Amit,</p>
+
+<p>This data appears suspicious to me because we shouldn&#x27;t be changing<br>the &#x27;failover&#x27; property of the slot. Also, note that physical slot<br>names are different in the above two results. Either the user has<br>changed the &#x27;failover&#x27; property of the slot or the above data is from<br>completely two different clusters one where the &#x27;failover&#x27; property<br>for the slot is enabled and another where it is not enabled.</p>
+
+<p>We are not changing the property explicitly. This is getting changed after<br>2/3 failover operations.<br>For very first attempt it works as expected.</p>
+
+<p>In my cluster setup we only have two nodes. Primary and Standby.<br>The other VM which is subscriber is not part of cluster setup.</p>
+
+<p>*-------------------------------------------------------------------Sachin<br>Konde*</p>
+
+<p>*9762777853*</p>
+
+<p>On Sat, Feb 1, 2025 at 11:05 AM Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt; wrote:</p>
+
+<p>&gt; On Thu, Jan 30, 2025 at 12:44 AM Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;<br>&gt; wrote:<br>&gt; &gt;<br>&gt; &gt; On Wed, Jan 29, 2025 at 7:01 AM PG Bug reporting form<br>&gt; &gt; &lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt; &gt; &gt;<br>&gt; &gt; &gt; The following bug has been logged on the website:<br>&gt; &gt; &gt;<br>&gt; &gt; &gt; Bug reference:      18789<br>&gt; &gt; &gt; Logged by:          Sachin Konde-Deshmukh<br>&gt; &gt; &gt; Email address:      sachinkonde3(at)gmail(dot)com<br>&gt; &gt; &gt; PostgreSQL version: 17.2<br>&gt; &gt; &gt; Operating system:   Oracle Linux 8.9<br>&gt; &gt; &gt; Description:<br>&gt; &gt; &gt;<br>&gt; &gt; &gt; We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.<br>&gt; &gt; &gt; When I do failover 2nd or third time or more than once, it fails to<br>&gt; transfer<br>&gt; &gt; &gt; or move logical replication slot to new Primary.<br>&gt; &gt; &gt; postgres=# select slot_name,slot_type, failover,<br>&gt; &gt; &gt; synced,confirmed_flush_lsn,active from pg_replication_slots;<br>&gt; &gt; &gt;      slot_name      | slot_type | failover | synced |<br>&gt; confirmed_flush_lsn |<br>&gt; &gt; &gt; active<br>&gt; &gt; &gt;<br>&gt; --------------------+-----------+----------+--------+---------------------+--------<br>&gt; &gt; &gt; psoel89pgcluster01 | physical  | f        | f      |<br>&gt;    |<br>&gt; &gt; &gt; t<br>&gt; &gt; &gt; mysub              | logical   | t        | t      | 0/4000AB8<br>&gt;    |<br>&gt; &gt; &gt; t<br>&gt; &gt; &gt; (2 rows)<br>&gt; &gt;<br>&gt; &gt; I guess that this is the list of slots on the primary.<br>&gt; &gt;<br>&gt; &gt; &gt; After First Failover --&gt;<br>&gt; &gt; &gt; postgres=# select slot_name,slot_type, failover,<br>&gt; &gt; &gt; synced,confirmed_flush_lsn,active from pg_replication_slots;<br>&gt; &gt; &gt;      slot_name      | slot_type | failover | synced |<br>&gt; confirmed_flush_lsn |<br>&gt; &gt; &gt; active<br>&gt; &gt; &gt;<br>&gt; --------------------+-----------+----------+--------+---------------------+--------<br>&gt; &gt; &gt; psoel89pgcluster02 | physical  | f        | f      |<br>&gt;    |<br>&gt; &gt; &gt; t<br>&gt; &gt; &gt; mysub              | logical   | f        | f      | 0/50001E0<br>&gt;    |<br>&gt; &gt; &gt; t<br>&gt; &gt; &gt; (2 rows)<br>&gt; &gt;<br>&gt; &gt; I guess that this is the list of slots on the new primary after a<br>&gt; &gt; failover.<br>&gt; &gt;<br>&gt;<br>&gt; This data appears suspicious to me because we shouldn&#x27;t be changing<br>&gt; the &#x27;failover&#x27; property of the slot. Also, note that physical slot<br>&gt; names are different in the above two results. Either the user has<br>&gt; changed the &#x27;failover&#x27; property of the slot or the above data is from<br>&gt; completely two different clusters one where the &#x27;failover&#x27; property<br>&gt; for the slot is enabled and another where it is not enabled.<br>&gt;<br>&gt; --<br>&gt; With Regards,<br>&gt; Amit Kapila.<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="OS7PR01MB14968E0B6F45F8BCED2D2A6CFF5F42@OS7PR01MB14968.jpnprd01.prod.outlook.com"></a>
+<a name="28dbf90de4a2d94ec836fef4c9a52834"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;Hayato Kuroda (Fujitsu)&quot; &lt;kuroda(dot)hayato(at)fujitsu(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&#x27;Sachin Konde-Deshmukh&#x27; &lt;sachinkonde3(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;, &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;, Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>RE: BUG #18789: logical replication slots are deleted after failovers</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-04 04:20:38</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/OS7PR01MB14968E0B6F45F8BCED2D2A6CFF5F42%40OS7PR01MB14968.jpnprd01.prod.outlook.com">OS7PR01MB14968E0B6F45F8BCED2D2A6CFF5F42@OS7PR01MB14968.jpnprd01.prod.outlook.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/OS7PR01MB14968E0B6F45F8BCED2D2A6CFF5F42%40OS7PR01MB14968.jpnprd01.prod.outlook.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/OS7PR01MB14968E0B6F45F8BCED2D2A6CFF5F42%40OS7PR01MB14968.jpnprd01.prod.outlook.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/OS7PR01MB14968E0B6F45F8BCED2D2A6CFF5F42%40OS7PR01MB14968.jpnprd01.prod.outlook.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/OS7PR01MB14968E0B6F45F8BCED2D2A6CFF5F42%40OS7PR01MB14968.jpnprd01.prod.outlook.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502040000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Dear Sachin,</p>
+
+<p>Thanks for the reply!</p>
+
+<p>&gt; Only 2 nodes are in cluster,</p>
+
+<p>Hmm, how did you do failover more than once with only two nodes? Did you run swtichover?<br>If so, did you update parameters accordingly? Also, where did you execute each query?</p>
+
+<p>&gt; I am using Patroni on these two nodes.<br>&gt; Below is the configuration in patroni.yml file</p>
+
+<p>Note that we are not familiar with the patroni.yml because this is a PostgreSQL<br>community.</p>
+
+<p>&gt; slots:<br>&gt;   mysub:<br>&gt;     type: logical<br>&gt;     database: postgres<br>&gt;     plugin: pgoutput<br>&gt;     failover: true<br>&gt;     synced: true</p>
+
+<p>I grepped &quot;failover&quot; and &quot;synced&quot; on the Patroni docs, but could not find.</p>
+
+<p>&gt; parameters:<br>&gt; ...<br>&gt;      sync_replication_slots: &#x27;on&#x27;<br>&gt; ...<br>&gt;      shared_preload_libraries: &#x27;pg_failover_slots&#x27;</p>
+
+<p>This part seems suspicious for me. pg_failover_slots is an external project of our<br>community and sync_replication_slots is also set.</p>
+
+<p>&gt; -------------------------------------<br>&gt; /etc/patroni/set_all_logical_slot_status.sh</p>
+
+<p>&gt; PG_HOST=&quot;10.3.82.17&quot;</p>
+
+<p>Hmm, the IP address cannot be found in yml.</p>
+
+<p>&gt; # Loop through each slot and update the failover and synced status if necessary</p>
+
+<p>This line is also suspicious. Users shouldn&#x27;t update the failver/synced status by<br>themselves. </p>
+
+<p>Overall, I think this issue needs to be broken down more. I think Patroni itself may<br>have the slot-failover features, so we can&#x27;t say that this is a bug-candidate of PostgreSQL.<br>Please try to reproduce without Patronie, i.e., vanilla PostgreSQL. Then we can help you.</p>
+
+<p>Best regards,<br>Hayato Kuroda<br>FUJITSU LIMITED<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

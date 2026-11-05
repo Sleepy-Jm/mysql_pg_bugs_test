@@ -1,0 +1,39 @@
+{
+  "report_id": "18810",
+  "scenario_id": "18810_main",
+  "target_version": "17.2",
+  "source_url": "https://www.postgresql.org/message-id/18810-226c754a49ea511f%40postgresql.org",
+  "parts": [
+    {
+      "text": "log detail:\n2025-02-13 11:45:28.563 CST    [4015389]LOG:  00000: received SIGHUP,\nreloading configuration files\n2025-02-13 11:45:28.563 CST    [4015389]LOCATION: \nprocess_pm_reload_request, postmaster.c:2104\n2025-02-13 11:45:28.564 CST    [4015389]LOG:  22023: invalid value for\nparameter \"synchronized_standby_slots\": \"slave\"\n2025-02-13 11:45:28.564 CST    [4015389]DETAIL:  replication slot \"slave\"\ndoes not exist\n2025-02-13 11:45:28.564 CST    [4015389]LOCATION:  call_string_check_hook,\nguc.c:6927\n2025-02-13 11:45:28.564 CST    [4015389]LOG:  F0000: configuration file\n\"/data/pgdata/pg5433/data/postgresql.conf\" contains errors; unaffected\nchanges were applied\n2025-02-13 11:45:28.564 CST    [4015389]LOCATION: \nProcessConfigFileInternal, guc.c:616\n2025-02-13 11:45:28.687 CST    [4015389]LOG:  00000: system logger process\n(PID 1511029) was terminated by signal 11: Segmentation fault\n2025-02-13 11:45:28.687 CST    [4015389]LOCATION:  LogChildExit,\npostmaster.c:3097;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18810.txt",
+      "start_offset": 262,
+      "end_offset": 1238,
+      "start_line": 12,
+      "end_line": 34,
+      "excerpt_sha256": "e9716875e5ea833626ba0f82fd637d97cae299ccd0d16db8ca719a82646cc6ef",
+      "transformations": [
+        "trim outer whitespace",
+        "append SQL terminator at excerpt boundary"
+      ],
+      "material_kind": "configuration_log_steps"
+    }
+  ],
+  "mode": "config_reload",
+  "oracle": {
+    "kind": "crash",
+    "pattern": "system logger process .*terminated by signal 11",
+    "reported_phenomenon": "不存在的slave槽配置在SIGHUP重载时使logger SIGSEGV",
+    "author_expected_behavior": "无效配置应正常拒绝而不崩溃"
+  },
+  "config": {
+    "logging_collector": "on",
+    "log_directory": "'log'",
+    "log_filename": "'replay.log'"
+  },
+  "notes": "从原日志明确给出的参数名、slave值、不存在槽及SIGHUP事件组织配置回放；不是SQL场景，不补造复制槽。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "reload_slot_value": "slave",
+  "spec_sha256": "92700a5555b8b417e5b137c7e7686ab7670e9e47560d87864e23104aff57b7c1"
+}

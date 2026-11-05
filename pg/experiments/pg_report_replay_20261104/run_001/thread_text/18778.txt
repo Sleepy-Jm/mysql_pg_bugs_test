@@ -1,0 +1,161 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18778
+Logged by:          Alexander Lakhin
+Email address:      exclusion(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Ubuntu 24.04
+Description:        
+
+
+The following script:
+CREATE TABLE t (id int, PRIMARY KEY (id)) PARTITION BY RANGE (id);
+CREATE TABLE t0 PARTITION OF t FOR VALUES FROM (0) TO (1);
+CREATE TABLE t1 PARTITION OF t FOR VALUES FROM (1) TO (2);
+
+
+SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM
+t0 t00) r, t
+WHERE t.id > CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;
+
+
+fails with:
+ERROR:  XX000: unrecognized node type: 24
+LOCATION:  ExecInitExprRec, execExpr.c:2657
+
+
+The first bad commit for this anomaly (discovered with SQLsmith) is
+41efb8340.
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> The following script:
+> CREATE TABLE t (id int, PRIMARY KEY (id)) PARTITION BY RANGE (id);
+> CREATE TABLE t0 PARTITION OF t FOR VALUES FROM (0) TO (1);
+> CREATE TABLE t1 PARTITION OF t FOR VALUES FROM (1) TO (2);
+
+
+> SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM
+> t0 t00) r, t
+> WHERE t.id > CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;
+
+
+> fails with:
+> ERROR:  XX000: unrecognized node type: 24
+
+
+Thanks for the report!  setrefs.c is supposed to remove
+AlternativeSubPlan nodes from the plan, but it's failing to do so
+here.  Digging, the un-cleaned-up AlternativeSubPlan is inside the
+exec_pruning_steps of an Append node's part_prune_info, and I see
+that setrefs is totally unaware that those expressions might need
+processing.  I think it ought to be applying fix_scan_expr to them,
+as per the attached.  There are a bunch of tidying-up things that
+fix_scan_expr does, so I suspect that there may be more bug symptoms
+reachable from this oversight.  Some of the missed processing may be
+redundant --- for example it's likely that
+record_plan_function_dependency is duplicative because functions used
+here would also be used elsewhere in the query.  But it's hard to
+believe it all is.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+
+
+
+Zhang Mingli
+www.hashdata.xyz
+On Jan 17, 2025 at 07:35 +0800, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>, wrote:
+> PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> > The following script:
+> > CREATE TABLE t (id int, PRIMARY KEY (id)) PARTITION BY RANGE (id);
+> > CREATE TABLE t0 PARTITION OF t FOR VALUES FROM (0) TO (1);
+> > CREATE TABLE t1 PARTITION OF t FOR VALUES FROM (1) TO (2);
+>
+> > SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM
+> > t0 t00) r, t
+> > WHERE t.id > CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;
+>
+> > fails with:
+> > ERROR: XX000: unrecognized node type: 24
+>
+> Thanks for the report! setrefs.c is supposed to remove
+> AlternativeSubPlan nodes from the plan, but it's failing to do so
+> here. Digging, the un-cleaned-up AlternativeSubPlan is inside the
+> exec_pruning_steps of an Append node's part_prune_info, and I see
+> that setrefs is totally unaware that those expressions might need
+> processing. I think it ought to be applying fix_scan_expr to them,
+> as per the attached. There are a bunch of tidying-up things that
+> fix_scan_expr does, so I suspect that there may be more bug symptoms
+> reachable from this oversight. Some of the missed processing may be
+> redundant --- for example it's likely that
+> record_plan_function_dependency is duplicative because functions used
+> here would also be used elsewhere in the query. But it's hard to
+> believe it all is.
+>
+Hi, I have tested the patch, and confirm that it works well. Additionally, I believe it might be worth creating a test case for it.
+
+
+And I have a question that may not be directly related to the issue: why is there a Subplan 2, and it appears to be unused?
+
+
+explain(costs off, verbose) SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM
+t0 t00) r, t WHERE t.id > CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;
+                                                    QUERY PLAN
+------------------------------------------------------------------------------------------------------------------
+ Nested Loop
+   Output: 1
+   ->  Seq Scan on public.t0 t00
+         Output: t00.id
+   ->  Append
+         ->  Index Only Scan using t0_pkey on public.t0 t_1
+               Output: t_1.id
+               Index Cond: (t_1.id > CASE WHEN (jsonb_build_object(EXISTS(SubPlan 1)) IS NULL) THEN 1 ELSE 1 END)
+               SubPlan 2
+                 ->  Seq Scan on public.t0 t0_1
+                       Output: t0_1.id
+         ->  Index Only Scan using t1_pkey on public.t1 t_2
+               Output: t_2.id
+               Index Cond: (t_2.id > CASE WHEN (jsonb_build_object(EXISTS(SubPlan 1)) IS NULL) THEN 1 ELSE 1 END)
+         SubPlan 1
+           ->  Index Only Scan using t0_pkey on public.t0
+                 Index Cond: (t0.id = t00.id)
+(17 rows)
+
+
+
+
+
+### MESSAGE 3
+Zhang Mingli <zmlpostgres(at)gmail(dot)com> writes:
+> And I have a question that may not be directly related to the issue: why is there a Subplan 2, and it appears to be unused?
+
+
+Yeah, that's because the AlternativeSubPlan originally had two child
+subplans: a parameterized one intended for a few calls, and a hashed
+one to be used for a lot of calls.  We build both because at the time
+when this needs to happen, we don't have any clue how many calls
+there will be.  We wait till the very end of planning to decide which
+one is more likely to win based on context, and then discard the
+AlternativeSubPlan, replacing it with a direct reference to the chosen
+SubPlan.  But the other one stays in the tree.  Getting rid of it
+seemed complicated, and it won't be referenced at runtime so there's
+not much penalty from leaving it there.  It is confusing, I admit.
+
+
+			regards, tom lane
+
+
+

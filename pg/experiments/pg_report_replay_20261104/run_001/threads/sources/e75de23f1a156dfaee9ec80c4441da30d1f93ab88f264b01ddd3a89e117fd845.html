@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17481: sometime pg_stat_statements coredump</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17481-953591f62b3f8a58%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-05-15T02:37:22" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17481: sometime pg_stat_statements coredump" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="9ba2fbfa5abc45135ac3c198a3ce7c80">BUG #17481: sometime pg_stat_statements coredump</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202205150237">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17481-953591f62b3f8a58@postgresql.org"></a>
+<a name="9ba2fbfa5abc45135ac3c198a3ce7c80"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>mailtch(at)163(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17481: sometime pg_stat_statements coredump</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-15 02:37:22</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17481-953591f62b3f8a58%40postgresql.org">17481-953591f62b3f8a58@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17481-953591f62b3f8a58%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17481-953591f62b3f8a58%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17481-953591f62b3f8a58%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17481-953591f62b3f8a58%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205150000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17481<br>Logged by:          tangcheng<br>Email address:      mailtch(at)163(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   debian 11<br>Description:        </p>
+
+<p>In my database , use pg_stat_statement, but sometime, coredump <br>occurred，Details are as follows：</p>
+
+<p>Using host libthread_db library&quot;/lib/x86 64-1inux-gnu/libthread db.so.1&quot;<br>Core was generated by `postgres: XXXX XXXXX(6294) CALL Program terminated<br>with signal SIGSEGV, Segmentation fault.<br>#0  0x0000556d1bc6ac9d in CleanQuerytext()<br>(gdb) bt<br>#0  0x0000556d1bc6ac9d in CleanQuerytext()<br>#1  0x00007f8450d3522f in pgss_store() from<br>/usr/local/pgsql-14.2/1ib/pg_stat_statements.so<br>#2  0x00007f8450d362bd in<br>pgss_ProcessUtility()from/usr/1ocal/pgsq1-14.2/1ib/pg_stat_statements.so <br>#3  0x0000556d1bb42c7f in PortalRunUtility() <br>#4  0x0000556d1bb42dab in PortalRunMulti () <br>#5  0x0000556d1bb43275 in PortalRun()<br>#6  0x0000556d1bb409fe in PostgresMain () <br>#7  0x0000556d1bac74f1 in ServerLoop()<br>#8 0x0000556d1bac8322 in PostmasterMain() <br>#9 0x0000556d1b86d860 in main (()</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1371138.1652714481@sss.pgh.pa.us"></a>
+<a name="2b3f95e83f4db4074842f13681b3603c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>mailtch(at)163(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17481: sometime pg_stat_statements coredump</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-16 15:21:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1371138.1652714481%40sss.pgh.pa.us">1371138.1652714481@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1371138.1652714481%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1371138.1652714481%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1371138.1652714481%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1371138.1652714481%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; In my database , use pg_stat_statement, but sometime, coredump <br>&gt; occurred，Details are as follows：</p>
+
+<p>Not much info here.  Can you install the debug symbols for the postgres<br>package you&#x27;re using and repeat the backtrace?  Another potentially useful<br>bit of info would be the source text for the query that&#x27;s causing the<br>failure, which you could get with &quot;p debug_query_string&quot; in gdb.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YoLj2fcRQ5KZXAj0@paquier.xyz"></a>
+<a name="44cbffde685edd6cef8a078f759e9429"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>mailtch(at)163(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17481: sometime pg_stat_statements coredump</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-16 23:52:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YoLj2fcRQ5KZXAj0%40paquier.xyz">YoLj2fcRQ5KZXAj0@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YoLj2fcRQ5KZXAj0%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YoLj2fcRQ5KZXAj0%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YoLj2fcRQ5KZXAj0%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YoLj2fcRQ5KZXAj0%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, May 16, 2022 at 11:21:21AM -0400, Tom Lane wrote:<br>&gt; Not much info here.  Can you install the debug symbols for the postgres<br>&gt; package you&#x27;re using and repeat the backtrace?  Another potentially useful<br>&gt; bit of info would be the source text for the query that&#x27;s causing the<br>&gt; failure, which you could get with &quot;p debug_query_string&quot; in gdb.</p>
+
+<p>CleanQuerytext() would crash on a NULL string AFAIK, but this really<br>smells like a case where a utility code path is freeing the pointer of<br>the query string that PGSS is attempting to look at.  I have seen this<br>problem in the past, where this subtle issue could be created even if<br>the code was rather careful in the query string handling.  Here, are<br>we dealing with a CALL that involves plpgsql?  Or is that a different<br>language, like something out of core?<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,79 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17445
+Logged by:          Yaser Amiri
+Email address:      yaser(dot)amiri95(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   openSUSE Leap 15.3 / Kernel: 5.3.18-150300.59.49-d
+Description:        
+
+
+Hi,
+I think I found a bug or at least a confusing behavior that I can't find any
+documentation about.
+
+
+Summary:
+I have an INSERT query that has an "ON CONFLICT" and a "WHERE" clause which
+suppose to hit a partial multicolumn unique index.
+When I try to insert some records in a transaction (one insert per record)
+When I pass the parameter which is used in the "WHERE" condition in prepared
+statement params, the transaction fails, but if I hard code it, everything
+will be OK (no rollback or errors).
+Error: `ERROR:  there is no unique or exclusion constraint matching the ON
+CONFLICT specification`
+
+
+Here's another weird thing, in the situation in which transaction fails, If
+I reduce the inserts to less than 6, it doesn't fail! (It fails on 6th
+execution)
+
+
+How to reproduce:
+I tested this on postgres:14.2 docker image and a couple of other versions.
+(This is my first report and I'm doing this with the submit form of the
+website. I don't know if it escapes characters or not, so I just write some
+raw things, sorry!)
+
+
+I start Postgres:
+docker run --rm -p 5432:5432 --name pg -e 'POSGRES_USER=postgres' -e
+'POSTGRES_DB=postgres' -e 'POSTGRES_PASSWORD=postgres' -d postgres:14.2
+
+
+This is the schema file (which contains a table named balance and a partial
+index and some configs)
+https://paste.opensuse.org/19058183
+
+
+I import  it:
+cat schema.sql | docker exec -i pg psql -U postgres -d postgres
+
+
+This is the query that is OK, It commits successfully and we'll have one
+record in the table, I run it:
+https://paste.opensuse.org/61559625
+cat works.sql | docker exec -i pg psql -U postgres -d postgres
+Note: In line 8 you can see I don't pass '2025-01-01' as prepared statement
+parameter.
+
+
+And I make it a parameter and it fails:
+https://paste.opensuse.org/44857745
+ERROR:  there is no unique or exclusion constraint matching the ON CONFLICT
+specification
+If you delete one of the executions (one of the lines between 14 and 19) and
+reduce them to 5 calls, It won't raise an error and works as it should!
+
+
+Extra info:
+Docker Image Name: postgres:14.2
+Host Kernel: Linux 5.3.18-150300.59.49-default
+
+
+Let me know if you need anything else.
+Thank you.
+
+
+

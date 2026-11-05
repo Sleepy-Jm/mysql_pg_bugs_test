@@ -1,0 +1,120 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18801
+Logged by:          Ilya Gladyshev
+Email address:      foxido(at)foxido(dot)dev
+PostgreSQL version: 17.2
+Operating system:   arch linux
+Description:        
+
+
+Hi! I've noticed that for custom aggregation function jit (re)compiles same
+code for every row.
+
+
+Consider this code sample:
+```
+create table test(a float, b float);
+insert into test select a, a % 10 from generate_series(1, 10000) a;
+
+
+create function custom_max(float8, float8) returns float8 as
+$$
+  select case when $1 > $2 then $1 else $2 end
+$$
+language sql;
+
+
+create aggregate custom_agg_max(float8)
+(
+    sfunc = custom_max,
+    stype = float8,
+    initcond = 0
+);
+
+
+set jit = on;
+set jit_above_cost = 0;
+set jit_dump_bitcode = on;
+explain analyze select custom_agg_max(a)  from
+test;
+```
+
+
+This query runs ~8 seconds ([1]) and generates 10001 llvm bytecode files in
+data directory. For comparison, built-in `select max(a) from test` runs
+~50ms and generates 2 bytecode files.
+
+
+And all bytecode files are same, with only difference between them is
+function names [2].
+
+
+What i tested so far:
+— bug disappears if sfunc in aggregate is built-in (for example if
+custom_agg is [3])
+— bug still present if function is marked as pure as possible (parallel
+safe, leakproof, immutable, etc), but even for inpure functions jit 
+shouldn't recompile for each row
+
+
+Also notice that JIT runtime counters are incorrect, actually ~90% time is
+spent inside llvm (FPPass), according to perf.
+
+
+Bug is present on 17.2 and master (9926f85)
+
+
+[1]
+```
+                                                          QUERY PLAN        
+                                                 
+------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=2655.00..2655.01 rows=1 width=8) (actual
+time=8154.805..8154.806 rows=1 loops=1)
+   Buffers: shared hit=69
+   ->  Seq Scan on test  (cost=0.00..155.00 rows=10000 width=8) (actual
+time=0.033..3.371 rows=10000 loops=1)
+         Buffers: shared hit=55
+ Planning:
+   Buffers: shared hit=23
+ Planning Time: 0.240 ms
+ JIT:
+   Functions: 3
+   Options: Inlining false, Optimization false, Expressions true, Deforming
+true
+   Timing: Generation 0.193 ms (Deform 0.056 ms), Inlining 0.000 ms,
+Optimization 0.175 ms, Emission 3.290 ms, Total 3.658 ms
+ Execution Time: 8172.018 ms
+(12 rows)
+```
+
+
+[2]
+```
+< ; ModuleID = '397491.986.bc'
+---
+> ; ModuleID = '397491.611.bc'
+15c15
+< define noundef i64 @evalexpr_986_0(ptr nocapture noundef writeonly %0, ptr
+%1, ptr %2) #0 {
+---
+> define noundef i64 @evalexpr_611_0(ptr nocapture noundef writeonly %0, ptr
+%1, ptr %2) #0 {
+```
+
+
+[3]
+```
+CREATE AGGREGATE custom_agg_avg (float8)
+(
+    sfunc = float8_accum,
+    stype = float8[],
+    finalfunc = float8_avg,
+    initcond = '{0,0,0}'
+);
+```
+
+
+

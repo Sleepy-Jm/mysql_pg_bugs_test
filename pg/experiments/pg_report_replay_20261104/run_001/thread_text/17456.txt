@@ -1,0 +1,220 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17456
+Logged by:          Andrew Grossman
+Email address:      agrossman(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   MacOS 12.3
+Description:        
+
+
+I have a case where an AFTER ROW trigger has a condition comparing two ltree
+fields. The ltree extension is installed in a different schema than the
+triggered table is. Upon restoration, the following error is encountered:
+
+
+psql:/tmp/bugreport.sql:93: ERROR:  42883: operator does not exist:
+util.ltree = util.ltree
+LINE 1: ...N my_schema.my_table FOR EACH ROW WHEN ((new.path IS DISTINC...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need
+to add explicit type casts.
+LOCATION:  op_error, parse_oper.c:731
+
+
+The following sql will reproduce this case:
+
+
+===================================
+
+
+CREATE SCHEMA my_schema;
+CREATE SCHEMA util;
+CREATE EXTENSION ltree WITH SCHEMA util;
+SET SEARCH_PATH=my_schema,util;
+CREATE TABLE my_schema.my_table
+    (path ltree);
+
+
+CREATE FUNCTION my_schema.noop() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN NEW;
+END;
+$$;
+
+
+CREATE TRIGGER path_update_after_trg
+    AFTER UPDATE ON my_schema.my_table
+    FOR EACH ROW WHEN ((new.path IS DISTINCT FROM old.path))
+    EXECUTE FUNCTION my_schema.noop();
+
+
+===================================
+end of reproduction setup sql.
+
+
+Execution looks like:
+===================================
+> createdb my_restore_db; pg_dump my_source_db | psql my_restore_db
+
+
+...
+CREATE TABLE
+Time: 15.558 ms
+ALTER TABLE
+Time: 0.293 ms
+COPY 0
+Time: 0.216 ms
+ERROR:  42883: operator does not exist: util.ltree = util.ltree
+LINE 1: ...N my_schema.my_table FOR EACH ROW WHEN ((new.path IS DISTINC...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need
+to add explicit type casts.
+LOCATION:  op_error, parse_oper.c:731
+Time: 3.546 ms
+
+
+===============================
+
+
+This is against server 13.6 with client 14.2.
+
+
+My workaround for the current bug is to cast the comparison fields to text.
+
+
+
+
+
+### MESSAGE 1
+On Tue, Apr 5, 2022 at 8:31 AM PG Bug reporting form <noreply(at)postgresql(dot)org>
+wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17456
+> Logged by:          Andrew Grossman
+> Email address:      agrossman(at)gmail(dot)com
+> PostgreSQL version: 14.2
+> Operating system:   MacOS 12.3
+> Description:
+>
+> I have a case where an AFTER ROW trigger has a condition comparing two
+> ltree
+> fields. The ltree extension is installed in a different schema than the
+> triggered table is. Upon restoration, the following error is encountered:
+>
+> psql:/tmp/bugreport.sql:93: ERROR:  42883: operator does not exist:
+> util.ltree = util.ltree
+> LINE 1: ...N my_schema.my_table FOR EACH ROW WHEN ((new.path IS DISTINC...
+>                                                              ^
+> HINT:  No operator matches the given name and argument types. You might
+> need
+> to add explicit type casts.
+> LOCATION:  op_error, parse_oper.c:731
+>
+> The following sql will reproduce this case:
+>
+> SET SEARCH_PATH=my_schema,util;
+
+
+    FOR EACH ROW WHEN ((new.path IS DISTINCT FROM old.path))
+>
+>
+Yes, this is a known limitation extending from our securing the search_path
+in order to fix a CVE.
+
+
+Casting to text works since it will use the system pg_catalog.=(text,text)
+operator.
+
+
+The other option is to avoid the indirection caused by IS DISTINCT FROM and
+write out the equivalent expression verbosely:
+
+
+not(new.path operator("util"."=") old.path) OR (new.path IS NULL AND
+old.path IS NULL)
+
+
+Another option is to add a SET search_path clause on the CREATE FUNCTION
+and move the WHEN check inside the function.  When the trigger invokes the
+function the attached search_path will then be put into force and the
+resolution of =(lpath,lpath) will find the one in the util schema.
+Unfortunately, the create trigger command doesn't have a similar capability
+to attach a local setting value to it.
+
+
+David J.
+
+
+
+### MESSAGE 2
+Ahh, that makes sense. Thank you for the thorough explanation. I wonder if
+there's a good way to warn on this during the dump creation.
+
+
+On Tue, Apr 5, 2022 at 12:05 PM David G. Johnston <
+david(dot)g(dot)johnston(at)gmail(dot)com> wrote:
+
+
+> On Tue, Apr 5, 2022 at 8:31 AM PG Bug reporting form <
+> noreply(at)postgresql(dot)org> wrote:
+>
+>> The following bug has been logged on the website:
+>>
+>> Bug reference:      17456
+>> Logged by:          Andrew Grossman
+>> Email address:      agrossman(at)gmail(dot)com
+>> PostgreSQL version: 14.2
+>> Operating system:   MacOS 12.3
+>> Description:
+>>
+>> I have a case where an AFTER ROW trigger has a condition comparing two
+>> ltree
+>> fields. The ltree extension is installed in a different schema than the
+>> triggered table is. Upon restoration, the following error is encountered:
+>>
+>> psql:/tmp/bugreport.sql:93: ERROR:  42883: operator does not exist:
+>> util.ltree = util.ltree
+>> LINE 1: ...N my_schema.my_table FOR EACH ROW WHEN ((new.path IS DISTINC...
+>>                                                              ^
+>> HINT:  No operator matches the given name and argument types. You might
+>> need
+>> to add explicit type casts.
+>> LOCATION:  op_error, parse_oper.c:731
+>>
+>> The following sql will reproduce this case:
+>>
+>> SET SEARCH_PATH=my_schema,util;
+>
+>     FOR EACH ROW WHEN ((new.path IS DISTINCT FROM old.path))
+>>
+>>
+> Yes, this is a known limitation extending from our securing the
+> search_path in order to fix a CVE.
+>
+> Casting to text works since it will use the system pg_catalog.=(text,text)
+> operator.
+>
+> The other option is to avoid the indirection caused by IS DISTINCT FROM
+> and write out the equivalent expression verbosely:
+>
+> not(new.path operator("util"."=") old.path) OR (new.path IS NULL AND
+> old.path IS NULL)
+>
+> Another option is to add a SET search_path clause on the CREATE FUNCTION
+> and move the WHEN check inside the function.  When the trigger invokes the
+> function the attached search_path will then be put into force and the
+> resolution of =(lpath,lpath) will find the one in the util schema.
+> Unfortunately, the create trigger command doesn't have a similar capability
+> to attach a local setting value to it.
+>
+> David J.
+>
+

@@ -1,0 +1,288 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17349
+Logged by:          Andreas Dijkman
+Email address:      andreas(dot)dijkman(at)cygnis(dot)nl
+PostgreSQL version: 14.1
+Operating system:   Oracle Linux 8
+Description:        
+
+
+As stated in
+https://www.postgresql.org/docs/current/pgcrypto.html#id-1.11.7.35.10, the
+function gen_random_uuid is now part of core PostgreSQL. Shouldn't this
+function be removed from the pgcrypto-extension as of PostgreSQL 13?
+I'm installing this extension in a PostgreSQL 14.1 database on Oracle Linux
+8 (I think this is valid for every OS with every version of PostgreSQL 13
+and up).
+
+
+If you install the pgcrypto-extension in the pg_catalog-schema (yes, I'm
+aware if installing it in public the error doesn't occur) you get an
+error:
+postgres=# create database testdb;
+CREATE DATABASE
+postgres=# \c testdb
+You are now connected to database "testdb" as user "postgres".
+testdb=# create extension pgcrypto schema pg_catalog;
+ERROR:  function "gen_random_uuid" already exists with same argument types
+
+
+If you install the pgcrypto-extension in the public-schema, the function
+gen_random_uuid probably never gets used because the same function in
+pg_catalog (probably) has precedence by default.
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> As stated in
+> https://www.postgresql.org/docs/current/pgcrypto.html#id-1.11.7.35.10, the
+> function gen_random_uuid is now part of core PostgreSQL. Shouldn't this
+> function be removed from the pgcrypto-extension as of PostgreSQL 13?
+
+
+pg_crypto's gen_random_uuid() is now just a wrapper for the core function.
+Taking it out entirely would save only a couple lines of code.
+
+
+> If you install the pgcrypto-extension in the pg_catalog-schema (yes, I'm
+> aware if installing it in public the error doesn't occur) you get an
+> error:
+
+
+The contrary side of that is that taking it out of the extension could
+break applications that expect gen_random_uuid() to exist in the
+extension's schema.  I don't think we consider installing extensions
+in pg_catalog to be a supported case, anyway.
+
+
+See previous discussion at
+
+
+https://www.postgresql.org/message-id/flat/5b2c6230-e0b9-59a9-b945-c7d38fdae296%402ndquadrant.com#7ff316009e81aad797b6c0136251118c
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+Thanks for pointing me to the discussion. I’ve read the thread and would suggest applying the doc-note, that’s in the last part of that discussion:
+
+
+Small doc tweak suggestion - the pgcrypto docs [1] now say about gen_random_uuid():
+
+
+Returns a version 4 (random) UUID. (Obsolete, this function is now also
+included in core PostgreSQL.)
+
+
+which gives the impression the code contains two versions of this function, the core
+one and an obsolete one in pgcrypto. Per the commit message the situation is actually:
+
+
+The pgcrypto implementation now internally redirects to the built-in one.
+
+
+That would have avoided this bug-report I guess, as the documentation would reflect the actual situation better.
+
+
+Regards,
+Andreas Dijkman
+
+
+On 28 Dec 2021, at 18:41, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us<mailto:tgl(at)sss(dot)pgh(dot)pa(dot)us>> wrote:
+
+
+PG Bug reporting form <noreply(at)postgresql(dot)org<mailto:noreply(at)postgresql(dot)org>> writes:
+As stated in
+https://www.postgresql.org/docs/current/pgcrypto.html#id-1.11.7.35.10, the
+function gen_random_uuid is now part of core PostgreSQL. Shouldn't this
+function be removed from the pgcrypto-extension as of PostgreSQL 13?
+
+
+pg_crypto's gen_random_uuid() is now just a wrapper for the core function.
+Taking it out entirely would save only a couple lines of code.
+
+
+If you install the pgcrypto-extension in the pg_catalog-schema (yes, I'm
+aware if installing it in public the error doesn't occur) you get an
+error:
+
+
+The contrary side of that is that taking it out of the extension could
+break applications that expect gen_random_uuid() to exist in the
+extension's schema.  I don't think we consider installing extensions
+in pg_catalog to be a supported case, anyway.
+
+
+See previous discussion at
+
+
+https://www.postgresql.org/message-id/flat/5b2c6230-e0b9-59a9-b945-c7d38fdae296%402ndquadrant.com#7ff316009e81aad797b6c0136251118c
+
+
+regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+On Tue, Dec 28, 2021 at 08:36:22PM +0000, Andreas Dijkman wrote:
+> Thanks for pointing me to the discussion. I’ve read the thread and would
+> suggest applying the doc-note, that’s in the last part of that discussion:
+> 
+> 
+>     Small doc tweak suggestion - the pgcrypto docs [1] now say about
+>     gen_random_uuid():
+> 
+>     Returns a version 4 (random) UUID. (Obsolete, this function is now also
+>     included in core PostgreSQL.)
+> 
+>     which gives the impression the code contains two versions of this function,
+>     the core
+>     one and an obsolete one in pgcrypto. Per the commit message the situation
+>     is actually:
+> 
+>     The pgcrypto implementation now internally redirects to the built-in one.
+> 
+> That would have avoided this bug-report I guess, as the documentation would
+> reflect the actual situation better. 
+
+
+I have written the attached patch to clarify this.
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  Indecision is a decision.  Inaction is an action.  Mark Batterson
+
+
+
+
+
+### MESSAGE 4
+> On 16 Aug 2022, at 20:14, Bruce Momjian <bruce(at)momjian(dot)us> wrote:
+> On Tue, Dec 28, 2021 at 08:36:22PM +0000, Andreas Dijkman wrote:
+
+
+>> That would have avoided this bug-report I guess, as the documentation would
+>> reflect the actual situation better. 
+> 
+> I have written the attached patch to clarify this.
+
+
+LGTM.  I would've added an <xref linkend="functions-uuid"/> to the the "core
+function" part but that's about it.
+
+
+--
+Daniel Gustafsson		https://vmware.com/
+
+
+
+
+
+### MESSAGE 5
+On Tue, Aug 16, 2022 at 11:40:15PM +0200, Daniel Gustafsson wrote:
+> > On 16 Aug 2022, at 20:14, Bruce Momjian <bruce(at)momjian(dot)us> wrote:
+> > On Tue, Dec 28, 2021 at 08:36:22PM +0000, Andreas Dijkman wrote:
+> 
+> >> That would have avoided this bug-report I guess, as the documentation would
+> >> reflect the actual situation better. 
+> > 
+> > I have written the attached patch to clarify this.
+> 
+> LGTM.  I would've added an <xref linkend="functions-uuid"/> to the the "core
+> function" part but that's about it.
+
+
+Sure, attached.  I used <link> so I could just mark the text, rather
+than adding the chapter number.
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  Indecision is a decision.  Inaction is an action.  Mark Batterson
+
+
+
+
+
+### MESSAGE 6
+> On 16 Aug 2022, at 23:58, Bruce Momjian <bruce(at)momjian(dot)us> wrote:
+> 
+> ﻿On Tue, Aug 16, 2022 at 11:40:15PM +0200, Daniel Gustafsson wrote:
+>>>> On 16 Aug 2022, at 20:14, Bruce Momjian <bruce(at)momjian(dot)us> wrote:
+>>> On Tue, Dec 28, 2021 at 08:36:22PM +0000, Andreas Dijkman wrote:
+>> 
+>>>> That would have avoided this bug-report I guess, as the documentation would
+>>>> reflect the actual situation better. 
+>>> 
+>>> I have written the attached patch to clarify this.
+>> 
+>> LGTM.  I would've added an <xref linkend="functions-uuid"/> to the the "core
+>> function" part but that's about it.
+> 
+> Sure, attached.  I used <link> so I could just mark the text, rather
+> than adding the chapter number.
+
+
+Of course, that makes sense. +1 for this version.
+
+
+cheers ./daniel
+
+
+
+
+
+### MESSAGE 7
+On Wed, Aug 17, 2022 at 12:18:06AM +0200, Daniel Gustafsson wrote:
+> > On 16 Aug 2022, at 23:58, Bruce Momjian <bruce(at)momjian(dot)us> wrote:
+> > 
+> > ﻿On Tue, Aug 16, 2022 at 11:40:15PM +0200, Daniel Gustafsson wrote:
+> >>>> On 16 Aug 2022, at 20:14, Bruce Momjian <bruce(at)momjian(dot)us> wrote:
+> >>> On Tue, Dec 28, 2021 at 08:36:22PM +0000, Andreas Dijkman wrote:
+> >> 
+> >>>> That would have avoided this bug-report I guess, as the documentation would
+> >>>> reflect the actual situation better. 
+> >>> 
+> >>> I have written the attached patch to clarify this.
+> >> 
+> >> LGTM.  I would've added an <xref linkend="functions-uuid"/> to the the "core
+> >> function" part but that's about it.
+> > 
+> > Sure, attached.  I used <link> so I could just mark the text, rather
+> > than adding the chapter number.
+> 
+> Of course, that makes sense. +1 for this version.
+
+
+Patch applied back to PG 13, where this was applicable.  Thanks for the
+team work on this one.
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  Indecision is a decision.  Inaction is an action.  Mark Batterson
+
+
+

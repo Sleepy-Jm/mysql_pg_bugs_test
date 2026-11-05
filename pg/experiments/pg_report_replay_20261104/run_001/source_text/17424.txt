@@ -1,0 +1,57 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17424
+Logged by:          arjun shetty
+Email address:      arjunshetty955(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   RHEL8.3
+Description:        
+
+
+PostgreSQLv14.2 source compiled with build command 
+CC=clang CXX=clang++ ../configure --prefix=<install path> CFLAGS='-O2
+-fgnuc-version=0' CXXFLAGS='-O2 -fno-builtin -fgnuc-version=0'
+And observed build errors like:
+/postgresql-14.2/build/../src/include/nodes/execnodes.h:1596:2: error:
+unknown type name 'slock_t'; did you mean 'clock_t'?
+        slock_t         mutex;
+        ^~~~~~~
+        clock_t
+/usr/include/x86_64-linux-gnu/bits/types/clock_t.h:7:19: note: 'clock_t'
+declared here
+typedef __clock_t clock_t;
+postgresql-14.2/build/../src/backend/access/brin/brin.c:24
+
+
+-fgnuc-version flag used to disable __builtin_xx functions in
+PotgreSQLv14.2
+Example :/postgresql14.2/contrib/cube/cubeparse.c +385
+
+
+if defined YYCOPY_NEEDED && YYCOPY_NEEDED
+/* Copy COUNT objects from SRC to DST.  The source and destination do
+   not overlap.  */
+# ifndef YYCOPY
+#  if defined __GNUC__ && 1 < __GNUC__
+#   define YYCOPY(Dst, Src, Count) \
+      __builtin_memcpy (Dst, Src, (Count) * sizeof (*(Src)))  /
+#  else
+#   define YYCOPY(Dst, Src, Count)              \
+      do                                        \
+        {                                       \
+          YYSIZE_T yyi;                         \
+          for (yyi = 0; yyi < (Count); yyi++)   \
+            (Dst)[yyi] = (Src)[yyi];            \
+        }                                       \
+      while (0)
+#  endif
+# endif
+#endif /*
+
+
+please let me know  how to disable __builtin__xxx functions in
+PostgreSQLv14.2an build source  code.
+
+
+

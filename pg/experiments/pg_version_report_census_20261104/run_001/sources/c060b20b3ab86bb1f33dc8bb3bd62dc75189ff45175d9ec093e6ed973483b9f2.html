@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17386: btree index corruption after reindex concurrently on write heavy table</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17386-2227568627fb44ce%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-28T13:41:53" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17386: btree index corruption after reindex concurrently on write heavy table" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17386 Logged by: Maxim Boguk Email address: maxim.boguk@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17386: btree index corruption after reindex concurrently on write heavy table</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>maxim(dot)boguk(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17386: btree index corruption after reindex concurrently on write heavy table</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-28 13:41:53</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17386-2227568627fb44ce%40postgresql.org">17386-2227568627fb44ce@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17386-2227568627fb44ce%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17386-2227568627fb44ce%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17386-2227568627fb44ce%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17386-2227568627fb44ce%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17386-2227568627fb44ce%40postgresql.org" selected="selected">2022-01-28 13:41:53 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="CAK-MWwQ7fboHz_s8aTn08i0W2aNH6QoELeWwmH-y80tOfsdDBQ%40mail.gmail.com">&nbsp;2022-01-28 14:17:28 from Maxim Boguk &lt;maxim(dot)boguk(at)gmail(dot)com&gt;</option>
+  <option value="20220129023418.GA2452893%40rfd.leadboat.com">&nbsp;&nbsp;2022-01-29 02:34:18 from Noah Misch &lt;noah(at)leadboat(dot)com&gt;	&#x1f4ce;</option>
+  <option value="CAH2-WzkH8zHOS2X49jmc67_G5TXM8kNSh285nHKpmpf%2Bqa8Rrg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2022-01-29 03:00:31 from Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</option>
+  <option value="YfTT7BBonfQYLPdX%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;2022-01-29 05:43:08 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="CAK-MWwReitx16bDQjT%2BffAFwkQ_%2B2hdM%2BhwMvkRmaM835UxVrQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-01-29 15:23:49 from Maxim Boguk &lt;maxim(dot)boguk(at)gmail(dot)com&gt;</option>
+  <option value="20220130034327.GA2619743%40rfd.leadboat.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-01-30 03:43:27 from Noah Misch &lt;noah(at)leadboat(dot)com&gt;</option>
+  <option value="CAK-MWwT60oMyzGdTJk2kS1Cs-%3D7YgqX0FR4e24k9vEd3gHYZbA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-02 09:24:42 from Maxim Boguk &lt;maxim(dot)boguk(at)gmail(dot)com&gt;</option>
+  <option value="20220202210149.oxqhly6gsn5e4nqt%40alap3.anarazel.de">&nbsp;&nbsp;&nbsp;2022-02-02 21:01:49 from Andres Freund &lt;andres(at)anarazel(dot)de&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17386<br>Logged by:          Maxim Boguk<br>Email address:      maxim(dot)boguk(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu Linux<br>Description:        </p>
+
+<p>Hi,</p>
+
+<p>I found multiple cases of Btree index corruption after REINDEX someindex<br>CONCURRENTLY;.</p>
+
+<p>What I found so far:<br>1)corruption exists in master, on all replicas and test server recovered<br>from base backup + wal archive (so it isn&#x27;t some local hardware error)<br>2)it doesn&#x27;t happen every time but at least two cases of corrupted indexes<br>found after database verification with amcheck.<br>3)it happen on huge and write heavy table</p>
+
+<p>Now details:<br>bt_index_parent_check results:<br>set client_min_messages=DEBUG1;<br>SET<br>select bt_index_parent_check(&#x27;jobs_pkey&#x27;, true, true);<br>psql:check.sql:2: DEBUG:  verifying consistency of tree structure for index<br>&quot;jobs_pkey&quot; with cross-level checks<br>psql:check.sql:2: DEBUG:  verifying level 3 (true root level)<br>psql:check.sql:2: DEBUG:  verifying level 2<br>psql:check.sql:2: DEBUG:  verifying level 1<br>psql:check.sql:2: DEBUG:  verifying level 0 (leaf level)<br>psql:check.sql:2: DEBUG:  verifying that tuples from index &quot;jobs_pkey&quot; are<br>present in &quot;jobs&quot;<br>psql:check.sql:2: ERROR:  heap tuple (33634183,14) from table &quot;jobs&quot; lacks<br>matching index tuple within index &quot;jobs_pkey&quot;</p>
+
+<p>Now lets see what we have inside  page:<br>SELECT * FROM heap_page_item_attrs(get_raw_page(&#x27;jobs&#x27;, 33634183),<br>&#x27;jobs&#x27;::regclass) where lp=14;<br> lp | lp_off | lp_flags | lp_len | t_xmin | t_xmax | t_field3 | t_ctid |<br>t_infomask2 | t_infomask | t_hoff | t_bits | t_oid | t_attrs <br>----+--------+----------+--------+--------+--------+----------+--------+-------------+------------+--------+--------+-------+---------<br> 14 |     26 |        2 |      0 |        |        |          |        |    <br>        |            |        |        |       | </p>
+
+<p>select  ctid,id,updated_at,created_at from jobs where job_reference =<br>&#x27;some_ref&#x27;;<br>     ctid      |     id      |         updated_at         |        <br>created_at         <br>---------------+-------------+----------------------------+----------------------------<br> (33634183,26) | 26228724405 | 2022-01-25 00:50:32.544507 | 2021-11-18<br>09:39:30.594114</p>
+
+<p>select id from jobs where id = 26228724405;<br> id<br>----<br>(0 rows)</p>
+
+<p>What I know that the reindex concurrently run during on updated_at of this<br>tuple:<br>2022-01-25 01:17:34.262 UTC 28073 postgres(at)**** from [local] [vxid:84/0<br>txid:0] [REINDEX] LOG:  duration: 4649025.692 ms  statement: REINDEX INDEX<br>CONCURRENTLY public.jobs_pkey</p>
+
+<p>Problem tuple data:<br>SELECT * FROM heap_page_item_attrs(get_raw_page(&#x27;jobs&#x27;, 33634183),<br>&#x27;jobs&#x27;::regclass) where lp=26;<br>-[ RECORD 1<br>]--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------<br>lp          | 26<br>lp_off      | 1840<br>lp_flags    | 1<br>lp_len      | 522<br>t_xmin      | 1829097938<br>t_xmax      | 0<br>t_field3    | 38<br>t_ctid      | (33634183,26)<br>t_infomask2 | 32846<br>t_infomask  | 11011<br>t_hoff      | 40<br>t_bits      |<br>01011100000000011110001000000000001001000000000011010100000111111111101110011000<br>t_oid       | <br>t_attrs     |<br>{NULL,&quot;\\xab31353135315f37383730322d4a4f425245512d3135393732392d656e2d75732d4f54484c4f432d434125354642656e696369612d3239663963653035633163646564323435313532376230633232363830663465&quot;,NULL,&quot;\\x114f616b6c616e64&quot;,&quot;\\x074341&quot;,&quot;\\x0d3934363631&quot;,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&quot;\\x2f3b0000&quot;,&quot;\\x42293ab40b740200&quot;,&quot;\\xfb74b33d5c790200&quot;,&quot;\\x1c260300&quot;,NULL,NULL,NULL,&quot;\\x01000000&quot;,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&quot;\\x2b000000&quot;,NULL,NULL,&quot;\\x00&quot;,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&quot;\\xc0020000040000800400008040000000470000004900000052000000540000005e000000880000006c6f676f68747470733a2f2f7777772e687964726f6368656d7073632e636f6d2f77702d636f6e74656e742f75706c6f6164732f616d702d6c6f676f2e706e67636f756e747279555373706f6e736f7265646e6f736f757263656e616d65436c65616e20486172626f727320456e7669726f6e6d656e74616c2053657276696365732c20496e632e&quot;,&quot;\\x5d37383730322d4a4f425245512d3135393732392d656e2d75732d4f54484c4f432d434125354642656e69636961&quot;,NULL,&quot;\\x873d0100&quot;,NULL,&quot;\\x804b3e77e0780200&quot;,NULL,NULL,NULL,NULL,NULL,&quot;\\x1300832500911aa41f&quot;,&quot;\\x1300a37900fe234826&quot;,&quot;\\xce2b5b00&quot;,&quot;\\xb5925a1b06000000&quot;,&quot;\\x4b905a1b06000000&quot;,&quot;\\x00000000&quot;,&quot;\\xe6120000&quot;,&quot;\\x0f020000&quot;,&quot;\\x20502e5508750200&quot;,&quot;\\x0400&quot;,NULL,&quot;\\x67c30000&quot;,&quot;\\x4e6c1f13&quot;,&quot;\\x652105fbe2f3fab45335f04bfccc900c&quot;,NULL,NULL,&quot;\\x04001c00&quot;,&quot;\\x0000&quot;,NULL}</p>
+
+<p>SELECT t_ctid, raw_flags, combined_flags FROM<br>heap_page_item_attrs(get_raw_page(&#x27;jobs&#x27;, 33634183), &#x27;jobs&#x27;::regclass),<br>LATERAL heap_tuple_infomask_flags(t_infomask, t_infomask2)  where lp=26;<br>-[ RECORD 1<br>]--+---------------------------------------------------------------------------------------------------------------------<br>t_ctid         | (33634183,26)<br>raw_flags      |<br>{HEAP_HASNULL,HEAP_HASVARWIDTH,HEAP_XMIN_COMMITTED,HEAP_XMIN_INVALID,HEAP_XMAX_INVALID,HEAP_UPDATED,HEAP_ONLY_TUPLE}<br>combined_flags | {HEAP_XMIN_FROZEN}</p>
+
+<p>This is all what I have so far, but I have base backup taken before problem<br>arise and wal archive and standalone server for experiments (database 10+TB<br>size with huge load so it isn&#x27;t fast but definitely possible extract all<br>requested information).</p>
+
+<p>Kind Regards,<br>Maxim</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAK-MWwQ7fboHz_s8aTn08i0W2aNH6QoELeWwmH-y80tOfsdDBQ%40mail.gmail.com">Re: BUG #17386: btree index corruption after reindex concurrently on
+ write heavy table</a> at 2022-01-28 14:17:28 from Maxim Boguk
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/tencent_455C88A54F4AFB73D3824A2558585F911209%40qq.com">Next Message</a></th>
+            <td>两个孩子的爹</td>
+            <td>2022-01-28 13:42:47</td>
+            <td><a href="/message-id/tencent_455C88A54F4AFB73D3824A2558585F911209%40qq.com">Re: BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/TYCPR01MB704195AAABCC36433438BCA2EA229%40TYCPR01MB7041.jpnprd01.prod.outlook.com">Previous Message</a></th>
+            <td>ideriha.takeshi@fujitsu.com</td>
+            <td>2022-01-28 10:51:27</td>
+            <td><a href="/message-id/TYCPR01MB704195AAABCC36433438BCA2EA229%40TYCPR01MB7041.jpnprd01.prod.outlook.com">RE: The follwing error sometimes happened while updating partitioned
+ table using inheritance; ERROR: attribute xxx of type record has wrong type</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,135 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17302
+Logged by:          Alexander Lakhin
+Email address:      exclusion(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   Ubuntu 20.04
+Description:        
+
+
+The last statement in the following sequence of queries:
+CREATE TABLE point_tbl (f1 point);
+CREATE INDEX gpointind ON point_tbl USING gist (f1);
+INSERT INTO point_tbl SELECT '(0,0)'::point FROM generate_series(1, 1000)
+g;
+INSERT INTO point_tbl VALUES ('(1e-300,-1e-300)'::point);
+produces:
+ERROR:  value out of range: underflow
+(The error occurs inside gist_box_penalty()->box_penalty()->size_box().)
+But the following sequence:
+CREATE TABLE point_tbl (f1 point);
+INSERT INTO point_tbl SELECT '(0,0)'::point FROM generate_series(1, 1000)
+g;
+INSERT INTO point_tbl VALUES ('(1e-300,-1e-300)'::point);
+executes without an error. Moreover, the same index can be created
+successfully after the insertion. The error is also depends on number of the
+points inserted in the first step.
+
+
+
+
+
+### MESSAGE 1
+On Sun, Nov 28, 2021 at 9:07 PM PG Bug reporting form
+<noreply(at)postgresql(dot)org> wrote:
+> The last statement in the following sequence of queries:
+> CREATE TABLE point_tbl (f1 point);
+> CREATE INDEX gpointind ON point_tbl USING gist (f1);
+> INSERT INTO point_tbl SELECT '(0,0)'::point FROM generate_series(1, 1000)
+> g;
+> INSERT INTO point_tbl VALUES ('(1e-300,-1e-300)'::point);
+> produces:
+> ERROR:  value out of range: underflow
+> (The error occurs inside gist_box_penalty()->box_penalty()->size_box().)
+> But the following sequence:
+> CREATE TABLE point_tbl (f1 point);
+> INSERT INTO point_tbl SELECT '(0,0)'::point FROM generate_series(1, 1000)
+> g;
+> INSERT INTO point_tbl VALUES ('(1e-300,-1e-300)'::point);
+> executes without an error. Moreover, the same index can be created
+> successfully after the insertion. The error is also depends on number of the
+> points inserted in the first step.
+
+
+I think losing precision in the gist penalty is generally OK.  Thus,
+it shouldn't be a problem to round a very small value as zero.
+Probably, we could even tolerate overflow in the gist penalty.  Should
+be much worse than underflow, because we might consider a very bad
+penalty as very good (or vise versa).  But it still affects only index
+quality, not correctness.
+
+
+Any thoughts?
+
+
+------
+Regards,
+Alexander Korotkov
+
+
+
+
+
+### MESSAGE 2
+Alexander Korotkov <aekorotkov(at)gmail(dot)com> writes:
+> I think losing precision in the gist penalty is generally OK.  Thus,
+> it shouldn't be a problem to round a very small value as zero.
+
+
+Check.
+
+
+> Probably, we could even tolerate overflow in the gist penalty.
+
+
+As long as overflow -> infinity, yeah I think so.  Seems like it
+was a mistake to insert the overflow-testing functions in this code
+at all, and we should simplify it down to plain C addition/subtraction/
+multiplication.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+On Thu, Dec 2, 2021 at 1:14 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Alexander Korotkov <aekorotkov(at)gmail(dot)com> writes:
+> > I think losing precision in the gist penalty is generally OK.  Thus,
+> > it shouldn't be a problem to round a very small value as zero.
+>
+> Check.
+>
+> > Probably, we could even tolerate overflow in the gist penalty.
+>
+> As long as overflow -> infinity, yeah I think so.  Seems like it
+> was a mistake to insert the overflow-testing functions in this code
+> at all, and we should simplify it down to plain C addition/subtraction/
+> multiplication.
+>
+
+
+The underflow should not throw an interrupting exception ever, even on
+plain SQL-level calculations.
+
+
+The code to implement was added in error by a series of misunderstandings
+and gets in the way of simple things too often. I dug into the history here:
+
+
+https://www.postgresql.org/message-id/CAC8Q8t%2BXJH68WB%2BsKN0BV0uGc3ZjA2DtbQuoJ5EhB4JAcS0C%2BQ%40mail.gmail.com
+
+
+>
+>                         regards, tom lane
+>
+>
+>
+

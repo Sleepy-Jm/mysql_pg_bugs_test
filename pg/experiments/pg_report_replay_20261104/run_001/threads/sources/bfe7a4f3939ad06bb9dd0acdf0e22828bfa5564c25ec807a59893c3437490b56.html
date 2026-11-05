@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18805: A specific query on a hash partitioned table always causes a &quot;signal 11: Segmentation fault&quot; error.</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18805-2477a1f983db961e%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-02-12T03:53:43" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18805: A specific query on a hash partitioned table always causes a &quot;signal 11: Segmentation fault&quot; error." />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="b3609fcd633a58b7a3cbd70465832489">BUG #18805: A specific query on a hash partitioned table always causes a &quot;signal 11: Segmentation fault&quot; error.</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202502120353">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18805-2477a1f983db961e@postgresql.org"></a>
+<a name="b3609fcd633a58b7a3cbd70465832489"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>weijie1006jl(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18805: A specific query on a hash partitioned table always causes a &quot;signal 11: Segmentation fault&quot; error.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 03:53:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18805-2477a1f983db961e%40postgresql.org">18805-2477a1f983db961e@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18805-2477a1f983db961e%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18805-2477a1f983db961e%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18805-2477a1f983db961e%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18805-2477a1f983db961e%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18805<br>Logged by:          weijie JL<br>Email address:      weijie1006jl(at)gmail(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Rocky Linux release 8.10 (Green Obsidian)<br>Description:        </p>
+
+<p>Executing a specific SQL query in the database consistently results in a<br>&quot;signal 11: Segmentation fault&quot; error, and other connections report the<br>error: FATAL: 57P03: the database system is in recovery mode.</p>
+
+<p>When the error occurs, the system log shows: kernel: XFS (dm-2): Corruption<br>of in-memory data (0x8) detected at xfs_trans_cancel+0xc6/0x130 [xfs]<br>(fs/xfs/xfs_trans.c:958). Shutting down filesystem. This indicates in-memory<br>data corruption in the XFS system, and the issue appears after this error.</p>
+
+<p>We conducted the following tests:</p>
+
+<p>Yesterday, we restored a backup using pgBackRest to another instance and<br>configured streaming replication. Initially, the issue did not reoccur, and<br>we switched to using this instance as the primary database. Since the<br>business team had adjusted the SQL, everything worked fine. However, when we<br>tested the problematic SQL again today, the issue reappeared.<br>On the problematic virtual machine, we tried restarting, reinstalling the<br>database software, and repairing the filesystem with xfs_repair, but the<br>issue persisted.<br>We moved the pgdata directory to a new disk space, but the issue still<br>persisted after starting the database.<br>We reinstalled the PostgreSQL software, but the issue persisted.<br>We uploaded the PostgreSQL source code to a test environment for debugging<br>and eventually identified that the issue was caused by the<br>enable_partitionwise_join parameter. Disabling the enable_partitionwise_join<br>parameter in the database prevented the issue from recurring.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="e977ec0fc2f9b2409f56e002e6350d2cda17f841.camel@cybertec.at"></a>
+<a name="e31eed5526e4e640aa61438b94c705f4"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>weijie1006jl(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18805: A specific query on a hash partitioned table always
+ causes a &quot;signal 11: Segmentation fault&quot; error.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 07:40:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/e977ec0fc2f9b2409f56e002e6350d2cda17f841.camel%40cybertec.at">e977ec0fc2f9b2409f56e002e6350d2cda17f841.camel@cybertec.at</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/e977ec0fc2f9b2409f56e002e6350d2cda17f841.camel%40cybertec.at">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/e977ec0fc2f9b2409f56e002e6350d2cda17f841.camel%40cybertec.at" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/e977ec0fc2f9b2409f56e002e6350d2cda17f841.camel%40cybertec.at" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/e977ec0fc2f9b2409f56e002e6350d2cda17f841.camel%40cybertec.at" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, 2025-02-12 at 03:53 +0000, PG Bug reporting form wrote:<br>&gt; Executing a specific SQL query in the database consistently results in a<br>&gt; &quot;signal 11: Segmentation fault&quot; error, and other connections report the<br>&gt; error: FATAL: 57P03: the database system is in recovery mode.<br>&gt; <br>&gt; When the error occurs, the system log shows: kernel: XFS (dm-2): Corruption<br>&gt; of in-memory data (0x8) detected at xfs_trans_cancel+0xc6/0x130 [xfs]<br>&gt; (fs/xfs/xfs_trans.c:958). Shutting down filesystem. This indicates in-memory<br>&gt; data corruption in the XFS system, and the issue appears after this error.</p>
+
+<p>That sounds like a hardware problem that leads to data corruption.</p>
+
+<p>Check your memory.</p>
+
+<p>Restore your last good backup.</p>
+
+<p>Yours,<br>Laurenz Albe</p>
+
+<p>-- </p>
+
+<p>*E-Mail Disclaimer*<br>Der Inhalt dieser E-Mail ist ausschliesslich fuer den <br>bezeichneten Adressaten bestimmt. Wenn Sie nicht der vorgesehene Adressat <br>dieser E-Mail oder dessen Vertreter sein sollten, so beachten Sie bitte, <br>dass jede Form der Kenntnisnahme, Veroeffentlichung, Vervielfaeltigung oder <br>Weitergabe des Inhalts dieser E-Mail unzulaessig ist. Wir bitten Sie, sich <br>in diesem Fall mit dem Absender der E-Mail in Verbindung zu setzen.</p>
+
+<p>*CONFIDENTIALITY NOTICE &amp; DISCLAIMER<br>*This message and any attachment are <br>confidential and may be privileged or otherwise protected from disclosure <br>and solely for the use of the person(s) or entity to whom it is intended. <br>If you have received this message in error and are not the intended <br>recipient, please notify the sender immediately and delete this message and <br>any attachment from your system. If you are not the intended recipient, be <br>advised that any use of this message is prohibited and may be unlawful, and <br>you must not copy this message or attachment or disclose the contents to <br>any other person.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="6E52A7B3-BE1C-4EE2-8AB2-FBF230C1F185@gmail.com"></a>
+<a name="3a8416c3188032fbc2a6590f035ad87b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>weijie JL &lt;weijie1006jl(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Fwd: BUG #18805: A specific query on a hash partitioned table always
+ causes a &quot;signal 11: Segmentation fault&quot; error.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 08:55:49</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/6E52A7B3-BE1C-4EE2-8AB2-FBF230C1F185%40gmail.com">6E52A7B3-BE1C-4EE2-8AB2-FBF230C1F185@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/6E52A7B3-BE1C-4EE2-8AB2-FBF230C1F185%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/6E52A7B3-BE1C-4EE2-8AB2-FBF230C1F185%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/6E52A7B3-BE1C-4EE2-8AB2-FBF230C1F185%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/6E52A7B3-BE1C-4EE2-8AB2-FBF230C1F185%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>It is the same project scenario as the issue below ( BUG 18806）.</p>
+
+<p><a href="https://www.postgresql.org/message-id/18806-d70b0c9fdf63dcbf@postgresql.org%EF%BF%BC" rel="nofollow">https://www.postgresql.org/message-id/18806-d70b0c9fdf63dcbf%40postgresql.org￼</a><br>BUG #18806: When enable_rartitionwise_join is set to ON, the database shuts down abnormally<br><a href="http://postgresql.org" rel="nofollow">postgresql.org</a></p>
+
+<p>&gt; 下面是被转发的邮件：<br>&gt; <br>&gt; 发件人: Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;<br>&gt; 主题: 回复：BUG #18805: A specific query on a hash partitioned table always causes a &quot;signal 11: Segmentation fault&quot; error.<br>&gt; 日期: 2025年2月12日 GMT+8 15:40:01<br>&gt; 收件人: weijie1006jl(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org<br>&gt; <br>&gt; On Wed, 2025-02-12 at 03:53 +0000, PG Bug reporting form wrote:<br>&gt;&gt; Executing a specific SQL query in the database consistently results in a<br>&gt;&gt; &quot;signal 11: Segmentation fault&quot; error, and other connections report the<br>&gt;&gt; error: FATAL: 57P03: the database system is in recovery mode.<br>&gt;&gt; <br>&gt;&gt; When the error occurs, the system log shows: kernel: XFS (dm-2): Corruption<br>&gt;&gt; of in-memory data (0x8) detected at xfs_trans_cancel+0xc6/0x130 [xfs]<br>&gt;&gt; (fs/xfs/xfs_trans.c:958). Shutting down filesystem. This indicates in-memory<br>&gt;&gt; data corruption in the XFS system, and the issue appears after this error.<br>&gt; <br>&gt; That sounds like a hardware problem that leads to data corruption.<br>&gt; <br>&gt; Check your memory.<br>&gt; <br>&gt; Restore your last good backup.<br>&gt; <br>&gt; Yours,<br>&gt; Laurenz Albe<br>&gt; <br>&gt; -- <br>&gt; <br>&gt; *E-Mail Disclaimer*<br>&gt; Der Inhalt dieser E-Mail ist ausschliesslich fuer den <br>&gt; bezeichneten Adressaten bestimmt. Wenn Sie nicht der vorgesehene Adressat <br>&gt; dieser E-Mail oder dessen Vertreter sein sollten, so beachten Sie bitte, <br>&gt; dass jede Form der Kenntnisnahme, Veroeffentlichung, Vervielfaeltigung oder <br>&gt; Weitergabe des Inhalts dieser E-Mail unzulaessig ist. Wir bitten Sie, sich <br>&gt; in diesem Fall mit dem Absender der E-Mail in Verbindung zu setzen.<br>&gt; <br>&gt; *CONFIDENTIALITY NOTICE &amp; DISCLAIMER<br>&gt; *This message and any attachment are <br>&gt; confidential and may be privileged or otherwise protected from disclosure <br>&gt; and solely for the use of the person(s) or entity to whom it is intended. <br>&gt; If you have received this message in error and are not the intended <br>&gt; recipient, please notify the sender immediately and delete this message and <br>&gt; any attachment from your system. If you are not the intended recipient, be <br>&gt; advised that any use of this message is prohibited and may be unlawful, and <br>&gt; you must not copy this message or attachment or disclose the contents to <br>&gt; any other person.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

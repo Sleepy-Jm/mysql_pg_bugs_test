@@ -1,0 +1,37 @@
+{
+  "report_id": "17284",
+  "scenario_id": "17284_main",
+  "target_version": "14.1",
+  "source_url": "https://www.postgresql.org/message-id/17284-c878f548184aae1f%40postgresql.org",
+  "parts": [
+    {
+      "text": "concurrency=2\noutput=/tmp/junk\nrm -rf $output\nprintf \"$(printf \"test: two-ids\\n%.0s\" `seq 100`)\"\n>/tmp/isolation_schedule\nfor c in `seq $concurrency`; do\nmkdir -p $output/results_${c}\n(EXTRA_REGRESS_OPTS=\"--dbname=regress_${c} --outputdir=$output/results_${c}\n--schedule=/tmp/isolation_schedule\" make -C src/test/isolation installcheck)\n\\\n        > $output/out.${c}.log 2>&1 &\ndone\nwait\ncoredumpctl --no-pager;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17284.txt",
+      "start_offset": 2600,
+      "end_offset": 3012,
+      "start_line": 60,
+      "end_line": 76,
+      "excerpt_sha256": "33550044ccaf82f3daa0de45722ffb5678e1108b766b9ded08d885aabe60e243",
+      "transformations": [
+        "trim outer whitespace",
+        "append SQL terminator at excerpt boundary"
+      ],
+      "material_kind": "test_suite_commands"
+    }
+  ],
+  "mode": "serial_suite",
+  "oracle": {
+    "kind": "crash",
+    "pattern": "terminated by signal 6",
+    "reported_phenomenon": "TEST_SUMMARIZE_SERIAL 下并发 two-ids 触发 SerialAdd 断言",
+    "author_expected_behavior": "不发生断言崩溃"
+  },
+  "config": {
+    "fsync": "off"
+  },
+  "notes": "两并发，各100次，专用构建使用原 CPPFLAGS；临时输出目录改为本任务路径，省略原rm及全局coredumpctl。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "build_variant": "serial",
+  "spec_sha256": "f45e1a74da810b51eeed8a860c1a373fbd68e902ff363462e8c2bbc69a6bafb1"
+}

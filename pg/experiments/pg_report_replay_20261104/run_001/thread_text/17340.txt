@@ -1,0 +1,261 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17340
+Logged by:          Magnus Falch
+Email address:      magnus(dot)falch(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   Ubuntu 20.04
+Description:        
+
+
+No part of the documentation covers this behaviour and it feels incorrect.
+
+
+A function called in the select part of a query discarding other data does
+not make sense and feels like it breaks with expectations without being
+documented.
+
+
+select name,unnest(test_values.int_array) as array_item from
+(select 'test_a' as name,null :: int[] as int_array union all
+select 'test_b' as name ,array[1,2,3] as int_array ) test_values
+
+
+Actual result set:
+name |    array_item
+test_b |    1
+test_b |    2
+test_b |    3 
+
+
+Expected result set:
+name |    array_item
+test_a |    null
+test_b |    1
+test_b |    2
+test_b |    3
+
+
+
+
+
+### MESSAGE 1
+On Mon, Dec 20, 2021 at 10:38:28AM +0000, PG Bug reporting form wrote:
+> The following bug has been logged on the website:
+> 
+> Bug reference:      17340
+> Logged by:          Magnus Falch
+> Email address:      magnus(dot)falch(at)gmail(dot)com
+> PostgreSQL version: 14.1
+> Operating system:   Ubuntu 20.04
+> Description:        
+> 
+> No part of the documentation covers this behaviour and it feels incorrect.
+> 
+> A function called in the select part of a query discarding other data does
+> not make sense and feels like it breaks with expectations without being
+> documented.
+> 
+> select name,unnest(test_values.int_array) as array_item from
+> (select 'test_a' as name,null :: int[] as int_array union all
+> select 'test_b' as name ,array[1,2,3] as int_array ) test_values
+> 
+> Actual result set:
+> name |    array_item
+> test_b |    1
+> test_b |    2
+> test_b |    3 
+> 
+> 
+> Expected result set:
+> name |    array_item
+> test_a |    null
+> test_b |    1
+> test_b |    2
+> test_b |    3
+
+
+Well, this is a good one.  :-)  I think the reason for the difference is
+how unnest() treats NULL vs arrays containing NULLs.  Look at this:
+
+
+	SELECT null::int[];
+	  int4
+	--------
+	 (null)
+	
+	SELECT array[null]::int[];
+	 array
+	--------
+	 {NULL}
+	
+	-- returns nothing
+	SELECT unnest(null::int[]);
+	 unnest
+	--------
+-->	
+	SELECT unnest(array[null]::int[]);
+	 unnest
+	--------
+	 (null)
+
+
+Be aware that (null) is a null, not an array of nulls.  (That last query
+returns a null that was extracted from the array.)  In the query you
+supplied, null::int[] is a null that unnest() ignores since the null is
+not in an array.  If you do array[null]::int[] you get the result you
+expected:
+
+
+	SELECT name, unnest(test_values.int_array) AS array_item
+	FROM (
+	    SELECT 'test_a' AS name, ARRAY[NULL]::INT[] AS int_array
+	    UNION ALL
+	    SELECT 'test_b' AS name, ARRAY[1, 2, 3] AS int_array) test_values;
+	  name  | array_item
+	--------+------------
+	 test_a |     (null)
+	 test_b |          1
+	 test_b |          2
+	 test_b |          3
+
+
+I hope that helps.
+
+
+-- 
+  Bruce Momjian  <bruce(at)momjian(dot)us>        https://momjian.us
+  EDB                                      https://enterprisedb.com
+
+
+  If only the physical world exists, free will is an illusion.
+
+
+
+
+
+### MESSAGE 2
+On Mon, Dec 20, 2021 at 3:42 AM PG Bug reporting form <
+noreply(at)postgresql(dot)org> wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17340
+> Logged by:          Magnus Falch
+> Email address:      magnus(dot)falch(at)gmail(dot)com
+> PostgreSQL version: 14.1
+> Operating system:   Ubuntu 20.04
+> Description:
+>
+> No part of the documentation covers this behaviour
+
+
+Yes, this is under-documented.
+
+
+and it feels incorrect.
+>
+
+
+That may be, but this is how it works.  Placing any set-returning function
+call directly in the select target list performs an INNER JOIN.  The
+LATERAL JOIN feature was added to allow the user more flexibility - the
+syntax you are complaining about should be considered obsolete.
+
+
+While this hasn't been complained about in a while you are the second to
+question it in the past month or so:
+
+
+https://www.postgresql.org/message-id/flat/15736efd9ae84d9ebbef14e3e4e8e844%40politie.nl#14f68d4b9a12e1aa133abd449cf3ccc5
+
+
+David J.
+
+
+
+### MESSAGE 3
+On Wed, Dec 22, 2021 at 1:43 PM David G. Johnston <
+david(dot)g(dot)johnston(at)gmail(dot)com> wrote:
+
+
+> On Mon, Dec 20, 2021 at 3:42 AM PG Bug reporting form <
+> noreply(at)postgresql(dot)org> wrote:
+>
+>> The following bug has been logged on the website:
+>>
+>> Bug reference:      17340
+>> Logged by:          Magnus Falch
+>> Email address:      magnus(dot)falch(at)gmail(dot)com
+>> PostgreSQL version: 14.1
+>> Operating system:   Ubuntu 20.04
+>> Description:
+>>
+>> No part of the documentation covers this behaviour
+>
+>
+> Yes, this is under-documented.
+>
+>
+Specifically, it is documented here [1].
+
+
+[1]
+https://www.postgresql.org/docs/current/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET
+
+
+David J.
+
+
+
+### MESSAGE 4
+I got an explanation from depesz that boils down to what Bruce explained.
+Returning an unambiguous answer and discarding data is more explicit than
+the other alternatives and is therefore the optimal compromise.
+
+
+I submitted a doc patch suggestion for this.
+
+
+Once documented and explained it's not an issue. And coalescing the target
+array to an array containing the desired failover value is a good & easy
+workaround to get what corresponds to what my gut feeling expected.
+
+
+On Wed, Dec 22, 2021, 21:48 David G. Johnston <david(dot)g(dot)johnston(at)gmail(dot)com>
+wrote:
+
+
+> On Wed, Dec 22, 2021 at 1:43 PM David G. Johnston <
+> david(dot)g(dot)johnston(at)gmail(dot)com> wrote:
+>
+>> On Mon, Dec 20, 2021 at 3:42 AM PG Bug reporting form <
+>> noreply(at)postgresql(dot)org> wrote:
+>>
+>>> The following bug has been logged on the website:
+>>>
+>>> Bug reference:      17340
+>>> Logged by:          Magnus Falch
+>>> Email address:      magnus(dot)falch(at)gmail(dot)com
+>>> PostgreSQL version: 14.1
+>>> Operating system:   Ubuntu 20.04
+>>> Description:
+>>>
+>>> No part of the documentation covers this behaviour
+>>
+>>
+>> Yes, this is under-documented.
+>>
+>>
+> Specifically, it is documented here [1].
+>
+> [1]
+> https://www.postgresql.org/docs/current/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET
+>
+> David J.
+>
+>
+

@@ -1,0 +1,3951 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17385-9ee529fb091f0ce5%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-28T09:07:40" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="451cba3ebb86ec80d05933c6c89e1703">BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202201280907">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17385-9ee529fb091f0ce5@postgresql.org"></a>
+<a name="451cba3ebb86ec80d05933c6c89e1703"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>andrewbille(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-28 09:07:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17385-9ee529fb091f0ce5%40postgresql.org">17385-9ee529fb091f0ce5@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17385-9ee529fb091f0ce5%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17385-9ee529fb091f0ce5%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17385-9ee529fb091f0ce5%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17385-9ee529fb091f0ce5%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17385<br>Logged by:          Andrew Bille<br>Email address:      andrewbille(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>Hi!</p>
+
+<p>&quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert<br>at the transaction end.<br>For example (on REL_10_STABLE) the following query:<br>CREATE TABLE abc (a int);<br>BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;<br>        SELECT * FROM abc;<br>        RESET transaction_isolation;<br>END;</p>
+
+<p>causes an assertion failure with the following stack:</p>
+
+<p>[New LWP 839017]<br>[Thread debugging using libthread_db enabled]<br>Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.<br>Core was generated by `postgres: andrew regression [local] COMMIT           <br>                        &#x27;.<br>Program terminated with signal SIGABRT, Aborted.<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>50      ../sysdeps/unix/sysv/linux/raise.c: No such file or directory.<br>(gdb) bt<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>#1  0x00007f14b7f59859 in __GI_abort () at abort.c:79<br>#2  0x00005586da82c4d2 in ExceptionalCondition (conditionName=0x5586daa01e42<br>&quot;IsolationIsSerializable()&quot;, errorType=0x5586daa0195c &quot;FailedAssertion&quot;,<br>fileName=0x5586daa01950 &quot;predicate.c&quot;, lineNumber=4838) at assert.c:69<br>#3  0x00005586da659b2f in PreCommit_CheckForSerializationFailure () at<br>predicate.c:4838<br>#4  0x00005586da20f32e in CommitTransaction () at xact.c:2168<br>#5  0x00005586da21020c in CommitTransactionCommand () at xact.c:3015<br>#6  0x00005586da66afcb in finish_xact_command () at postgres.c:2721<br>#7  0x00005586da668643 in exec_simple_query (query_string=0x5586dada1020<br>&quot;END;&quot;) at postgres.c:1239<br>#8  0x00005586da66d4db in PostgresMain (argc=1, argv=0x7fffefd1c050,<br>dbname=0x5586dadcc168 &quot;regression&quot;, username=0x5586dadcc148 &quot;andrew&quot;) at<br>postgres.c:4486<br>#9  0x00005586da591be3 in BackendRun (port=0x5586dadc2010) at<br>postmaster.c:4530<br>#10 0x00005586da59143e in BackendStartup (port=0x5586dadc2010) at<br>postmaster.c:4252<br>#11 0x00005586da58d233 in ServerLoop () at postmaster.c:1745<br>#12 0x00005586da58c990 in PostmasterMain (argc=3, argv=0x5586dad9b240) at<br>postmaster.c:1417<br>#13 0x00005586da47be9d in main (argc=3, argv=0x5586dad9b240) at main.c:209</p>
+
+<p>Reproduced on REL_10_STABLE..master.<br>However SET transaction_isolation=&#x27;read committed&#x27; inside transaction just<br>emits<br>&quot;ERROR:  SET TRANSACTION ISOLATION LEVEL must be called before any query&quot;.</p>
+
+<p>Regards, Andrew!</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="b22395d2-d432-f211-0bed-1f466df75152@postgrespro.ru"></a>
+<a name="7757dd7d36261a834114411528545d6e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-28 15:26:08</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/b22395d2-d432-f211-0bed-1f466df75152%40postgrespro.ru">b22395d2-d432-f211-0bed-1f466df75152@postgrespro.ru</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/b22395d2-d432-f211-0bed-1f466df75152%40postgrespro.ru">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/b22395d2-d432-f211-0bed-1f466df75152%40postgrespro.ru" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/b22395d2-d432-f211-0bed-1f466df75152%40postgrespro.ru" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/b22395d2-d432-f211-0bed-1f466df75152%40postgrespro.ru" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>Additional information. Query<br>&quot;RESET transaction_isolation;&quot;<br>in previous message can be replaced to synonym<br>&quot;SET transaction_isolation=DEFAULT;&quot;<br>(error will be the same).</p>
+
+<p>I attached file with simple fix for branch &quot;master&quot;.</p>
+
+<p>I not sure that need to use a separate block of code for the<br>&quot;transaction_isolation&quot; GUC-variable. But this is a special variable<br>and there are several places in the code with handling of this variable.</p>
+
+<p>With best regards,<br>Dmitry Koval.</p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/130435/v1-0001-Fixed-reset-transaction_isolation.patch">v1-0001-Fixed-reset-transaction_isolation.patch</a>
+            
+          </th>
+          <td>text/plain</td>
+          <td>1.8 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoCkwsb_Hz6JYbG0X8Jf_VEMheiib0FXpR2kc3UATVCPNQ@mail.gmail.com"></a>
+<a name="fc843c4b6c88c65a04de9263f8142ae5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-04 08:48:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoCkwsb_Hz6JYbG0X8Jf_VEMheiib0FXpR2kc3UATVCPNQ%40mail.gmail.com">CAD21AoCkwsb_Hz6JYbG0X8Jf_VEMheiib0FXpR2kc3UATVCPNQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoCkwsb_Hz6JYbG0X8Jf_VEMheiib0FXpR2kc3UATVCPNQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoCkwsb_Hz6JYbG0X8Jf_VEMheiib0FXpR2kc3UATVCPNQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoCkwsb_Hz6JYbG0X8Jf_VEMheiib0FXpR2kc3UATVCPNQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoCkwsb_Hz6JYbG0X8Jf_VEMheiib0FXpR2kc3UATVCPNQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202040000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, Jan 29, 2022 at 12:26 AM Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt; wrote:<br>&gt;<br>&gt; Hi,<br>&gt;<br>&gt; Additional information. Query<br>&gt; &quot;RESET transaction_isolation;&quot;<br>&gt; in previous message can be replaced to synonym<br>&gt; &quot;SET transaction_isolation=DEFAULT;&quot;<br>&gt; (error will be the same).<br>&gt;<br>&gt; I attached file with simple fix for branch &quot;master&quot;.<br>&gt;<br>&gt; I not sure that need to use a separate block of code for the<br>&gt; &quot;transaction_isolation&quot; GUC-variable. But this is a special variable<br>&gt; and there are several places in the code with handling of this variable.</p>
+
+<p>IIUC this problem comes from the fact that RESET command doesn&#x27;t call<br>check_hook of GUC parameters. Therefore, all GUC parameters that don’t<br>expect to be changed after something operations are affected. For<br>example, in addition to transaction_isolation, we don’t support<br>changing transaction_read_only and default_transaction_deferrable<br>after the first snapshot is taken. Also, we don’t support changing<br>temp_buffers after accessing any temp tables in the session. But<br>RESET’ing these parameters bypasses the check. Considering these<br>facts, I think it’s better to call check_hook even in resetting cases.<br>I&#x27;ve attached a patch (with regression tests) for discussion.</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a><br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/130663/call_check_hook_on_reset.patch">call_check_hook_on_reset.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>7.5 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAFiTN-sYZ0Cuyeygp7z8xfoFPhqTAbtnV+k2W9OHp8s0xus5vw@mail.gmail.com"></a>
+<a name="c0fdd84611dfb565475c9330d055e2f5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, andrewbille(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-04 10:14:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAFiTN-sYZ0Cuyeygp7z8xfoFPhqTAbtnV%2Bk2W9OHp8s0xus5vw%40mail.gmail.com">CAFiTN-sYZ0Cuyeygp7z8xfoFPhqTAbtnV+k2W9OHp8s0xus5vw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAFiTN-sYZ0Cuyeygp7z8xfoFPhqTAbtnV%2Bk2W9OHp8s0xus5vw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAFiTN-sYZ0Cuyeygp7z8xfoFPhqTAbtnV%2Bk2W9OHp8s0xus5vw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAFiTN-sYZ0Cuyeygp7z8xfoFPhqTAbtnV%2Bk2W9OHp8s0xus5vw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAFiTN-sYZ0Cuyeygp7z8xfoFPhqTAbtnV%2Bk2W9OHp8s0xus5vw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202040000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Feb 4, 2022 at 2:19 PM Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; On Sat, Jan 29, 2022 at 12:26 AM Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt; wrote:<br>&gt; &gt;<br>&gt; &gt; Hi,<br>&gt; &gt;<br>&gt; &gt; Additional information. Query<br>&gt; &gt; &quot;RESET transaction_isolation;&quot;<br>&gt; &gt; in previous message can be replaced to synonym<br>&gt; &gt; &quot;SET transaction_isolation=DEFAULT;&quot;<br>&gt; &gt; (error will be the same).<br>&gt; &gt;<br>&gt; &gt; I attached file with simple fix for branch &quot;master&quot;.<br>&gt; &gt;<br>&gt; &gt; I not sure that need to use a separate block of code for the<br>&gt; &gt; &quot;transaction_isolation&quot; GUC-variable. But this is a special variable<br>&gt; &gt; and there are several places in the code with handling of this variable.<br>&gt;<br>&gt; IIUC this problem comes from the fact that RESET command doesn&#x27;t call<br>&gt; check_hook of GUC parameters. Therefore, all GUC parameters that don’t<br>&gt; expect to be changed after something operations are affected. For<br>&gt; example, in addition to transaction_isolation, we don’t support<br>&gt; changing transaction_read_only and default_transaction_deferrable<br>&gt; after the first snapshot is taken. Also, we don’t support changing<br>&gt; temp_buffers after accessing any temp tables in the session. But<br>&gt; RESET’ing these parameters bypasses the check. Considering these<br>&gt; facts, I think it’s better to call check_hook even in resetting cases.<br>&gt; I&#x27;ve attached a patch (with regression tests) for discussion.</p>
+
+<p>+1 for the fix.  I have some comments on the patch</p>
+
+<p>1.<br>+<br>+                    /* non-NULL value must always get strdup&#x27;d */<br>+                    if (newval)<br>                     {<br>-                        newval = guc_strdup(elevel, conf-&gt;boot_val);<br>+                        newval = guc_strdup(elevel, newval);<br>                         if (newval == NULL)<br>                             return 0;<br>                     }</p>
+
+<p>+                    if (source != PGC_S_DEFAULT)<br>+                    {<br>+                        /* Release newextra as we use reset_extra */<br>+                        if (newextra)<br>+                            free(newextra);<br>+<br>+                        /*<br>+                         * strdup not needed, since reset_val is already under<br>+                         * guc.c&#x27;s control<br>+                         */<br>+                        newval = conf-&gt;reset_val;<br>+                        newextra = conf-&gt;reset_extra;</p>
+
+<p>In  if (source != PGC_S_DEFAULT) we are overwriting newval with<br>conf-&gt;reset_val so I think we should free the newval or can we even<br>avoid guc_strdup in case of (source != PGC_S_DEFAULT)?</p>
+
+<p>2. There is one compilation warning</p>
+
+<p>guc.c: In function ‘set_config_option’:<br>guc.c:7918:14: warning: assignment discards ‘const’ qualifier from<br>pointer target type [enabled by default]<br>       newval = conf-&gt;boot_val;</p>
+
+<p>-- <br>Regards,<br>Dilip Kumar<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="f97d670d-2b03-9d47-6b64-09e6ed2f4d84@postgrespro.ru"></a>
+<a name="2b5b93c4fb875cbe24546dc5b1009aae"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;,
+ Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>andrewbille(at)gmail(dot)com,
+ PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-06 07:37:47</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/f97d670d-2b03-9d47-6b64-09e6ed2f4d84%40postgrespro.ru">f97d670d-2b03-9d47-6b64-09e6ed2f4d84@postgrespro.ru</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/f97d670d-2b03-9d47-6b64-09e6ed2f4d84%40postgrespro.ru">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/f97d670d-2b03-9d47-6b64-09e6ed2f4d84%40postgrespro.ru" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/f97d670d-2b03-9d47-6b64-09e6ed2f4d84%40postgrespro.ru" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/f97d670d-2b03-9d47-6b64-09e6ed2f4d84%40postgrespro.ru" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; In  if (source != PGC_S_DEFAULT) we are overwriting newval with<br>&gt; conf-&gt;reset_val so I think we should free the newval or can we even<br>&gt; avoid guc_strdup in case of (source != PGC_S_DEFAULT)?</p>
+
+<p>I think we can not avoid guc_strdup in case of (source != PGC_S_DEFAULT) <br>because function call_string_check_hook() contains &quot;free(*newval);&quot; in <br>PG_CATCH-section.<br>Probably we should free the newval in block</p>
+
+<p>+                    if (source != PGC_S_DEFAULT)<br>+                    {<br>+                        /* Release newextra as we use reset_extra */<br>+                        if (newextra)<br>+                            free(newextra);</p>
+
+<p>With best regards,<br>Dmitry Koval.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAFiTN-sCr6mYg8A_BBiRz0N68M9QY3uoBWHhbPgHDM-goLJGwg@mail.gmail.com"></a>
+<a name="12b9e8eb4e6c8cc0a1f514dbc8b5bd46"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-06 08:29:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAFiTN-sCr6mYg8A_BBiRz0N68M9QY3uoBWHhbPgHDM-goLJGwg%40mail.gmail.com">CAFiTN-sCr6mYg8A_BBiRz0N68M9QY3uoBWHhbPgHDM-goLJGwg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAFiTN-sCr6mYg8A_BBiRz0N68M9QY3uoBWHhbPgHDM-goLJGwg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAFiTN-sCr6mYg8A_BBiRz0N68M9QY3uoBWHhbPgHDM-goLJGwg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAFiTN-sCr6mYg8A_BBiRz0N68M9QY3uoBWHhbPgHDM-goLJGwg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAFiTN-sCr6mYg8A_BBiRz0N68M9QY3uoBWHhbPgHDM-goLJGwg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Feb 6, 2022 at 1:07 PM Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt; wrote:<br>&gt;<br>&gt; &gt; In  if (source != PGC_S_DEFAULT) we are overwriting newval with<br>&gt; &gt; conf-&gt;reset_val so I think we should free the newval or can we even<br>&gt; &gt; avoid guc_strdup in case of (source != PGC_S_DEFAULT)?<br>&gt;<br>&gt; I think we can not avoid guc_strdup in case of (source != PGC_S_DEFAULT)<br>&gt; because function call_string_check_hook() contains &quot;free(*newval);&quot; in<br>&gt; PG_CATCH-section.<br>&gt; Probably we should free the newval in block</p>
+
+<p>+1</p>
+
+<p>-- <br>Regards,<br>Dilip Kumar<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="6e31c4ef-de9a-960b-1a21-e3b6ff0fa9c2@postgrespro.ru"></a>
+<a name="6fb960866e2770729ec0efb10599183a"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,
+ PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-06 21:21:39</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/6e31c4ef-de9a-960b-1a21-e3b6ff0fa9c2%40postgrespro.ru">6e31c4ef-de9a-960b-1a21-e3b6ff0fa9c2@postgrespro.ru</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/6e31c4ef-de9a-960b-1a21-e3b6ff0fa9c2%40postgrespro.ru">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/6e31c4ef-de9a-960b-1a21-e3b6ff0fa9c2%40postgrespro.ru" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/6e31c4ef-de9a-960b-1a21-e3b6ff0fa9c2%40postgrespro.ru" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/6e31c4ef-de9a-960b-1a21-e3b6ff0fa9c2%40postgrespro.ru" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi,</p>
+
+<p>I a bit changed Masahiko Sawada&#x27;s patch with using Dilip Kumar&#x27;s <br>recommendations (see it in attachment).</p>
+
+<p>About testing.<br>The most simple path to testing of command &quot;RESET &lt;GUC_string_variable&gt;&quot; <br>(with error) that I found:<br>----<br>1) need to modify &quot;postgresql.conf&quot;. Add string:</p>
+
+<p>default_table_access_method = &#x27;heapXXX&#x27;</p>
+
+<p>2) start PostgreSQL;</p>
+
+<p>3) start &quot;psql&quot; and execute command:</p>
+
+<p>RESET default_table_access_method;</p>
+
+<p>After that we get an error:</p>
+
+<p>ERROR:  invalid value for parameter &quot;default_table_access_method&quot;: &quot;heapXXX&quot;<br>DETAIL:  Table access method &quot;heapXXX&quot; does not exist.</p>
+
+<p>Without attached patch command &quot;RESET default_table_access_method;&quot; <br>returns no error.<br>----<br>Probably no reason to create new tap-test for this case...</p>
+
+<p>With best regards,<br>Dmitry Koval.</p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/130691/v2_0001-call-check-hook-on-reset.patch">v2_0001-call-check-hook-on-reset.patch</a>
+            
+          </th>
+          <td>text/plain</td>
+          <td>7.5 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoB8acvjt+52iwffAi7Ary_fyMD70X371hVX1JULrc-meQ@mail.gmail.com"></a>
+<a name="bfc121ad6233b7f1692551a7a9a7cc90"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-07 02:41:26</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoB8acvjt%2B52iwffAi7Ary_fyMD70X371hVX1JULrc-meQ%40mail.gmail.com">CAD21AoB8acvjt+52iwffAi7Ary_fyMD70X371hVX1JULrc-meQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoB8acvjt%2B52iwffAi7Ary_fyMD70X371hVX1JULrc-meQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoB8acvjt%2B52iwffAi7Ary_fyMD70X371hVX1JULrc-meQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoB8acvjt%2B52iwffAi7Ary_fyMD70X371hVX1JULrc-meQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoB8acvjt%2B52iwffAi7Ary_fyMD70X371hVX1JULrc-meQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Feb 7, 2022 at 6:21 AM Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt; wrote:<br>&gt;<br>&gt; Hi,<br>&gt;<br>&gt; I a bit changed Masahiko Sawada&#x27;s patch with using Dilip Kumar&#x27;s<br>&gt; recommendations (see it in attachment).</p>
+
+<p>Thank you for updating the patch!</p>
+
+<p> +<br> +                   if (source != PGC_S_DEFAULT)<br> +                   {<br> +                       /* Release newextra as we use reset_extra */<br> +                       if (newextra)<br> +                           free(newextra);<br> +<br> +                       newextra = conf-&gt;reset_extra;<br> +                       source = conf-&gt;gen.reset_source;<br> +                       context = conf-&gt;gen.reset_scontext;<br> +                   }</p>
+
+<p>I think it&#x27;s better to check if &quot;!extra_field_used(&amp;conf-&gt;gen,<br>newextra)&quot; before freeing newextra because otherwise, it&#x27;s possible<br>that we free reset_extra. I&#x27;ve updated an updated patch, please check<br>it.</p>
+
+<p>&gt;<br>&gt; About testing.<br>&gt; The most simple path to testing of command &quot;RESET &lt;GUC_string_variable&gt;&quot;<br>&gt; (with error) that I found:<br>&gt; ----<br>&gt; 1) need to modify &quot;postgresql.conf&quot;. Add string:<br>&gt;<br>&gt; default_table_access_method = &#x27;heapXXX&#x27;<br>&gt;<br>&gt; 2) start PostgreSQL;<br>&gt;<br>&gt; 3) start &quot;psql&quot; and execute command:<br>&gt;<br>&gt; RESET default_table_access_method;<br>&gt;<br>&gt; After that we get an error:<br>&gt;<br>&gt; ERROR:  invalid value for parameter &quot;default_table_access_method&quot;: &quot;heapXXX&quot;<br>&gt; DETAIL:  Table access method &quot;heapXXX&quot; does not exist.<br>&gt;<br>&gt; Without attached patch command &quot;RESET default_table_access_method;&quot;<br>&gt; returns no error.<br>&gt; ----<br>&gt; Probably no reason to create new tap-test for this case...</p>
+
+<p>Yes, I think we need regression tests at least for<br>transaction_isolation since it leads to an assertion failure. And this<br>new test covers the change that the patch made.</p>
+
+<p>Regards,</p>
+
+<p>--<br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a><br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/130695/v3-0001-call-check-hook-on-reset.patch">v3-0001-call-check-hook-on-reset.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>7.8 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2733419.1644789029@sss.pgh.pa.us"></a>
+<a name="17556888905e34f40734335e139fea98"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;,
+        andrewbille(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-13 21:50:29</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2733419.1644789029%40sss.pgh.pa.us">2733419.1644789029@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2733419.1644789029%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2733419.1644789029%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2733419.1644789029%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2733419.1644789029%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; On Mon, Feb 7, 2022 at 6:21 AM Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt; wrote:<br>&gt;  +                   if (source != PGC_S_DEFAULT)<br>&gt;  +                   {<br>&gt;  +                       /* Release newextra as we use reset_extra */<br>&gt;  +                       if (newextra)<br>&gt;  +                           free(newextra);<br>&gt;  +<br>&gt;  +                       newextra = conf-&gt;reset_extra;<br>&gt;  +                       source = conf-&gt;gen.reset_source;<br>&gt;  +                       context = conf-&gt;gen.reset_scontext;<br>&gt;  +                   }</p>
+
+<p>&gt; I think it&#x27;s better to check if &quot;!extra_field_used(&amp;conf-&gt;gen,<br>&gt; newextra)&quot; before freeing newextra because otherwise, it&#x27;s possible<br>&gt; that we free reset_extra. I&#x27;ve updated an updated patch, please check<br>&gt; it.</p>
+
+<p>I feel this is still pretty confused about what to do with reset_extra.<br>If we go this way, there&#x27;s very little reason to have reset_extra at all,<br>so maybe we should get rid of it and save the associated bookkeeping<br>logic.  AFAICS the only remaining place that would be using reset_extra<br>is ResetAllOptions(), which could also be made to compute the new extra<br>value using the check_hook instead of relying on having it already.</p>
+
+<p>But the mention of ResetAllOptions brings up a bigger intellectual<br>inconsistency: why hasn&#x27;t the patch touched that already?  Surely,<br>resetting a variable via RESET ALL is just as much of a risk as<br>resetting it explicitly.</p>
+
+<p>Now, if you try to break it by doing &quot;BEGIN set-some-xact-property;<br>SELECT 1; RESET ALL&quot;, there&#x27;s no crash.  That&#x27;s because the transaction<br>state GUCs are marked GUC_NO_RESET_ALL, so that ResetAllOptions doesn&#x27;t<br>actually do anything to them.  But that makes me wonder if we need to<br>reconsider the relationship of that flag to what we&#x27;re doing here.<br>It seems like a GUC might have an old value that we couldn&#x27;t necessarily<br>RESET to, without also wanting to exempt it from RESET ALL.  However,<br>if it isn&#x27;t exempt, yet the check_hook fails, what shall we do then?<br>Is throwing an error the best thing, or should we silently leave the<br>variable alone?  I think a lot of people would be unhappy if RESET ALL<br>/ DISCARD ALL had failure conditions of this sort.  Should we document<br>that GUCs having state-dependent restrictions on their values had<br>better be marked GUC_NO_RESET_ALL?  If so, can we enforce that?</p>
+
+<p>So it seems like we still have some definitional issues to sort out.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2735166.1644790175@sss.pgh.pa.us"></a>
+<a name="9749465dbd66505ec81becd071fa3698"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;,
+        andrewbille(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-13 22:09:35</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2735166.1644790175%40sss.pgh.pa.us">2735166.1644790175@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2735166.1644790175%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2735166.1644790175%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2735166.1644790175%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2735166.1644790175%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hmm, here&#x27;s a related anomaly:</p>
+
+<p>regression=# BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;<br>BEGIN<br>regression=*# savepoint foo;<br>SAVEPOINT<br>regression=*# RESET transaction_isolation;<br>RESET<br>regression=*# select 1;<br> ?column? <br>----------<br>        1<br>(1 row)</p>
+
+<p>regression=*# show transaction_isolation;<br> transaction_isolation <br>-----------------------<br> read committed<br>(1 row)</p>
+
+<p>regression=*# rollback to foo;<br>ROLLBACK<br>regression=*# show transaction_isolation;<br> transaction_isolation <br>-----------------------<br> serializable<br>(1 row)</p>
+
+<p>regression=*# commit;<br>COMMIT</p>
+
+<p>I&#x27;m not sure why that didn&#x27;t fail, but it seems like it should&#x27;ve:<br>the commit-time isolation level is different from what we were<br>using when we took the first snapshot.  (Maybe we discard the<br>snapshot state when rolling back?  Not sure.)</p>
+
+<p>If we need to be sure that it&#x27;s always okay to roll back a<br>(sub)transaction, then that&#x27;s an additional constraint on what&#x27;s<br>valid for GUCs to do.  Yet it&#x27;d be a really bad idea to run<br>check_hooks during transaction rollback, so maybe there&#x27;s little<br>choice.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoCxz=hU3c+6aB3OMNn+9NpH33WEMwOYmCOwh6EzOktYoA@mail.gmail.com"></a>
+<a name="ae86a0a9bad0e9c5b45d4a71f8f7a3d6"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-14 05:13:27</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoCxz%3DhU3c%2B6aB3OMNn%2B9NpH33WEMwOYmCOwh6EzOktYoA%40mail.gmail.com">CAD21AoCxz=hU3c+6aB3OMNn+9NpH33WEMwOYmCOwh6EzOktYoA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoCxz%3DhU3c%2B6aB3OMNn%2B9NpH33WEMwOYmCOwh6EzOktYoA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoCxz%3DhU3c%2B6aB3OMNn%2B9NpH33WEMwOYmCOwh6EzOktYoA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoCxz%3DhU3c%2B6aB3OMNn%2B9NpH33WEMwOYmCOwh6EzOktYoA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoCxz%3DhU3c%2B6aB3OMNn%2B9NpH33WEMwOYmCOwh6EzOktYoA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Feb 14, 2022 at 6:50 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; &gt; On Mon, Feb 7, 2022 at 6:21 AM Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt; wrote:<br>&gt; &gt;  +                   if (source != PGC_S_DEFAULT)<br>&gt; &gt;  +                   {<br>&gt; &gt;  +                       /* Release newextra as we use reset_extra */<br>&gt; &gt;  +                       if (newextra)<br>&gt; &gt;  +                           free(newextra);<br>&gt; &gt;  +<br>&gt; &gt;  +                       newextra = conf-&gt;reset_extra;<br>&gt; &gt;  +                       source = conf-&gt;gen.reset_source;<br>&gt; &gt;  +                       context = conf-&gt;gen.reset_scontext;<br>&gt; &gt;  +                   }<br>&gt;<br>&gt; &gt; I think it&#x27;s better to check if &quot;!extra_field_used(&amp;conf-&gt;gen,<br>&gt; &gt; newextra)&quot; before freeing newextra because otherwise, it&#x27;s possible<br>&gt; &gt; that we free reset_extra. I&#x27;ve updated an updated patch, please check<br>&gt; &gt; it.<br>&gt;<br>&gt; I feel this is still pretty confused about what to do with reset_extra.<br>&gt; If we go this way, there&#x27;s very little reason to have reset_extra at all,<br>&gt; so maybe we should get rid of it and save the associated bookkeeping<br>&gt; logic.  AFAICS the only remaining place that would be using reset_extra<br>&gt; is ResetAllOptions(), which could also be made to compute the new extra<br>&gt; value using the check_hook instead of relying on having it already.<br>&gt;<br>&gt; But the mention of ResetAllOptions brings up a bigger intellectual<br>&gt; inconsistency: why hasn&#x27;t the patch touched that already?  Surely,<br>&gt; resetting a variable via RESET ALL is just as much of a risk as<br>&gt; resetting it explicitly.</p>
+
+<p>Good point.</p>
+
+<p>&gt;<br>&gt; Now, if you try to break it by doing &quot;BEGIN set-some-xact-property;<br>&gt; SELECT 1; RESET ALL&quot;, there&#x27;s no crash.  That&#x27;s because the transaction<br>&gt; state GUCs are marked GUC_NO_RESET_ALL, so that ResetAllOptions doesn&#x27;t<br>&gt; actually do anything to them.  But that makes me wonder if we need to<br>&gt; reconsider the relationship of that flag to what we&#x27;re doing here.<br>&gt; It seems like a GUC might have an old value that we couldn&#x27;t necessarily<br>&gt; RESET to, without also wanting to exempt it from RESET ALL.  However,<br>&gt; if it isn&#x27;t exempt, yet the check_hook fails, what shall we do then?<br>&gt; Is throwing an error the best thing, or should we silently leave the<br>&gt; variable alone?  I think a lot of people would be unhappy if RESET ALL<br>&gt; / DISCARD ALL had failure conditions of this sort.  Should we document<br>&gt; that GUCs having state-dependent restrictions on their values had<br>&gt; better be marked GUC_NO_RESET_ALL?  If so, can we enforce that?</p>
+
+<p>Why do RESET ALL and RESET work differently with respect to resetting<br>one GUC in the first place? IOW why GUC_NO_RESET_ALL works only in<br>RESET ALL? It seems to me that RESET ALL is a command to do RESET<br>every single GUC, so if a GUC is exempt from RESET ALL it should be<br>exempt also from RESET.</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoCSXKoTJuSBKxzQ+E7m4+NJbnWtTsFfFy9YGkYjSBJ5tw@mail.gmail.com"></a>
+<a name="19e8b3fda4c5a0ccbdb34db2f6015eef"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-14 05:17:58</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoCSXKoTJuSBKxzQ%2BE7m4%2BNJbnWtTsFfFy9YGkYjSBJ5tw%40mail.gmail.com">CAD21AoCSXKoTJuSBKxzQ+E7m4+NJbnWtTsFfFy9YGkYjSBJ5tw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoCSXKoTJuSBKxzQ%2BE7m4%2BNJbnWtTsFfFy9YGkYjSBJ5tw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoCSXKoTJuSBKxzQ%2BE7m4%2BNJbnWtTsFfFy9YGkYjSBJ5tw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoCSXKoTJuSBKxzQ%2BE7m4%2BNJbnWtTsFfFy9YGkYjSBJ5tw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoCSXKoTJuSBKxzQ%2BE7m4%2BNJbnWtTsFfFy9YGkYjSBJ5tw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Feb 14, 2022 at 7:09 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Hmm, here&#x27;s a related anomaly:<br>&gt;<br>&gt; regression=# BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;<br>&gt; BEGIN<br>&gt; regression=*# savepoint foo;<br>&gt; SAVEPOINT<br>&gt; regression=*# RESET transaction_isolation;<br>&gt; RESET<br>&gt; regression=*# select 1;<br>&gt;  ?column?<br>&gt; ----------<br>&gt;         1<br>&gt; (1 row)<br>&gt;<br>&gt; regression=*# show transaction_isolation;<br>&gt;  transaction_isolation<br>&gt; -----------------------<br>&gt;  read committed<br>&gt; (1 row)<br>&gt;<br>&gt; regression=*# rollback to foo;<br>&gt; ROLLBACK<br>&gt; regression=*# show transaction_isolation;<br>&gt;  transaction_isolation<br>&gt; -----------------------<br>&gt;  serializable<br>&gt; (1 row)<br>&gt;<br>&gt; regression=*# commit;<br>&gt; COMMIT<br>&gt;<br>&gt; I&#x27;m not sure why that didn&#x27;t fail, but it seems like it should&#x27;ve:<br>&gt; the commit-time isolation level is different from what we were<br>&gt; using when we took the first snapshot.  (Maybe we discard the<br>&gt; snapshot state when rolling back?  Not sure.)<br>&gt;<br>&gt; If we need to be sure that it&#x27;s always okay to roll back a<br>&gt; (sub)transaction, then that&#x27;s an additional constraint on what&#x27;s<br>&gt; valid for GUCs to do.  Yet it&#x27;d be a really bad idea to run<br>&gt; check_hooks during transaction rollback, so maybe there&#x27;s little<br>&gt; choice.</p>
+
+<p>In this case, I think that &quot;RESET transaction_isolation&quot; should not be<br>allowed since we&#x27;re already in a subtransaction. This is a result of<br>the fact that we bypass check_XactIsoLevel() in RESET.</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2778050.1644817168@sss.pgh.pa.us"></a>
+<a name="29e32af979fd21a9ab1a4dfab631152f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;,
+        andrewbille(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-14 05:39:28</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2778050.1644817168%40sss.pgh.pa.us">2778050.1644817168@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2778050.1644817168%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2778050.1644817168%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2778050.1644817168%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2778050.1644817168%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; On Mon, Feb 14, 2022 at 6:50 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; It seems like a GUC might have an old value that we couldn&#x27;t necessarily<br>&gt;&gt; RESET to, without also wanting to exempt it from RESET ALL.  However,<br>&gt;&gt; if it isn&#x27;t exempt, yet the check_hook fails, what shall we do then?<br>&gt;&gt; Is throwing an error the best thing, or should we silently leave the<br>&gt;&gt; variable alone?  I think a lot of people would be unhappy if RESET ALL<br>&gt;&gt; / DISCARD ALL had failure conditions of this sort.  Should we document<br>&gt;&gt; that GUCs having state-dependent restrictions on their values had<br>&gt;&gt; better be marked GUC_NO_RESET_ALL?  If so, can we enforce that?</p>
+
+<p>&gt; Why do RESET ALL and RESET work differently with respect to resetting<br>&gt; one GUC in the first place? IOW why GUC_NO_RESET_ALL works only in<br>&gt; RESET ALL? It seems to me that RESET ALL is a command to do RESET<br>&gt; every single GUC, so if a GUC is exempt from RESET ALL it should be<br>&gt; exempt also from RESET.</p>
+
+<p>I toyed with that idea for awhile too, but looking through the current<br>set of GUC_NO_RESET_ALL variables dissuaded me from it.  The<br>transaction-property GUCs need this behavior or something like it,<br>but the rest don&#x27;t.  In particular, I fear that turning RESET ROLE<br>into a no-op would create security bugs for applications that<br>expect the current behavior.</p>
+
+<p>Having said that, it does seem like GUC_NO_RESET_ALL is pretty<br>intellectually-inconsistent by definition.  I&#x27;m just not sure that<br>we can redefine our way out of that at this late date.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoAVuQ=TCCqA1D=eVqG3G_bKLq2zpNeYVV34Ucu2208Hmg@mail.gmail.com"></a>
+<a name="055d749047e7123666dfb75b92c3b726"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-15 16:47:56</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoAVuQ%3DTCCqA1D%3DeVqG3G_bKLq2zpNeYVV34Ucu2208Hmg%40mail.gmail.com">CAD21AoAVuQ=TCCqA1D=eVqG3G_bKLq2zpNeYVV34Ucu2208Hmg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoAVuQ%3DTCCqA1D%3DeVqG3G_bKLq2zpNeYVV34Ucu2208Hmg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoAVuQ%3DTCCqA1D%3DeVqG3G_bKLq2zpNeYVV34Ucu2208Hmg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoAVuQ%3DTCCqA1D%3DeVqG3G_bKLq2zpNeYVV34Ucu2208Hmg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoAVuQ%3DTCCqA1D%3DeVqG3G_bKLq2zpNeYVV34Ucu2208Hmg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202150000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Feb 14, 2022 at 2:39 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; &gt; On Mon, Feb 14, 2022 at 6:50 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt;&gt; It seems like a GUC might have an old value that we couldn&#x27;t necessarily<br>&gt; &gt;&gt; RESET to, without also wanting to exempt it from RESET ALL.  However,<br>&gt; &gt;&gt; if it isn&#x27;t exempt, yet the check_hook fails, what shall we do then?<br>&gt; &gt;&gt; Is throwing an error the best thing, or should we silently leave the<br>&gt; &gt;&gt; variable alone?  I think a lot of people would be unhappy if RESET ALL<br>&gt; &gt;&gt; / DISCARD ALL had failure conditions of this sort.  Should we document<br>&gt; &gt;&gt; that GUCs having state-dependent restrictions on their values had<br>&gt; &gt;&gt; better be marked GUC_NO_RESET_ALL?  If so, can we enforce that?<br>&gt;<br>&gt; &gt; Why do RESET ALL and RESET work differently with respect to resetting<br>&gt; &gt; one GUC in the first place? IOW why GUC_NO_RESET_ALL works only in<br>&gt; &gt; RESET ALL? It seems to me that RESET ALL is a command to do RESET<br>&gt; &gt; every single GUC, so if a GUC is exempt from RESET ALL it should be<br>&gt; &gt; exempt also from RESET.<br>&gt;<br>&gt; I toyed with that idea for awhile too, but looking through the current<br>&gt; set of GUC_NO_RESET_ALL variables dissuaded me from it.  The<br>&gt; transaction-property GUCs need this behavior or something like it,<br>&gt; but the rest don&#x27;t.  In particular, I fear that turning RESET ROLE<br>&gt; into a no-op would create security bugs for applications that<br>&gt; expect the current behavior.</p>
+
+<p>Right.</p>
+
+<p>It seems that we need another flag or a dedicated treatment for<br>transaction property GUCs. It effectively cannot change them within<br>the transaction regardless of SET, RESET, and RESET ALL, so I think we<br>can make it no-op (possibly with a notice).</p>
+
+<p>&gt; Having said that, it does seem like GUC_NO_RESET_ALL is pretty<br>&gt; intellectually-inconsistent by definition.  I&#x27;m just not sure that<br>&gt; we can redefine our way out of that at this late date.</p>
+
+<p>Yeah, it would get into areas too deep to tackle for v15. And given<br>many application relies on this behavior for a long time (it seems<br>GUC_NO_RESET_ALL has introduced about 20 years ago, see f0811a74b), we<br>might not have a big win by redefining it.</p>
+
+<p>Regards,</p>
+
+<p>--<br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3054063.1644944122@sss.pgh.pa.us"></a>
+<a name="427159967bcbaa82adda2a91f3fb58cd"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;,
+        andrewbille(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-15 16:55:22</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3054063.1644944122%40sss.pgh.pa.us">3054063.1644944122@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3054063.1644944122%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3054063.1644944122%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3054063.1644944122%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3054063.1644944122%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202150000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; It seems that we need another flag or a dedicated treatment for<br>&gt; transaction property GUCs. It effectively cannot change them within<br>&gt; the transaction regardless of SET, RESET, and RESET ALL, so I think we<br>&gt; can make it no-op (possibly with a notice).</p>
+
+<p>Yeah, I was considering that too.  A new GUC_NO_RESET flag would be<br>cheaper than running the check hooks during RESET, and probably<br>safer too.  On the other hand, we would lose the property that<br>you can reset these settings as long as you&#x27;ve not yet taken a<br>snapshot.  I wonder whether there is any code out there that<br>depends on that ...</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoD5MsR_GR5iipc8TnGa3grzQbPLpwZcSn8Fq2dZbar_6g@mail.gmail.com"></a>
+<a name="b83902ae5be782e4a2aeb75d25349396"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-09 02:26:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoD5MsR_GR5iipc8TnGa3grzQbPLpwZcSn8Fq2dZbar_6g%40mail.gmail.com">CAD21AoD5MsR_GR5iipc8TnGa3grzQbPLpwZcSn8Fq2dZbar_6g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoD5MsR_GR5iipc8TnGa3grzQbPLpwZcSn8Fq2dZbar_6g%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoD5MsR_GR5iipc8TnGa3grzQbPLpwZcSn8Fq2dZbar_6g%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoD5MsR_GR5iipc8TnGa3grzQbPLpwZcSn8Fq2dZbar_6g%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoD5MsR_GR5iipc8TnGa3grzQbPLpwZcSn8Fq2dZbar_6g%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Feb 16, 2022 at 1:55 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; &gt; It seems that we need another flag or a dedicated treatment for<br>&gt; &gt; transaction property GUCs. It effectively cannot change them within<br>&gt; &gt; the transaction regardless of SET, RESET, and RESET ALL, so I think we<br>&gt; &gt; can make it no-op (possibly with a notice).<br>&gt;<br>&gt; Yeah, I was considering that too.  A new GUC_NO_RESET flag would be<br>&gt; cheaper than running the check hooks during RESET, and probably<br>&gt; safer too.  On the other hand, we would lose the property that<br>&gt; you can reset these settings as long as you&#x27;ve not yet taken a<br>&gt; snapshot.  I wonder whether there is any code out there that<br>&gt; depends on that ...</p>
+
+<p>Indeed. I guess that it&#x27;s relatively common that the transaction<br>isolation level is set after BEGIN TRANSACTION but I&#x27;ve not heard that<br>it&#x27;s reset after BEGIN TRANSACTION with setting non-default<br>transaction isolation level.</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="515672.1646838707@sss.pgh.pa.us"></a>
+<a name="d86ccc773011dc9299acb8fc34a7f7bc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;,
+        andrewbille(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-09 15:11:47</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/515672.1646838707%40sss.pgh.pa.us">515672.1646838707@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/515672.1646838707%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/515672.1646838707%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/515672.1646838707%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/515672.1646838707%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; On Wed, Feb 16, 2022 at 1:55 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; Yeah, I was considering that too.  A new GUC_NO_RESET flag would be<br>&gt;&gt; cheaper than running the check hooks during RESET, and probably<br>&gt;&gt; safer too.  On the other hand, we would lose the property that<br>&gt;&gt; you can reset these settings as long as you&#x27;ve not yet taken a<br>&gt;&gt; snapshot.  I wonder whether there is any code out there that<br>&gt;&gt; depends on that ...</p>
+
+<p>&gt; Indeed. I guess that it&#x27;s relatively common that the transaction<br>&gt; isolation level is set after BEGIN TRANSACTION but I&#x27;ve not heard that<br>&gt; it&#x27;s reset after BEGIN TRANSACTION with setting non-default<br>&gt; transaction isolation level.</p>
+
+<p>Yes, we certainly have to preserve the SET case, but using RESET<br>in that way seems like it&#x27;d be pretty weird coding.  I&#x27;d have no<br>hesitation about banning it in a HEAD-only change.  I&#x27;m slightly<br>more nervous about doing so in a back-patched bug fix.  On the<br>other hand, starting to call check hooks in a context that did<br>not use them before is also scary to back-patch.</p>
+
+<p>Do you want to draft up a patch that fixes this with a new<br>GUC flag?</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoAEHLAJ3=_zoCicyaPSf9-2PnJBb8HixLwPN-rLA6wzNQ@mail.gmail.com"></a>
+<a name="0dff248387a64970b194bc220a913101"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-09 23:36:35</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoAEHLAJ3%3D_zoCicyaPSf9-2PnJBb8HixLwPN-rLA6wzNQ%40mail.gmail.com">CAD21AoAEHLAJ3=_zoCicyaPSf9-2PnJBb8HixLwPN-rLA6wzNQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoAEHLAJ3%3D_zoCicyaPSf9-2PnJBb8HixLwPN-rLA6wzNQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoAEHLAJ3%3D_zoCicyaPSf9-2PnJBb8HixLwPN-rLA6wzNQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoAEHLAJ3%3D_zoCicyaPSf9-2PnJBb8HixLwPN-rLA6wzNQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoAEHLAJ3%3D_zoCicyaPSf9-2PnJBb8HixLwPN-rLA6wzNQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Mar 10, 2022 at 12:11 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; &gt; On Wed, Feb 16, 2022 at 1:55 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt;&gt; Yeah, I was considering that too.  A new GUC_NO_RESET flag would be<br>&gt; &gt;&gt; cheaper than running the check hooks during RESET, and probably<br>&gt; &gt;&gt; safer too.  On the other hand, we would lose the property that<br>&gt; &gt;&gt; you can reset these settings as long as you&#x27;ve not yet taken a<br>&gt; &gt;&gt; snapshot.  I wonder whether there is any code out there that<br>&gt; &gt;&gt; depends on that ...<br>&gt;<br>&gt; &gt; Indeed. I guess that it&#x27;s relatively common that the transaction<br>&gt; &gt; isolation level is set after BEGIN TRANSACTION but I&#x27;ve not heard that<br>&gt; &gt; it&#x27;s reset after BEGIN TRANSACTION with setting non-default<br>&gt; &gt; transaction isolation level.<br>&gt;<br>&gt; Yes, we certainly have to preserve the SET case, but using RESET<br>&gt; in that way seems like it&#x27;d be pretty weird coding.  I&#x27;d have no<br>&gt; hesitation about banning it in a HEAD-only change.  I&#x27;m slightly<br>&gt; more nervous about doing so in a back-patched bug fix.  On the<br>&gt; other hand, starting to call check hooks in a context that did<br>&gt; not use them before is also scary to back-patch.</p>
+
+<p>Agreed.</p>
+
+<p>For back branches, it might be less scary to call check hooks for only<br>limited GUCs such as transaction_isolation.</p>
+
+<p>&gt; Do you want to draft up a patch that fixes this with a new<br>&gt; GUC flag?</p>
+
+<p>Yes, I&#x27;ll update the patch accordingly.</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoA2sivebwQw9602CBf8URFWGKY0=qE6=2wDkm2YhRKnOw@mail.gmail.com"></a>
+<a name="5956a780cd9f3218db3d75160e5dafcb"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-11 15:39:53</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoA2sivebwQw9602CBf8URFWGKY0%3DqE6%3D2wDkm2YhRKnOw%40mail.gmail.com">CAD21AoA2sivebwQw9602CBf8URFWGKY0=qE6=2wDkm2YhRKnOw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoA2sivebwQw9602CBf8URFWGKY0%3DqE6%3D2wDkm2YhRKnOw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoA2sivebwQw9602CBf8URFWGKY0%3DqE6%3D2wDkm2YhRKnOw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoA2sivebwQw9602CBf8URFWGKY0%3DqE6%3D2wDkm2YhRKnOw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoA2sivebwQw9602CBf8URFWGKY0%3DqE6%3D2wDkm2YhRKnOw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Mar 10, 2022 at 8:36 AM Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; On Thu, Mar 10, 2022 at 12:11 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt;<br>&gt; &gt; Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; &gt; &gt; On Wed, Feb 16, 2022 at 1:55 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt; &gt;&gt; Yeah, I was considering that too.  A new GUC_NO_RESET flag would be<br>&gt; &gt; &gt;&gt; cheaper than running the check hooks during RESET, and probably<br>&gt; &gt; &gt;&gt; safer too.  On the other hand, we would lose the property that<br>&gt; &gt; &gt;&gt; you can reset these settings as long as you&#x27;ve not yet taken a<br>&gt; &gt; &gt;&gt; snapshot.  I wonder whether there is any code out there that<br>&gt; &gt; &gt;&gt; depends on that ...<br>&gt; &gt;<br>&gt; &gt; &gt; Indeed. I guess that it&#x27;s relatively common that the transaction<br>&gt; &gt; &gt; isolation level is set after BEGIN TRANSACTION but I&#x27;ve not heard that<br>&gt; &gt; &gt; it&#x27;s reset after BEGIN TRANSACTION with setting non-default<br>&gt; &gt; &gt; transaction isolation level.<br>&gt; &gt;<br>&gt; &gt; Yes, we certainly have to preserve the SET case, but using RESET<br>&gt; &gt; in that way seems like it&#x27;d be pretty weird coding.  I&#x27;d have no<br>&gt; &gt; hesitation about banning it in a HEAD-only change.  I&#x27;m slightly<br>&gt; &gt; more nervous about doing so in a back-patched bug fix.  On the<br>&gt; &gt; other hand, starting to call check hooks in a context that did<br>&gt; &gt; not use them before is also scary to back-patch.<br>&gt;<br>&gt; Agreed.<br>&gt;<br>&gt; For back branches, it might be less scary to call check hooks for only<br>&gt; limited GUCs such as transaction_isolation.<br>&gt;<br>&gt; &gt; Do you want to draft up a patch that fixes this with a new<br>&gt; &gt; GUC flag?<br>&gt;<br>&gt; Yes, I&#x27;ll update the patch accordingly.</p>
+
+<p>I&#x27;ve attached a draft patch for discussion.</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a><br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/131820/guc_no_reset_draft.patch">guc_no_reset_draft.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>4.9 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="982894.1647028392@sss.pgh.pa.us"></a>
+<a name="6b6461aebc3070fbb3aee4dce1375afe"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;,
+        andrewbille(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-11 19:53:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/982894.1647028392%40sss.pgh.pa.us">982894.1647028392@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/982894.1647028392%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/982894.1647028392%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/982894.1647028392%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/982894.1647028392%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; I&#x27;ve attached a draft patch for discussion.</p>
+
+<p>Hm, I think that trying to RESET a GUC_NO_RESET variable ought to<br>actively throw an error.  Silently doing nothing will look like<br>a bug.</p>
+
+<p>(This does imply that it&#x27;s not sensible to mark a variable<br>GUC_NO_RESET without also saying GUC_NO_RESET_ALL.  That<br>seems fine to me, because I&#x27;m not sure what the combination<br>GUC_NO_RESET &amp; !GUC_NO_RESET_ALL ought to mean.)</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoBpW8i8TfNoCm_iSxSZ8eZp_Tf10q1h-7wDmWCPiXGYYw@mail.gmail.com"></a>
+<a name="fd88a1f9396724cdf046537652290df2"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-14 08:12:18</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoBpW8i8TfNoCm_iSxSZ8eZp_Tf10q1h-7wDmWCPiXGYYw%40mail.gmail.com">CAD21AoBpW8i8TfNoCm_iSxSZ8eZp_Tf10q1h-7wDmWCPiXGYYw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoBpW8i8TfNoCm_iSxSZ8eZp_Tf10q1h-7wDmWCPiXGYYw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoBpW8i8TfNoCm_iSxSZ8eZp_Tf10q1h-7wDmWCPiXGYYw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoBpW8i8TfNoCm_iSxSZ8eZp_Tf10q1h-7wDmWCPiXGYYw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoBpW8i8TfNoCm_iSxSZ8eZp_Tf10q1h-7wDmWCPiXGYYw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, Mar 12, 2022 at 4:53 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; &gt; I&#x27;ve attached a draft patch for discussion.<br>&gt;<br>&gt; Hm, I think that trying to RESET a GUC_NO_RESET variable ought to<br>&gt; actively throw an error.  Silently doing nothing will look like<br>&gt; a bug.</p>
+
+<p>Agreed. I&#x27;ve attached an updated patch.</p>
+
+<p>Regards,</p>
+
+<p>--<br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a><br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/131862/guc_no_reset_v2.patch">guc_no_reset_v2.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>6.6 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220314.173000.398225758850773114.horikyota.ntt@gmail.com"></a>
+<a name="707a7b989d6e45c31da39c5c2b362057"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>sawada(dot)mshk(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>tgl(at)sss(dot)pgh(dot)pa(dot)us, d(dot)koval(at)postgrespro(dot)ru, dilipbalaut(at)gmail(dot)com,
+ andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-14 08:30:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220314.173000.398225758850773114.horikyota.ntt%40gmail.com">20220314.173000.398225758850773114.horikyota.ntt@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220314.173000.398225758850773114.horikyota.ntt%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220314.173000.398225758850773114.horikyota.ntt%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220314.173000.398225758850773114.horikyota.ntt%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220314.173000.398225758850773114.horikyota.ntt%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>At Mon, 14 Mar 2022 17:12:18 +0900, Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; wrote in <br>&gt; On Sat, Mar 12, 2022 at 4:53 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt;<br>&gt; &gt; Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; &gt; &gt; I&#x27;ve attached a draft patch for discussion.<br>&gt; &gt;<br>&gt; &gt; Hm, I think that trying to RESET a GUC_NO_RESET variable ought to<br>&gt; &gt; actively throw an error.  Silently doing nothing will look like<br>&gt; &gt; a bug.<br>&gt; <br>&gt; Agreed. I&#x27;ve attached an updated patch.</p>
+
+<p>FWIW, </p>
+
+<p>+	/* Check if the parameter supports RESET */<br>+	if (record-&gt;flags &amp; GUC_NO_RESET &amp;&amp; value == NULL)<br>+	{<br>+		ereport(elevel,<br>+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),<br>+				 errmsg(&quot;parameter \&quot;%s\&quot; cannot be reset&quot;,<br>+						name)));</p>
+
+<p>ERRCODE_FEATURE_NOT_SUPPORTED doesn&#x27;t look proper for the case. Isn&#x27;t<br>it ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE or something like?</p>
+
+<p>regards.</p>
+
+<p>-- <br>Kyotaro Horiguchi<br>NTT Open Source Software Center</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="170696.1647265517@sss.pgh.pa.us"></a>
+<a name="2c9a00f88d7b182b5cae4b765d3e7a6c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sawada(dot)mshk(at)gmail(dot)com, d(dot)koval(at)postgrespro(dot)ru, dilipbalaut(at)gmail(dot)com,
+        andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-14 13:45:17</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/170696.1647265517%40sss.pgh.pa.us">170696.1647265517@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/170696.1647265517%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/170696.1647265517%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/170696.1647265517%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/170696.1647265517%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt; writes:<br>&gt; ERRCODE_FEATURE_NOT_SUPPORTED doesn&#x27;t look proper for the case. Isn&#x27;t<br>&gt; it ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE or something like?</p>
+
+<p>Mmm ... I guess you could think of it that way, but it seems a<br>little weird, because you have to suppose that the *transaction*<br>not the GUC itself is the object that is in the wrong state.<br>We could use ERRCODE_ACTIVE_SQL_TRANSACTION as is done in<br>check_XactIsoLevel et al.  But this code is supposed to be generic,<br>and if there are ever any other GUCs marked NO_RESET, who&#x27;s to say<br>if that would be appropriate at all for them?</p>
+
+<p>I&#x27;m OK with FEATURE_NOT_SUPPORTED.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="212334.1647284377@sss.pgh.pa.us"></a>
+<a name="5ecacd4fd9267db0b3c58a8416951503"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sawada(dot)mshk(at)gmail(dot)com, d(dot)koval(at)postgrespro(dot)ru, dilipbalaut(at)gmail(dot)com,
+        andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-14 18:59:37</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/212334.1647284377%40sss.pgh.pa.us">212334.1647284377@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/212334.1647284377%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/212334.1647284377%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/212334.1647284377%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/212334.1647284377%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>After thinking about this some more, it seems like there is a related<br>problem with GUC save/restore actions.  Consider</p>
+
+<p>regression=# create function foo() returns int language sql as &#x27;select 1&#x27;<br>regression-# set transaction_read_only = 1;<br>CREATE FUNCTION<br>regression=# begin;<br>BEGIN<br>regression=*# select foo();<br> foo <br>-----<br>   1<br>(1 row)</p>
+
+<p>regression=*# show transaction_read_only;<br> transaction_read_only <br>-----------------------<br> off<br>(1 row)</p>
+
+<p>transaction_read_only was set while we executed foo(), but now it&#x27;s<br>off again.  I&#x27;ve not tried to weaponize this behavior, but if we<br>have any optimizations that depend on transaction_read_only, this<br>would probably break them.  (SERIALIZABLE mode looks like a likely<br>candidate for problems.)</p>
+
+<p>So it seems like we also need to forbid save/restore for these<br>settings, which probably means rejecting action==GUC_ACTION_SAVE<br>as well as value==NULL.  That makes NO_RESET something of a misnomer,<br>but I don&#x27;t have an idea for a better name.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220315.113333.1974856655620066857.horikyota.ntt@gmail.com"></a>
+<a name="0d7716077fdd1c525f40266109ac6832"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>tgl(at)sss(dot)pgh(dot)pa(dot)us</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sawada(dot)mshk(at)gmail(dot)com, d(dot)koval(at)postgrespro(dot)ru, dilipbalaut(at)gmail(dot)com,
+ andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-15 02:33:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220315.113333.1974856655620066857.horikyota.ntt%40gmail.com">20220315.113333.1974856655620066857.horikyota.ntt@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220315.113333.1974856655620066857.horikyota.ntt%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220315.113333.1974856655620066857.horikyota.ntt%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220315.113333.1974856655620066857.horikyota.ntt%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220315.113333.1974856655620066857.horikyota.ntt%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203150000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>At Mon, 14 Mar 2022 09:45:17 -0400, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote in <br>&gt; Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt; writes:<br>&gt; &gt; ERRCODE_FEATURE_NOT_SUPPORTED doesn&#x27;t look proper for the case. Isn&#x27;t<br>&gt; &gt; it ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE or something like?<br>&gt; <br>&gt; Mmm ... I guess you could think of it that way, but it seems a<br>&gt; little weird, because you have to suppose that the *transaction*<br>&gt; not the GUC itself is the object that is in the wrong state.<br>&gt; We could use ERRCODE_ACTIVE_SQL_TRANSACTION as is done in<br>&gt; check_XactIsoLevel et al.  But this code is supposed to be generic,<br>&gt; and if there are ever any other GUCs marked NO_RESET, who&#x27;s to say<br>&gt; if that would be appropriate at all for them?<br>&gt; <br>&gt; I&#x27;m OK with FEATURE_NOT_SUPPORTED.</p>
+
+<p>Hmm. Actually ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE is somewhat<br>strange since the error is not caused by some state of the object.  I<br>thought at the time that some error code like<br>ERRCODE_DOESNT_FOR_FOR_THIS_OBJECT but, yeah, finally<br>FEATURE_NOT_SUPPORTED looks fine after some additional thought.</p>
+
+<p>Thanks.</p>
+
+<p>-- <br>Kyotaro Horiguchi<br>NTT Open Source Software Center</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoDxTVKHFNBPOPY4XaMcVAxmpegbPp4WoW7Ts330G0cKAw@mail.gmail.com"></a>
+<a name="91a110c43b0618d23b9a068b100ed95b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;, d(dot)koval(at)postgrespro(dot)ru, dilipbalaut(at)gmail(dot)com,  andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-23 08:48:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoDxTVKHFNBPOPY4XaMcVAxmpegbPp4WoW7Ts330G0cKAw%40mail.gmail.com">CAD21AoDxTVKHFNBPOPY4XaMcVAxmpegbPp4WoW7Ts330G0cKAw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoDxTVKHFNBPOPY4XaMcVAxmpegbPp4WoW7Ts330G0cKAw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoDxTVKHFNBPOPY4XaMcVAxmpegbPp4WoW7Ts330G0cKAw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoDxTVKHFNBPOPY4XaMcVAxmpegbPp4WoW7Ts330G0cKAw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoDxTVKHFNBPOPY4XaMcVAxmpegbPp4WoW7Ts330G0cKAw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203230000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Mar 15, 2022 at 3:59 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; After thinking about this some more, it seems like there is a related<br>&gt; problem with GUC save/restore actions.  Consider<br>&gt;<br>&gt; regression=# create function foo() returns int language sql as &#x27;select 1&#x27;<br>&gt; regression-# set transaction_read_only = 1;<br>&gt; CREATE FUNCTION<br>&gt; regression=# begin;<br>&gt; BEGIN<br>&gt; regression=*# select foo();<br>&gt;  foo<br>&gt; -----<br>&gt;    1<br>&gt; (1 row)<br>&gt;<br>&gt; regression=*# show transaction_read_only;<br>&gt;  transaction_read_only<br>&gt; -----------------------<br>&gt;  off<br>&gt; (1 row)</p>
+
+<p>Good catch.</p>
+
+<p>&gt;<br>&gt; transaction_read_only was set while we executed foo(), but now it&#x27;s<br>&gt; off again.  I&#x27;ve not tried to weaponize this behavior, but if we<br>&gt; have any optimizations that depend on transaction_read_only, this<br>&gt; would probably break them.  (SERIALIZABLE mode looks like a likely<br>&gt; candidate for problems.)<br>&gt;<br>&gt; So it seems like we also need to forbid save/restore for these<br>&gt; settings, which probably means rejecting action==GUC_ACTION_SAVE<br>&gt; as well as value==NULL.  That makes NO_RESET something of a misnomer,<br>&gt; but I don&#x27;t have an idea for a better name.</p>
+
+<p>Yes, it seems we need that change too. I&#x27;ll update the patch.</p>
+
+<p>Regards,</p>
+
+<p>--<br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoDWHkBBGvvJuLEBqMjiPiYOiVJ6voFBWYbOBsU+-Cot2A@mail.gmail.com"></a>
+<a name="25b6ae57019f6520f5c402a15189c7da"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;, d(dot)koval(at)postgrespro(dot)ru, dilipbalaut(at)gmail(dot)com,  andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-24 14:23:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoDWHkBBGvvJuLEBqMjiPiYOiVJ6voFBWYbOBsU%2B-Cot2A%40mail.gmail.com">CAD21AoDWHkBBGvvJuLEBqMjiPiYOiVJ6voFBWYbOBsU+-Cot2A@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoDWHkBBGvvJuLEBqMjiPiYOiVJ6voFBWYbOBsU%2B-Cot2A%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoDWHkBBGvvJuLEBqMjiPiYOiVJ6voFBWYbOBsU%2B-Cot2A%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoDWHkBBGvvJuLEBqMjiPiYOiVJ6voFBWYbOBsU%2B-Cot2A%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoDWHkBBGvvJuLEBqMjiPiYOiVJ6voFBWYbOBsU%2B-Cot2A%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Mar 23, 2022 at 5:48 PM Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; On Tue, Mar 15, 2022 at 3:59 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; &gt;<br>&gt; &gt; After thinking about this some more, it seems like there is a related<br>&gt; &gt; problem with GUC save/restore actions.  Consider<br>&gt; &gt;<br>&gt; &gt; regression=# create function foo() returns int language sql as &#x27;select 1&#x27;<br>&gt; &gt; regression-# set transaction_read_only = 1;<br>&gt; &gt; CREATE FUNCTION<br>&gt; &gt; regression=# begin;<br>&gt; &gt; BEGIN<br>&gt; &gt; regression=*# select foo();<br>&gt; &gt;  foo<br>&gt; &gt; -----<br>&gt; &gt;    1<br>&gt; &gt; (1 row)<br>&gt; &gt;<br>&gt; &gt; regression=*# show transaction_read_only;<br>&gt; &gt;  transaction_read_only<br>&gt; &gt; -----------------------<br>&gt; &gt;  off<br>&gt; &gt; (1 row)<br>&gt;<br>&gt; Good catch.<br>&gt;<br>&gt; &gt;<br>&gt; &gt; transaction_read_only was set while we executed foo(), but now it&#x27;s<br>&gt; &gt; off again.  I&#x27;ve not tried to weaponize this behavior, but if we<br>&gt; &gt; have any optimizations that depend on transaction_read_only, this<br>&gt; &gt; would probably break them.  (SERIALIZABLE mode looks like a likely<br>&gt; &gt; candidate for problems.)<br>&gt; &gt;<br>&gt; &gt; So it seems like we also need to forbid save/restore for these<br>&gt; &gt; settings, which probably means rejecting action==GUC_ACTION_SAVE<br>&gt; &gt; as well as value==NULL.  That makes NO_RESET something of a misnomer,<br>&gt; &gt; but I don&#x27;t have an idea for a better name.<br>&gt;<br>&gt; Yes, it seems we need that change too. I&#x27;ll update the patch.</p>
+
+<p>Attached an updated patch. I kept the name GUC_NO_RESET but I&#x27;ll<br>change it if we find a better name for it.</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a><br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/132407/guc_no_reset_v3.patch">guc_no_reset_v3.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>8.1 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20220628003720.GG19662@telsasoft.com"></a>
+<a name="0ae7927eb703b8b6f0737f14a3ec9b38"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-06-28 00:37:20</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20220628003720.GG19662%40telsasoft.com">20220628003720.GG19662@telsasoft.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20220628003720.GG19662%40telsasoft.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20220628003720.GG19662%40telsasoft.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20220628003720.GG19662%40telsasoft.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20220628003720.GG19662%40telsasoft.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202206280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Mar 11, 2022 at 02:53:12PM -0500, Tom Lane wrote:<br>&gt; (This does imply that it&#x27;s not sensible to mark a variable<br>&gt; GUC_NO_RESET without also saying GUC_NO_RESET_ALL.  That<br>&gt; seems fine to me, because I&#x27;m not sure what the combination<br>&gt; GUC_NO_RESET &amp; !GUC_NO_RESET_ALL ought to mean.)</p>
+
+<p>On Thu, Mar 24, 2022 at 11:23:57PM +0900, Masahiko Sawada wrote:<br>&gt; Attached an updated patch. I kept the name GUC_NO_RESET but I&#x27;ll<br>&gt; change it if we find a better name for it.</p>
+
+<p>I think guc.sql should check that NO_RESET implies NO_RESET_ALL, or otherwise<br>guc.c could incorporate that logic by checking (NO_RESET | NO_RESET_ALL)</p>
+
+<p>-- <br>Justin</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoBz4xZ3uOZS+xYENsYta4PPPkGYPDzzPqqw5GJgrQC7hg@mail.gmail.com"></a>
+<a name="b71c54990e9dd8ac62c1561802e04265"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;,  Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-06-28 06:58:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoBz4xZ3uOZS%2BxYENsYta4PPPkGYPDzzPqqw5GJgrQC7hg%40mail.gmail.com">CAD21AoBz4xZ3uOZS+xYENsYta4PPPkGYPDzzPqqw5GJgrQC7hg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoBz4xZ3uOZS%2BxYENsYta4PPPkGYPDzzPqqw5GJgrQC7hg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoBz4xZ3uOZS%2BxYENsYta4PPPkGYPDzzPqqw5GJgrQC7hg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoBz4xZ3uOZS%2BxYENsYta4PPPkGYPDzzPqqw5GJgrQC7hg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoBz4xZ3uOZS%2BxYENsYta4PPPkGYPDzzPqqw5GJgrQC7hg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202206280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Jun 28, 2022 at 9:37 AM Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt; wrote:<br>&gt;<br>&gt; On Fri, Mar 11, 2022 at 02:53:12PM -0500, Tom Lane wrote:<br>&gt; &gt; (This does imply that it&#x27;s not sensible to mark a variable<br>&gt; &gt; GUC_NO_RESET without also saying GUC_NO_RESET_ALL.  That<br>&gt; &gt; seems fine to me, because I&#x27;m not sure what the combination<br>&gt; &gt; GUC_NO_RESET &amp; !GUC_NO_RESET_ALL ought to mean.)<br>&gt;<br>&gt; On Thu, Mar 24, 2022 at 11:23:57PM +0900, Masahiko Sawada wrote:<br>&gt; &gt; Attached an updated patch. I kept the name GUC_NO_RESET but I&#x27;ll<br>&gt; &gt; change it if we find a better name for it.<br>&gt;<br>&gt; I think guc.sql should check that NO_RESET implies NO_RESET_ALL, or otherwise<br>&gt; guc.c could incorporate that logic by checking (NO_RESET | NO_RESET_ALL)</p>
+
+<p>Agreed. I&#x27;ve attached an updated patch.</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a><br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/134809/v4-0001-Introduce-GUC_NOT_RESET-flag.patch">v4-0001-Introduce-GUC_NOT_RESET-flag.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>10.5 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Yrq0ualb2MFVm1Ti@paquier.xyz"></a>
+<a name="97cc262c441c1e8b2027cd49265f1623"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-06-28 07:58:49</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Yrq0ualb2MFVm1Ti%40paquier.xyz">Yrq0ualb2MFVm1Ti@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Yrq0ualb2MFVm1Ti%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Yrq0ualb2MFVm1Ti%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Yrq0ualb2MFVm1Ti%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Yrq0ualb2MFVm1Ti%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202206280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Jun 28, 2022 at 03:58:41PM +0900, Masahiko Sawada wrote:<br>&gt; Agreed. I&#x27;ve attached an updated patch.</p>
+
+<p>I can see that this has been registered in the CF app.  I&#x27;ll try to<br>glimpse through that.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Yrv1nRsfasco768G@paquier.xyz"></a>
+<a name="c4a63b5ba48c62438ad8e7c744e02173"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-06-29 06:47:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Yrv1nRsfasco768G%40paquier.xyz">Yrv1nRsfasco768G@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Yrv1nRsfasco768G%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Yrv1nRsfasco768G%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Yrv1nRsfasco768G%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Yrv1nRsfasco768G%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202206290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Jun 28, 2022 at 03:58:41PM +0900, Masahiko Sawada wrote:<br>&gt; Agreed. I&#x27;ve attached an updated patch.</p>
+
+<p>+#define GUC_NO_RESET         0x400000  /* not support RESET and save */</p>
+
+<p>It is a bit sad to see this new flag with this number, separated from<br>its cousin properties.  Could it be better to reorganize the flag<br>values and give more room to the properties?  The units for memory and<br>time could go first, for example.</p>
+
+<p>+CREATE FUNCTION errfunc() RETURNS int LANGUAGE SQL AS &#x27;SELECT 1&#x27;<br>+SET transaction_read_only = on; -- error<br>+ERROR:  parameter &quot;transaction_read_only&quot; cannot be reset<br>Well, this is confusing when setting a GUC_NO_RESET in the context of<br>GUC_ACTION_SAVE.</p>
+
+<p>By the way, what about &quot;seed&quot;?<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoC8FQqHY8knG7+6-eQe39wjXPtqyki29OAb5OHhq7-p+Q@mail.gmail.com"></a>
+<a name="185ba14775cdca163ec27929fce12755"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,  Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-01 05:11:47</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoC8FQqHY8knG7%2B6-eQe39wjXPtqyki29OAb5OHhq7-p%2BQ%40mail.gmail.com">CAD21AoC8FQqHY8knG7+6-eQe39wjXPtqyki29OAb5OHhq7-p+Q@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoC8FQqHY8knG7%2B6-eQe39wjXPtqyki29OAb5OHhq7-p%2BQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoC8FQqHY8knG7%2B6-eQe39wjXPtqyki29OAb5OHhq7-p%2BQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoC8FQqHY8knG7%2B6-eQe39wjXPtqyki29OAb5OHhq7-p%2BQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoC8FQqHY8knG7%2B6-eQe39wjXPtqyki29OAb5OHhq7-p%2BQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207010000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Jun 29, 2022 at 3:48 PM Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; wrote:<br>&gt;<br>&gt; On Tue, Jun 28, 2022 at 03:58:41PM +0900, Masahiko Sawada wrote:<br>&gt; &gt; Agreed. I&#x27;ve attached an updated patch.<br>&gt;<br>&gt; +#define GUC_NO_RESET         0x400000  /* not support RESET and save */<br>&gt;<br>&gt; It is a bit sad to see this new flag with this number, separated from<br>&gt; its cousin properties.  Could it be better to reorganize the flag<br>&gt; values and give more room to the properties?  The units for memory and<br>&gt; time could go first, for example.</p>
+
+<p>It seems a good idea, I&#x27;ll update it in the next version patch.</p>
+
+<p>&gt;<br>&gt; +CREATE FUNCTION errfunc() RETURNS int LANGUAGE SQL AS &#x27;SELECT 1&#x27;<br>&gt; +SET transaction_read_only = on; -- error<br>&gt; +ERROR:  parameter &quot;transaction_read_only&quot; cannot be reset<br>&gt; Well, this is confusing when setting a GUC_NO_RESET in the context of<br>&gt; GUC_ACTION_SAVE.</p>
+
+<p>Right, how about &quot;parameter %s cannot be set&quot;?</p>
+
+<p>&gt; By the way, what about &quot;seed&quot;?</p>
+
+<p>Resetting seed is no-op so it might be better to throw an error when<br>resetting the seed rather than doing nothing silently.</p>
+
+<p>Regards,</p>
+
+<p>--<br>Masahiko Sawada<br>EDB:  <a href="https://www.enterprisedb.com/" rel="nofollow">https://www.enterprisedb.com/</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoD6n62NXB5OuYSONYHKNkR=fqvJ5+82y=4Z=-KuFeOV0w@mail.gmail.com"></a>
+<a name="fcd32d29c2b1b989be03931116704a9e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,  Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-22 02:03:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoD6n62NXB5OuYSONYHKNkR%3DfqvJ5%2B82y%3D4Z%3D-KuFeOV0w%40mail.gmail.com">CAD21AoD6n62NXB5OuYSONYHKNkR=fqvJ5+82y=4Z=-KuFeOV0w@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoD6n62NXB5OuYSONYHKNkR%3DfqvJ5%2B82y%3D4Z%3D-KuFeOV0w%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoD6n62NXB5OuYSONYHKNkR%3DfqvJ5%2B82y%3D4Z%3D-KuFeOV0w%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoD6n62NXB5OuYSONYHKNkR%3DfqvJ5%2B82y%3D4Z%3D-KuFeOV0w%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoD6n62NXB5OuYSONYHKNkR%3DfqvJ5%2B82y%3D4Z%3D-KuFeOV0w%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Jul 1, 2022 at 2:11 PM Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; On Wed, Jun 29, 2022 at 3:48 PM Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; wrote:<br>&gt; &gt;<br>&gt; &gt; On Tue, Jun 28, 2022 at 03:58:41PM +0900, Masahiko Sawada wrote:<br>&gt; &gt; &gt; Agreed. I&#x27;ve attached an updated patch.<br>&gt; &gt;<br>&gt; &gt; +#define GUC_NO_RESET         0x400000  /* not support RESET and save */<br>&gt; &gt;<br>&gt; &gt; It is a bit sad to see this new flag with this number, separated from<br>&gt; &gt; its cousin properties.  Could it be better to reorganize the flag<br>&gt; &gt; values and give more room to the properties?  The units for memory and<br>&gt; &gt; time could go first, for example.<br>&gt;<br>&gt; It seems a good idea, I&#x27;ll update it in the next version patch.<br>&gt;<br>&gt; &gt;<br>&gt; &gt; +CREATE FUNCTION errfunc() RETURNS int LANGUAGE SQL AS &#x27;SELECT 1&#x27;<br>&gt; &gt; +SET transaction_read_only = on; -- error<br>&gt; &gt; +ERROR:  parameter &quot;transaction_read_only&quot; cannot be reset<br>&gt; &gt; Well, this is confusing when setting a GUC_NO_RESET in the context of<br>&gt; &gt; GUC_ACTION_SAVE.<br>&gt;<br>&gt; Right, how about &quot;parameter %s cannot be set&quot;?<br>&gt;<br>&gt; &gt; By the way, what about &quot;seed&quot;?<br>&gt;<br>&gt; Resetting seed is no-op so it might be better to throw an error when<br>&gt; resetting the seed rather than doing nothing silently.</p>
+
+<p>I&#x27;ve attached patches.</p>
+
+<p>I did the reorganization of GUC flags in a separate patch (0002 patch)<br>since it&#x27;s not relevant with the new flag GUC_NO_RESET.</p>
+
+<p>Regards,</p>
+
+<p>--<br>Masahiko Sawada<br>PostgreSQL Contributors Team<br>RDS Open Source Databases<br>Amazon Web Services: <a href="https://aws.amazon.com" rel="nofollow">https://aws.amazon.com</a><br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/138195/v5-0001-Introduce-GUC_NO_RESET-flag.patch">v5-0001-Introduce-GUC_NO_RESET-flag.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>11.7 KB</td>
+        </tr>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/138196/v5-0002-Reorganize-GUC_XXX-flag-values.patch">v5-0002-Reorganize-GUC_XXX-flag-values.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>4.1 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2604497.1664053071@sss.pgh.pa.us"></a>
+<a name="fc3dce7cb0b416d093a74a4baafc19a0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;,
+        Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;,
+        Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;,
+        Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org,
+        Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-24 20:57:51</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2604497.1664053071%40sss.pgh.pa.us">2604497.1664053071@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2604497.1664053071%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2604497.1664053071%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2604497.1664053071%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2604497.1664053071%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; I&#x27;ve attached patches.</p>
+
+<p>Per the cfbot, this incorrectly updates the plpgsql_transaction<br>test.  Here&#x27;s an updated version that fixes that.</p>
+
+<p>The proposed error message for the GUC_ACTION_SAVE case,</p>
+
+<p>    errmsg(&quot;parameter \&quot;%s\&quot; cannot be set temporarily or in functions locally&quot;,</p>
+
+<p>does not seem like very good English to me.  In the attached I changed<br>it to</p>
+
+<p>    errmsg(&quot;parameter \&quot;%s\&quot; cannot be set temporarily or locally in functions&quot;,</p>
+
+<p>but that isn&#x27;t great either: it seems redundant and confusing.<br>I think we could just make it</p>
+
+<p>    errmsg(&quot;parameter \&quot;%s\&quot; cannot be set locally in functions&quot;,</p>
+
+<p>because that&#x27;s really the only case users should ever see.</p>
+
+<p>Other than the message-wording issue, I think v6-0001 is OK.</p>
+
+<p>&gt; I did the reorganization of GUC flags in a separate patch (0002 patch)<br>&gt; since it&#x27;s not relevant with the new flag GUC_NO_RESET.</p>
+
+<p>0002 seems quite invasive and hard to review compared to what it<br>accomplishes.  I think we should just keep the flags in the same<br>order, stick in GUC_NO_RESET in front of GUC_NO_RESET_ALL, and<br>renumber the flag values as needed.  I did not change 0002 below,<br>though.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/138287/v6-0001-Introduce-GUC_NO_RESET-flag.patch">v6-0001-Introduce-GUC_NO_RESET-flag.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>10.1 KB</td>
+        </tr>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/138288/v6-0002-Reorganize-GUC_XXX-flag-values.patch">v6-0002-Reorganize-GUC_XXX-flag-values.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>4.1 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YzEfR9UUb3gqRjoA@paquier.xyz"></a>
+<a name="8cae597daa95941f1ed659202cbd758c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;, Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;, Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-26 03:40:55</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YzEfR9UUb3gqRjoA%40paquier.xyz">YzEfR9UUb3gqRjoA@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YzEfR9UUb3gqRjoA%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YzEfR9UUb3gqRjoA%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YzEfR9UUb3gqRjoA%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YzEfR9UUb3gqRjoA%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209260000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, Sep 24, 2022 at 04:57:51PM -0400, Tom Lane wrote:<br>&gt; but that isn&#x27;t great either: it seems redundant and confusing.<br>&gt; I think we could just make it<br>&gt; <br>&gt;     errmsg(&quot;parameter \&quot;%s\&quot; cannot be set locally in functions&quot;,<br>&gt; <br>&gt; because that&#x27;s really the only case users should ever see.</p>
+
+<p>Yes, agreed that &quot;cannot be set locally in functions&quot; should be<br>enough.</p>
+
+<p>&gt; Other than the message-wording issue, I think v6-0001 is OK.</p>
+
+<p>Just to be sure about something here.  The change of behavior with SET<br>in the context of a PL makes this patch unsuitable for a backpatch,<br>hence the plan is to apply this stuff only on HEAD, right? </p>
+
+<p>+      &lt;entry&gt;&lt;literal&gt;NO_RESET&lt;/literal&gt;&lt;/entry&gt;<br>+      &lt;entry&gt;Parameters with this flag do not support<br>+      &lt;command&gt;RESET&lt;/command&gt; commands.<br>+      &lt;/entry&gt;</p>
+
+<p>As per the issue with SET commands used with functions, this<br>description does not completely reflect the reality.</p>
+
+<p>&gt; 0002 seems quite invasive and hard to review compared to what it<br>&gt; accomplishes.  I think we should just keep the flags in the same<br>&gt; order, stick in GUC_NO_RESET in front of GUC_NO_RESET_ALL, and<br>&gt; renumber the flag values as needed.  I did not change 0002 below,<br>&gt; though.</p>
+
+<p>0002 is not that confusing to me: the units are moved to be first and<br>to use the first flag bytes, while the more conceptual flags are moved<br>to be always after.  I would have reorganized a bit more the<br>description flags, TBH.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3268290.1664165270@sss.pgh.pa.us"></a>
+<a name="9569c541f6231c1c0d6f6977bc8d6ace"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;,
+        Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;,
+        Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;,
+        Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org,
+        Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-26 04:07:50</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3268290.1664165270%40sss.pgh.pa.us">3268290.1664165270@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3268290.1664165270%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3268290.1664165270%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3268290.1664165270%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3268290.1664165270%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209260000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; writes:<br>&gt; Just to be sure about something here.  The change of behavior with SET<br>&gt; in the context of a PL makes this patch unsuitable for a backpatch,<br>&gt; hence the plan is to apply this stuff only on HEAD, right? </p>
+
+<p>Yeah, I think we concluded that back-patching might cause more<br>trouble than it&#x27;s worth.</p>
+
+<p>&gt; +      &lt;entry&gt;&lt;literal&gt;NO_RESET&lt;/literal&gt;&lt;/entry&gt;<br>&gt; +      &lt;entry&gt;Parameters with this flag do not support<br>&gt; +      &lt;command&gt;RESET&lt;/command&gt; commands.<br>&gt; +      &lt;/entry&gt;</p>
+
+<p>&gt; As per the issue with SET commands used with functions, this<br>&gt; description does not completely reflect the reality.</p>
+
+<p>It seems adequate enough to me ... do you have a suggestion?</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3269450.1664165784@sss.pgh.pa.us"></a>
+<a name="c02d7824680cc8ed5c020d7301ae76b7"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;,
+        Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;,
+        Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;,
+        Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org,
+        Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-26 04:16:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3269450.1664165784%40sss.pgh.pa.us">3269450.1664165784@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3269450.1664165784%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3269450.1664165784%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3269450.1664165784%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3269450.1664165784%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209260000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>[ hit send too soon ... ]</p>
+
+<p>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; writes:<br>&gt; On Sat, Sep 24, 2022 at 04:57:51PM -0400, Tom Lane wrote:<br>&gt;&gt; 0002 seems quite invasive and hard to review compared to what it<br>&gt;&gt; accomplishes.</p>
+
+<p>&gt; 0002 is not that confusing to me: the units are moved to be first and<br>&gt; to use the first flag bytes, while the more conceptual flags are moved<br>&gt; to be always after.</p>
+
+<p>Yeah, but why?  I see no good reason why those fields need to be first.</p>
+
+<p>&gt; I would have reorganized a bit more the<br>&gt; description flags, TBH.</p>
+
+<p>Looking at it closer, I agree that GUC_EXPLAIN and GUC_RUNTIME_COMPUTED<br>should be moved to be with the other non-units flags.  But I don&#x27;t<br>see why we need to re-order the entries more than that.  I&#x27;m concerned<br>for one thing that the order of the entries in this list stay comparable<br>to the order in which the flags are dealt with in other code, such as<br>pg_settings_get_flags or the guc_tables.c entries.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YzF286gtXNEluOKe@paquier.xyz"></a>
+<a name="9ac40b61d18cb3d7d026ce8b55aa8184"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;, Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;, Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-26 09:54:59</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YzF286gtXNEluOKe%40paquier.xyz">YzF286gtXNEluOKe@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YzF286gtXNEluOKe%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YzF286gtXNEluOKe%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YzF286gtXNEluOKe%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YzF286gtXNEluOKe%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209260000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Sep 26, 2022 at 12:16:24AM -0400, Tom Lane wrote:<br>&gt; Yeah, but why?  I see no good reason why those fields need to be first.</p>
+
+<p>My reasoning on these ones is that we are most likely going to add<br>more description flags in the future than new unit types.  Perhaps I<br>am wrong.</p>
+
+<p>&gt; Looking at it closer, I agree that GUC_EXPLAIN and GUC_RUNTIME_COMPUTED<br>&gt; should be moved to be with the other non-units flags.  But I don&#x27;t<br>&gt; see why we need to re-order the entries more than that.  I&#x27;m concerned<br>&gt; for one thing that the order of the entries in this list stay comparable<br>&gt; to the order in which the flags are dealt with in other code, such as<br>&gt; pg_settings_get_flags or the guc_tables.c entries.</p>
+
+<p>Yes, that&#x27;s a minimal move.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3334938.1664189987@sss.pgh.pa.us"></a>
+<a name="57ff6005734a4332ab1e4008e8ca7906"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;,
+        Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;,
+        Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;,
+        Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org,
+        Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-26 10:59:47</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3334938.1664189987%40sss.pgh.pa.us">3334938.1664189987@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3334938.1664189987%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3334938.1664189987%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3334938.1664189987%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3334938.1664189987%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209260000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; writes:<br>&gt; On Mon, Sep 26, 2022 at 12:16:24AM -0400, Tom Lane wrote:<br>&gt;&gt; Yeah, but why?  I see no good reason why those fields need to be first.</p>
+
+<p>&gt; My reasoning on these ones is that we are most likely going to add<br>&gt; more description flags in the future than new unit types.  Perhaps I<br>&gt; am wrong.</p>
+
+<p>Sure, but we could easily leave unused bits there.  Aligning the<br>units subfields on byte boundaries might result in slightly better<br>machine code, anyway.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoATXMxvmnf+C554mQyTheoCkcwDoJOQnhN0EZ2ro=OCYg@mail.gmail.com"></a>
+<a name="c711d2a30c79a84c538a6aacad2f190e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;,  Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-27 01:26:11</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoATXMxvmnf%2BC554mQyTheoCkcwDoJOQnhN0EZ2ro%3DOCYg%40mail.gmail.com">CAD21AoATXMxvmnf+C554mQyTheoCkcwDoJOQnhN0EZ2ro=OCYg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoATXMxvmnf%2BC554mQyTheoCkcwDoJOQnhN0EZ2ro%3DOCYg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoATXMxvmnf%2BC554mQyTheoCkcwDoJOQnhN0EZ2ro%3DOCYg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoATXMxvmnf%2BC554mQyTheoCkcwDoJOQnhN0EZ2ro%3DOCYg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoATXMxvmnf%2BC554mQyTheoCkcwDoJOQnhN0EZ2ro%3DOCYg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209270000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Sep 25, 2022 at 5:57 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; &gt; I&#x27;ve attached patches.<br>&gt;<br>&gt; Per the cfbot, this incorrectly updates the plpgsql_transaction<br>&gt; test.  Here&#x27;s an updated version that fixes that.<br>&gt;<br>&gt; The proposed error message for the GUC_ACTION_SAVE case,<br>&gt;<br>&gt;     errmsg(&quot;parameter \&quot;%s\&quot; cannot be set temporarily or in functions locally&quot;,<br>&gt;<br>&gt; does not seem like very good English to me.  In the attached I changed<br>&gt; it to<br>&gt;<br>&gt;     errmsg(&quot;parameter \&quot;%s\&quot; cannot be set temporarily or locally in functions&quot;,<br>&gt;<br>&gt; but that isn&#x27;t great either: it seems redundant and confusing.<br>&gt; I think we could just make it<br>&gt;<br>&gt;     errmsg(&quot;parameter \&quot;%s\&quot; cannot be set locally in functions&quot;,<br>&gt;<br>&gt; because that&#x27;s really the only case users should ever see.<br>&gt;<br>&gt; Other than the message-wording issue, I think v6-0001 is OK.</p>
+
+<p>Thank you for updating the patch. I&#x27;ve attached an updated 0001 patch.</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>PostgreSQL Contributors Team<br>RDS Open Source Databases<br>Amazon Web Services: <a href="https://aws.amazon.com" rel="nofollow">https://aws.amazon.com</a><br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/138388/v7-0001-Introduce-GUC_NO_RESET-flag.patch">v7-0001-Introduce-GUC_NO_RESET-flag.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>11.9 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YzJwcL71yaWqCVJ1@paquier.xyz"></a>
+<a name="74c17ca99b2239e2ac9a70f259442dc3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;, Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;, Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-27 03:39:28</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YzJwcL71yaWqCVJ1%40paquier.xyz">YzJwcL71yaWqCVJ1@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YzJwcL71yaWqCVJ1%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YzJwcL71yaWqCVJ1%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YzJwcL71yaWqCVJ1%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YzJwcL71yaWqCVJ1%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209270000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Sep 26, 2022 at 12:07:50AM -0400, Tom Lane wrote:<br>&gt; Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; writes:<br>&gt;&gt; +      &lt;entry&gt;&lt;literal&gt;NO_RESET&lt;/literal&gt;&lt;/entry&gt;<br>&gt;&gt; +      &lt;entry&gt;Parameters with this flag do not support<br>&gt;&gt; +      &lt;command&gt;RESET&lt;/command&gt; commands.<br>&gt;&gt; +      &lt;/entry&gt;<br>&gt; <br>&gt; &gt; As per the issue with SET commands used with functions, this<br>&gt; &gt; description does not completely reflect the reality.<br>&gt; <br>&gt; It seems adequate enough to me ... do you have a suggestion?</p>
+
+<p>As we are talking about a description with GUC_ACTION_SAVE, something<br>like &quot;Parameters with this flag do not support RESET, or SET in the<br>context of a function call&quot;?  NO_RESET sounds a bit confusing as a<br>name if you consider this second part (it can be understood as<br>resetting the value as well), but keeping it as-is does not look like<br>a big deal to me with this description, or an equivalent, in place.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3667394.1664287017@sss.pgh.pa.us"></a>
+<a name="de20871764db31c47e5d78c34bccab8f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;,
+        Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;,
+        Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;,
+        Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org,
+        Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-27 13:56:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3667394.1664287017%40sss.pgh.pa.us">3667394.1664287017@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3667394.1664287017%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3667394.1664287017%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3667394.1664287017%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3667394.1664287017%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209270000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; writes:<br>&gt; As we are talking about a description with GUC_ACTION_SAVE, something<br>&gt; like &quot;Parameters with this flag do not support RESET, or SET in the<br>&gt; context of a function call&quot;?  NO_RESET sounds a bit confusing as a<br>&gt; name if you consider this second part (it can be understood as<br>&gt; resetting the value as well), but keeping it as-is does not look like<br>&gt; a big deal to me with this description, or an equivalent, in place.</p>
+
+<p>Yeah, we already talked upthread about how the SAVE restriction makes<br>&quot;NO_RESET&quot; a bit of a misnomer.  Nobody proposed a better name though.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3797194.1664293905@sss.pgh.pa.us"></a>
+<a name="d03199602e6a8fecbdf3cf7c35e9d86f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;,
+        Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;,
+        Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;,
+        Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org,
+        Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-27 15:51:45</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3797194.1664293905%40sss.pgh.pa.us">3797194.1664293905@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3797194.1664293905%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3797194.1664293905%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3797194.1664293905%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3797194.1664293905%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209270000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; Thank you for updating the patch. I&#x27;ve attached an updated 0001 patch.</p>
+
+<p>Pushed, thanks.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAD21AoAf6mmMG1tCQ53ccrTkNPS=pzN3m_maaGkL_31a_G_zxg@mail.gmail.com"></a>
+<a name="5b072bc50a387133598e9a922152fed3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, Justin Pryzby &lt;pryzby(at)telsasoft(dot)com&gt;,  Dmitry Koval &lt;d(dot)koval(at)postgrespro(dot)ru&gt;, Dilip Kumar &lt;dilipbalaut(at)gmail(dot)com&gt;, andrewbille(at)gmail(dot)com,  pgsql-bugs(at)lists(dot)postgresql(dot)org, Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17385: &quot;RESET transaction_isolation&quot; inside serializable
+ transaction causes Assert at the transaction end</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-09-28 02:23:16</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAD21AoAf6mmMG1tCQ53ccrTkNPS%3DpzN3m_maaGkL_31a_G_zxg%40mail.gmail.com">CAD21AoAf6mmMG1tCQ53ccrTkNPS=pzN3m_maaGkL_31a_G_zxg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAD21AoAf6mmMG1tCQ53ccrTkNPS%3DpzN3m_maaGkL_31a_G_zxg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAD21AoAf6mmMG1tCQ53ccrTkNPS%3DpzN3m_maaGkL_31a_G_zxg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAD21AoAf6mmMG1tCQ53ccrTkNPS%3DpzN3m_maaGkL_31a_G_zxg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAD21AoAf6mmMG1tCQ53ccrTkNPS%3DpzN3m_maaGkL_31a_G_zxg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202209280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Sep 28, 2022 at 12:51 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt; writes:<br>&gt; &gt; Thank you for updating the patch. I&#x27;ve attached an updated 0001 patch.<br>&gt;<br>&gt; Pushed, thanks.</p>
+
+<p>Thanks!</p>
+
+<p>Regards,</p>
+
+<p>-- <br>Masahiko Sawada<br>PostgreSQL Contributors Team<br>RDS Open Source Databases<br>Amazon Web Services: <a href="https://aws.amazon.com" rel="nofollow">https://aws.amazon.com</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

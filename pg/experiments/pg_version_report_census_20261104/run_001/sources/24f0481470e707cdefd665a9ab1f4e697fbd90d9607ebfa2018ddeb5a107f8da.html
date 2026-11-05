@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18789: logical replication slots are deleted after failovers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/18789-0355be214b97e924%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-01-29T12:24:34" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18789: logical replication slots are deleted after failovers" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 18789 Logged by: Sachin Konde-Deshmukh Email address: sachinkonde3@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #18789: logical replication slots are deleted after failovers</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>sachinkonde3(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18789: logical replication slots are deleted after failovers</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-29 12:24:34</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18789-0355be214b97e924%40postgresql.org">18789-0355be214b97e924@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18789-0355be214b97e924%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18789-0355be214b97e924%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18789-0355be214b97e924%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18789-0355be214b97e924%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="18789-0355be214b97e924%40postgresql.org" selected="selected">2025-01-29 12:24:34 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="CAD21AoBk-gsJ8z4czP4wmNFhsE%3DRgmg7-hf0sVPFY%2Bu8Joo8JA%40mail.gmail.com">&nbsp;2025-01-29 19:13:26 from Masahiko Sawada &lt;sawada(dot)mshk(at)gmail(dot)com&gt;</option>
+  <option value="CAA4eK1LB5a-923n7NGd5FcQaEe%3D0WmxLvKNU%2BPdiiskZoqAm-A%40mail.gmail.com">&nbsp;&nbsp;2025-02-01 05:35:44 from Amit Kapila &lt;amit(dot)kapila16(at)gmail(dot)com&gt;</option>
+  <option value="CAHkC50uxcgmTDL30J8j%2Bi_uFGtK2%3D0qb2idkMB2dY4U6taeL9Q%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2025-02-03 13:59:43 from Sachin Konde-Deshmukh &lt;sachinkonde3(at)gmail(dot)com&gt;</option>
+  <option value="OS7PR01MB14968E0B6F45F8BCED2D2A6CFF5F42%40OS7PR01MB14968.jpnprd01.prod.outlook.com">&nbsp;&nbsp;&nbsp;&nbsp;2025-02-04 04:20:38 from &quot;Hayato Kuroda (Fujitsu)&quot; &lt;kuroda(dot)hayato(at)fujitsu(dot)com&gt;</option>
+  <option value="OSCPR01MB1496612E159D0EF49A50A3088F5E92%40OSCPR01MB14966.jpnprd01.prod.outlook.com">&nbsp;2025-01-30 11:48:23 from &quot;Hayato Kuroda (Fujitsu)&quot; &lt;kuroda(dot)hayato(at)fujitsu(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18789<br>Logged by:          Sachin Konde-Deshmukh<br>Email address:      sachinkonde3(at)gmail(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Oracle Linux 8.9<br>Description:        </p>
+
+<p>We are using 2 node PostgreSQL 17 HA setup using Patroni 4.0.4.<br>When I do failover 2nd or third time or more than once, it fails to transfer<br>or move logical replication slot to new Primary.<br>postgres=# select slot_name,slot_type, failover,<br>synced,confirmed_flush_lsn,active from pg_replication_slots;<br>     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>active<br>--------------------+-----------+----------+--------+---------------------+--------<br>psoel89pgcluster01 | physical  | f        | f      |                     |<br>t<br>mysub              | logical   | t        | t      | 0/4000AB8           |<br>t<br>(2 rows)<br>After First Failover --&gt;<br>postgres=# select slot_name,slot_type, failover,<br>synced,confirmed_flush_lsn,active from pg_replication_slots;<br>     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>active<br>--------------------+-----------+----------+--------+---------------------+--------<br>psoel89pgcluster02 | physical  | f        | f      |                     |<br>t<br>mysub              | logical   | f        | f      | 0/50001E0           |<br>t<br>(2 rows)<br>After 2nd Failover --&gt;<br>select slot_name,slot_type, failover, synced,confirmed_flush_lsn,active from<br>pg_replication_slots;<br>     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>active<br>--------------------+-----------+----------+--------+---------------------+--------<br>psoel89pgcluster01 | physical  | f        | f      |                     |<br>t<br>mysub              | logical   | f        | f      | 0/60002B0           |<br>t<br>After 3rd failover --&gt;<br>postgres=# select slot_name,slot_type, failover,<br>synced,confirmed_flush_lsn,active from pg_replication_slots;<br>     slot_name      | slot_type | failover | synced | confirmed_flush_lsn |<br>active<br>--------------------+-----------+----------+--------+---------------------+--------<br>psoel89pgcluster02 | physical  | f        | f      |                     |<br>t<br>(1 row)<br>has context menu</p>
+
+<p>has context menu</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAD21AoBk-gsJ8z4czP4wmNFhsE%3DRgmg7-hf0sVPFY%2Bu8Joo8JA%40mail.gmail.com">Re: BUG #18789: logical replication slots are deleted after failovers</a> at 2025-01-29 19:13:26 from Masahiko Sawada
+      </li>
+    
+      <li class="message-responses">
+        <a href="/message-id/OSCPR01MB1496612E159D0EF49A50A3088F5E92%40OSCPR01MB14966.jpnprd01.prod.outlook.com">RE: BUG #18789: logical replication slots are deleted after failovers</a> at 2025-01-30 11:48:23 from Hayato Kuroda (Fujitsu)
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/eb4d1e15c6822c1937be1491118500dd9201492f.camel%40cybertec.at">Next Message</a></th>
+            <td>Laurenz Albe</td>
+            <td>2025-01-29 13:09:09</td>
+            <td><a href="/message-id/eb4d1e15c6822c1937be1491118500dd9201492f.camel%40cybertec.at">Re: Inconsistency of timezones in postgresql</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAD21AoCsmWhsg0iwPdrLcLq78QvPf79NRLqhin11YpF1EiJKoQ%40mail.gmail.com">Previous Message</a></th>
+            <td>Masahiko Sawada</td>
+            <td>2025-01-29 02:16:26</td>
+            <td><a href="/message-id/CAD21AoCsmWhsg0iwPdrLcLq78QvPf79NRLqhin11YpF1EiJKoQ%40mail.gmail.com">Re: reltuples kept decreasing with each autovacuum run Re: BUG #18773: オートバキュームのリトライ時にreltuplesの値が減少する</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

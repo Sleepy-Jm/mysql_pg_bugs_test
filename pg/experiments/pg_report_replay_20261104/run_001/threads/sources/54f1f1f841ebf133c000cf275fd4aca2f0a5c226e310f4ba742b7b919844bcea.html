@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18812: Conditional rule: inconsistent check for statement</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18812-565809b4823e2b68%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-02-14T21:00:09" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18812: Conditional rule: inconsistent check for statement" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="886dc8e600b91d7b043f767a57145ab8">BUG #18812: Conditional rule: inconsistent check for statement</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202502142100">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18812-565809b4823e2b68@postgresql.org"></a>
+<a name="886dc8e600b91d7b043f767a57145ab8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>drtr0jan(at)yandex(dot)ru</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18812: Conditional rule: inconsistent check for statement</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-14 21:00:09</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18812-565809b4823e2b68%40postgresql.org">18812-565809b4823e2b68@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18812-565809b4823e2b68%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18812-565809b4823e2b68%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18812-565809b4823e2b68%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18812-565809b4823e2b68%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18812<br>Logged by:          Boris Korzun<br>Email address:      drtr0jan(at)yandex(dot)ru<br>PostgreSQL version: 17.2<br>Operating system:   FreeBSD 14-stable<br>Description:        </p>
+
+<p>Conditional rule checks underlying table for the types ignoring the<br>statement.</p>
+
+<p>-----<br>CREATE TABLE t<br>(<br>    c varchar(10) NOT NULL<br>);</p>
+
+<p>CREATE VIEW v AS<br>SELECT NULL::text AS c<br>FROM t;</p>
+
+<p>CREATE RULE &quot;insert&quot; AS ON INSERT TO v<br>    WHERE FALSE<br>    DO INSTEAD<br>    INSERT INTO t (c)<br>    VALUES (new.c);</p>
+
+<p>CREATE RULE &quot;skip&quot; AS ON INSERT TO v DO INSTEAD NOTHING;<br>-----</p>
+
+<p>I&#x27;ve two rules for a view - unconditional INSTEAD (skip) and conditional<br>INSTEAD (always FALSE). But if I trying to insert a type mismatched data to<br>the view, I&#x27;ve got a type constraint error.</p>
+
+<p>-----<br>INSERT INTO v (c) VALUES (&#x27;testtesttest&#x27;);<br>-----<br>[22001] ERROR: value too long for type character varying(10)<br>-----</p>
+
+<p>Why? It seems like a bug.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3914796.1739573714@sss.pgh.pa.us"></a>
+<a name="e8459e0961b4eb85d328d287859df284"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>drtr0jan(at)yandex(dot)ru</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18812: Conditional rule: inconsistent check for statement</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-14 22:55:14</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3914796.1739573714%40sss.pgh.pa.us">3914796.1739573714@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3914796.1739573714%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3914796.1739573714%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3914796.1739573714%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3914796.1739573714%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; I&#x27;ve two rules for a view - unconditional INSTEAD (skip) and conditional<br>&gt; INSTEAD (always FALSE). But if I trying to insert a type mismatched data to<br>&gt; the view, I&#x27;ve got a type constraint error.</p>
+
+<p>[ shrug... ]  The WHERE FALSE condition is evaluated later than it<br>would need to be to prevent this error.  If we use a value that<br>doesn&#x27;t trigger the error:</p>
+
+<p>=# explain verbose INSERT INTO v (c) VALUES (&#x27;testtest&#x27;);<br>                      QUERY PLAN                      <br>------------------------------------------------------<br> Insert on public.t  (cost=0.00..0.01 rows=0 width=0)<br>   -&gt;  Result  (cost=0.00..0.01 rows=1 width=14)<br>         Output: &#x27;testtest&#x27;::character varying(10)<br>         One-Time Filter: false<br>(4 rows)</p>
+
+<p>we can see that the &quot;false&quot; is actually applied at runtime, but the<br>value coercion happened during planner constant-folding.  In general<br>the order of application of WHERE clauses is not guaranteed, so<br>there&#x27;s not a good argument that this outcome is wrong.</p>
+
+<p>We get variants of this complaint from time to time, but few of<br>them present use-cases that seem compelling enough to justify the<br>performance costs of not doing constant-folding.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="29274cc1-26fa-4382-ae14-60e771d89699@yandex.ru"></a>
+<a name="5be34bcb896bbd62922c72dad4e204aa"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;Boris P(dot) Korzun&quot; &lt;drtr0jan(at)yandex(dot)ru&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18812: Conditional rule: inconsistent check for statement</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-17 10:58:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/29274cc1-26fa-4382-ae14-60e771d89699%40yandex.ru">29274cc1-26fa-4382-ae14-60e771d89699@yandex.ru</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/29274cc1-26fa-4382-ae14-60e771d89699%40yandex.ru">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/29274cc1-26fa-4382-ae14-60e771d89699%40yandex.ru" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/29274cc1-26fa-4382-ae14-60e771d89699%40yandex.ru" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/29274cc1-26fa-4382-ae14-60e771d89699%40yandex.ru" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502170000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi Tom,</p>
+
+<p>thanks for the fastest and exhaustive answer!</p>
+
+<p>On 15/02/2025 01:55, Tom Lane wrote:<br>&gt; We get variants of this complaint from time to time, but few of<br>&gt; them present use-cases that seem compelling enough to justify the<br>&gt; performance costs of not doing constant-folding.</p>
+
+<p>I think it&#x27;s the right decision! But...</p>
+
+<p>On 15/02/2025 01:55, Tom Lane wrote:<br> &gt; PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br> &gt;&gt; I&#x27;ve two rules for a view - unconditional INSTEAD (skip) and conditional<br> &gt;&gt; INSTEAD (always FALSE). But if I trying to insert a type mismatched <br>data to<br> &gt;&gt; the view, I&#x27;ve got a type constraint error.<br> &gt;<br> &gt; [ shrug... ]  The WHERE FALSE condition is evaluated later than it<br> &gt; would need to be to prevent this error.  If we use a value that<br> &gt; doesn&#x27;t trigger the error:<br> &gt;<br> &gt; =# explain verbose INSERT INTO v (c) VALUES (&#x27;testtest&#x27;);<br> &gt;                        QUERY PLAN<br> &gt; ------------------------------------------------------<br> &gt;   Insert on public.t  (cost=0.00..0.01 rows=0 width=0)<br> &gt;     -&gt;  Result  (cost=0.00..0.01 rows=1 width=14)<br> &gt;           Output: &#x27;testtest&#x27;::character varying(10)<br> &gt;           One-Time Filter: false<br> &gt; (4 rows)<br> &gt;<br> &gt; we can see that the &quot;false&quot; is actually applied at runtime, but the<br> &gt; value coercion happened during planner constant-folding.  In general<br> &gt; the order of application of WHERE clauses is not guaranteed, so<br> &gt; there&#x27;s not a good argument that this outcome is wrong.</p>
+
+<p>What do you think about adding the behavior described above (undefined <br>behavior, generally) to the help?</p>
+
+<p>---<br>WBR<br>Boris</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

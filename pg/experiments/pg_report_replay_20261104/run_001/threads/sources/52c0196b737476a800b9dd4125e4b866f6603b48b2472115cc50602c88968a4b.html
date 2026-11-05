@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17445-fb74db6348391e85%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-03-21T20:37:15" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="a330f6ce61ee78475240f0e16ba25681">BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202203212037">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17445-fb74db6348391e85@postgresql.org"></a>
+<a name="a330f6ce61ee78475240f0e16ba25681"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>yaser(dot)amiri95(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-21 20:37:15</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17445-fb74db6348391e85%40postgresql.org">17445-fb74db6348391e85@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17445-fb74db6348391e85%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17445-fb74db6348391e85%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17445-fb74db6348391e85%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17445-fb74db6348391e85%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17445<br>Logged by:          Yaser Amiri<br>Email address:      yaser(dot)amiri95(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   openSUSE Leap 15.3 / Kernel: 5.3.18-150300.59.49-d<br>Description:        </p>
+
+<p>Hi,<br>I think I found a bug or at least a confusing behavior that I can&#x27;t find any<br>documentation about.</p>
+
+<p>Summary:<br>I have an INSERT query that has an &quot;ON CONFLICT&quot; and a &quot;WHERE&quot; clause which<br>suppose to hit a partial multicolumn unique index.<br>When I try to insert some records in a transaction (one insert per record)<br>When I pass the parameter which is used in the &quot;WHERE&quot; condition in prepared<br>statement params, the transaction fails, but if I hard code it, everything<br>will be OK (no rollback or errors).<br>Error: `ERROR:  there is no unique or exclusion constraint matching the ON<br>CONFLICT specification`</p>
+
+<p>Here&#x27;s another weird thing, in the situation in which transaction fails, If<br>I reduce the inserts to less than 6, it doesn&#x27;t fail! (It fails on 6th<br>execution)</p>
+
+<p>How to reproduce:<br>I tested this on postgres:14.2 docker image and a couple of other versions.<br>(This is my first report and I&#x27;m doing this with the submit form of the<br>website. I don&#x27;t know if it escapes characters or not, so I just write some<br>raw things, sorry!)</p>
+
+<p>I start Postgres:<br>docker run --rm -p 5432:5432 --name pg -e &#x27;POSGRES_USER=postgres&#x27; -e<br>&#x27;POSTGRES_DB=postgres&#x27; -e &#x27;POSTGRES_PASSWORD=postgres&#x27; -d postgres:14.2</p>
+
+<p>This is the schema file (which contains a table named balance and a partial<br>index and some configs)<br><a href="https://paste.opensuse.org/19058183" rel="nofollow">https://paste.opensuse.org/19058183</a></p>
+
+<p>I import  it:<br>cat schema.sql | docker exec -i pg psql -U postgres -d postgres</p>
+
+<p>This is the query that is OK, It commits successfully and we&#x27;ll have one<br>record in the table, I run it:<br><a href="https://paste.opensuse.org/61559625" rel="nofollow">https://paste.opensuse.org/61559625</a><br>cat works.sql | docker exec -i pg psql -U postgres -d postgres<br>Note: In line 8 you can see I don&#x27;t pass &#x27;2025-01-01&#x27; as prepared statement<br>parameter.</p>
+
+<p>And I make it a parameter and it fails:<br><a href="https://paste.opensuse.org/44857745" rel="nofollow">https://paste.opensuse.org/44857745</a><br>ERROR:  there is no unique or exclusion constraint matching the ON CONFLICT<br>specification<br>If you delete one of the executions (one of the lines between 14 and 19) and<br>reduce them to 5 calls, It won&#x27;t raise an error and works as it should!</p>
+
+<p>Extra info:<br>Docker Image Name: postgres:14.2<br>Host Kernel: Linux 5.3.18-150300.59.49-default</p>
+
+<p>Let me know if you need anything else.<br>Thank you.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwbb-DPeu6v9ECyY6C1Ebk0zgzShsjmii=Ov5FpaeVSkxA@mail.gmail.com"></a>
+<a name="bf285eeed4b29a68977b3184e500ae1f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>yaser(dot)amiri95(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param
+ is passed with prepared stmt or hard coded</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-21 22:23:30</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwbb-DPeu6v9ECyY6C1Ebk0zgzShsjmii%3DOv5FpaeVSkxA%40mail.gmail.com">CAKFQuwbb-DPeu6v9ECyY6C1Ebk0zgzShsjmii=Ov5FpaeVSkxA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwbb-DPeu6v9ECyY6C1Ebk0zgzShsjmii%3DOv5FpaeVSkxA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwbb-DPeu6v9ECyY6C1Ebk0zgzShsjmii%3DOv5FpaeVSkxA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwbb-DPeu6v9ECyY6C1Ebk0zgzShsjmii%3DOv5FpaeVSkxA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwbb-DPeu6v9ECyY6C1Ebk0zgzShsjmii%3DOv5FpaeVSkxA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Mar 21, 2022 at 2:11 PM PG Bug reporting form &lt;<br>noreply(at)postgresql(dot)org&gt; wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17445<br>&gt; Logged by:          Yaser Amiri<br>&gt; Email address:      yaser(dot)amiri95(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   openSUSE Leap 15.3 / Kernel: 5.3.18-150300.59.49-d<br>&gt; Description:<br>&gt;<br>&gt; Hi,<br>&gt; I think I found a bug or at least a confusing behavior that I can&#x27;t find<br>&gt; any<br>&gt; documentation about.<br>&gt;<br>&gt; Summary:<br>&gt; I have an INSERT query that has an &quot;ON CONFLICT&quot; and a &quot;WHERE&quot; clause which<br>&gt; suppose to hit a partial multicolumn unique index.<br>&gt; When I try to insert some records in a transaction (one insert per record)<br>&gt; When I pass the parameter which is used in the &quot;WHERE&quot; condition in<br>&gt; prepared<br>&gt; statement params, the transaction fails, but if I hard code it, everything<br>&gt; will be OK (no rollback or errors).<br>&gt; Error: `ERROR:  there is no unique or exclusion constraint matching the ON<br>&gt; CONFLICT specification`<br>&gt;</p>
+
+<p>IIUC, and this could probably be spelled out a bit better in the<br>documentation, the inference of the arbiter index is chosen at planning<br>time.  IOW, each row doesn&#x27;t get to decide which index it is checked<br>against.  This is a general behavior of the system and doesn&#x27;t get called<br>out in individual sections like the INSERT command.  I would suggest we<br>make an exception here and explicitly note that inference happens during<br>planning and so does not play well with parameters (which only matters in<br>the partial index case anyway).  I think we could even go further and emit<br>a more useful error message but the technical details of that are outside<br>my skill set.</p>
+
+<p>What that all means is the system doesn&#x27;t really support your example -<br>though it doesn&#x27;t reliably fail either due to planner optimizations.</p>
+
+<p>For the partial index predicate: WHERE &quot;time&quot; &gt; &#x27;some known point in<br>time&#x27;::timestamp</p>
+
+<p>The plan predicate:</p>
+
+<p>WHERE &quot;time&quot; &gt; $# (where $# is only known at execution time)</p>
+
+<p>Is not a valid inference choice since the value of $# could very well be &quot;&lt;<br>&#x27;some known point in time&#x27;&quot; thus making the partial index unsuitable.</p>
+
+<p>&gt; Here&#x27;s another weird thing, in the situation in which transaction fails, If<br>&gt; I reduce the inserts to less than 6, it doesn&#x27;t fail! (It fails on 6th<br>&gt; execution)<br>&gt;</p>
+
+<p>This is to be expected given how prepared statements and the planner<br>interact.  Some queries perform better overall if the generic parameterized<br>plan is ignored and a hard-coded plan using the known parameter values is<br>used instead.  In that case the plan predicate changes to:</p>
+
+<p>WHERE &quot;time&quot; &gt; &#x27;the actual value of $# during this execution&#x27;</p>
+
+<p>And so long as that actual value is &quot;&gt;= &#x27;some known point in time&#x27;&quot; the<br>partial index will be used.  You will still get the observed failure if the<br>supplied value for $# is &quot;&lt; &#x27;some known point in time&#x27;&quot; though...</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2405214.1647901437@sss.pgh.pa.us"></a>
+<a name="85c14ecc8e82465b53338a379a9fcec0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>yaser(dot)amiri95(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-21 22:23:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2405214.1647901437%40sss.pgh.pa.us">2405214.1647901437@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2405214.1647901437%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2405214.1647901437%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2405214.1647901437%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2405214.1647901437%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; I have an INSERT query that has an &quot;ON CONFLICT&quot; and a &quot;WHERE&quot; clause which<br>&gt; suppose to hit a partial multicolumn unique index.</p>
+
+<p>I&#x27;d say the answer is &quot;don&#x27;t do that&quot;.</p>
+
+<p>Personally, I&#x27;m quite surprised that even your base case works.<br>I thought that ON CONFLICT would resolve which index to use<br>long before considering any WHERE clauses.  Apparently, that<br>happens late enough that the planner has determined which partial<br>indexes&#x27; predicates are provably true for the query, so the<br>partial unique index becomes a candidate to use in ON CONFLICT.<br>But if the WHERE clause doesn&#x27;t provably imply the index predicate,<br>you lose.  And that means that no generic plan is even possible<br>if there&#x27;s a parameter in that WHERE clause.</p>
+
+<p>If I were tasked with &quot;fixing&quot; this, I&#x27;d fix it by rejecting partial<br>indexes as ON CONFLICT arbiters outright.  I&#x27;m not totally convinced<br>that that&#x27;s safe at all, even in the simplest case.  It certainly<br>doesn&#x27;t seem like something that&#x27;s useful enough to expose this<br>sort of implementation detail for.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwY3xQpwHR=XRJ8ntiM7B-PpygmTdf8oV7b2K8XWo9iT-A@mail.gmail.com"></a>
+<a name="a2ffeba64f831bcdb59580d78eac0b64"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>yaser(dot)amiri95(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param
+ is passed with prepared stmt or hard coded</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-21 22:50:32</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwY3xQpwHR%3DXRJ8ntiM7B-PpygmTdf8oV7b2K8XWo9iT-A%40mail.gmail.com">CAKFQuwY3xQpwHR=XRJ8ntiM7B-PpygmTdf8oV7b2K8XWo9iT-A@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwY3xQpwHR%3DXRJ8ntiM7B-PpygmTdf8oV7b2K8XWo9iT-A%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwY3xQpwHR%3DXRJ8ntiM7B-PpygmTdf8oV7b2K8XWo9iT-A%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwY3xQpwHR%3DXRJ8ntiM7B-PpygmTdf8oV7b2K8XWo9iT-A%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwY3xQpwHR%3DXRJ8ntiM7B-PpygmTdf8oV7b2K8XWo9iT-A%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Mar 21, 2022 at 3:24 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; &gt; I have an INSERT query that has an &quot;ON CONFLICT&quot; and a &quot;WHERE&quot; clause<br>&gt; which<br>&gt; &gt; suppose to hit a partial multicolumn unique index.<br>&gt;<br>&gt; I&#x27;d say the answer is &quot;don&#x27;t do that&quot;.<br>&gt;<br>&gt;<br>Partial unique indexes are useful, no reason to assume that leveraging them<br>for ON CONFLICT purposes would impose any sort of problem, and isn&#x27;t it<br>generally the project policy that different features work together in a<br>sane manner?  That&#x27;s all I see happening here on the development side even<br>if there isn&#x27;t a clear-cut use case for the pairing.</p>
+
+<p>But yes, combining the partial index feature with parameters is a &quot;not<br>supported&quot; combination presently.  One can infer as much from the existing<br>documentation (as a whole) though it isn&#x27;t obvious (I had a good inkling of<br>what was going on here and still took probably an hour and source code dive<br>to get my head around it enough to say I really understood what was going<br>on.  And that was after reading the docs for ON CONLICT a couple of<br>times...).</p>
+
+<p>&gt; But if the WHERE clause doesn&#x27;t provably imply the index predicate,<br>&gt; you lose.  And that means that no generic plan is even possible<br>&gt; if there&#x27;s a parameter in that WHERE clause.<br>&gt;</p>
+
+<p>Correct.  Making this more obvious in the docs, and ideally the error<br>message, would help.  The main question is whether to break queries that<br>work today because of the optimization - the benefit being a reliable<br>failure for when parameters are used in the predicate, we can just report<br>that they are not allowed.</p>
+
+<p>&gt; If I were tasked with &quot;fixing&quot; this, I&#x27;d fix it by rejecting partial<br>&gt; indexes as ON CONFLICT arbiters outright.  I&#x27;m not totally convinced<br>&gt; that that&#x27;s safe at all, even in the simplest case.  It certainly<br>&gt; doesn&#x27;t seem like something that&#x27;s useful enough to expose this<br>&gt; sort of implementation detail for.<br>&gt;<br>&gt;<br>It&#x27;s not like this happened by accident, it has its own clause to make it<br>work.</p>
+
+<p>index_predicate<br>Used to allow inference of partial unique indexes. Any indexes that satisfy<br>the predicate (which need not actually be partial indexes) can be inferred.<br>Follows CREATE INDEX format. SELECT privilege on any column appearing<br>within index_predicate is required.</p>
+
+<p>I don&#x27;t feel there is anything to fix here today.  But it seems like there<br>is room for improvement, likely with not too much effort, if someone wants<br>to improve things.  This being the first report of this nature I can recall<br>seeing, and the size of our ToDo list, my expectations are low.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAH2-WznReJ_0FbTXJHV=zrfS6G7mOhTQLL5CqGJ5mJp9u8yAnA@mail.gmail.com"></a>
+<a name="4947ddb27ac713599a982192fd256f75"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>yaser(dot)amiri95(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param
+ is passed with prepared stmt or hard coded</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-21 22:53:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAH2-WznReJ_0FbTXJHV%3DzrfS6G7mOhTQLL5CqGJ5mJp9u8yAnA%40mail.gmail.com">CAH2-WznReJ_0FbTXJHV=zrfS6G7mOhTQLL5CqGJ5mJp9u8yAnA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAH2-WznReJ_0FbTXJHV%3DzrfS6G7mOhTQLL5CqGJ5mJp9u8yAnA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAH2-WznReJ_0FbTXJHV%3DzrfS6G7mOhTQLL5CqGJ5mJp9u8yAnA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAH2-WznReJ_0FbTXJHV%3DzrfS6G7mOhTQLL5CqGJ5mJp9u8yAnA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAH2-WznReJ_0FbTXJHV%3DzrfS6G7mOhTQLL5CqGJ5mJp9u8yAnA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Mar 21, 2022 at 3:24 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; I&#x27;d say the answer is &quot;don&#x27;t do that&quot;.</p>
+
+<p>This isn&#x27;t the first complaint about this exact behavior (including<br>the detail about it sometimes working at random), FWIW:</p>
+
+<p><a href="https://www.postgresql.org/message-id/20170202140701.1401.31196@wrigleys.postgresql.org" rel="nofollow">https://www.postgresql.org/message-id/20170202140701.1401.31196%40wrigleys.postgresql.org</a></p>
+
+<p>&gt; If I were tasked with &quot;fixing&quot; this, I&#x27;d fix it by rejecting partial<br>&gt; indexes as ON CONFLICT arbiters outright.  I&#x27;m not totally convinced<br>&gt; that that&#x27;s safe at all, even in the simplest case.</p>
+
+<p>I think that it depends on what you expect. Offhand I can&#x27;t think of<br>any problem scenarios that cannot be simplified to a test case that<br>doesn&#x27;t involve a partial unique index. (Except for this one, that<br>is.)</p>
+
+<p>&gt; It certainly<br>&gt; doesn&#x27;t seem like something that&#x27;s useful enough to expose this<br>&gt; sort of implementation detail for.</p>
+
+<p>Back when I was an application developer, I used partial unique<br>indexes quite a bit. My sense is that supporting them in ON CONFLICT<br>has real value, even if the syntax for that needs to be messy.</p>
+
+<p>That being said, I *don&#x27;t* think that it makes sense to support<br>paramaters in conflict_target&#x27;s WHERE clause -- that should be static,<br>not dynamic. ISTM that it would be somewhat useful to have that case<br>throw an error, in an immediate and obvious way, with an accompanying<br>HINT.</p>
+
+<p>-- <br>Peter Geoghegan</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2409082.1647903795@sss.pgh.pa.us"></a>
+<a name="9364ff36712412778cb7a3a04435da41"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>yaser(dot)amiri95(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-21 23:03:15</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2409082.1647903795%40sss.pgh.pa.us">2409082.1647903795@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2409082.1647903795%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2409082.1647903795%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2409082.1647903795%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2409082.1647903795%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt; writes:<br>&gt; That being said, I *don&#x27;t* think that it makes sense to support<br>&gt; paramaters in conflict_target&#x27;s WHERE clause -- that should be static,<br>&gt; not dynamic. ISTM that it would be somewhat useful to have that case<br>&gt; throw an error, in an immediate and obvious way, with an accompanying<br>&gt; HINT.</p>
+
+<p>Hm.  I don&#x27;t have an opinion on whether this&#x27;d be a useful case to<br>support, but I agree that actually doing so is not terribly feasible.<br>Perhaps a specific error message would be worth the trouble.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAH2-Wzmbdn1DdJoY5G-_7WuwiqLJM8tWdJaMMsPX8gimLPSdZg@mail.gmail.com"></a>
+<a name="f6b76cb17b0840ca208d5bfcc60ca852"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>yaser(dot)amiri95(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param
+ is passed with prepared stmt or hard coded</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-21 23:14:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAH2-Wzmbdn1DdJoY5G-_7WuwiqLJM8tWdJaMMsPX8gimLPSdZg%40mail.gmail.com">CAH2-Wzmbdn1DdJoY5G-_7WuwiqLJM8tWdJaMMsPX8gimLPSdZg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAH2-Wzmbdn1DdJoY5G-_7WuwiqLJM8tWdJaMMsPX8gimLPSdZg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAH2-Wzmbdn1DdJoY5G-_7WuwiqLJM8tWdJaMMsPX8gimLPSdZg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAH2-Wzmbdn1DdJoY5G-_7WuwiqLJM8tWdJaMMsPX8gimLPSdZg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAH2-Wzmbdn1DdJoY5G-_7WuwiqLJM8tWdJaMMsPX8gimLPSdZg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Mar 21, 2022 at 4:03 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; Hm.  I don&#x27;t have an opinion on whether this&#x27;d be a useful case to<br>&gt; support, but I agree that actually doing so is not terribly feasible.</p>
+
+<p>In general the semantics of the INSERT might depend upon which<br>particular partial unique index the user intended for us to infer, which<br>would have to vary with the parameter (I suppose). Those semantics seem<br>wildly unreasonable to me, in roughly the same way as parameterizing<br>the target table&#x27;s name would be.</p>
+
+<p>&gt; Perhaps a specific error message would be worth the trouble.</p>
+
+<p>I&#x27;m not sure how difficult it would be offhand, so I can&#x27;t commit to it now.</p>
+
+<p>--<br>Peter Geoghegan</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2411144.1647905253@sss.pgh.pa.us"></a>
+<a name="b610853ad5abc2cb33a6b3f773a9ce14"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>yaser(dot)amiri95(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-21 23:27:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2411144.1647905253%40sss.pgh.pa.us">2411144.1647905253@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2411144.1647905253%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2411144.1647905253%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2411144.1647905253%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2411144.1647905253%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt; writes:<br>&gt; On Mon, Mar 21, 2022 at 4:03 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; Perhaps a specific error message would be worth the trouble.</p>
+
+<p>&gt; I&#x27;m not sure how difficult it would be offhand, so I can&#x27;t commit to it now.</p>
+
+<p>Searching that expression tree for an EXTERN Param surely wouldn&#x27;t take<br>much code.  What&#x27;s not clear to me though is whether that&#x27;s the full<br>extent of problematic cases.  (Picking a user-friendly wording for the<br>error message might be hard too.)</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAH2-Wznwk8ObL233+4jbHc2Bp0S9vW9MaBrM_fG-_0kkzRkaCQ@mail.gmail.com"></a>
+<a name="b6755f0af4241e0ad86d1a71c441eb61"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>yaser(dot)amiri95(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param
+ is passed with prepared stmt or hard coded</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-21 23:49:56</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAH2-Wznwk8ObL233%2B4jbHc2Bp0S9vW9MaBrM_fG-_0kkzRkaCQ%40mail.gmail.com">CAH2-Wznwk8ObL233+4jbHc2Bp0S9vW9MaBrM_fG-_0kkzRkaCQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAH2-Wznwk8ObL233%2B4jbHc2Bp0S9vW9MaBrM_fG-_0kkzRkaCQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAH2-Wznwk8ObL233%2B4jbHc2Bp0S9vW9MaBrM_fG-_0kkzRkaCQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAH2-Wznwk8ObL233%2B4jbHc2Bp0S9vW9MaBrM_fG-_0kkzRkaCQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAH2-Wznwk8ObL233%2B4jbHc2Bp0S9vW9MaBrM_fG-_0kkzRkaCQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Mar 21, 2022 at 4:27 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; What&#x27;s not clear to me though is whether that&#x27;s the full<br>&gt; extent of problematic cases.</p>
+
+<p>What other cases were you thinking of?</p>
+
+<p>Allowing parameters here just seems wrong to me. Rejecting them<br>outright is strictly better than what we have today IMV.</p>
+
+<p>Perhaps there are other problems, but ISTM that they can be treated as<br>independent problems.</p>
+
+<p>&gt; (Picking a user-friendly wording for the<br>&gt; error message might be hard too.)</p>
+
+<p>True (I struggle with that stuff at the best of times). OTOH beating<br>the current behavior might not be too hard.</p>
+
+<p>I don&#x27;t feel strongly about any of this -- just providing you with the<br>context, in case it helps.</p>
+
+<p>I suspect that most users work out how to fix their INSERT statement<br>intuitively already, without seeing any HINT. Sometimes it&#x27;s easy to<br>do that because it&#x27;s your particular application, and involves one<br>particular table that only has one or two partial unique indexes. It&#x27;s<br>probably much harder to describe what&#x27;s going on (or what the user<br>ought to be doing) in very general terms, while actually getting the<br>idea across. (Also, it doesn&#x27;t take that much trial and error to<br>figure out what to do here.)</p>
+
+<p>-- <br>Peter Geoghegan</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

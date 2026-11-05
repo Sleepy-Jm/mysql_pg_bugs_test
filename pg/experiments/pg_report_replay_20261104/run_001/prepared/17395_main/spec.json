@@ -1,0 +1,42 @@
+{
+  "report_id": "17395",
+  "scenario_id": "17395_main",
+  "target_version": "14.1",
+  "source_url": "https://www.postgresql.org/message-id/17395-8c326292078d1a57%40postgresql.org",
+  "parts": [
+    {
+      "text": "CREATE EXTENSION postgres_fdw;\nDO $d$\n    BEGIN\n        EXECUTE $$CREATE SERVER loopback FOREIGN DATA WRAPPER postgres_fdw\n            OPTIONS (dbname '$$||current_database()||$$',\n                     port '$$||current_setting('port')||$$'\n            )$$;\n    END;\n$d$;\nCREATE USER MAPPING FOR CURRENT_USER SERVER loopback;\n\n\nCREATE TABLE fprt2 (a int) PARTITION BY RANGE(a);\nCREATE TABLE fprt2_p1 (LIKE fprt2);\nCREATE TABLE fprt2_p2 (LIKE fprt2);\nINSERT INTO fprt2_p1 VALUES (2);\nINSERT INTO fprt2_p2 VALUES (1);\n\n\nCREATE FOREIGN TABLE ftprt2_p1 PARTITION OF fprt2 FOR VALUES FROM (0) TO\n(1)\n    SERVER loopback OPTIONS (table_name 'fprt2_p1');\nCREATE FOREIGN TABLE ftprt2_p2 PARTITION OF fprt2 FOR VALUES FROM (1) TO\n(2)\n    SERVER loopback OPTIONS (table_name 'fprt2_p2', use_remote_estimate\n'true');",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17395.txt",
+      "start_offset": 264,
+      "end_offset": 1072,
+      "start_line": 13,
+      "end_line": 41,
+      "excerpt_sha256": "b7e3c783cd8f990612d4963fde20b9fc12b6f1a4c7456188c58034c72f729999",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    },
+    {
+      "text": "SELECT t1.a FROM fprt2 t1 JOIN fprt2 t2 ON (t1.a = t2.a);",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17395.txt",
+      "start_offset": 1072,
+      "end_offset": 1129,
+      "start_line": 41,
+      "end_line": 41,
+      "excerpt_sha256": "acfbf397e88948ba5e4cc6580162ce660357c6207136f104702740c72add4736",
+      "transformations": []
+    }
+  ],
+  "mode": "psql",
+  "oracle": {
+    "kind": "crash",
+    "pattern": "terminated by signal 6",
+    "reported_phenomenon": "外部分区越界数据触发 merge join 断言",
+    "author_expected_behavior": "不得因越界数据导致服务崩溃"
+  },
+  "config": {},
+  "notes": "按报告保留越界数据，不修正分区内容。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "spec_sha256": "e2ceb65d3803db082ca4d9811ea75aaf69bd412310986d68f8d88efcfdccf4e7"
+}

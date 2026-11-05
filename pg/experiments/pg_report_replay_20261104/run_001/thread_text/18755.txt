@@ -1,0 +1,113 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18755
+Logged by:          Xin Zhang
+Email address:      zhanghien(at)qq(dot)com
+PostgreSQL version: 17.2
+Operating system:   Any
+Description:        
+
+
+In function insert_event_trigger_tuple, the datum array is declared with
+length Natts_pg_trigger:
+```c
+	Datum		values[Natts_pg_trigger];
+	bool		nulls[Natts_pg_trigger];
+```
+
+
+Natts_pg_trigger should only be used in pg_trigger tuple and
+Natts_pg_event_trigger is for pg_event_trigger?
+I think this could be a typo. Maybe the author of function
+insert_event_trigger_tuple copied the variables from CreateTriggerFiringOn
+but forgot to change the array length to Natts_pg_event_trigger.
+
+
+The current code works because Natts_pg_trigger is 19 and
+Natts_pg_event_trigger is 7, the pg_event_trigger values array is allocated
+with some extra items which is never accessed with index >= 7.
+
+
+
+
+
+### MESSAGE 1
+Hi&nbsp;everyone!
+
+
+Here is the fix for BUG #18755. I fail to upload the patch with my mailbox and I just paste the text here because it's simple enough.
+
+
+From 94009c0ae26443d03bd81ec10a1b666a4c10def4 Mon Sep 17 00:00:00 2001
+From: "Xin Zhang" <zhanghien(at)qq(dot)com&gt;
+Date: Sun, 29 Dec 2024 17:08:53 +0800
+Subject: [PATCH] Replace Natts_pg_trigger with Natts_pg_event_trigger for
+&nbsp;event trigger
+
+
+---
+&nbsp;src/backend/commands/event_trigger.c | 4 ++--
+&nbsp;1 file changed, 2 insertions(+), 2 deletions(-)
+
+
+diff --git a/src/backend/commands/event_trigger.c b/src/backend/commands/event_trigger.c
+index dcfc1dbaffd..1f5872554d4 100644
+--- a/src/backend/commands/event_trigger.c
++++ b/src/backend/commands/event_trigger.c
+@@ -276,8 +276,8 @@ insert_event_trigger_tuple(const char *trigname, const char *eventname, Oid evtO
+&nbsp;	Relation	tgrel;
+&nbsp;	Oid			trigoid;
+&nbsp;	HeapTuple	tuple;
+-	Datum		values[Natts_pg_trigger];
+-	bool		nulls[Natts_pg_trigger];
++	Datum		values[Natts_pg_event_trigger];
++	bool		nulls[Natts_pg_event_trigger];
+&nbsp;	NameData	evtnamedata,
+&nbsp;				evteventdata;
+&nbsp;	ObjectAddress myself,
+--&nbsp;
+2.39.3
+
+
+### MESSAGE 2
+On Sun, 29 Dec 2024 at 22:37, 张鑫 <zhanghien(at)qq(dot)com> wrote:
+> Here is the fix for BUG #18755. I fail to upload the patch with my mailbox and I just paste the text here because it's simple enough.
+
+
+I've not seen this bug report. Perhaps it's caught up in moderation?
+
+
+> --- a/src/backend/commands/event_trigger.c
+> +++ b/src/backend/commands/event_trigger.c
+> @@ -276,8 +276,8 @@ insert_event_trigger_tuple(const char *trigname, const char *eventname, Oid evtO
+>   Relation tgrel;
+>   Oid trigoid;
+>   HeapTuple tuple;
+> - Datum values[Natts_pg_trigger];
+> - bool nulls[Natts_pg_trigger];
+> + Datum values[Natts_pg_event_trigger];
+> + bool nulls[Natts_pg_event_trigger];
+>   NameData evtnamedata,
+>   evteventdata;
+>   ObjectAddress myself,
+
+
+Yes, that's better. However, no particular harm done since pg_trigger
+has more columns than pg_event_trigger.  For that reason, it's
+probably fine to fix in master only. The number of columns in those
+tables in the back branches isn't going to change.
+
+
+I scanned around to see if there's been any similar copy/paste errors,
+but couldn't see any.
+
+
+I'll take care of pushing this. Thanks for the patch.
+
+
+David
+
+
+

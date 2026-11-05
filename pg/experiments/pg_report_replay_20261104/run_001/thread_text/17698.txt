@@ -1,0 +1,174 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17698
+Logged by:          Dmitry Astapov
+Email address:      dastapov(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   CentOS 7
+Description:        
+
+
+Reproduction: start psql, launch a query that will take a while (I used
+'select pg_sleep(1234)'), then from another terminal do "kill -TERM <pid of
+psql>".
+Psql would be terminated, but query would not be, and will keep running
+until TCP timeout kicks in and kills the stale connection.
+
+
+SIGINT, on the other hand, will cause psql will terminate the current
+statement.
+
+
+Perhaps psql could have a SIGTERM handler that does roughly what SIGINT
+handler does before terminating the whole process, and would cancel the
+current statement (if any)?
+
+
+
+
+
+### MESSAGE 1
+On 2022-Nov-25, PG Bug reporting form wrote:
+
+
+> Reproduction: start psql, launch a query that will take a while (I
+> used 'select pg_sleep(1234)'), then from another terminal do
+> "kill -TERM <pid of psql>".  Psql would be terminated, but query would
+> not be, and will keep running until TCP timeout kicks in and kills the
+> stale connection.
+> 
+> SIGINT, on the other hand, will cause psql will terminate the current
+> statement.
+> 
+> Perhaps psql could have a SIGTERM handler that does roughly what
+> SIGINT handler does before terminating the whole process, and would
+> cancel the current statement (if any)?
+
+
+Sure.  I doubt we want to wait until a reply to the cancel request is
+obtained, but we could have the sigterm handler at least send it before
+terminating.
+
+
+Why do you send SIGTERM to psql anyway?
+
+
+-- 
+Álvaro Herrera         PostgreSQL Developer  —  https://www.EnterpriseDB.com/
+"Thou shalt not follow the NULL pointer, for chaos and madness await
+thee at its end." (2nd Commandment for C programmers)
+
+
+
+
+
+### MESSAGE 2
+On Mon, Jan 16, 2023 at 3:21 PM Alvaro Herrera <alvherre(at)alvh(dot)no-ip(dot)org>
+wrote:
+
+
+> On 2022-Nov-25, PG Bug reporting form wrote:
+> >
+> > Perhaps psql could have a SIGTERM handler that does roughly what
+> > SIGINT handler does before terminating the whole process, and would
+> > cancel the current statement (if any)?
+>
+> Sure.  I doubt we want to wait until a reply to the cancel request is
+> obtained, but we could have the sigterm handler at least send it before
+> terminating.
+>
+> Why do you send SIGTERM to psql anyway?
+>
+>
+The way the story was told to me by the user, they started psql from inside
+the neovim session and then cancelled it with Ctrl-C. Apparently, neovim
+(unlike, say, vim) sends SIGTERM to the child process in this case (whereas
+vim will send SIGINT).
+
+
+-- 
+D. Astapov
+
+
+
+### MESSAGE 3
+po 16. 1. 2023 v 20:45 odesílatel Dmitry Astapov <dastapov(at)gmail(dot)com>
+napsal:
+
+
+>
+>
+> On Mon, Jan 16, 2023 at 3:21 PM Alvaro Herrera <alvherre(at)alvh(dot)no-ip(dot)org>
+> wrote:
+>
+>> On 2022-Nov-25, PG Bug reporting form wrote:
+>> >
+>> > Perhaps psql could have a SIGTERM handler that does roughly what
+>> > SIGINT handler does before terminating the whole process, and would
+>> > cancel the current statement (if any)?
+>>
+>> Sure.  I doubt we want to wait until a reply to the cancel request is
+>> obtained, but we could have the sigterm handler at least send it before
+>> terminating.
+>>
+>> Why do you send SIGTERM to psql anyway?
+>>
+>>
+> The way the story was told to me by the user, they started psql from
+> inside the neovim session and then cancelled it with Ctrl-C. Apparently,
+> neovim (unlike, say, vim) sends SIGTERM to the child process in this case
+> (whereas vim will send SIGINT).
+>
+
+
+I think there may be a bug - I am not able to reproduce it, but sometimes I
+can crash psql by CTRL-C too.
+
+
+Regards
+
+
+Pavel
+
+
+>
+>
+> --
+> D. Astapov
+>
+
+
+
+### MESSAGE 4
+On Mon Jan 16, 2023 at 9:14 AM CST, Alvaro Herrera wrote:
+> On 2022-Nov-25, PG Bug reporting form wrote:
+>
+> > Reproduction: start psql, launch a query that will take a while (I
+> > used 'select pg_sleep(1234)'), then from another terminal do
+> > "kill -TERM <pid of psql>".  Psql would be terminated, but query would
+> > not be, and will keep running until TCP timeout kicks in and kills the
+> > stale connection.
+> > 
+> > SIGINT, on the other hand, will cause psql will terminate the current
+> > statement.
+> > 
+> > Perhaps psql could have a SIGTERM handler that does roughly what
+> > SIGINT handler does before terminating the whole process, and would
+> > cancel the current statement (if any)?
+>
+> Sure.  I doubt we want to wait until a reply to the cancel request is
+> obtained, but we could have the sigterm handler at least send it before
+> terminating.
+
+
+I am currently working on a patch for this.
+
+
+-- 
+Tristan Partin
+Neon (https://neon.tech)
+
+
+

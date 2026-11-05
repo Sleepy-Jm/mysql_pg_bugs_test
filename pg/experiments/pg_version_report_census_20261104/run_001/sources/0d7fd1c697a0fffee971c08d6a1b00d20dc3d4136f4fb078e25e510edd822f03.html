@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17362: Error &quot;could not find block containing chunk&quot; when using index with icu collation on CentOS 7</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17362-63967721ee562fa7%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-11T10:46:41" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17362: Error &quot;could not find block containing chunk&quot; when using index with icu collation on CentOS 7" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17362 Logged by: Pasi Eronen Email address: eronenp@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17362: Error &quot;could not find block containing chunk&quot; when using index with icu collation on CentOS 7</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>eronenp(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17362: Error &quot;could not find block containing chunk&quot; when using index with icu collation on CentOS 7</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-11 10:46:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17362-63967721ee562fa7%40postgresql.org">17362-63967721ee562fa7@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17362-63967721ee562fa7%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17362-63967721ee562fa7%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17362-63967721ee562fa7%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17362-63967721ee562fa7%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17362-63967721ee562fa7%40postgresql.org" selected="selected">2022-01-11 10:46:41 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="CAH2-Wz%3DK4AZqQentZ0VgYjk3RpRA8n6oVrt2Cv0b977dA4qrDQ%40mail.gmail.com">&nbsp;2022-01-11 22:19:38 from Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</option>
+  <option value="CAGtiUvm-dmYr2eTOXpbkLcuOuruZJ5RB7do6KNvbT9E1DMmvWg%40mail.gmail.com">&nbsp;&nbsp;2022-01-12 14:21:35 from Pasi Eronen &lt;eronenp(at)gmail(dot)com&gt;</option>
+  <option value="3869d444-2f89-f157-318d-a71ed712dcb7%40enterprisedb.com">&nbsp;&nbsp;2022-01-13 15:12:13 from Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</option>
+  <option value="efd06d12-549b-8490-54f4-e43f7fb1d2cc%40enterprisedb.com">&nbsp;&nbsp;&nbsp;2022-01-13 15:22:16 from Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</option>
+  <option value="CAGtiUvnysMFJqv0NLtJKu-ww1QBid76nV7TBqKn%3DrGDQQ1VFow%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2022-02-02 14:39:29 from Pasi Eronen &lt;pe(at)iki(dot)fi&gt;</option>
+  <option value="CAGtiUvk1utVQohi0EAHyewfWzgZK_tzD77wAa031E8dmXziGdA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-02 15:46:25 from Pasi Eronen &lt;pe(at)iki(dot)fi&gt;</option>
+  <option value="14517.1643824167%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-02-02 17:49:27 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17362<br>Logged by:          Pasi Eronen<br>Email address:      eronenp(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   CentOS 7<br>Description:        </p>
+
+<p>When I query a table containing certain Unicode data, using an index that<br>has certain collation, I get error message &quot;could not find block containing<br>chunk&quot;. This is fully reproducible on CentOS 7 using the official RPM. (I<br>could not reproduce this on Oracle Linux 8, though):</p>
+
+<p>Installing PostgreSQL on new CentOS 7 VM:</p>
+
+<p>vagrant init centos/7<br>vagrant up<br>vagrant ssh<br>sudo -i<br>yum update -y<br>yum install -y<br><a href="https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm" rel="nofollow">https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm</a><br>yum install -y postgresql14-server<br>su - postgres<br>cd /var/lib/pgsql<br>/usr/pgsql-14/bin/initdb data<br>/usr/pgsql-14/bin/pg_ctl -D data -l postgres.log start</p>
+
+<p>Populating data (bad_strings_data.sql contains non-ASCII characters, so<br>using base64 here to ensure they don&#x27;t get modified in this bug report):</p>
+
+<p>/usr/pgsql-14/bin/psql <br>postgres=# CREATE TABLE public.bad_strings (id uuid, value text);<br>postgres=# CREATE INDEX bad_strings_lower_idx ON public.bad_strings USING<br>btree (lower((value COLLATE &quot;fi-FI-x-icu&quot;)));<br>base64 -d &lt;&lt;EOF | gunzip &gt; /tmp/bad_strings_data.sql <br>H4sIAN9Z3WEAA+2dy45lW3aW27GeouSWQczyvF+EsQQGm5uxZS6SBRKaV1PCLlsu24InoEcbuYOB<br>F0CiQ9uPwgvAI/D9+5xTJzMjdsSOSJeFUO2qzKrMjDXXvIzL/485xti/+pu/9Ts/+MM/Gb/3o/nD<br>0de//skf/9GPfvy7P/nBL/5o/Y0f/Gn/vT/Zf+0Hv/bbv/kbP/jJH68f/fhvXv24Xn1u5tTSTJy+<br>m1H5be1aez02pZiefvjvvvZzdV9CD7ub3k83MfKKGm01Nddh40gnnvM0X3w0nBWGT9sEV6aJxR2e<br>cs6EVOYZdvZZ7dNvffUUX553mbkG57oJOyQTV56mjeTM7vOkVtuKqT394vvHra0elxgtx8i+582i<br>wqrGlpRtHmnF059++87DK52S4s5m255NtIxQVx7G7thTbXPvVZ/+yWfL2D3WVbYZJ7CHbjq2v1Yz<br>Wm7drjl9mU+/eed12yXXe2qml+pMrI496It39niSLbPNGJ7+0adPpBbHSj2adHvdTsP0HRyHv85a<br>OTd31mdPfPtcSGGVFJDBk4uJLfCcRUqWZNS3kldeT//s5Vnm00/qll2oe5voxzYtjcNU21nVdqQt<br>3ttR5DPWXYcrxsVkTUxnmV5bMO3kmn13Ntnw9C+en4QfeawRzD6RCdvOljrWvdpp+9iT3YlfTPia<br>hd0ZYZvtN0efgnYyHB5MPu5uM9v65TMbcRhjD8MOcATWJ1N9Qk35c4rMuQx7Z2P0eB28sfXEbnIK<br>scxght/eZFfQye5DtO6uCl1+nBJrP8aOxdMhRjPGRIGTX+u0jtCN+wp4rYbQdX5+78Ljp1vT4hkm<br>pRGd8z2f5J/L3jV6i+WsYWY6aF5vzP6siBC2GmavwffwfrW/RnV7eZfN8SewmC1h49yDZDx7Fxj3<br>A8PmaBNmYhr2RIea0efF5E/wiGJfe8X4ASN19RVLzj2YdbCAsfpg+rAYv9WCt86tUT8w7rVtDjYy<br>bK42YtYau+DRnVFqDL3uEmb+wLAz1J127cb7qmFPRlLsTVL2DpiEEj5gqi/bvEaeZsyAcu7m2QTO<br>rPSRFzvkPjRbzM1oZ4bGkBnrGVEk0105pozl14k15lHeMe6FMNUQB7OLyaNmpaBweRkMl8tByj3W<br>e8azBz2rZeGSLWbU2oznQ4u9cxYz7JbM6DvG23XHkHI0bQ400eGJ8cnBWI5n4GU7huGuFbn48dFj<br>TKatyepCZ17lRLNzX3iRcxy79cevz4C3nL2mNWnuJMeQzOgYQHvOrB1zssN+Y4xvpuKsW5mDs+x2<br>3LiIjotjyxvm2/aD237q3/10D64t651JyzUdC/4L123mrLXFxuJP+u6nr9B4eDCvmeYBqGzJmpc3<br>SGuG0nbo/ekffDmh6cZwA8tWW2FC/AGbPpIpvMO50hKC9vT73x0DmCHYjVyMybHmIltRsRV1Fn4x<br>gbjue6oxXSoLPcjDYsAcZqGOuo3Hl5+2EocZX/Ctt40ozlV00IxVF48ujEnyslk24RR8ztHf9yKf<br>DpRj2kmOeXSW2/0x2E5sCAqA29zdnfD0d5+dmq85NZCbc6mCNXGBI+PsHQbNx2JLBkf8/vc/792K<br>ITh+KkRgTpsNwbV4rTokcCNZv57+6WvznEwvF49ue6xQ5IRwPei7ryWskW3rOz798+fLA4bUcooB<br>l3pBCVDEQU+a5sOZYcvj0x++9EK3y1xAOrML3jlODmdsvHzzy7bWfcW9PJ23d/j/hw+uFql23puS<br>D76rrWLqRJ9qOK6hT92mfVfOPx/KzlVT29X4hJeKZW0jGUPJFmc8RvT+Ffzz+VgJvhE8Ki2fglDA<br>J5qboEWk39dRsvfuW3Nw2Y3Ch4VDKwhB7BaLPtIEYy60p6+FJH2J1cayTugE5eAnY2ftlZ9DdmdJ<br>hcFrTV8+E9HglpEWXAV2sZ0jsH2gPC4tvADPvWQXL5/D2g4XMzvkIfqWpYiAw7wm1Ko3DNB3z0Eb<br>Zp6ndGOnwCooEsvBoUzUa1q5wpLe406QZ+tZFB4APIUBAcNalpz6XDMfAMV8l/scbZ5gF7Smyjzx<br>RwgDiHo7O/DwJS273zOexxjNgft0Z2h+oJEatzM+QGbqzJzse8ZjwfHkDOoyWSYBR4IJ33ivebKH<br>kNU6Tn0FCDvowUkBfXCR9VUI5UgA/2K392NA3Yr7qR+aM8aee0OK4GkxHnyLBV+6Po7FYsL36j2J<br>vwAGPG7TtzvZHBLhAsOw5IJjc22PV+hCwV3Fgn/3oozRom2tRdxGgnCiJPwKrwYFrpMSZLQ1k4qV<br>P8TZjc3K5xoT9zzxXfOVEa4zIAWdp/YKAMkqtlHzNjDms133fWz/xgxCOUeH4+pAC1FiKCi+bjvm<br>kCyusJ6n9doIreeQAclgJAvS8DeKti1Twvys4vMG74zXRgislHPEvUOx2cckDwkBk1uay1kMRX/6<br>96+MoEGqn/04KNDM8FHwFwuZNZkMNXWjsh01P4XXB9E4I7mRD6e4ijZkV29GLMMEGFxi1LxXe/q9<br>N8fRUF1u1TYoXMhMaRYxOsDEcqjWkGut/emvv/Cgs2eWERTw4PVAWMBVS3CxsmtwB4bv0ksP3p7l<br>FNBeCwv1COWeUMGA8VmcCWqUEatz59nbNgJdsYdCiyJovTtQNR4kb+zgtPXgmu8/rhHAOsVBC8zi<br>fd+GytaSdLrmwvDNtTfIzVXsZJ2YNOgXbqzClHrjLJcQx1pY7OVf4eE5HxuAb3UI606gU99YNgdx<br>wdwLQp/7T68IRA5RWDsiztNBpyymhcWfgxCcYV95OqzZlvjtCsyX48N2ZbYBsAMM27Uxt1ee7qVY<br>qKGBAWKFllSpAMhXaGGXYztu7v7T2+JNWoX0CjxGlBCFSgcaxOa5VjAI9znwlQZ4e7FhcwAgcZFA<br>84z5HnVY/D4UsNw32leAYNp4IxminoXdb653wHedLh8/Qr4f+7hqwF4Joe8C34BMgALSzVEDuTGK<br>LsRX4i51deeP6KScbMRrmNHw8BhX3PVsO7V2/+m2kaoxRNLk7bvkZrsBJdm55FJXe23PxbCABN2A<br>QrAWlZlXZxt0vo6x2fSTXtnzrqUJCrQ1eHdIUbCExefCEUYF816RlpSajSfpiCrmBd2AKSGz06+Q<br>dkbawn26f4Hi1hiQXJiIggURbtjRkozsr4WxhOw//fjO0y+Mt061HtRvcInYHVy/YpnNlOgrJAFO<br>0O7HoeAwegxTkYYofIEaAHszGo+xxO5un+6Hmy5Mc3VZPNRh7iDsR2cIgWJvi7P71PpFePGau8jr<br>4PrTFj3sAzVnuoEzKXhAzr4/pzzfPFtD7QzaFBfEwOCAjWgt+GZiOzFQoT3ED78bbygwM7C0YYjA<br>deQQK9VAJXHNshKkyN8numg3hgmQlEFtYqvCxICSnnJABY6ipU/14dm89Iq1GQOBNmAamXSwRods<br>mmDjBMrG3fp8+nt3Hk4DHFMjkGLdlJuFjZkBKsfVns5g/unpN75mfrfX+NHPasyRY0UQ8uA1GYWC<br>vPK2iOcC4v/9L5/qmFxsJHu9FA0/mA00d5vcbYPGtDTTeYpfO7cBKDo+gNOdDhhxBKZhYHOZ7F3c<br>2+b6wBZgq473jY2fWigOmaM+FZ3dKWG+st3jPP3Ox+eZmCh8nz0MS+eMB2kV1JJ7LqVkG/yqX70b<br>elEM1QEo4FQbaBWBeIDmwitjr21CUsH6r4YsvhwQKQLrg5PwIgxzAJOg123gkQcbkFCw72NXsJqe<br>dkd+0w2hJC9m281Z+MxcAGfxPP2d5++wJeISObtQFSoBmkCc0H389IDSYHHKT9+R8SkdpTYpitRb<br>BL45yEk54P2wq+trvB3B+/7lu558ZKlP1tHENcCSyHjypznglY2hPQ9nXRUoCwxe5ug6CpLNnD2Y<br>EoDFSnDqFW73jx/f6M83JFgYoit4+V4ENbfpFRIEg7Fhh8P/pNeuko7iCdso6gj5GooBobAzhrM6<br>BDCfcP/pnHLyOHizh87Qz6CY4oSkY8V3aUyrPlP358NAfY7vYQMWvMDLN/6wGV+xCy5X9OzLS6bP<br>B6hp7gqQBwAodKY7xp463LzYDnjHoscvb7Y+H6B5iRUn2ZEi7JbVDFwF6+MEJzsEJHz6h9//PCgW<br>SIWLPceJMmYsvW9LHsOmyqpDWp/8/P0XKwDJEIDEoyvbkOQ0OQSs9e3SZE5O785dJ+Z2TetgzJze<br>VNBqKLQJdsJhlz59WjZ/AZuuijmtKKIcrS4BLToaW8Xl+gpa8dY95AiulYPjR2+WnnEOjAr8ZoEO<br>2ev6M+KWH4mXXasE74KAytBlu2MudStwn/eJ7I7C+I8F3r4bERDiS82I4Qa2xyVWPAB0OdiTrQt4<br>mfP8evSFgUINJ2dMryssD6gGpj2K60UwWykDVHOe2jum9sHPVZJLPbhkQtU9QtRdyIAPwkXCdhM9<br>Wf0p/6zePmaEMUNKsgxFhCQgrWBMBwtD3FZe9o1rvYv9KzDhbOAQiuxs+LzT7e5qPcSRunX2sySA<br>+0MFjHo57AD+SvdgsORqgasDb4kP07XBectrXXj/cbwTwxG3PyBdXTcZCBTMfNkETb9v9qwNEy+N<br>tXDoq8bSfTh+LiZXRwi+Ihefmr0L7rVjX9ChnG8swSHfzur/1TpxeL7/NJr27aYDVsKER54bAx54<br>j5Hx1bXHVWZNJYb7118vzDlBJ7LYiS43xbAwOQ2MVibW0jWPx/4y0PvIqArOKZoLVwLzN5z9KMWb<br>1XB5B/xWZ376N+8c9T0TCA6oFMH+oYQuum114wd/hvjOyhEDH1++YHp5vD5xBBBOg+1Eujo4Hpgi<br>kF3ydqGmkO6EiS/xbdZeIDNRF6q5KIUkG8ytVVQ4DxffA6cenHE+Yr9QjR0U502N18JXjM1wue0W<br>xOSRa2yoaIlbEeyyRforsHacnEyaTlefqYXUPhXRS3LrgQ2AK92f7xHBqcniEJrFZKBYPX/p/CEx<br>/HVR5snKt3tZ3QHUZKyNHuI+xmjuuRheYeBUMOtozVxY4sMAB8Nsz3Z5z7hWH09/+4M7aIFfsSzI<br>UBFxHco3WhuLUNZccekerH6BRG9krCnKgp4GxXwb6oTXqrI/ObWd1n3c9PlQKdnmM7hlTWGJolV6<br>HDTiZjvru2WbvX6AFycwuh9sfrpFfqyiEKAxOI1Pbqa9Tn369Y/tz5fv2uw+woWSV8wmWg72GfUo<br>cNG7Xd7taX+KwM9WTgjWOhXcRowylRPrx76OUSoQvJzvKcEZ/AUwLhT0Ls7lEKZyoATWY2AB1zV/<br>fhDQgTz4t8NKFandWRefbSv47TG6bcb4SuAo52ZhEzCgoRSugEfCrWJkSx/gzgFBSc/uz5+N0veC<br>rzhnShPLyBnh3ABZL9eM1ngw/ge49WUnhu0UxUyFjBSMaIou7DSgsNput7+Cs4PePaYK/5fYBKBg<br>Q4ajEneg6hvCFnHLT3/x3+89fliZUuc4nn2LVOuqHl91ZsMVT/g1+v8AzPq6zwXEjXZFRGoFufLb<br>zYeIGWfrAJdJEvYmB3nvW1tJAB/MBRxZhAFda9BmJuGxbpAmpTo9dEHxjpd2SejUxYrbWEGrHINS<br>cXYdGJ9nU1bL10QeHBYPGgOBxPYYaaiu8bxCA24U0EdGs++HwPA6FltqLJRJ12hYowypg0i2vsDe<br>KftnnOiaBf478B3ZilIfXK/yX8xiMXCBit90jzCpO3MKQFbIgNmrKdOtyz3BUnooG5ObN9DxXSrE<br>fHc58+hmR+LGcYN4QpCrL9igOmq9H+d+ccCx+4BBQiB1mx6dbmqqWFnSNeiyLd+5O8V8LfwDqLqV<br>pmRF2Bjucxtb3XR4k5C/jLi+OZt1lMy7ne7Zi4gwK4u4JWshqSXZitl5t1Jfc4Ux5R5Bv4y6uvgu<br>tIy3tegmNKu+63L74ReHuTgUCGp3ustJuJVWkLNgx8JTj5Qwof/nP/+H//HSwyjVGRE0MHcTN0cd<br>msVP+DF29h1wUNIjgO4CGYRhhzPY1ai7fTy8KFC2vnD6MJr1kZRA3P6yJcCmTMhNV+dxKf6iy4d8<br>rD8bu+4/boIvVDBANnULa5duwpIycacpJ+Fdd1Nc/FXtucJGjiJMKSQFp84t6UwXmYywwSrunPS4<br>cb7K0G3G1gWBMpZuARsPM6oYJ5j5CnDTRzdSWe0JjuDNLFaZwikx2EE2NoKecgjjy+CJnspuOKiA<br>AiaKP46N/sOPcTeoxhw4UR+f/uTtlQied48lWudmmECfgVH3rromjFOZvY/zlkfWO0KGhSMnSJxU<br>GyQxmrLyai0jNXbW1ldCfXFiZADJDmMuxozVCYi0AKcFOGMuPozAX36jzdBc5eVv59hpHXsvN2oC<br>uOspl+7uZx6+PXwvOaPGHL+LAptKt3M405N9zKn45dfz3MmPvUrjYuW2weAoTXMECAZ2pcXW0u5+<br>xnJ/5+8NOoZNGc4H3lpFsVdxKg7ktHEaf7Ughu8m9LfMgdT3RB5P8MpFOUsRyWKKdLUBQDOI+usO<br>WhGlXr3DkkTZLf3WlJ3QZnVYso1Vjh+kK1dVDYRDLatS1KBFnKtVxlz1tbOuDDC8d032+CvmwG+b<br>MpWj67cyNRWTq2DOrgoHH+5jlgvi2mZPxTjQosis1+onVnsXxzmull5h7NdeHXaKCts+bjcg9pYN<br>qNSOWgHee63XnOmV5CJSyMrmkDRKcKZs2dn1JESovZhpBjRIvk4wbrVOaX9KyC1dqWXHVdwk/v0h<br>d3hnWqEvoFlpxhVVmgwhol4mGCEvtB2IHR9k1PfeIOFKMmEjiyt2uAqCOLG5sECFEPZ5M3L46Xj1<br>hLDk3FxQ8Evxw5aVTJ1BCdAn20Z+PuOrO8t6cDkgN3kQ7EJXxtzJ21dfrG4QH57GhSX2TrHgdvOw<br>c+o2MioZsdax04Qfv2TGLoxqOhsrPrLsuaI31dYEFwSQjzR9eiF1/KOfqycPVAakLqsMDRuWIq/L<br>ACmUSQX+qa/JzrWQdcxdxlhv3SvfwnLKhT0J3G3RGTseih9fBZrUk4U0zcKhBauZQNuX88OXFXOf<br>dzLSvxxp2+X6wIWXcYoCZqpYYk5M0Xn+s6HHz9HRBT8AAakqJh3VBDQOrCnxpNeiwNYoc3yY8Nyd<br>7BnOuYDN2bZyAAe71ZwuI6N1+fTWYrUvHcB1sFUrSqpWEidk4q0zcYQUE5YW9sK/Ka0XOCsWFfId<br>JRfHxSEOxMyAIGfJ7cAw23uc1RXbqU6p/CXeMuTAbW16+UGclSJFbfsHvdS1w0Jla1aCmtctmojr<br>jTPEWNNeYnovGtRrxeEWTliXrfGblKnRlWo4QIkLvDV7ftTXyCniV8oyPrXMHqlysYgYrzxGQTpP<br>mffqCTE3GcIYTXCqECqA9ApQVh3CPGePeeZ7wuDv+Fwc4wJHZ+NwBCBZr8sQdKF4/EiuNYf4QsXc<br>F4NUmJAPUDRsZlKaO4dRgGUQGJSF9QSXfzbzvz+n6ONpbQ2TlZYQWQ/chfOwIcy4jrWlrreR/nej<br>zcH+FF1FZulRd0EZDMn4s0ZxiJ+qGl8VlUvVNhZ5NPbmOHCWZiTIrMOyrolH7/vBgrWrxT5l6U1o<br>KnPsAVlTHDSfPBNSneaJj93HvTxT38aox5k9VWHkonKy0a2DgGeHhvV5/oqP8/+BzxWEeiNkRjkN<br>eH6VUASMlgNX51N9Vonc9xp+JSz0WN2bUW5Vwnnj9Y6Q+eoB4tDTM6QH4x41KCqFKcEcugrj9qq5<br>Ro2WarXx8n9JNwG397mu3O6TxYfDNyk2PXdnUp0nF+9nGuPpX35sbKVmn66ar2ZvDhLsmbZyfXpW<br>qRROK727nv1SxKWc7Yz1R7e3t2oXV2AJw9e8Wi2hvBk0uZw7uwM/jFXeSZTjr10xneZ9rV2TS0/+<br>Q+vW8PYA43X3Ub+BKUG12q1iZINbGNYJbvzKy0TdnWRsmeoexJR8lxHYyYQQFf+41XT8jLX0Uqbn<br>8dg0DBiHMZS12+MywSp45SJo+LOLcWXM4myLUgpF2wvaBAaDo+Jzw2hddudBJKjyJbTFtK3SpwOI<br>a0k1cK2phlc3I68UyLxrld1H2+HjKIkCaQOCM/y2ioq16HJQ8uarmA/YCtCYO5vklRhuVQMN3jBq<br>+QDti2MV/6CaXR3rAxWexlXxlsMWgs6qgf6A50q2yop7lnn3wc9l4bN4pmJmU5BaSRtA7IARQ+u2<br>jrjVz1IfVEI99gQOII5L4QEgBewdQOYdrGoXMKP7q3Mf1z4JKZwAfd+HgJnu96yy1bIdI+aEZXpn<br>pEX3R/BsAHGPbquyv6iGTusc+QCwA294Y4lXha0o5mlyvZUTR2+wXZCiaM+YYbDzLzWuuL0+5KQ6<br>VlC47nfAJqCRjhFPGdzp8P+zPMr+rgRAC2itOfYWDpiqupY9BNMsQHRixJeD7JffkA+VOjTVT8Wj<br>jiUzAWm25ZytnxUY/zw+fAW/y1YDi6W+LFF3v0AK+MReGfZ9CmTnHfc6Vxxx5i0DqLqnuDdW5cAu<br>qmIiaBw89ZXQwNVZf9vIRVKUP9ao9B5VnUApk8Unlro/dezj1JaV3APi7yJVytsDG1oXat2qvKz5<br>eWLZtQDa0HxYdBd124o9NxQXshLjGAOmEL597AoLfu10GSqKG20BAngHdoCnKumKE8o/JUjg75Wt<br>wgY+pfhN/kAvHZms4NPp4zg7PurFr3LyuKXwoRcqHUzODKCNuEFu0afcW/4gw73KWr0t5W8X+Ys9<br>zjelE223gjYg9eFdOcsSX9yHS6kZFqxrdkVCpmoebfC4ItXH30tvu4afIQwY9bwlGKt0s1UcSSh2<br>7BhbC/Ez43ax8eAkQbp0K++C/SM4zQDfsWxApnT8069+aG/eXmmcdtqYhvp+OKUKq5ZfhTqjspNl<br>BfXxeWXzrt6mhXaD827NdSY0b1jViO6tBGeM+R4fTWT+S/tcIIBxjvqwqA40emjOGGCnjZZaeNji<br>189sjzGsqShVs4exlODk1RUIYr6WxeQv5/3bKSXfDbY3KHIjXhafoJpMwPxCNxWLZ20SmPckAX46<br>dPKtdOu9cUV3/WXo2hmKNjpoaDSn+OXHhv5L+FzDFY/6BOMAYoKmYIHT1PAIXLiWw8ymJ/fgYFV1<br>rD5XE3ZUwBzFUyWcST2pg4UdKjD+Snm4HDwCU3dLPNfVpBoHKcy1sdUrt+BmvdsjiykCB6J8d9/q<br>QRWxm60pWWHaIOhXz6pPf/TJA37wxK4QSBU/AE/wuc036EcI3XXdbPu3YfDV7Qm9LGuOUrljmxkv<br>wXtBNoAIRAyz9C4puGbrSkw5KvtSUDyL+sPe7EwNArplwN8O419sQUBlnDlb1Bc/atpQVKmeDg4+<br>c4N330X9YA5Bix0mBxmvo1o7JQqt2XftWdHE531A3vOC7UtzN0LRkkogre4XQNidv8SF2j7qw9f8<br>VwD6HGdvFbs3YnSrMgLrHZDFQWSF0B7iOXA534+/mUMFKZNXdVXhyEH9inGd8QGec+HIXet+47qU<br>KbsVGMYZGp9dwZsOUM0rmXcg6lBLgwswjFrhBBVQNKMqwdB7zjk+5sevlB1mDHRui6K38HnTF8ho<br>tQNmT7uk8BqLBYvFuTvMCn+obnM3BgrtOB1FSj648ECA+zYS29mD6lfzEuTyKtBTCyJY1orrwN/8<br>fKBc4AK/Kx9xqfR+q2FNFjyuYmqB7Wk1A8Ye5WcXuwBCKRNsCuOMq6lm6dzoGOC0hmaDffrTL5+y<br>usRq7MqaKv7eXoV8GXt8awaAQlsfngNCvN8s4HlwuQoVI2TS1OF0Jeait06E+8u2SxcUIOelG9qi<br>PGJVvnF0S9UGbST1VIjfZhYwfA1LiWUohlruqTHjVtFJb7VhzaGZb8UVr4KcKIHSqBZb3UusyrtV<br>qVlK152G6/YDAavr5DiAptvkqE4tVT0Hw7wFPhsLtEDM/Lx/AtrZ8UozmqkS5FiLNmt14YXSsz8V<br>vPt63yDdjdWVVR9wKw4BxILabwURBQI9ztoPXihdQffx6hh5ilejMeW1RRWUqS6wKsm6vdI879vp<br>QKPqrX1O0P2WR2hgEUu54a7aUoKP319jMHmvBoEYN6s8mMG8WwrITwkFEnHUAexZT0IlokVBgnjT<br>MzXqnAhFnvCmJJ2fb83yNk4PM06XswEuZiWHFXXPUH4XNNr1DUE7T/ve06laV12Oxs9buqPSXwWr<br>z1T5f5yAisdz2q45lgfMqWBfbrMpYp7BrP6kgcAXPNfjrfMul+qYAZM/vTKH+5BI6CYjNF1NhtRe<br>aSNwZ8gCkZwYj2nVkaMqzpsyBhutK1gGYOl7WhGCl2I+kFETrAoBDqrfYREGgViDY8wRMfnSLL3v<br>c5VS4GUYojDUevSW2K+ujCntoXZXrZ/xjur6x19cdUdU1FavBV1XS0KRZEi+A9Jvm0LbL/fk8r70<br>I2MPfb8B36wio28C+afUDSqPn0fLvn3Q7rOSWmSkrP5BQzfsKyhgXGtP6svzQuX1dw8Xl9RrIBie<br>RQtDVaoVxxKya86dFCCOD1YzRA9G7+qmunQTqY5GtbPxFqiAb42cenw1un5VqJt4qkDPt0a+Y3lM<br>YeOqA+SeF2NC7/hcNvewgvoiDDn+FuRHIPCHmQc2Cvr+rHTlhWEw0R5/rGp1bZvka8yezPKhL7d2<br>VZD+jsO/tnJ1Gn4oq01LVC5Pm7o4sat5vGhJY74ryHmBuBsGH2RX1MEHuKBOSF13fK23BqQ635d4<br>XYruO0y62epIGBNwuPmjCGTxaos5fexPv3bnVV79qGYNJqG+6tnkDQKGCwKy5ORdxm08Cs8ViOch<br>1Yiof0isws0Vj6jWGcGKoXj3UpX2pXWevrzZ6oMQh1PfD5BD7EocD7A+l19o1rqsSqUwYEvWPqo9<br>8/imbV7fvsNfRmmftPa7O2+A83FnHZPLDVgrcFRUlZnd3NP3bXd6OBoCjs26FiwmzFuTT1XUtKNm<br>aTEN7xdAp3/awekKWPlZWH3PgokTzDp8QBhXCh0TdyIPvL/b87OJ+QSqBSJDnxXOAx+pa8TgePZq<br>+HeE6D2NPb8dVfk2ameDvKvlYYGeN+CdqcidL7ulDWp5aPZXyxNGh81yU6hFrLj3YRFsYJ63a2F5<br>nn7y4qOljKaIohnqNhM35rapgBrYpZYFmPH9/rXdnaiFbtqBp1sb1x6D99+6ew/xBnchj/sl4/6z<br>+1w5BX8KBkBtX5XDdgukY0IG1P94meI7dwg//zz6AetkF9TF1oNrFBOciHlWO6+aMfRn5L1fJnQX<br>Bj2EkNU/SoXK/taWsmNjkM2Olig/5mXZvjub6lMcW5dFQc4vq0fbTmpXxzQAeXEzm59dze4V1EzQ<br>Nl0KKOaUskI7SbXXVUEBvEf4PGaeWqiIKA+o9bOQtQqUEr8dXzv0qtfvawh3ULaoF4VRkkxVQTCs<br>0OAaIfkrTLfKdxsG6h5NjRBxIPOWPDnYXRzIiDCJVWaDW/3U81xY1ejAUth7tfaKU8H+drsosFPd<br>rtXi6s6l0wW9WAAXtXNV9Mmj+706WSrRGVCTMhg/IRuXHevcWuCNUm4VZhiL3r2ZAdMEWwjnpQDQ<br>NdeOgJis+l+VhEz8Gqs0KtxhAWXhNd6yaFfz6hKnOqlbBF39h/utAUDCfkXbQjn16X/9pz//3//z<br>P977/S/+/PV//8HP//nn//zzf37jn3/5R7//uz/4yR/Nv/ULv3T+4A9++Ic//t1f+JVf/iX+8le+<br>+rX/TX/4s9tf/dl/uf3Df/361VwwW+iUT8apnDg29dNXBZmr6l1/RhSzegBb9wm30ldOnC5on5v6<br>lYllLBecQrrqp3b/YuLqt56pt74EYuDWqiEs3mN7XaD7FUeP76xiUeoRhETXBlZxJ+gT1hvAvpu1<br>zbpycM+PrA1L31XnZZQnpuxIrKtV1x59bYtbEDMc4POA3ZXWqXmpkbnaUcauSLeXa2MS2UYI37Av<br>OO7r2IzTgaz1M9QFC0/SD7Azw9ggemEWCPUXZcOXKzOzREjIUMeFrGQAVc7WWfFLAdS4X6z3uuZe<br>damfj7MixXgd3KmKBvOaeEpwT7x3Z3n1M6s6CMD1b3GTfLuKH8Y3NUpJebjzcOfsMvTtPbBxm5Rs<br>OZlHCyOZCcJIC4ZdV7zbLq/Edvya+r4aXU9sy5bdSg5HyW0d/uvSuworLzall6iyJKfeaKsUM/Q9<br>Iw7Gqv5WtpVnbboupySdqS/LsUoJ/6bYsCspMHoAUUEj2vPW9X1a34SXkKSmyNGN1PA8ZMjCfGeL<br>642M7Avl87VVq4RD9QVTuK+p01k8s3fH4dd1Lzrw/s9VwLK9fVOaE5SLp/5UUDifmqullaYqlgfv<br>e19/k9oB2IrqwrWwDmk706zvkP/VkNvhRn5XJcKtV3EpyoCFDifhWX3rkqqXwKag/lj2eLgo9YXh<br>Q1lxbrBc6aKotamh7OkGgZoNXS5plK9maBfIdNStfPTbt5ZIB5u+98r5qiQYFGnP7yKW154TGKzG<br>A02Bptvdg6R0jYbVRVgY5NX2xHcmsXIOY/pgfFFSnMKGQO5iPPxkTbvH2P1dVSIhehVG3tKklOSQ<br>b1/PgFD3GkMZi5ObrxLuqy2/vb5Sw9/61Wx+G7qtcWoxCklwPfenf3v38Tly1y0BNvpW3H9uVVaK<br>NxUoQ8ALpVczbh5aZYaETLuqSeqGGJO9fQMEc1QHZiX4xRd95eW3dcrzNfZ2+b9nE69CM7xvZec8<br>fPok0HpZ69TotpqyREVvxS5wAU6dc7cK55TXC04vtShVX1aDauvCBX/cbl4s1BbxNmfuO91pr9Zj<br>qbsvs7aa5ES1ptU1foLreJe6rfXLvkxXTWXbhHAef2upz4tHwI5mp74u2OKDUfmKStaLPcgr4RvU<br>llqdOnGPCcLkm49Q3BTK/KRt+xWd5SODI6IZ9eU9VWG+pbKS0lRW+a601isn/EASzcu362F9BwHY<br>xuQeDuS1Deb1htW8/tUPr/8Ltw0xjodvAAA=<br>EOF<br>/usr/pgsql-14/bin/psql &lt; /tmp/bad_strings_data.sql</p>
+
+<p>Query (using enable_seqscan=off to force index scan):</p>
+
+<p>/usr/pgsql-14/bin/psql <br>postgres=# set enable_seqscan=off;<br>postgres=# \set VERBOSITY verbose<br>postgres=# select id from bad_strings order by lower(value collate<br>&quot;fi-FI-x-icu&quot;) asc, id;<br>ERROR:  XX000: could not find block containing chunk 0x20c2398<br>LOCATION:  AllocSetFree, aset.c:1026</p>
+
+<p>The version I&#x27;m using:</p>
+
+<p>postgres=# select version();<br>PostgreSQL 14.1 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623<br>(Red Hat 4.8.5-44), 64-bit</p>
+
+<p># rpm -qa | egrep &#x27;icu|postgresql&#x27;<br>postgresql14-server-14.1-1PGDG.rhel7.x86_64<br>libicu-50.2-4.el7_7.x86_64<br>postgresql14-14.1-1PGDG.rhel7.x86_64<br>postgresql14-libs-14.1-1PGDG.rhel7.x86_64</p>
+
+<p>Stack trace from &quot;errfinish&quot; (using a version compiled from<br>postgresql14-14.1-1PGDG.rhel7.src.rpm)</p>
+
+<p>(gdb) bt<br>#0  errfinish (filename=filename(at)entry=0xa857b3 &quot;aset.c&quot;,<br>lineno=lineno(at)entry=1026, funcname=funcname(at)entry=0xa857c0 &lt;__func__.6365&gt;<br>&quot;AllocSetFree&quot;) at elog.c:514<br>#1  0x0000000000902b19 in AllocSetFree (context=&lt;optimized out&gt;,<br>pointer=0x254e4b8) at aset.c:1026<br>#2  0x00000000008b4728 in varstrfastcmp_locale (a1p=0x2550da9 &quot;a&quot;, &#x27;x&#x27;<br>&lt;repeats 27 times&gt;, len1=28, a2p=0x2550ad9 &quot;axxxxxxx-\245w\256\245q\240g[&quot;,<br>&#x27;x&#x27; &lt;repeats 14 times&gt;, &quot;@&quot;, <br>    len2=&lt;optimized out&gt;, ssup=0x254c868, ssup=0x254c868) at<br>varlena.c:2425<br>#3  0x00000000008b47c6 in varlenafastcmp_locale (x=39128488, y=39127768,<br>ssup=0x254c868) at varlena.c:2280<br>#4  0x0000000000912f55 in ApplySortAbbrevFullComparator (ssup=0x254c868,<br>isNull2=&lt;optimized out&gt;, datum2=&lt;optimized out&gt;, isNull1=false,<br>datum1=&lt;optimized out&gt;)<br>    at ../../../../src/include/utils/sortsupport.h:262<br>#5  comparetup_heap (a=&lt;optimized out&gt;, b=&lt;optimized out&gt;, state=0x254c458)<br>at tuplesort.c:3791<br>#6  0x0000000000911d3b in qsort_tuple (data=&lt;optimized out&gt;, n=&lt;optimized<br>out&gt;, compare=0x912d70 &lt;comparetup_heap&gt;, arg=arg(at)entry=0x254c458)<br>    at ../../../../src/include/lib/sort_template.h:351<br>#7  0x0000000000913eb6 in tuplesort_sort_memtuples<br>(state=state(at)entry=0x254c458) at tuplesort.c:3566<br>#8  0x0000000000915be4 in tuplesort_performsort<br>(state=state(at)entry=0x254c458) at tuplesort.c:2061<br>#9  0x0000000000663dfe in ExecIncrementalSort (pstate=0x2535be0) at<br>nodeIncrementalSort.c:776<br>#10 0x0000000000642232 in ExecProcNode (node=0x2535be0) at<br>../../../src/include/executor/executor.h:257<br>#11 ExecutePlan (execute_once=&lt;optimized out&gt;, dest=0x253d238,<br>direction=&lt;optimized out&gt;, numberTuples=0, sendTuples=true,<br>operation=CMD_SELECT, <br>    use_parallel_mode=&lt;optimized out&gt;, planstate=0x2535be0,<br>estate=0x25359b8) at execMain.c:1551<br>#12 standard_ExecutorRun (queryDesc=0x2540548, direction=&lt;optimized out&gt;,<br>count=0, execute_once=&lt;optimized out&gt;) at execMain.c:361<br>#13 0x00000000007b60fb in PortalRunSelect (portal=portal(at)entry=0x24de9f8,<br>forward=forward(at)entry=true, count=0, count(at)entry=9223372036854775807,<br>dest=dest(at)entry=0x253d238)<br>    at pquery.c:921<br>#14 0x00000000007b7587 in PortalRun (portal=portal(at)entry=0x24de9f8,<br>count=count(at)entry=9223372036854775807, isTopLevel=isTopLevel(at)entry=true,<br>run_once=run_once(at)entry=true, <br>    dest=dest(at)entry=0x253d238, altdest=altdest(at)entry=0x253d238,<br>qc=qc(at)entry=0x7fffaf9db030) at pquery.c:765<br>#15 0x00000000007b3337 in exec_simple_query (query_string=0x247afb8 &quot;select<br>id from bad_strings order by lower(value collate \&quot;fi-FI-x-icu\&quot;) asc, id;&quot;)<br>at postgres.c:1214<br>#16 0x00000000007b47b3 in PostgresMain (argc=argc(at)entry=1,<br>argv=argv(at)entry=0x7fffaf9db400, dbname=0x24a6a08 &quot;postgres&quot;,<br>username=&lt;optimized out&gt;) at postgres.c:4486<br>#17 0x000000000048cba5 in BackendRun (port=&lt;optimized out&gt;, port=&lt;optimized<br>out&gt;) at postmaster.c:4530<br>#18 BackendStartup (port=0x249e1d0) at postmaster.c:4252<br>#19 ServerLoop () at postmaster.c:1745<br>#20 0x0000000000731e32 in PostmasterMain (argc=argc(at)entry=3,<br>argv=argv(at)entry=0x2475b20) at postmaster.c:1417<br>#21 0x000000000048dcc2 in main (argc=3, argv=0x2475b20) at main.c:209</p>
+
+<p>Best regards,<br>Pasi</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAH2-Wz%3DK4AZqQentZ0VgYjk3RpRA8n6oVrt2Cv0b977dA4qrDQ%40mail.gmail.com">Re: BUG #17362: Error &quot;could not find block containing chunk&quot; when
+ using index with icu collation on CentOS 7</a> at 2022-01-11 22:19:38 from Peter Geoghegan
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAH2-Wzk%3D5jGMdS4UWmQJ9m3YQGot9K5ZcBqCQ-_J55rjK7MHAA%40mail.gmail.com">Next Message</a></th>
+            <td>Peter Geoghegan</td>
+            <td>2022-01-11 19:45:19</td>
+            <td><a href="/message-id/CAH2-Wzk%3D5jGMdS4UWmQJ9m3YQGot9K5ZcBqCQ-_J55rjK7MHAA%40mail.gmail.com">Re: When Update balloons memory</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAHK9SNEa4iGHXQjPti719ke0yWhg%3D1A9wbnRdXBh6skD4YO59w%40mail.gmail.com">Previous Message</a></th>
+            <td>Роман Григорович</td>
+            <td>2022-01-11 06:44:23</td>
+            <td><a href="/message-id/CAHK9SNEa4iGHXQjPti719ke0yWhg%3D1A9wbnRdXBh6skD4YO59w%40mail.gmail.com">Re: BUG #17361: Unique index constraint inconsistence</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

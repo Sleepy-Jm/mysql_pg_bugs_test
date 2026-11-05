@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18793-07a72289887f0966%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-02-04T12:43:25" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="9c80e9472b2a4c867540c33d93be1b27">BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202502041243">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18793-07a72289887f0966@postgresql.org"></a>
+<a name="9c80e9472b2a4c867540c33d93be1b27"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>ugurlu2001(at)hotmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-04 12:43:25</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18793-07a72289887f0966%40postgresql.org">18793-07a72289887f0966@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18793-07a72289887f0966%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18793-07a72289887f0966%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18793-07a72289887f0966%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18793-07a72289887f0966%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502040000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18793<br>Logged by:          Ugur YILMAZ<br>Email address:      ugurlu2001(at)hotmail(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Windows 11 Pro<br>Description:        </p>
+
+<p>I have a set of &quot;Functions&quot; that I created dynamically with PLPgSQL and are<br>connected to each other in a chain.</p>
+
+<p>The first function dynamically creates the second function. The second<br>function returns a set of values with a dynamic &quot;Return Query&quot; statement and<br>a reference to &quot;Returns Table (field1 type1, field2 type2 .... )&quot;.</p>
+
+<p>Basically, the result set seems to return exactly the desired result. The<br>exception is the varchar(n) fixed-length data type. Although the result set<br>is expected to be varchar(n) -a fixed-length value is expected-, a result of<br>type character varying (length indeterminate) is obtained.</p>
+
+<p>You can see the dynamically created function example that I use below. In<br>addition to the sample function, I am also sharing the &quot;Basic SQL&quot; sentence<br>that returns &quot;character varying (length indeterminate)&quot; data. It also<br>returns the correct result.</p>
+
+<p>I have been trying to solve this seemingly simple problem for a few days.<br>However, I have a special restriction on the Varchar(254) limit in my<br>development environment.</p>
+
+<p>Correctly working SQL script:</p>
+
+<p>-- kodx &gt; returning character varying :: length indeterminate<br> SELECT idx,kodx, guidx   <br>	 ,round(has_toplam::numeric,2) as has<br>	,round(gumus_toplam::numeric,2) as gumus<br>	,round(usd_toplam::numeric,2) as usd<br>	,round(eur_toplam::numeric,2) as eur<br>	,round(trl_toplam::numeric,2) as trl<br>	,round(gbp_toplam::numeric,2) as gbp<br>	,round(chf_toplam::numeric,2) as chf<br>	,round(platin_toplam::numeric,2) as platin<br>	,round(alloy_toplam::numeric,2) as alloy <br>	   FROM crosstab(&#x27; <br>		 SELECT idx, kodx, guidx, bt_kod, toplam_miktar FROM   <br>		 ( <br>		 SELECT cma.company_master_id as idx, bt.kod AS bt_kod, bt.sys_default,<br>SUM(cma.miktar) as toplam_miktar, cm.kod as kodx, cma.company_master_guid as<br>guidx FROM company_master_amounts AS cma  <br>		 	LEFT OUTER JOIN balance_types as bt ON cma.balance_types_guid = bt.guid</p>
+
+<p>		 	LEFT OUTER JOIN company_master as cm ON cm.id = cma.company_master_id <br>		 	WHERE company_master_id = 3<br>		 	GROUP BY cma.company_master_id, bt.kod, bt.sys_default, cm.kod,<br>cma.company_master_guid <br>		 ) ORDER BY idx, sys_default DESC, bt_kod <br>		&#x27;::TEXT, <br>		&#x27; SELECT kod as kodx FROM balance_types ORDER BY sys_default DESC, kod, id<br>&#x27;::TEXT) <br>		crosstab(idx integer, kodx character varying(200), guidx uuid<br>					,has_toplam numeric(22,6),gumus_toplam numeric(22,6)<br>					,usd_toplam numeric(22,6),eur_toplam numeric(22,6)<br>					,trl_toplam numeric(22,6),gbp_toplam numeric(22,6)<br>					,chf_toplam numeric(22,6),platin_toplam numeric(22,6)<br>					,alloy_toplam numeric(22,6))<br> GROUP BY<br>has_toplam,gumus_toplam,usd_toplam,eur_toplam,trl_toplam,gbp_toplam,chf_toplam,platin_toplam,alloy_toplam,kodx,guidx,idx</p>
+
+<p>		  ORDER BY kodx; <br>		  </p>
+
+<p>A function that returns a result of indefinite length in the form of<br>&quot;character varying&quot; instead of &quot;Code ::varchar(200)&quot;. A &quot;Returns Query&quot;<br>function that creates a dynamic SQL script and returns a value in the &quot;Table<br>Type&quot; (second level - needed by the end user):</p>
+
+<p>-- kodx ( field name kod on &quot;return table&quot; ) &gt; returning character varying<br>(200)<br>/* <br>FUNCTION: public.get_balance_pivot_1c(integer)<br>DROP FUNCTION IF EXISTS public.get_balance_pivot_1c(integer);<br>Select * from get_balance_pivot_1c(3) ; <br>*/ <br>CREATE OR REPLACE FUNCTION public.get_balance_pivot_1c(<br>	pintcompany_id integer)<br>    RETURNS TABLE(id integer, kod varchar(200), guid uuid, has numeric,<br>gumus numeric, usd numeric, eur numeric, trl numeric, gbp numeric, chf<br>numeric, platin numeric, alloy numeric) <br>    LANGUAGE &#x27;plpgsql&#x27;<br>    COST 100<br>	STABLE PARALLEL SAFE<br>    ROWS 1000 </p>
+
+<p>AS $BODY$ <br> BEGIN <br> RETURN QUERY </p>
+
+<p> SELECT idx,kodx::varchar(200), guidx   <br>	 ,round(has_toplam::numeric,2) as has<br>	,round(gumus_toplam::numeric,2) as gumus<br>	,round(usd_toplam::numeric,2) as usd<br>	,round(eur_toplam::numeric,2) as eur<br>	,round(trl_toplam::numeric,2) as trl<br>	,round(gbp_toplam::numeric,2) as gbp<br>	,round(chf_toplam::numeric,2) as chf<br>	,round(platin_toplam::numeric,2) as platin<br>	,round(alloy_toplam::numeric,2) as alloy <br>	   FROM crosstab(&#x27; <br>		 SELECT idx, kodx, guidx, bt_kod, toplam_miktar FROM   <br>		 ( <br>		 SELECT cma.company_master_id as idx, bt.kod AS bt_kod, bt.sys_default,<br>SUM(cma.miktar) as toplam_miktar, cm.kod as kodx, cma.company_master_guid as<br>guidx FROM company_master_amounts AS cma  <br>		 	LEFT OUTER JOIN balance_types as bt ON cma.balance_types_guid = bt.guid</p>
+
+<p>		 	LEFT OUTER JOIN company_master as cm ON cm.id = cma.company_master_id <br>		 	WHERE company_master_id = 3<br>		 	GROUP BY cma.company_master_id, bt.kod, bt.sys_default, cm.kod,<br>cma.company_master_guid <br>		 ) ORDER BY idx, sys_default DESC, bt_kod <br>		&#x27;::TEXT, <br>		&#x27; SELECT kod as kodx FROM balance_types ORDER BY sys_default DESC, kod, id<br>&#x27;::TEXT) crosstab(idx integer, kodx character varying(200), guidx uuid,<br>has_toplam numeric(22,6),gumus_toplam numeric(22,6),usd_toplam<br>numeric(22,6),eur_toplam numeric(22,6),trl_toplam numeric(22,6),gbp_toplam<br>numeric(22,6),chf_toplam numeric(22,6),platin_toplam<br>numeric(22,6),alloy_toplam numeric(22,6))<br> GROUP BY<br>has_toplam,gumus_toplam,usd_toplam,eur_toplam,trl_toplam,gbp_toplam,chf_toplam,platin_toplam,alloy_toplam,kodx,guidx,idx</p>
+
+<p>		  ORDER BY kodx; <br>	/* WHERE company_master_id = &#x27; || pintcompany_id || &#x27; */ <br>	/* WHERE company_master_id = &#x27; || &#x27;3&#x27; || &#x27; */ </p>
+
+<p>  END ; <br> <br>$BODY$;</p>
+
+<p>ALTER FUNCTION public.get_balance_pivot_1c(integer)<br>    OWNER TO postgres;</p>
+
+<p>As far as I have determined, the Postgresql database engine somehow returns<br>the varchar(n) - Fixed Length - data type as a &quot;character varying&quot; -<br>indefinite length data type.</p>
+
+<p>I hope this situation, which I observed as a problem, will be fixed as soon<br>as possible.</p>
+
+<p>Best wishes...</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="65eb4d7a46a2759dc2583f274bf50d16811caebe.camel@cybertec.at"></a>
+<a name="4e09fa3a4327a63b46500b8352a98304"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>ugurlu2001(at)hotmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18793: PLpgSQL Function Returning Type of Table is not
+ match for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-04 15:13:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/65eb4d7a46a2759dc2583f274bf50d16811caebe.camel%40cybertec.at">65eb4d7a46a2759dc2583f274bf50d16811caebe.camel@cybertec.at</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/65eb4d7a46a2759dc2583f274bf50d16811caebe.camel%40cybertec.at">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/65eb4d7a46a2759dc2583f274bf50d16811caebe.camel%40cybertec.at" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/65eb4d7a46a2759dc2583f274bf50d16811caebe.camel%40cybertec.at" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/65eb4d7a46a2759dc2583f274bf50d16811caebe.camel%40cybertec.at" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502040000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, 2025-02-04 at 12:43 +0000, PG Bug reporting form wrote:<br>&gt; I have a set of &quot;Functions&quot; that I created dynamically with PLPgSQL and are<br>&gt; connected to each other in a chain.<br>&gt; <br>&gt; The first function dynamically creates the second function. The second<br>&gt; function returns a set of values with a dynamic &quot;Return Query&quot; statement and<br>&gt; a reference to &quot;Returns Table (field1 type1, field2 type2 .... )&quot;.<br>&gt; <br>&gt; Basically, the result set seems to return exactly the desired result. The<br>&gt; exception is the varchar(n) fixed-length data type. Although the result set<br>&gt; is expected to be varchar(n) -a fixed-length value is expected-, a result of<br>&gt; type character varying (length indeterminate) is obtained.<br>&gt; <br>&gt; [...]<br>&gt; <br>&gt; As far as I have determined, the Postgresql database engine somehow returns<br>&gt; the varchar(n) - Fixed Length - data type as a &quot;character varying&quot; -<br>&gt; indefinite length data type.<br>&gt; <br>&gt; I hope this situation, which I observed as a problem, will be fixed as soon<br>&gt; as possible.</p>
+
+<p>That is working asdesigned.  Why is it a problem for you?</p>
+
+<p>Yours,<br>Laurenz Albe</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwa-R9UdDfbqfYyMBuYLT6dqFRcJAMB26jBgBkgDvBFJtw@mail.gmail.com"></a>
+<a name="8c1633f23c4c33a1c93740fa0df82333"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;ugurlu2001(at)hotmail(dot)com&quot; &lt;ugurlu2001(at)hotmail(dot)com&gt;,  &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18793: PLpgSQL Function Returning Type of Table is not match
+ for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-04 15:30:03</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwa-R9UdDfbqfYyMBuYLT6dqFRcJAMB26jBgBkgDvBFJtw%40mail.gmail.com">CAKFQuwa-R9UdDfbqfYyMBuYLT6dqFRcJAMB26jBgBkgDvBFJtw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwa-R9UdDfbqfYyMBuYLT6dqFRcJAMB26jBgBkgDvBFJtw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwa-R9UdDfbqfYyMBuYLT6dqFRcJAMB26jBgBkgDvBFJtw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwa-R9UdDfbqfYyMBuYLT6dqFRcJAMB26jBgBkgDvBFJtw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwa-R9UdDfbqfYyMBuYLT6dqFRcJAMB26jBgBkgDvBFJtw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502040000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tuesday, February 4, 2025, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;<br>wrote:<br>. The<br>&gt;<br>&gt; exception is the varchar(n) fixed-length data type</p>
+
+<p>&gt;<br>That isn’t how this works.  The (n) does not make it “fixed-width’.  It<br>simply is a way to enforce a maximum length to the value but otherwise the<br>data type itself is still variable width.  Mostly we recommend use of text,<br>dealing with constraints in other more global ways.</p>
+
+<p>Correctly working SQL script:</p>
+
+<p>I’ll wait for a “minimal reproducer” to dive into specifics if there are<br>still questions.</p>
+
+<p>As far as I have determined, the Postgresql database engine somehow returns<br>&gt; the varchar(n) - Fixed Length - data type as a &quot;character varying&quot; -<br>&gt; indefinite length data type.</p>
+
+<p>Mostly functions drop the (n) specifier and deal with the data type<br>itself.  The function only wants a concrete value and doesn’t deal with<br>enforcing constraints in its signature.  You can add code to the body if<br>you need that.</p>
+
+<p>&gt;<br>&gt; I hope this situation, which I observed as a problem, will be fixed as soon<br>&gt; as possible.<br>&gt;</p>
+
+<p>If the absence of the typmod as it is called (the (n)) is problem there<br>isn’t a change forthcoming to rework that part of the system.  It’s a<br>limitation we are living with.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="641679.1738684189@sss.pgh.pa.us"></a>
+<a name="d4c8958480a39fa3362be59460df46be"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>ugurlu2001(at)hotmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-04 15:49:49</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/641679.1738684189%40sss.pgh.pa.us">641679.1738684189@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/641679.1738684189%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/641679.1738684189%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/641679.1738684189%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/641679.1738684189%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502040000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt; writes:<br>&gt; On Tue, 2025-02-04 at 12:43 +0000, PG Bug reporting form wrote:<br>&gt;&gt; As far as I have determined, the Postgresql database engine somehow returns<br>&gt;&gt; the varchar(n) - Fixed Length - data type as a &quot;character varying&quot; -<br>&gt;&gt; indefinite length data type.</p>
+
+<p>&gt; That is working asdesigned.  Why is it a problem for you?</p>
+
+<p>Indeed.  See the Notes section in [1]:</p>
+
+<p>    The full SQL type syntax is allowed for declaring a function&#x27;s<br>    arguments and return value. However, parenthesized type modifiers<br>    (e.g., the precision field for type numeric) are discarded by<br>    CREATE FUNCTION. Thus for example CREATE FUNCTION foo<br>    (varchar(10)) ... is exactly the same as CREATE FUNCTION foo<br>    (varchar) ....</p>
+
+<p>The RETURNS TABLE notation is just syntactic sugar for some output<br>arguments, it doesn&#x27;t change this aspect.</p>
+
+<p>Our general view of notations like varchar(10) is that the length<br>limit is a kind of column constraint and is to be enforced against<br>data &quot;at rest&quot; in a table.  If you want something that&#x27;s enforced on<br>the fly during expression evaluation, you&#x27;ll need to use a domain<br>type with a CHECK constraint.</p>
+
+<p>			regards, tom lane</p>
+
+<p>[1] <a href="https://www.postgresql.org/docs/current/sql-createfunction.html" rel="nofollow">https://www.postgresql.org/docs/current/sql-createfunction.html</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="DU0PR10MB714275ACEBAB82D8C8F559D5C0F32@DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM"></a>
+<a name="f88d9252bede55a13efa55b91584b836"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;, &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Ynt: BUG #18793: PLpgSQL Function Returning Type of Table is not
+ match for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-09 21:22:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/DU0PR10MB714275ACEBAB82D8C8F559D5C0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM">DU0PR10MB714275ACEBAB82D8C8F559D5C0F32@DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/DU0PR10MB714275ACEBAB82D8C8F559D5C0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/DU0PR10MB714275ACEBAB82D8C8F559D5C0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/DU0PR10MB714275ACEBAB82D8C8F559D5C0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/DU0PR10MB714275ACEBAB82D8C8F559D5C0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Sorry for late reply, I&#x27;ve been out of town for a while and have only just been able to answer my emails.</p>
+
+<p>As I explain, the result set &quot;looks like&quot; working as designed but not like so.</p>
+
+<p>The result set I expect is a fixed length value: (varchar 200)</p>
+
+<p>However, the result set I get is a varchar (indefinite length) value.</p>
+
+<p>In my application development environment, it is important for the length information to be fixed as much as the type of the data type...</p>
+
+<p>In summary: &quot; varchar (indefine) != varchar (200)&quot;<br>________________________________<br>Gönderen: Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;<br>Gönderildi: 4 Şubat 2025 Salı 18:13<br>Kime: ugurlu2001(at)hotmail(dot)com &lt;ugurlu2001(at)hotmail(dot)com&gt;; pgsql-bugs(at)lists(dot)postgresql(dot)org &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;<br>Konu: Re: BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</p>
+
+<p>On Tue, 2025-02-04 at 12:43 +0000, PG Bug reporting form wrote:<br>&gt; I have a set of &quot;Functions&quot; that I created dynamically with PLPgSQL and are<br>&gt; connected to each other in a chain.<br>&gt;<br>&gt; The first function dynamically creates the second function. The second<br>&gt; function returns a set of values with a dynamic &quot;Return Query&quot; statement and<br>&gt; a reference to &quot;Returns Table (field1 type1, field2 type2 .... )&quot;.<br>&gt;<br>&gt; Basically, the result set seems to return exactly the desired result. The<br>&gt; exception is the varchar(n) fixed-length data type. Although the result set<br>&gt; is expected to be varchar(n) -a fixed-length value is expected-, a result of<br>&gt; type character varying (length indeterminate) is obtained.<br>&gt;<br>&gt; [...]<br>&gt;<br>&gt; As far as I have determined, the Postgresql database engine somehow returns<br>&gt; the varchar(n) - Fixed Length - data type as a &quot;character varying&quot; -<br>&gt; indefinite length data type.<br>&gt;<br>&gt; I hope this situation, which I observed as a problem, will be fixed as soon<br>&gt; as possible.</p>
+
+<p>That is working asdesigned.  Why is it a problem for you?</p>
+
+<p>Yours,<br>Laurenz Albe<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="DU0PR10MB7142A855C86EC71EAD9C9F1CC0F32@DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM"></a>
+<a name="2d659237207b9648c8b73ce2831e5b91"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Ynt: BUG #18793: PLpgSQL Function Returning Type of Table is not
+ match for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-09 22:34:35</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/DU0PR10MB7142A855C86EC71EAD9C9F1CC0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM">DU0PR10MB7142A855C86EC71EAD9C9F1CC0F32@DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/DU0PR10MB7142A855C86EC71EAD9C9F1CC0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/DU0PR10MB7142A855C86EC71EAD9C9F1CC0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/DU0PR10MB7142A855C86EC71EAD9C9F1CC0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/DU0PR10MB7142A855C86EC71EAD9C9F1CC0F32%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I am writing this answer as an addition to the answers I saw later from &quot;Tom Lane&quot; and &quot;David G. Johnston&quot; in this message tree.</p>
+
+<p>First of all, I want to show the subject from a different perspective. The situation I am experiencing is a short summary of this perspective. In my development environment, the Varchar(n) type is normally displayed as an &quot;Application Interface - Grid Display&quot; up to the 254 character limit. If the Varchar(indeterminate length) case is the case, the data remains embedded in a &quot;Memo pre-declaration&quot; definition. In other words, the user cannot view the data directly.</p>
+
+<p>For David&#x27;s message:<br>* It simply is a way to enforce a maximum length to the value but otherwise the data type itself is still variable width : &quot;What I exactly want is to limit the maximum length of the data type&quot; I think I stated the expression incorrectly. In other words, I do not have a question mark about what varchar(n) means, but the result I expect is not a &quot;text&quot;.</p>
+
+<p>* I’ll wait for a “minimal reproducer” to dive into specifics if there are still questions. : Do I need to provide you with examples on this or a remote connection for my own development environment? I can collaborate as you need.</p>
+
+<p>* Mostly functions drop the (n) specifier and deal with the data type itself. The function only wants a concrete value and doesn’t deal with enforcing constraints in its signature. You can add code to the body if you need that. :: This answer was a surprise to me. I don’t technically care about the function dropping the (n) specifier and identifier in the Database environment, but I do care about the “data type” returning “the type and properties” that I “want and define”.</p>
+
+<p>* If the absence of the typmod as it is called (the (n)) is a problem there isn’t a change forthcoming to rework that part of the system. It’s a limitation we are living with. : As far as I can see, no changes or updates are planned for the current situation and the current situation will continue as it is..</p>
+
+<p>For Tom&#x27;s message:<br>I will test the use of &quot;Check&quot; and &quot;Domain&quot; but even if I get the result I want in general, it will take time to adapt it in the application layer. Or I will have to do extra (quite a lot) coding without trying it at all.</p>
+
+<p>Thank you for the explanations and information. Although I find your answers convincing; I still can&#x27;t understand why I can&#x27;t get the desired result from the Varchar(n) type, whose -max- length I explicitly specified in the &quot;Returns Table&quot; statement.</p>
+
+<p>With by best...</p>
+
+<p>Ugur YILMAZ<br>________________________________<br>Gönderen: Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;<br>Gönderildi: 4 Şubat 2025 Salı 18:13<br>Kime: ugurlu2001(at)hotmail(dot)com &lt;ugurlu2001(at)hotmail(dot)com&gt;; pgsql-bugs(at)lists(dot)postgresql(dot)org &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;<br>Konu: Re: BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</p>
+
+<p>On Tue, 2025-02-04 at 12:43 +0000, PG Bug reporting form wrote:<br>&gt; I have a set of &quot;Functions&quot; that I created dynamically with PLPgSQL and are<br>&gt; connected to each other in a chain.<br>&gt;<br>&gt; The first function dynamically creates the second function. The second<br>&gt; function returns a set of values with a dynamic &quot;Return Query&quot; statement and<br>&gt; a reference to &quot;Returns Table (field1 type1, field2 type2 .... )&quot;.<br>&gt;<br>&gt; Basically, the result set seems to return exactly the desired result. The<br>&gt; exception is the varchar(n) fixed-length data type. Although the result set<br>&gt; is expected to be varchar(n) -a fixed-length value is expected-, a result of<br>&gt; type character varying (length indeterminate) is obtained.<br>&gt;<br>&gt; [...]<br>&gt;<br>&gt; As far as I have determined, the Postgresql database engine somehow returns<br>&gt; the varchar(n) - Fixed Length - data type as a &quot;character varying&quot; -<br>&gt; indefinite length data type.<br>&gt;<br>&gt; I hope this situation, which I observed as a problem, will be fixed as soon<br>&gt; as possible.</p>
+
+<p>That is working asdesigned.  Why is it a problem for you?</p>
+
+<p>Yours,<br>Laurenz Albe<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwZy-JU0tAWYd=6OheZci8OEXVx99J6eSH=hV3z0=OZfmg@mail.gmail.com"></a>
+<a name="0aca41dcb57819f105593394babd8b03"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18793: PLpgSQL Function Returning Type of Table is not match
+ for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-09 23:13:26</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwZy-JU0tAWYd%3D6OheZci8OEXVx99J6eSH%3DhV3z0%3DOZfmg%40mail.gmail.com">CAKFQuwZy-JU0tAWYd=6OheZci8OEXVx99J6eSH=hV3z0=OZfmg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwZy-JU0tAWYd%3D6OheZci8OEXVx99J6eSH%3DhV3z0%3DOZfmg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwZy-JU0tAWYd%3D6OheZci8OEXVx99J6eSH%3DhV3z0%3DOZfmg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwZy-JU0tAWYd%3D6OheZci8OEXVx99J6eSH%3DhV3z0%3DOZfmg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwZy-JU0tAWYd%3D6OheZci8OEXVx99J6eSH%3DhV3z0%3DOZfmg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Feb 9, 2025 at 3:53 PM Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt; wrote:</p>
+
+<p>&gt; First of all, I want to show the subject from a different perspective. The<br>&gt; situation I am experiencing is a short summary of this perspective. In my<br>&gt; development environment, the Varchar(n) type is normally displayed as an<br>&gt; &quot;Application Interface - Grid Display&quot; up to the 254 character limit. If<br>&gt; the Varchar(indeterminate length) case is the case, the data remains<br>&gt; embedded in a &quot;Memo pre-declaration&quot; definition. In other words, the user<br>&gt; cannot view the data directly.<br>&gt;</p>
+
+<p>I am familiar with this interpretation of the meta-data.  It is<br>indeed annoying that there is no satisfying solution to this. IMO the UI<br>should just detect the presence/absence of a newline in the data and render<br>the specific cell accordingly.</p>
+
+<p>&gt;<br>&gt; * I’ll wait for a “minimal reproducer” to dive into specifics if there are<br>&gt; still questions. : Do I need to provide you with examples on this or a<br>&gt; remote connection for my own development environment? I can collaborate as<br>&gt; you need.<br>&gt;</p>
+
+<p>You would need to write such a script; but it doesn&#x27;t seem necessary.<br>You&#x27;ve made your need clear and have a clear answer.</p>
+
+<p>&gt; * If the absence of the typmod as it is called (the (n)) is a problem<br>&gt; there isn’t a change forthcoming to rework that part of the system. It’s a<br>&gt; limitation we are living with. : As far as I can see, no changes or updates<br>&gt; are planned for the current situation and the current situation will<br>&gt; continue as it is..<br>&gt;</p>
+
+<p>Correct.</p>
+
+<p>&gt; Thank you for the explanations and information. Although I find your<br>&gt; answers convincing; I still can&#x27;t understand why I can&#x27;t get the desired<br>&gt; result from the Varchar(n) type, whose -max- length I explicitly specified<br>&gt; in the &quot;Returns Table&quot; statement.<br>&gt;</p>
+
+<p>I&#x27;m not sure I understand why as well, but unless I was intent on producing<br>a patch to overcome the limitation the why of it is immaterial to me.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2069593.1739143167@sss.pgh.pa.us"></a>
+<a name="cc569c856ab4dde7992b8f9e2f037e51"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: Ynt: BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-09 23:19:27</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2069593.1739143167%40sss.pgh.pa.us">2069593.1739143167@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2069593.1739143167%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2069593.1739143167%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2069593.1739143167%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2069593.1739143167%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt; writes:<br>&gt; Thank you for the explanations and information. Although I find your answers convincing; I still can&#x27;t understand why I can&#x27;t get the desired result from the Varchar(n) type, whose -max- length I explicitly specified in the &quot;Returns Table&quot; statement.</p>
+
+<p>Yeah.  There is about zero chance that we are going to rework that:<br>the decision that function argument and result types are identified<br>by type OID alone is ancient and deeply rooted.  Even ignoring the<br>costs of changing a lot of code, there are semantic problems.<br>For example, should we allow both of these functions to exist<br>concurrently?</p>
+
+<p>	create function f(varchar(100)) returns ...;<br>	create function f(varchar(200)) returns ...;</p>
+
+<p>If so, which do we pick when we&#x27;re uncertain about the length<br>of the argument value?</p>
+
+<p>You could however make a reasonable case that we should not accept<br>&quot;varchar(200)&quot; in contexts where we&#x27;re going to ignore the &quot;(200)&quot;<br>part.  That&#x27;s pretty ancient too, cf this comment in gram.y:</p>
+
+<p> * We can catch over-specified arguments here if we want to,<br> * but for now better to silently swallow typmod, etc.<br> * - thomas 2000-03-22</p>
+
+<p>I&#x27;m not sure whether rejecting such things would make more people<br>happy than it made unhappy.</p>
+
+<p>In any case, there&#x27;s a whole lot of history here and a lot of<br>reason to worry about backwards compatibility.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="DU0PR10MB71425233264A7687CB729D6FC0F22@DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM"></a>
+<a name="56b0877a8b78d579362a4b6455db4271"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Ynt: Ynt: BUG #18793: PLpgSQL Function Returning Type of Table is not
+ match for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-10 00:21:34</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/DU0PR10MB71425233264A7687CB729D6FC0F22%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM">DU0PR10MB71425233264A7687CB729D6FC0F22@DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/DU0PR10MB71425233264A7687CB729D6FC0F22%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/DU0PR10MB71425233264A7687CB729D6FC0F22%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/DU0PR10MB71425233264A7687CB729D6FC0F22%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/DU0PR10MB71425233264A7687CB729D6FC0F22%40DU0PR10MB7142.EURPRD10.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>As a result of the current answers, I think it would be logical to close this &quot;bug request&quot; due to &quot;past compatibility&quot; concerns.</p>
+
+<p>However, in the future, I can suggest that this issue &quot;somehow&quot; remains with the &quot;Updatable Flag&quot;. At the end of the day, this situation was a &quot;Surprise&quot; for me in terms of my respect for Postgresql and the time I spent on it for &quot;Application Development&quot; purposes.</p>
+
+<p>Since version 9.1, this is the second most critical problem I have encountered with Postgresql (only for me) (the first was the Turkish character incompatibility experienced on a global scale - Postgresql service not working with Cumulative Windows Update). I can ignore this for now since I can get around the problem with alternative solutions.</p>
+
+<p>Thanks for your answers and the time you spent on your answers.</p>
+
+<p>Best wishes.</p>
+
+<p>Ugur YILMAZ<br>________________________________<br>Gönderen: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;<br>Gönderildi: 10 Şubat 2025 Pazartesi 02:19<br>Kime: Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt;<br>Bilgi: pgsql-bugs(at)lists(dot)postgresql(dot)org &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;<br>Konu: Re: Ynt: BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query</p>
+
+<p>Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt; writes:<br>&gt; Thank you for the explanations and information. Although I find your answers convincing; I still can&#x27;t understand why I can&#x27;t get the desired result from the Varchar(n) type, whose -max- length I explicitly specified in the &quot;Returns Table&quot; statement.</p>
+
+<p>Yeah.  There is about zero chance that we are going to rework that:<br>the decision that function argument and result types are identified<br>by type OID alone is ancient and deeply rooted.  Even ignoring the<br>costs of changing a lot of code, there are semantic problems.<br>For example, should we allow both of these functions to exist<br>concurrently?</p>
+
+<p>        create function f(varchar(100)) returns ...;<br>        create function f(varchar(200)) returns ...;</p>
+
+<p>If so, which do we pick when we&#x27;re uncertain about the length<br>of the argument value?</p>
+
+<p>You could however make a reasonable case that we should not accept<br>&quot;varchar(200)&quot; in contexts where we&#x27;re going to ignore the &quot;(200)&quot;<br>part.  That&#x27;s pretty ancient too, cf this comment in gram.y:</p>
+
+<p> * We can catch over-specified arguments here if we want to,<br> * but for now better to silently swallow typmod, etc.<br> * - thomas 2000-03-22</p>
+
+<p>I&#x27;m not sure whether rejecting such things would make more people<br>happy than it made unhappy.</p>
+
+<p>In any case, there&#x27;s a whole lot of history here and a lot of<br>reason to worry about backwards compatibility.</p>
+
+<p>                        regards, tom lane<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwaRY_x3XXnhpi3Q6NcUAsW9aMRAcEwRtxb8kDDjk1fKvA@mail.gmail.com"></a>
+<a name="9d9f4f2938e233cb2391a4c073845aff"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Ugur Yilmaz &lt;ugurlu2001(at)hotmail(dot)com&gt;,  &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18793: PLpgSQL Function Returning Type of Table is not match
+ for varchar(n) data type via Return Query</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-10 00:55:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwaRY_x3XXnhpi3Q6NcUAsW9aMRAcEwRtxb8kDDjk1fKvA%40mail.gmail.com">CAKFQuwaRY_x3XXnhpi3Q6NcUAsW9aMRAcEwRtxb8kDDjk1fKvA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwaRY_x3XXnhpi3Q6NcUAsW9aMRAcEwRtxb8kDDjk1fKvA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwaRY_x3XXnhpi3Q6NcUAsW9aMRAcEwRtxb8kDDjk1fKvA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwaRY_x3XXnhpi3Q6NcUAsW9aMRAcEwRtxb8kDDjk1fKvA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwaRY_x3XXnhpi3Q6NcUAsW9aMRAcEwRtxb8kDDjk1fKvA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sunday, February 9, 2025, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; You could however make a reasonable case that we should not accept<br>&gt; &quot;varchar(200)&quot; in contexts where we&#x27;re going to ignore the &quot;(200)&quot;<br>&gt; part.  That&#x27;s pretty ancient too, cf this comment in gram.y:<br>&gt;<br>&gt;  * We can catch over-specified arguments here if we want to,<br>&gt;  * but for now better to silently swallow typmod, etc.<br>&gt;  * - thomas 2000-03-22<br>&gt;<br>&gt; I&#x27;m not sure whether rejecting such things would make more people<br>&gt; happy than it made unhappy.</p>
+
+<p>Given that pg_dump already outputs the typmod-less code I’d have to suspect<br>that making specifying a typmod here an error would be better for our<br>reputation, and users, overall.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

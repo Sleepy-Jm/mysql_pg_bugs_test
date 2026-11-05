@@ -1,0 +1,617 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18793
+Logged by:          Ugur YILMAZ
+Email address:      ugurlu2001(at)hotmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Windows 11 Pro
+Description:        
+
+
+I have a set of "Functions" that I created dynamically with PLPgSQL and are
+connected to each other in a chain.
+
+
+The first function dynamically creates the second function. The second
+function returns a set of values with a dynamic "Return Query" statement and
+a reference to "Returns Table (field1 type1, field2 type2 .... )".
+
+
+Basically, the result set seems to return exactly the desired result. The
+exception is the varchar(n) fixed-length data type. Although the result set
+is expected to be varchar(n) -a fixed-length value is expected-, a result of
+type character varying (length indeterminate) is obtained.
+
+
+You can see the dynamically created function example that I use below. In
+addition to the sample function, I am also sharing the "Basic SQL" sentence
+that returns "character varying (length indeterminate)" data. It also
+returns the correct result.
+
+
+I have been trying to solve this seemingly simple problem for a few days.
+However, I have a special restriction on the Varchar(254) limit in my
+development environment.
+
+
+Correctly working SQL script:
+
+
+-- kodx > returning character varying :: length indeterminate
+ SELECT idx,kodx, guidx   
+	 ,round(has_toplam::numeric,2) as has
+	,round(gumus_toplam::numeric,2) as gumus
+	,round(usd_toplam::numeric,2) as usd
+	,round(eur_toplam::numeric,2) as eur
+	,round(trl_toplam::numeric,2) as trl
+	,round(gbp_toplam::numeric,2) as gbp
+	,round(chf_toplam::numeric,2) as chf
+	,round(platin_toplam::numeric,2) as platin
+	,round(alloy_toplam::numeric,2) as alloy 
+	   FROM crosstab(' 
+		 SELECT idx, kodx, guidx, bt_kod, toplam_miktar FROM   
+		 ( 
+		 SELECT cma.company_master_id as idx, bt.kod AS bt_kod, bt.sys_default,
+SUM(cma.miktar) as toplam_miktar, cm.kod as kodx, cma.company_master_guid as
+guidx FROM company_master_amounts AS cma  
+		 	LEFT OUTER JOIN balance_types as bt ON cma.balance_types_guid = bt.guid
+
+
+		 	LEFT OUTER JOIN company_master as cm ON cm.id = cma.company_master_id 
+		 	WHERE company_master_id = 3
+		 	GROUP BY cma.company_master_id, bt.kod, bt.sys_default, cm.kod,
+cma.company_master_guid 
+		 ) ORDER BY idx, sys_default DESC, bt_kod 
+		'::TEXT, 
+		' SELECT kod as kodx FROM balance_types ORDER BY sys_default DESC, kod, id
+'::TEXT) 
+		crosstab(idx integer, kodx character varying(200), guidx uuid
+					,has_toplam numeric(22,6),gumus_toplam numeric(22,6)
+					,usd_toplam numeric(22,6),eur_toplam numeric(22,6)
+					,trl_toplam numeric(22,6),gbp_toplam numeric(22,6)
+					,chf_toplam numeric(22,6),platin_toplam numeric(22,6)
+					,alloy_toplam numeric(22,6))
+ GROUP BY
+has_toplam,gumus_toplam,usd_toplam,eur_toplam,trl_toplam,gbp_toplam,chf_toplam,platin_toplam,alloy_toplam,kodx,guidx,idx
+
+
+		  ORDER BY kodx; 
+		  
+
+
+A function that returns a result of indefinite length in the form of
+"character varying" instead of "Code ::varchar(200)". A "Returns Query"
+function that creates a dynamic SQL script and returns a value in the "Table
+Type" (second level - needed by the end user):
+
+
+-- kodx ( field name kod on "return table" ) > returning character varying
+(200)
+/* 
+FUNCTION: public.get_balance_pivot_1c(integer)
+DROP FUNCTION IF EXISTS public.get_balance_pivot_1c(integer);
+Select * from get_balance_pivot_1c(3) ; 
+*/ 
+CREATE OR REPLACE FUNCTION public.get_balance_pivot_1c(
+	pintcompany_id integer)
+    RETURNS TABLE(id integer, kod varchar(200), guid uuid, has numeric,
+gumus numeric, usd numeric, eur numeric, trl numeric, gbp numeric, chf
+numeric, platin numeric, alloy numeric) 
+    LANGUAGE 'plpgsql'
+    COST 100
+	STABLE PARALLEL SAFE
+    ROWS 1000 
+
+
+AS $BODY$ 
+ BEGIN 
+ RETURN QUERY 
+
+
+ SELECT idx,kodx::varchar(200), guidx   
+	 ,round(has_toplam::numeric,2) as has
+	,round(gumus_toplam::numeric,2) as gumus
+	,round(usd_toplam::numeric,2) as usd
+	,round(eur_toplam::numeric,2) as eur
+	,round(trl_toplam::numeric,2) as trl
+	,round(gbp_toplam::numeric,2) as gbp
+	,round(chf_toplam::numeric,2) as chf
+	,round(platin_toplam::numeric,2) as platin
+	,round(alloy_toplam::numeric,2) as alloy 
+	   FROM crosstab(' 
+		 SELECT idx, kodx, guidx, bt_kod, toplam_miktar FROM   
+		 ( 
+		 SELECT cma.company_master_id as idx, bt.kod AS bt_kod, bt.sys_default,
+SUM(cma.miktar) as toplam_miktar, cm.kod as kodx, cma.company_master_guid as
+guidx FROM company_master_amounts AS cma  
+		 	LEFT OUTER JOIN balance_types as bt ON cma.balance_types_guid = bt.guid
+
+
+		 	LEFT OUTER JOIN company_master as cm ON cm.id = cma.company_master_id 
+		 	WHERE company_master_id = 3
+		 	GROUP BY cma.company_master_id, bt.kod, bt.sys_default, cm.kod,
+cma.company_master_guid 
+		 ) ORDER BY idx, sys_default DESC, bt_kod 
+		'::TEXT, 
+		' SELECT kod as kodx FROM balance_types ORDER BY sys_default DESC, kod, id
+'::TEXT) crosstab(idx integer, kodx character varying(200), guidx uuid,
+has_toplam numeric(22,6),gumus_toplam numeric(22,6),usd_toplam
+numeric(22,6),eur_toplam numeric(22,6),trl_toplam numeric(22,6),gbp_toplam
+numeric(22,6),chf_toplam numeric(22,6),platin_toplam
+numeric(22,6),alloy_toplam numeric(22,6))
+ GROUP BY
+has_toplam,gumus_toplam,usd_toplam,eur_toplam,trl_toplam,gbp_toplam,chf_toplam,platin_toplam,alloy_toplam,kodx,guidx,idx
+
+
+		  ORDER BY kodx; 
+	/* WHERE company_master_id = ' || pintcompany_id || ' */ 
+	/* WHERE company_master_id = ' || '3' || ' */ 
+
+
+  END ; 
+ 
+$BODY$;
+
+
+ALTER FUNCTION public.get_balance_pivot_1c(integer)
+    OWNER TO postgres;
+
+
+As far as I have determined, the Postgresql database engine somehow returns
+the varchar(n) - Fixed Length - data type as a "character varying" -
+indefinite length data type.
+
+
+I hope this situation, which I observed as a problem, will be fixed as soon
+as possible.
+
+
+Best wishes...
+
+
+
+
+
+### MESSAGE 1
+On Tue, 2025-02-04 at 12:43 +0000, PG Bug reporting form wrote:
+> I have a set of "Functions" that I created dynamically with PLPgSQL and are
+> connected to each other in a chain.
+> 
+> The first function dynamically creates the second function. The second
+> function returns a set of values with a dynamic "Return Query" statement and
+> a reference to "Returns Table (field1 type1, field2 type2 .... )".
+> 
+> Basically, the result set seems to return exactly the desired result. The
+> exception is the varchar(n) fixed-length data type. Although the result set
+> is expected to be varchar(n) -a fixed-length value is expected-, a result of
+> type character varying (length indeterminate) is obtained.
+> 
+> [...]
+> 
+> As far as I have determined, the Postgresql database engine somehow returns
+> the varchar(n) - Fixed Length - data type as a "character varying" -
+> indefinite length data type.
+> 
+> I hope this situation, which I observed as a problem, will be fixed as soon
+> as possible.
+
+
+That is working asdesigned.  Why is it a problem for you?
+
+
+Yours,
+Laurenz Albe
+
+
+
+
+
+### MESSAGE 2
+On Tuesday, February 4, 2025, PG Bug reporting form <noreply(at)postgresql(dot)org>
+wrote:
+. The
+>
+> exception is the varchar(n) fixed-length data type
+
+
+>
+That isn’t how this works.  The (n) does not make it “fixed-width’.  It
+simply is a way to enforce a maximum length to the value but otherwise the
+data type itself is still variable width.  Mostly we recommend use of text,
+dealing with constraints in other more global ways.
+
+
+Correctly working SQL script:
+
+
+I’ll wait for a “minimal reproducer” to dive into specifics if there are
+still questions.
+
+
+As far as I have determined, the Postgresql database engine somehow returns
+> the varchar(n) - Fixed Length - data type as a "character varying" -
+> indefinite length data type.
+
+
+Mostly functions drop the (n) specifier and deal with the data type
+itself.  The function only wants a concrete value and doesn’t deal with
+enforcing constraints in its signature.  You can add code to the body if
+you need that.
+
+
+>
+> I hope this situation, which I observed as a problem, will be fixed as soon
+> as possible.
+>
+
+
+If the absence of the typmod as it is called (the (n)) is problem there
+isn’t a change forthcoming to rework that part of the system.  It’s a
+limitation we are living with.
+
+
+David J.
+
+
+
+### MESSAGE 3
+Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at> writes:
+> On Tue, 2025-02-04 at 12:43 +0000, PG Bug reporting form wrote:
+>> As far as I have determined, the Postgresql database engine somehow returns
+>> the varchar(n) - Fixed Length - data type as a "character varying" -
+>> indefinite length data type.
+
+
+> That is working asdesigned.  Why is it a problem for you?
+
+
+Indeed.  See the Notes section in [1]:
+
+
+    The full SQL type syntax is allowed for declaring a function's
+    arguments and return value. However, parenthesized type modifiers
+    (e.g., the precision field for type numeric) are discarded by
+    CREATE FUNCTION. Thus for example CREATE FUNCTION foo
+    (varchar(10)) ... is exactly the same as CREATE FUNCTION foo
+    (varchar) ....
+
+
+The RETURNS TABLE notation is just syntactic sugar for some output
+arguments, it doesn't change this aspect.
+
+
+Our general view of notations like varchar(10) is that the length
+limit is a kind of column constraint and is to be enforced against
+data "at rest" in a table.  If you want something that's enforced on
+the fly during expression evaluation, you'll need to use a domain
+type with a CHECK constraint.
+
+
+			regards, tom lane
+
+
+[1] https://www.postgresql.org/docs/current/sql-createfunction.html
+
+
+
+
+
+### MESSAGE 4
+Sorry for late reply, I've been out of town for a while and have only just been able to answer my emails.
+
+
+As I explain, the result set "looks like" working as designed but not like so.
+
+
+The result set I expect is a fixed length value: (varchar 200)
+
+
+However, the result set I get is a varchar (indefinite length) value.
+
+
+In my application development environment, it is important for the length information to be fixed as much as the type of the data type...
+
+
+In summary: " varchar (indefine) != varchar (200)"
+________________________________
+Gönderen: Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at>
+Gönderildi: 4 Şubat 2025 Salı 18:13
+Kime: ugurlu2001(at)hotmail(dot)com <ugurlu2001(at)hotmail(dot)com>; pgsql-bugs(at)lists(dot)postgresql(dot)org <pgsql-bugs(at)lists(dot)postgresql(dot)org>
+Konu: Re: BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query
+
+
+On Tue, 2025-02-04 at 12:43 +0000, PG Bug reporting form wrote:
+> I have a set of "Functions" that I created dynamically with PLPgSQL and are
+> connected to each other in a chain.
+>
+> The first function dynamically creates the second function. The second
+> function returns a set of values with a dynamic "Return Query" statement and
+> a reference to "Returns Table (field1 type1, field2 type2 .... )".
+>
+> Basically, the result set seems to return exactly the desired result. The
+> exception is the varchar(n) fixed-length data type. Although the result set
+> is expected to be varchar(n) -a fixed-length value is expected-, a result of
+> type character varying (length indeterminate) is obtained.
+>
+> [...]
+>
+> As far as I have determined, the Postgresql database engine somehow returns
+> the varchar(n) - Fixed Length - data type as a "character varying" -
+> indefinite length data type.
+>
+> I hope this situation, which I observed as a problem, will be fixed as soon
+> as possible.
+
+
+That is working asdesigned.  Why is it a problem for you?
+
+
+Yours,
+Laurenz Albe
+
+
+
+### MESSAGE 5
+I am writing this answer as an addition to the answers I saw later from "Tom Lane" and "David G. Johnston" in this message tree.
+
+
+First of all, I want to show the subject from a different perspective. The situation I am experiencing is a short summary of this perspective. In my development environment, the Varchar(n) type is normally displayed as an "Application Interface - Grid Display" up to the 254 character limit. If the Varchar(indeterminate length) case is the case, the data remains embedded in a "Memo pre-declaration" definition. In other words, the user cannot view the data directly.
+
+
+For David's message:
+* It simply is a way to enforce a maximum length to the value but otherwise the data type itself is still variable width : "What I exactly want is to limit the maximum length of the data type" I think I stated the expression incorrectly. In other words, I do not have a question mark about what varchar(n) means, but the result I expect is not a "text".
+
+
+* I’ll wait for a “minimal reproducer” to dive into specifics if there are still questions. : Do I need to provide you with examples on this or a remote connection for my own development environment? I can collaborate as you need.
+
+
+* Mostly functions drop the (n) specifier and deal with the data type itself. The function only wants a concrete value and doesn’t deal with enforcing constraints in its signature. You can add code to the body if you need that. :: This answer was a surprise to me. I don’t technically care about the function dropping the (n) specifier and identifier in the Database environment, but I do care about the “data type” returning “the type and properties” that I “want and define”.
+
+
+* If the absence of the typmod as it is called (the (n)) is a problem there isn’t a change forthcoming to rework that part of the system. It’s a limitation we are living with. : As far as I can see, no changes or updates are planned for the current situation and the current situation will continue as it is..
+
+
+For Tom's message:
+I will test the use of "Check" and "Domain" but even if I get the result I want in general, it will take time to adapt it in the application layer. Or I will have to do extra (quite a lot) coding without trying it at all.
+
+
+Thank you for the explanations and information. Although I find your answers convincing; I still can't understand why I can't get the desired result from the Varchar(n) type, whose -max- length I explicitly specified in the "Returns Table" statement.
+
+
+With by best...
+
+
+Ugur YILMAZ
+________________________________
+Gönderen: Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at>
+Gönderildi: 4 Şubat 2025 Salı 18:13
+Kime: ugurlu2001(at)hotmail(dot)com <ugurlu2001(at)hotmail(dot)com>; pgsql-bugs(at)lists(dot)postgresql(dot)org <pgsql-bugs(at)lists(dot)postgresql(dot)org>
+Konu: Re: BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query
+
+
+On Tue, 2025-02-04 at 12:43 +0000, PG Bug reporting form wrote:
+> I have a set of "Functions" that I created dynamically with PLPgSQL and are
+> connected to each other in a chain.
+>
+> The first function dynamically creates the second function. The second
+> function returns a set of values with a dynamic "Return Query" statement and
+> a reference to "Returns Table (field1 type1, field2 type2 .... )".
+>
+> Basically, the result set seems to return exactly the desired result. The
+> exception is the varchar(n) fixed-length data type. Although the result set
+> is expected to be varchar(n) -a fixed-length value is expected-, a result of
+> type character varying (length indeterminate) is obtained.
+>
+> [...]
+>
+> As far as I have determined, the Postgresql database engine somehow returns
+> the varchar(n) - Fixed Length - data type as a "character varying" -
+> indefinite length data type.
+>
+> I hope this situation, which I observed as a problem, will be fixed as soon
+> as possible.
+
+
+That is working asdesigned.  Why is it a problem for you?
+
+
+Yours,
+Laurenz Albe
+
+
+
+### MESSAGE 6
+On Sun, Feb 9, 2025 at 3:53 PM Ugur Yilmaz <ugurlu2001(at)hotmail(dot)com> wrote:
+
+
+> First of all, I want to show the subject from a different perspective. The
+> situation I am experiencing is a short summary of this perspective. In my
+> development environment, the Varchar(n) type is normally displayed as an
+> "Application Interface - Grid Display" up to the 254 character limit. If
+> the Varchar(indeterminate length) case is the case, the data remains
+> embedded in a "Memo pre-declaration" definition. In other words, the user
+> cannot view the data directly.
+>
+
+
+I am familiar with this interpretation of the meta-data.  It is
+indeed annoying that there is no satisfying solution to this. IMO the UI
+should just detect the presence/absence of a newline in the data and render
+the specific cell accordingly.
+
+
+>
+> * I’ll wait for a “minimal reproducer” to dive into specifics if there are
+> still questions. : Do I need to provide you with examples on this or a
+> remote connection for my own development environment? I can collaborate as
+> you need.
+>
+
+
+You would need to write such a script; but it doesn't seem necessary.
+You've made your need clear and have a clear answer.
+
+
+> * If the absence of the typmod as it is called (the (n)) is a problem
+> there isn’t a change forthcoming to rework that part of the system. It’s a
+> limitation we are living with. : As far as I can see, no changes or updates
+> are planned for the current situation and the current situation will
+> continue as it is..
+>
+
+
+Correct.
+
+
+> Thank you for the explanations and information. Although I find your
+> answers convincing; I still can't understand why I can't get the desired
+> result from the Varchar(n) type, whose -max- length I explicitly specified
+> in the "Returns Table" statement.
+>
+
+
+I'm not sure I understand why as well, but unless I was intent on producing
+a patch to overcome the limitation the why of it is immaterial to me.
+
+
+David J.
+
+
+
+### MESSAGE 7
+Ugur Yilmaz <ugurlu2001(at)hotmail(dot)com> writes:
+> Thank you for the explanations and information. Although I find your answers convincing; I still can't understand why I can't get the desired result from the Varchar(n) type, whose -max- length I explicitly specified in the "Returns Table" statement.
+
+
+Yeah.  There is about zero chance that we are going to rework that:
+the decision that function argument and result types are identified
+by type OID alone is ancient and deeply rooted.  Even ignoring the
+costs of changing a lot of code, there are semantic problems.
+For example, should we allow both of these functions to exist
+concurrently?
+
+
+	create function f(varchar(100)) returns ...;
+	create function f(varchar(200)) returns ...;
+
+
+If so, which do we pick when we're uncertain about the length
+of the argument value?
+
+
+You could however make a reasonable case that we should not accept
+"varchar(200)" in contexts where we're going to ignore the "(200)"
+part.  That's pretty ancient too, cf this comment in gram.y:
+
+
+ * We can catch over-specified arguments here if we want to,
+ * but for now better to silently swallow typmod, etc.
+ * - thomas 2000-03-22
+
+
+I'm not sure whether rejecting such things would make more people
+happy than it made unhappy.
+
+
+In any case, there's a whole lot of history here and a lot of
+reason to worry about backwards compatibility.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 8
+As a result of the current answers, I think it would be logical to close this "bug request" due to "past compatibility" concerns.
+
+
+However, in the future, I can suggest that this issue "somehow" remains with the "Updatable Flag". At the end of the day, this situation was a "Surprise" for me in terms of my respect for Postgresql and the time I spent on it for "Application Development" purposes.
+
+
+Since version 9.1, this is the second most critical problem I have encountered with Postgresql (only for me) (the first was the Turkish character incompatibility experienced on a global scale - Postgresql service not working with Cumulative Windows Update). I can ignore this for now since I can get around the problem with alternative solutions.
+
+
+Thanks for your answers and the time you spent on your answers.
+
+
+Best wishes.
+
+
+Ugur YILMAZ
+________________________________
+Gönderen: Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us>
+Gönderildi: 10 Şubat 2025 Pazartesi 02:19
+Kime: Ugur Yilmaz <ugurlu2001(at)hotmail(dot)com>
+Bilgi: pgsql-bugs(at)lists(dot)postgresql(dot)org <pgsql-bugs(at)lists(dot)postgresql(dot)org>
+Konu: Re: Ynt: BUG #18793: PLpgSQL Function Returning Type of Table is not match for varchar(n) data type via Return Query
+
+
+Ugur Yilmaz <ugurlu2001(at)hotmail(dot)com> writes:
+> Thank you for the explanations and information. Although I find your answers convincing; I still can't understand why I can't get the desired result from the Varchar(n) type, whose -max- length I explicitly specified in the "Returns Table" statement.
+
+
+Yeah.  There is about zero chance that we are going to rework that:
+the decision that function argument and result types are identified
+by type OID alone is ancient and deeply rooted.  Even ignoring the
+costs of changing a lot of code, there are semantic problems.
+For example, should we allow both of these functions to exist
+concurrently?
+
+
+        create function f(varchar(100)) returns ...;
+        create function f(varchar(200)) returns ...;
+
+
+If so, which do we pick when we're uncertain about the length
+of the argument value?
+
+
+You could however make a reasonable case that we should not accept
+"varchar(200)" in contexts where we're going to ignore the "(200)"
+part.  That's pretty ancient too, cf this comment in gram.y:
+
+
+ * We can catch over-specified arguments here if we want to,
+ * but for now better to silently swallow typmod, etc.
+ * - thomas 2000-03-22
+
+
+I'm not sure whether rejecting such things would make more people
+happy than it made unhappy.
+
+
+In any case, there's a whole lot of history here and a lot of
+reason to worry about backwards compatibility.
+
+
+                        regards, tom lane
+
+
+
+### MESSAGE 9
+On Sunday, February 9, 2025, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> You could however make a reasonable case that we should not accept
+> "varchar(200)" in contexts where we're going to ignore the "(200)"
+> part.  That's pretty ancient too, cf this comment in gram.y:
+>
+>  * We can catch over-specified arguments here if we want to,
+>  * but for now better to silently swallow typmod, etc.
+>  * - thomas 2000-03-22
+>
+> I'm not sure whether rejecting such things would make more people
+> happy than it made unhappy.
+
+
+Given that pg_dump already outputs the typmod-less code I’d have to suspect
+that making specifying a typmod here an error would be better for our
+reputation, and users, overall.
+
+
+David J.
+

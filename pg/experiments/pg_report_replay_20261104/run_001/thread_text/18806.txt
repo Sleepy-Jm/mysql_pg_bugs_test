@@ -1,0 +1,1415 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18806
+Logged by:          lingbin meng
+Email address:      m_lingbin(at)126(dot)com
+PostgreSQL version: 17.2
+Operating system:   CentOS Linux release 7.9.2009 (Core)
+Description:        
+
+
+After upgrading PG17.2, testing found that when enable_rartitionwise_join is
+set to ON, when executing a query, if the main query and subquery have the
+same table, the query will report an error.
+
+
+The database log shows the following error:
+LOG:  server process (PID 24796) was terminated by signal 6: Aborted
+DETAIL:  Failed process was running: select * from test t join orders o on
+t.order_id =o.order_id where t.order_id in (select order_id from orders);
+LOG:  terminating any other active server processes
+
+
+The table structure is as follows, all of which are empty tables:
+demo=# \d+ test
+Table "bookings.test"
+Column  |       Type        | Collation | Nullable | Default | Storage  |
+Compression | Stats target | Description
+----------+-------------------+-----------+----------+---------+----------+-------------+--------------+-------------
+order_id | integer           |           |          |         | plain    |  
+          |              |
+name     | character varying |           |          |         | extended |  
+          |              |
+Access method: heap
+demo=# \d+ orders
+Partitioned table "bookings.orders"
+Column  |         Type          | Collation | Nullable | Default | Storage 
+| Compression | Stats target | Description
+----------+-----------------------+-----------+----------+---------+----------+-------------+--------------+-------------
+order_id | integer               |           |          |         | plain   
+|             |              |
+name     | character varying(10) |           |          |         | extended
+|             |              |
+Partition key: HASH (order_id)
+Partitions: orders_p1 FOR VALUES WITH (modulus 32, remainder 0),
+orders_p10 FOR VALUES WITH (modulus 32, remainder 9),
+orders_p11 FOR VALUES WITH (modulus 32, remainder 10),
+orders_p12 FOR VALUES WITH (modulus 32, remainder 11),
+orders_p13 FOR VALUES WITH (modulus 32, remainder 12),
+orders_p14 FOR VALUES WITH (modulus 32, remainder 13),
+orders_p15 FOR VALUES WITH (modulus 32, remainder 14),
+orders_p16 FOR VALUES WITH (modulus 32, remainder 15),
+orders_p17 FOR VALUES WITH (modulus 32, remainder 16),
+orders_p18 FOR VALUES WITH (modulus 32, remainder 17),
+orders_p19 FOR VALUES WITH (modulus 32, remainder 18),
+orders_p2 FOR VALUES WITH (modulus 32, remainder 1),
+orders_p20 FOR VALUES WITH (modulus 32, remainder 19),
+orders_p21 FOR VALUES WITH (modulus 32, remainder 20),
+orders_p22 FOR VALUES WITH (modulus 32, remainder 21),
+orders_p23 FOR VALUES WITH (modulus 32, remainder 22),
+orders_p24 FOR VALUES WITH (modulus 32, remainder 23),
+orders_p25 FOR VALUES WITH (modulus 32, remainder 24),
+orders_p26 FOR VALUES WITH (modulus 32, remainder 25),
+orders_p28 FOR VALUES WITH (modulus 32, remainder 27),
+orders_p29 FOR VALUES WITH (modulus 32, remainder 28),
+orders_p3 FOR VALUES WITH (modulus 32, remainder 2),
+orders_p30 FOR VALUES WITH (modulus 32, remainder 29),
+orders_p31 FOR VALUES WITH (modulus 32, remainder 30),
+orders_p32 FOR VALUES WITH (modulus 32, remainder 31),
+orders_p4 FOR VALUES WITH (modulus 32, remainder 3),
+orders_p5 FOR VALUES WITH (modulus 32, remainder 4),
+orders_p6 FOR VALUES WITH (modulus 32, remainder 5),
+orders_p7 FOR VALUES WITH (modulus 32, remainder 6),
+orders_p8 FOR VALUES WITH (modulus 32, remainder 7),
+orders_p9 FOR VALUES WITH (modulus 32, remainder 8)
+demo=#
+
+
+
+
+
+### MESSAGE 1
+On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:
+> PostgreSQL version: 17.2
+> Operating system:   CentOS Linux release 7.9.2009 (Core)
+> Description:        
+> 
+> After upgrading PG17.2, testing found that when enable_rartitionwise_join is
+> set to ON, when executing a query, if the main query and subquery have the
+> same table, the query will report an error.
+> 
+> The database log shows the following error:
+> LOG:  server process (PID 24796) was terminated by signal 6: Aborted
+> DETAIL:  Failed process was running: select * from test t join orders o on
+> t.order_id =o.order_id where t.order_id in (select order_id from orders);
+> LOG:  terminating any other active server processes
+
+
+That is a crash that may well indicate a PostgreSQL bug.
+
+
+However, without a way to reproduce the behavior, we won't be able to fix
+the problem.  Try to come up with a self-contained test case.  It would
+also be interesting to know which PostgreSQL extensions are present.
+
+
+Yours,
+Laurenz Albe
+
+
+-- 
+
+
+*E-Mail Disclaimer*
+Der Inhalt dieser E-Mail ist ausschliesslich fuer den 
+bezeichneten Adressaten bestimmt. Wenn Sie nicht der vorgesehene Adressat 
+dieser E-Mail oder dessen Vertreter sein sollten, so beachten Sie bitte, 
+dass jede Form der Kenntnisnahme, Veroeffentlichung, Vervielfaeltigung oder 
+Weitergabe des Inhalts dieser E-Mail unzulaessig ist. Wir bitten Sie, sich 
+in diesem Fall mit dem Absender der E-Mail in Verbindung zu setzen.
+
+
+*CONFIDENTIALITY NOTICE & DISCLAIMER
+*This message and any attachment are 
+confidential and may be privileged or otherwise protected from disclosure 
+and solely for the use of the person(s) or entity to whom it is intended. 
+If you have received this message in error and are not the intended 
+recipient, please notify the sender immediately and delete this message and 
+any attachment from your system. If you are not the intended recipient, be 
+advised that any use of this message is prohibited and may be unlawful, and 
+you must not copy this message or attachment or disclose the contents to 
+any other person.
+
+
+
+
+
+### MESSAGE 2
+
+
+
+The above email has provided the table structure. You can try creating the same table structure and executing 'select * from test t join orders o on'
+
+
+t.order_id =o.order_id where t.order_id in (select order_id from orders);‘ sentence.
+
+
+I believe that you will soon see the occurrence of errors.
+
+
+demo=# \d+ test
+Table "bookings.test"
+Column | Type | Collation | Nullable | Default | Storage |
+Compression | Stats target | Description
+----------+-------------------+-----------+----------+---------+----------+-------------+--------------+-------------
+order_id | integer | | | | plain |
+| |
+name | character varying | | | | extended |
+| |
+Access method: heap
+demo=# \d+ orders
+Partitioned table "bookings.orders"
+Column | Type | Collation | Nullable | Default | Storage
+| Compression | Stats target | Description
+----------+-----------------------+-----------+----------+---------+----------+-------------+--------------+-------------
+order_id | integer | | | | plain
+| | |
+name | character varying(10) | | | | extended
+| | |
+Partition key: HASH (order_id)
+Partitions: orders_p1 FOR VALUES WITH (modulus 32, remainder 0),
+orders_p10 FOR VALUES WITH (modulus 32, remainder 9),
+orders_p11 FOR VALUES WITH (modulus 32, remainder 10),
+orders_p12 FOR VALUES WITH (modulus 32, remainder 11),
+orders_p13 FOR VALUES WITH (modulus 32, remainder 12),
+orders_p14 FOR VALUES WITH (modulus 32, remainder 13),
+orders_p15 FOR VALUES WITH (modulus 32, remainder 14),
+orders_p16 FOR VALUES WITH (modulus 32, remainder 15),
+orders_p17 FOR VALUES WITH (modulus 32, remainder 16),
+orders_p18 FOR VALUES WITH (modulus 32, remainder 17),
+orders_p19 FOR VALUES WITH (modulus 32, remainder 18),
+orders_p2 FOR VALUES WITH (modulus 32, remainder 1),
+orders_p20 FOR VALUES WITH (modulus 32, remainder 19),
+orders_p21 FOR VALUES WITH (modulus 32, remainder 20),
+orders_p22 FOR VALUES WITH (modulus 32, remainder 21),
+orders_p23 FOR VALUES WITH (modulus 32, remainder 22),
+orders_p24 FOR VALUES WITH (modulus 32, remainder 23),
+orders_p25 FOR VALUES WITH (modulus 32, remainder 24),
+orders_p26 FOR VALUES WITH (modulus 32, remainder 25),
+orders_p28 FOR VALUES WITH (modulus 32, remainder 27),
+orders_p29 FOR VALUES WITH (modulus 32, remainder 28),
+orders_p3 FOR VALUES WITH (modulus 32, remainder 2),
+orders_p30 FOR VALUES WITH (modulus 32, remainder 29),
+orders_p31 FOR VALUES WITH (modulus 32, remainder 30),
+orders_p32 FOR VALUES WITH (modulus 32, remainder 31),
+orders_p4 FOR VALUES WITH (modulus 32, remainder 3),
+orders_p5 FOR VALUES WITH (modulus 32, remainder 4),
+orders_p6 FOR VALUES WITH (modulus 32, remainder 5),
+orders_p7 FOR VALUES WITH (modulus 32, remainder 6),
+orders_p8 FOR VALUES WITH (modulus 32, remainder 7),
+orders_p9 FOR VALUES WITH (modulus 32, remainder 8)
+demo=#
+
+
+good luck!
+
+
+At 2025-02-12 15:38:34, "Laurenz Albe" <laurenz(dot)albe(at)cybertec(dot)at> wrote:
+>On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:
+>> PostgreSQL version: 17.2
+>> Operating system:   CentOS Linux release 7.9.2009 (Core)
+>> Description:        
+>> 
+>> After upgrading PG17.2, testing found that when enable_rartitionwise_join is
+>> set to ON, when executing a query, if the main query and subquery have the
+>> same table, the query will report an error.
+>> 
+>> The database log shows the following error:
+>> LOG:  server process (PID 24796) was terminated by signal 6: Aborted
+>> DETAIL:  Failed process was running: select * from test t join orders o on
+>> t.order_id =o.order_id where t.order_id in (select order_id from orders);
+>> LOG:  terminating any other active server processes
+>
+>That is a crash that may well indicate a PostgreSQL bug.
+>
+>However, without a way to reproduce the behavior, we won't be able to fix
+>the problem.  Try to come up with a self-contained test case.  It would
+>also be interesting to know which PostgreSQL extensions are present.
+>
+>Yours,
+>Laurenz Albe
+>
+>-- 
+>
+>*E-Mail Disclaimer*
+>Der Inhalt dieser E-Mail ist ausschliesslich fuer den 
+>bezeichneten Adressaten bestimmt. Wenn Sie nicht der vorgesehene Adressat 
+>dieser E-Mail oder dessen Vertreter sein sollten, so beachten Sie bitte, 
+>dass jede Form der Kenntnisnahme, Veroeffentlichung, Vervielfaeltigung oder 
+>Weitergabe des Inhalts dieser E-Mail unzulaessig ist. Wir bitten Sie, sich 
+>in diesem Fall mit dem Absender der E-Mail in Verbindung zu setzen.
+>
+>*CONFIDENTIALITY NOTICE & DISCLAIMER
+>*This message and any attachment are 
+>confidential and may be privileged or otherwise protected from disclosure 
+>and solely for the use of the person(s) or entity to whom it is intended. 
+>If you have received this message in error and are not the intended 
+>recipient, please notify the sender immediately and delete this message and 
+>any attachment from your system. If you are not the intended recipient, be 
+>advised that any use of this message is prohibited and may be unlawful, and 
+>you must not copy this message or attachment or disclose the contents to 
+>any other person.
+
+
+
+### MESSAGE 3
+Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at> 于2025年2月12日周三 15:38写道：
+
+
+> On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:
+> > PostgreSQL version: 17.2
+> > Operating system:   CentOS Linux release 7.9.2009 (Core)
+> > Description:
+> >
+> > After upgrading PG17.2, testing found that when
+> enable_rartitionwise_join is
+> > set to ON, when executing a query, if the main query and subquery have
+> the
+> > same table, the query will report an error.
+> >
+> > The database log shows the following error:
+> > LOG:  server process (PID 24796) was terminated by signal 6: Aborted
+> > DETAIL:  Failed process was running: select * from test t join orders o
+> on
+> > t.order_id =o.order_id where t.order_id in (select order_id from orders);
+> > LOG:  terminating any other active server processes
+>
+> That is a crash that may well indicate a PostgreSQL bug.
+>
+> However, without a way to reproduce the behavior, we won't be able to fix
+> the problem.  Try to come up with a self-contained test case.  It would
+> also be interesting to know which PostgreSQL extensions are present.
+>
+>
+I can reproduce this crash on HEAD.
+
+
+postgres=# create table test(order_id int, name varchar);
+create table orders(order_id int, name char(10)) partition by hash
+(order_id);
+CREATE TABLE
+CREATE TABLE
+postgres=# set enable_partitionwise_join = on;
+SET
+postgres=# create table orders_p1 partition of orders for values with (
+modulus 32, remainder 0);
+CREATE TABLE
+postgres=# explain select * from test t join orders o on
+t.order_id =o.order_id where t.order_id in (select order_id from orders);
+server closed the connection unexpectedly
+This probably means the server terminated abnormally
+before or while processing the request.
+The connection to the server was lost. Attempting reset: Succeeded.
+
+
+-- 
+Thanks,
+Tender Wang
+
+
+
+### MESSAGE 4
+Tender Wang <tndrwang(at)gmail(dot)com> 于2025年2月12日周三 17:48写道：
+
+
+>
+>
+> Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at> 于2025年2月12日周三 15:38写道：
+>
+>> On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:
+>> > PostgreSQL version: 17.2
+>> > Operating system:   CentOS Linux release 7.9.2009 (Core)
+>> > Description:
+>> >
+>> > After upgrading PG17.2, testing found that when
+>> enable_rartitionwise_join is
+>> > set to ON, when executing a query, if the main query and subquery have
+>> the
+>> > same table, the query will report an error.
+>> >
+>> > The database log shows the following error:
+>> > LOG:  server process (PID 24796) was terminated by signal 6: Aborted
+>> > DETAIL:  Failed process was running: select * from test t join orders o
+>> on
+>> > t.order_id =o.order_id where t.order_id in (select order_id from
+>> orders);
+>> > LOG:  terminating any other active server processes
+>>
+>> That is a crash that may well indicate a PostgreSQL bug.
+>>
+>> However, without a way to reproduce the behavior, we won't be able to fix
+>> the problem.  Try to come up with a self-contained test case.  It would
+>> also be interesting to know which PostgreSQL extensions are present.
+>>
+>>
+> I can reproduce this crash on HEAD.
+>
+> postgres=# create table test(order_id int, name varchar);
+> create table orders(order_id int, name char(10)) partition by hash
+> (order_id);
+> CREATE TABLE
+> CREATE TABLE
+> postgres=# set enable_partitionwise_join = on;
+> SET
+> postgres=# create table orders_p1 partition of orders for values with (
+> modulus 32, remainder 0);
+> CREATE TABLE
+> postgres=# explain select * from test t join orders o on
+> t.order_id =o.order_id where t.order_id in (select order_id from orders);
+> server closed the connection unexpectedly
+> This probably means the server terminated abnormally
+> before or while processing the request.
+> The connection to the server was lost. Attempting reset: Succeeded.
+>
+>
+I debug this crash, I found this crash was related with below commit:
+commit 5278d0a2e870c61f9374a7796b90e6f9f6a73638
+Author: Amit Langote <amitlan(at)postgresql(dot)org>
+Date:   Mon Mar 25 12:02:40 2024 +0900
+
+
+    Reduce memory used by partitionwise joins
+
+
+the joinlist in this query is 1,2,5
+1 means table t
+2 means table orders
+5 also means table orders, which subquery is pulled up.
+When we create join rel for (2,5), then wen enter try_partitionwise_join().
+In this func,  we call  build_child_join_sjinfo() to build SpecialJoinInfo
+for child.
+In build_child_join_sjinfo(), we use memcpy(), I think we should use
+copyObject().
+Otherwise, the parent_sjinfo will be freed, for example, after
+call free_child_join_sjinfo(),
+the parent_sjinfo min_lefthand looks like as below:
+
+
+(gdb) p *parent_sjinfo->min_lefthand
+$7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}
+
+
+The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));
+
+
+Attached patch is my fix. Any thoughts?
+
+
+-- 
+Thanks,
+Tender Wang
+
+
+
+### MESSAGE 5
+Tender Wang <tndrwang(at)gmail(dot)com> 于2025年2月12日周三 19:48写道：
+
+
+>
+>
+> Tender Wang <tndrwang(at)gmail(dot)com> 于2025年2月12日周三 17:48写道：
+>
+>>
+>>
+>> Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at> 于2025年2月12日周三 15:38写道：
+>>
+>>> On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:
+>>> > PostgreSQL version: 17.2
+>>> > Operating system:   CentOS Linux release 7.9.2009 (Core)
+>>> > Description:
+>>> >
+>>> > After upgrading PG17.2, testing found that when
+>>> enable_rartitionwise_join is
+>>> > set to ON, when executing a query, if the main query and subquery have
+>>> the
+>>> > same table, the query will report an error.
+>>> >
+>>> > The database log shows the following error:
+>>> > LOG:  server process (PID 24796) was terminated by signal 6: Aborted
+>>> > DETAIL:  Failed process was running: select * from test t join orders
+>>> o on
+>>> > t.order_id =o.order_id where t.order_id in (select order_id from
+>>> orders);
+>>> > LOG:  terminating any other active server processes
+>>>
+>>> That is a crash that may well indicate a PostgreSQL bug.
+>>>
+>>> However, without a way to reproduce the behavior, we won't be able to fix
+>>> the problem.  Try to come up with a self-contained test case.  It would
+>>> also be interesting to know which PostgreSQL extensions are present.
+>>>
+>>>
+>> I can reproduce this crash on HEAD.
+>>
+>> postgres=# create table test(order_id int, name varchar);
+>> create table orders(order_id int, name char(10)) partition by hash
+>> (order_id);
+>> CREATE TABLE
+>> CREATE TABLE
+>> postgres=# set enable_partitionwise_join = on;
+>> SET
+>> postgres=# create table orders_p1 partition of orders for values with (
+>> modulus 32, remainder 0);
+>> CREATE TABLE
+>> postgres=# explain select * from test t join orders o on
+>> t.order_id =o.order_id where t.order_id in (select order_id from orders);
+>> server closed the connection unexpectedly
+>> This probably means the server terminated abnormally
+>> before or while processing the request.
+>> The connection to the server was lost. Attempting reset: Succeeded.
+>>
+>>
+> I debug this crash, I found this crash was related with below commit:
+> commit 5278d0a2e870c61f9374a7796b90e6f9f6a73638
+> Author: Amit Langote <amitlan(at)postgresql(dot)org>
+> Date:   Mon Mar 25 12:02:40 2024 +0900
+>
+>     Reduce memory used by partitionwise joins
+>
+>
+> the joinlist in this query is 1,2,5
+> 1 means table t
+> 2 means table orders
+> 5 also means table orders, which subquery is pulled up.
+> When we create join rel for (2,5), then wen enter try_partitionwise_join().
+> In this func,  we call  build_child_join_sjinfo() to build SpecialJoinInfo
+> for child.
+> In build_child_join_sjinfo(), we use memcpy(), I think we should use
+> copyObject().
+> Otherwise, the parent_sjinfo will be freed, for example, after
+> call free_child_join_sjinfo(),
+> the parent_sjinfo min_lefthand looks like as below:
+>
+> (gdb) p *parent_sjinfo->min_lefthand
+> $7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}
+>
+> The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));
+>
+> Attached patch is my fix. Any thoughts?
+>
+
+
+I forgot sjinfo had called makeNode(),  in v1 patch, origin memory to
+sjinfo will leak, so I do a little adjust in v2 patch.
+
+
+-- 
+Thanks,
+Tender Wang
+
+
+
+### MESSAGE 6
+On Wed, Feb 12, 2025 at 5:41 PM Tender Wang <tndrwang(at)gmail(dot)com> wrote:
+>
+>
+>
+> Tender Wang <tndrwang(at)gmail(dot)com> 于2025年2月12日周三 19:48写道：
+>>
+>>
+>>
+>> Tender Wang <tndrwang(at)gmail(dot)com> 于2025年2月12日周三 17:48写道：
+>>>
+>>>
+>>>
+>>> Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at> 于2025年2月12日周三 15:38写道：
+>>>>
+>>>> On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:
+>>>> > PostgreSQL version: 17.2
+>>>> > Operating system:   CentOS Linux release 7.9.2009 (Core)
+>>>> > Description:
+>>>> >
+>>>> > After upgrading PG17.2, testing found that when enable_rartitionwise_join is
+>>>> > set to ON, when executing a query, if the main query and subquery have the
+>>>> > same table, the query will report an error.
+>>>> >
+>>>> > The database log shows the following error:
+>>>> > LOG:  server process (PID 24796) was terminated by signal 6: Aborted
+>>>> > DETAIL:  Failed process was running: select * from test t join orders o on
+>>>> > t.order_id =o.order_id where t.order_id in (select order_id from orders);
+>>>> > LOG:  terminating any other active server processes
+>>>>
+>>>> That is a crash that may well indicate a PostgreSQL bug.
+>>>>
+>>>> However, without a way to reproduce the behavior, we won't be able to fix
+>>>> the problem.  Try to come up with a self-contained test case.  It would
+>>>> also be interesting to know which PostgreSQL extensions are present.
+>>>>
+>>>
+>>> I can reproduce this crash on HEAD.
+>>>
+>>> postgres=# create table test(order_id int, name varchar);
+>>> create table orders(order_id int, name char(10)) partition by hash (order_id);
+>>> CREATE TABLE
+>>> CREATE TABLE
+>>> postgres=# set enable_partitionwise_join = on;
+>>> SET
+>>> postgres=# create table orders_p1 partition of orders for values with ( modulus 32, remainder 0);
+>>> CREATE TABLE
+>>> postgres=# explain select * from test t join orders o on
+>>> t.order_id =o.order_id where t.order_id in (select order_id from orders);
+>>> server closed the connection unexpectedly
+>>> This probably means the server terminated abnormally
+>>> before or while processing the request.
+>>> The connection to the server was lost. Attempting reset: Succeeded.
+>>>
+>>
+>> I debug this crash, I found this crash was related with below commit:
+>> commit 5278d0a2e870c61f9374a7796b90e6f9f6a73638
+>> Author: Amit Langote <amitlan(at)postgresql(dot)org>
+>> Date:   Mon Mar 25 12:02:40 2024 +0900
+>>
+>>     Reduce memory used by partitionwise joins
+>>
+>>
+>> the joinlist in this query is 1,2,5
+>> 1 means table t
+>> 2 means table orders
+>> 5 also means table orders, which subquery is pulled up.
+>> When we create join rel for (2,5), then wen enter try_partitionwise_join().
+>> In this func,  we call  build_child_join_sjinfo() to build SpecialJoinInfo for child.
+>> In build_child_join_sjinfo(), we use memcpy(), I think we should use copyObject().
+>> Otherwise, the parent_sjinfo will be freed, for example, after call free_child_join_sjinfo(),
+>> the parent_sjinfo min_lefthand looks like as below:
+>>
+>> (gdb) p *parent_sjinfo->min_lefthand
+>> $7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}
+>>
+>> The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));
+>>
+>> Attached patch is my fix. Any thoughts?
+
+
+Thanks for the report and the fix. Ideally, following line should
+allocate separate memory for the child's bitmapset.
+sjinfo->min_lefthand = adjust_child_relids(sjinfo->min_lefthand,
+   left_nappinfos, left_appinfos);
+
+
+Unless no relid in sjinfo->min_lefthand was translated according to
+the given appinfos, adjust_child_relids() should create a new
+Bitmapset. Can you please check why no translation happened. I will
+try your reproduction tomorrow.
+
+
+-- 
+Best Wishes,
+Ashutosh Bapat
+
+
+
+
+
+### MESSAGE 7
+Ashutosh Bapat <ashutosh(dot)bapat(dot)oss(at)gmail(dot)com> 于2025年2月12日周三 20:20写道：
+
+
+> On Wed, Feb 12, 2025 at 5:41 PM Tender Wang <tndrwang(at)gmail(dot)com> wrote:
+> >
+> >
+> >
+> > Tender Wang <tndrwang(at)gmail(dot)com> 于2025年2月12日周三 19:48写道：
+> >>
+> >>
+> >>
+> >> Tender Wang <tndrwang(at)gmail(dot)com> 于2025年2月12日周三 17:48写道：
+> >>>
+> >>>
+> >>>
+> >>> Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at> 于2025年2月12日周三 15:38写道：
+> >>>>
+> >>>> On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:
+> >>>> > PostgreSQL version: 17.2
+> >>>> > Operating system:   CentOS Linux release 7.9.2009 (Core)
+> >>>> > Description:
+> >>>> >
+> >>>> > After upgrading PG17.2, testing found that when
+> enable_rartitionwise_join is
+> >>>> > set to ON, when executing a query, if the main query and subquery
+> have the
+> >>>> > same table, the query will report an error.
+> >>>> >
+> >>>> > The database log shows the following error:
+> >>>> > LOG:  server process (PID 24796) was terminated by signal 6: Aborted
+> >>>> > DETAIL:  Failed process was running: select * from test t join
+> orders o on
+> >>>> > t.order_id =o.order_id where t.order_id in (select order_id from
+> orders);
+> >>>> > LOG:  terminating any other active server processes
+> >>>>
+> >>>> That is a crash that may well indicate a PostgreSQL bug.
+> >>>>
+> >>>> However, without a way to reproduce the behavior, we won't be able to
+> fix
+> >>>> the problem.  Try to come up with a self-contained test case.  It
+> would
+> >>>> also be interesting to know which PostgreSQL extensions are present.
+> >>>>
+> >>>
+> >>> I can reproduce this crash on HEAD.
+> >>>
+> >>> postgres=# create table test(order_id int, name varchar);
+> >>> create table orders(order_id int, name char(10)) partition by hash
+> (order_id);
+> >>> CREATE TABLE
+> >>> CREATE TABLE
+> >>> postgres=# set enable_partitionwise_join = on;
+> >>> SET
+> >>> postgres=# create table orders_p1 partition of orders for values with
+> ( modulus 32, remainder 0);
+> >>> CREATE TABLE
+> >>> postgres=# explain select * from test t join orders o on
+> >>> t.order_id =o.order_id where t.order_id in (select order_id from
+> orders);
+> >>> server closed the connection unexpectedly
+> >>> This probably means the server terminated abnormally
+> >>> before or while processing the request.
+> >>> The connection to the server was lost. Attempting reset: Succeeded.
+> >>>
+> >>
+> >> I debug this crash, I found this crash was related with below commit:
+> >> commit 5278d0a2e870c61f9374a7796b90e6f9f6a73638
+> >> Author: Amit Langote <amitlan(at)postgresql(dot)org>
+> >> Date:   Mon Mar 25 12:02:40 2024 +0900
+> >>
+> >>     Reduce memory used by partitionwise joins
+> >>
+> >>
+> >> the joinlist in this query is 1,2,5
+> >> 1 means table t
+> >> 2 means table orders
+> >> 5 also means table orders, which subquery is pulled up.
+> >> When we create join rel for (2,5), then wen enter
+> try_partitionwise_join().
+> >> In this func,  we call  build_child_join_sjinfo() to build
+> SpecialJoinInfo for child.
+> >> In build_child_join_sjinfo(), we use memcpy(), I think we should use
+> copyObject().
+> >> Otherwise, the parent_sjinfo will be freed, for example, after call
+> free_child_join_sjinfo(),
+> >> the parent_sjinfo min_lefthand looks like as below:
+> >>
+> >> (gdb) p *parent_sjinfo->min_lefthand
+> >> $7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}
+> >>
+> >> The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));
+> >>
+> >> Attached patch is my fix. Any thoughts?
+>
+> Thanks for the report and the fix. Ideally, following line should
+> allocate separate memory for the child's bitmapset.
+> sjinfo->min_lefthand = adjust_child_relids(sjinfo->min_lefthand,
+>    left_nappinfos, left_appinfos);
+>
+> Unless no relid in sjinfo->min_lefthand was translated according to
+> the given appinfos, adjust_child_relids() should create a new
+> Bitmapset. Can you please check why no translation happened. I will
+> try your reproduction tomorrow.
+>
+
+
+I step into  adjust_child_relids(), see below:
+nappinfos = 1;
+p appinfo->parent_relid
+2
+call bmsToString(relids)
+"(b 1)"
+
+
+So no translation you said happened, just return relids.
+
+
+-- 
+Thanks,
+Tender Wang
+
+
+
+### MESSAGE 8
+On Wed, Feb 12, 2025 at 7:48 PM Tender Wang <tndrwang(at)gmail(dot)com> wrote:
+> Tender Wang <tndrwang(at)gmail(dot)com> 于2025年2月12日周三 17:48写道：
+> When we create join rel for (2,5), then wen enter try_partitionwise_join().
+> In this func,  we call  build_child_join_sjinfo() to build SpecialJoinInfo for child.
+> In build_child_join_sjinfo(), we use memcpy(), I think we should use copyObject().
+> Otherwise, the parent_sjinfo will be freed, for example, after call free_child_join_sjinfo(),
+> the parent_sjinfo min_lefthand looks like as below:
+>
+> (gdb) p *parent_sjinfo->min_lefthand
+> $7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}
+>
+> The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));
+
+
+Nice catch!  We should avoid freeing the members of child_sjinfo
+unless they are translated copies of their counterparts in
+parent_sjinfo.
+
+
+Thanks
+Richard
+
+
+
+
+
+### MESSAGE 9
+On Wed, Feb 12, 2025 at 6:03 PM Tender Wang <tndrwang(at)gmail(dot)com> wrote:
+>
+>
+>
+> Ashutosh Bapat <ashutosh(dot)bapat(dot)oss(at)gmail(dot)com> 于2025年2月12日周三 20:20写道：
+>>
+>> On Wed, Feb 12, 2025 at 5:41 PM Tender Wang <tndrwang(at)gmail(dot)com> wrote:
+>> >
+>> >
+>> >
+>> > Tender Wang <tndrwang(at)gmail(dot)com> 于2025年2月12日周三 19:48写道：
+>> >>
+>> >>
+>> >>
+>> >> Tender Wang <tndrwang(at)gmail(dot)com> 于2025年2月12日周三 17:48写道：
+>> >>>
+>> >>>
+>> >>>
+>> >>> Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at> 于2025年2月12日周三 15:38写道：
+>> >>>>
+>> >>>> On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:
+>> >>>> > PostgreSQL version: 17.2
+>> >>>> > Operating system:   CentOS Linux release 7.9.2009 (Core)
+>> >>>> > Description:
+>> >>>> >
+>> >>>> > After upgrading PG17.2, testing found that when enable_rartitionwise_join is
+>> >>>> > set to ON, when executing a query, if the main query and subquery have the
+>> >>>> > same table, the query will report an error.
+>> >>>> >
+>> >>>> > The database log shows the following error:
+>> >>>> > LOG:  server process (PID 24796) was terminated by signal 6: Aborted
+>> >>>> > DETAIL:  Failed process was running: select * from test t join orders o on
+>> >>>> > t.order_id =o.order_id where t.order_id in (select order_id from orders);
+>> >>>> > LOG:  terminating any other active server processes
+>> >>>>
+>> >>>> That is a crash that may well indicate a PostgreSQL bug.
+>> >>>>
+>> >>>> However, without a way to reproduce the behavior, we won't be able to fix
+>> >>>> the problem.  Try to come up with a self-contained test case.  It would
+>> >>>> also be interesting to know which PostgreSQL extensions are present.
+>> >>>>
+>> >>>
+>> >>> I can reproduce this crash on HEAD.
+>> >>>
+>> >>> postgres=# create table test(order_id int, name varchar);
+>> >>> create table orders(order_id int, name char(10)) partition by hash (order_id);
+>> >>> CREATE TABLE
+>> >>> CREATE TABLE
+>> >>> postgres=# set enable_partitionwise_join = on;
+>> >>> SET
+>> >>> postgres=# create table orders_p1 partition of orders for values with ( modulus 32, remainder 0);
+>> >>> CREATE TABLE
+>> >>> postgres=# explain select * from test t join orders o on
+>> >>> t.order_id =o.order_id where t.order_id in (select order_id from orders);
+>> >>> server closed the connection unexpectedly
+>> >>> This probably means the server terminated abnormally
+>> >>> before or while processing the request.
+>> >>> The connection to the server was lost. Attempting reset: Succeeded.
+>> >>>
+>> >>
+>> >> I debug this crash, I found this crash was related with below commit:
+>> >> commit 5278d0a2e870c61f9374a7796b90e6f9f6a73638
+>> >> Author: Amit Langote <amitlan(at)postgresql(dot)org>
+>> >> Date:   Mon Mar 25 12:02:40 2024 +0900
+>> >>
+>> >>     Reduce memory used by partitionwise joins
+>> >>
+>> >>
+>> >> the joinlist in this query is 1,2,5
+>> >> 1 means table t
+>> >> 2 means table orders
+>> >> 5 also means table orders, which subquery is pulled up.
+>> >> When we create join rel for (2,5), then wen enter try_partitionwise_join().
+>> >> In this func,  we call  build_child_join_sjinfo() to build SpecialJoinInfo for child.
+>> >> In build_child_join_sjinfo(), we use memcpy(), I think we should use copyObject().
+>> >> Otherwise, the parent_sjinfo will be freed, for example, after call free_child_join_sjinfo(),
+>> >> the parent_sjinfo min_lefthand looks like as below:
+>> >>
+>> >> (gdb) p *parent_sjinfo->min_lefthand
+>> >> $7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}
+>> >>
+>> >> The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));
+>> >>
+>> >> Attached patch is my fix. Any thoughts?
+>>
+>> Thanks for the report and the fix. Ideally, following line should
+>> allocate separate memory for the child's bitmapset.
+>> sjinfo->min_lefthand = adjust_child_relids(sjinfo->min_lefthand,
+>>    left_nappinfos, left_appinfos);
+>>
+>> Unless no relid in sjinfo->min_lefthand was translated according to
+>> the given appinfos, adjust_child_relids() should create a new
+>> Bitmapset. Can you please check why no translation happened. I will
+>> try your reproduction tomorrow.
+>
+>
+> I step into  adjust_child_relids(), see below:
+> nappinfos = 1;
+> p appinfo->parent_relid
+> 2
+> call bmsToString(relids)
+> "(b 1)"
+>
+> So no translation you said happened, just return relids.
+>
+
+
+Hmm. The code there assumes that all the Relids will at least have one
+parent each of the children involved. For some reason
+sjinfo->min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are
+actually the parent relids of the children passed in respectively. The
+join is between 2 and 5, then why is 1 appearing in the min_lefthand.
+It might be legitimate, but we need to find the reason. If it's
+legitimate, I think we need to copy the Relids which haven't undergone
+any translation so as to keep them isolated from the parent relids.
+
+
+-- 
+Best Wishes,
+Ashutosh Bapat
+
+
+
+
+
+### MESSAGE 10
+On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat
+<ashutosh(dot)bapat(dot)oss(at)gmail(dot)com> wrote:
+> Hmm. The code there assumes that all the Relids will at least have one
+> parent each of the children involved. For some reason
+> sjinfo->min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are
+> actually the parent relids of the children passed in respectively. The
+> join is between 2 and 5, then why is 1 appearing in the min_lefthand.
+> It might be legitimate, but we need to find the reason. If it's
+> legitimate, I think we need to copy the Relids which haven't undergone
+> any translation so as to keep them isolated from the parent relids.
+
+
+Yes, it's legitimate.  For the semijoin, its join clause only
+references {1} and {5}, with no other ordering restrictions.
+Therefore, the minimum LHS for this join consists only of {1}.
+
+
+Instead of copying the untranslated Relids and freeing them later, I
+think it might be better to modify free_child_join_sjinfo() to avoid
+freeing the untranslated members of child_sjinfo.
+
+
+Thanks
+Richard
+
+
+
+
+
+### MESSAGE 11
+Hi Richard,
+
+
+On Wed, Feb 12, 2025 at 11:30 PM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+> On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat
+> <ashutosh(dot)bapat(dot)oss(at)gmail(dot)com> wrote:
+> > Hmm. The code there assumes that all the Relids will at least have one
+> > parent each of the children involved. For some reason
+> > sjinfo->min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are
+> > actually the parent relids of the children passed in respectively. The
+> > join is between 2 and 5, then why is 1 appearing in the min_lefthand.
+> > It might be legitimate, but we need to find the reason. If it's
+> > legitimate, I think we need to copy the Relids which haven't undergone
+> > any translation so as to keep them isolated from the parent relids.
+>
+> Yes, it's legitimate.  For the semijoin, its join clause only
+> references {1} and {5}, with no other ordering restrictions.
+> Therefore, the minimum LHS for this join consists only of {1}.
+>
+> Instead of copying the untranslated Relids and freeing them later, I
+> think it might be better to modify free_child_join_sjinfo() to avoid
+> freeing the untranslated members of child_sjinfo.
+
+
+free_child_join_sjinfo() frees min_lefthand and other fields
+initialized by build_child_join_sjinfo(), assuming that
+adjust_child_relids() creates a copy. However, this does not always
+seem to be the case, as demonstrated in this report.
+
+
+I'm wondering if the following line in adjust_child_relids() should be
+using bms_copy() instead:
+
+
+/* Otherwise, return the original set without modification. */
+return relids;
+}
+
+
+That is, should we copy relids not only when translation is needed but
+also in the general case?  Would that be a bigger band-aid than
+necessary?
+
+
+-- 
+Thanks, Amit Langote
+
+
+
+
+
+### MESSAGE 12
+On Thu, Feb 13, 2025 at 10:39 AM Amit Langote <amitlangote09(at)gmail(dot)com> wrote:
+> On Wed, Feb 12, 2025 at 11:30 PM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+> > On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat
+> > <ashutosh(dot)bapat(dot)oss(at)gmail(dot)com> wrote:
+> > > Hmm. The code there assumes that all the Relids will at least have one
+> > > parent each of the children involved. For some reason
+> > > sjinfo->min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are
+> > > actually the parent relids of the children passed in respectively. The
+> > > join is between 2 and 5, then why is 1 appearing in the min_lefthand.
+> > > It might be legitimate, but we need to find the reason. If it's
+> > > legitimate, I think we need to copy the Relids which haven't undergone
+> > > any translation so as to keep them isolated from the parent relids.
+> >
+> > Yes, it's legitimate.  For the semijoin, its join clause only
+> > references {1} and {5}, with no other ordering restrictions.
+> > Therefore, the minimum LHS for this join consists only of {1}.
+> >
+> > Instead of copying the untranslated Relids and freeing them later, I
+> > think it might be better to modify free_child_join_sjinfo() to avoid
+> > freeing the untranslated members of child_sjinfo.
+>
+> free_child_join_sjinfo() frees min_lefthand and other fields
+> initialized by build_child_join_sjinfo(), assuming that
+> adjust_child_relids() creates a copy. However, this does not always
+> seem to be the case, as demonstrated in this report.
+>
+> I'm wondering if the following line in adjust_child_relids() should be
+> using bms_copy() instead:
+>
+> /* Otherwise, return the original set without modification. */
+> return relids;
+> }
+>
+> That is, should we copy relids not only when translation is needed but
+> also in the general case?  Would that be a bigger band-aid than
+> necessary?
+
+
+Hmm, I'm concerned this might lead to unnecessary memory usage in
+other translation scenarios.  After all, the purpose of 5278d0a2e is
+to reduce memory used by partitionwise joins.  Even in the
+SpecialJoinInfo case, this approach means that we are copying
+untranslated Relids and then freeing them later, which seems
+unnecessary.
+
+
+I'm thinking that a better approach might be to check if each member
+of the child_sjinfo is a translated copy and only free it if that's
+the case, something like attached.
+
+
+Thanks
+Richard
+
+
+
+### MESSAGE 13
+On Thu, Feb 13, 2025 at 8:44 AM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+>
+> On Thu, Feb 13, 2025 at 10:39 AM Amit Langote <amitlangote09(at)gmail(dot)com> wrote:
+> > On Wed, Feb 12, 2025 at 11:30 PM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+> > > On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat
+> > > <ashutosh(dot)bapat(dot)oss(at)gmail(dot)com> wrote:
+> > > > Hmm. The code there assumes that all the Relids will at least have one
+> > > > parent each of the children involved. For some reason
+> > > > sjinfo->min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are
+> > > > actually the parent relids of the children passed in respectively. The
+> > > > join is between 2 and 5, then why is 1 appearing in the min_lefthand.
+> > > > It might be legitimate, but we need to find the reason. If it's
+> > > > legitimate, I think we need to copy the Relids which haven't undergone
+> > > > any translation so as to keep them isolated from the parent relids.
+> > >
+> > > Yes, it's legitimate.  For the semijoin, its join clause only
+> > > references {1} and {5}, with no other ordering restrictions.
+> > > Therefore, the minimum LHS for this join consists only of {1}.
+> > >
+> > > Instead of copying the untranslated Relids and freeing them later, I
+> > > think it might be better to modify free_child_join_sjinfo() to avoid
+> > > freeing the untranslated members of child_sjinfo.
+> >
+> > free_child_join_sjinfo() frees min_lefthand and other fields
+> > initialized by build_child_join_sjinfo(), assuming that
+> > adjust_child_relids() creates a copy. However, this does not always
+> > seem to be the case, as demonstrated in this report.
+> >
+> > I'm wondering if the following line in adjust_child_relids() should be
+> > using bms_copy() instead:
+> >
+> > /* Otherwise, return the original set without modification. */
+> > return relids;
+> > }
+> >
+> > That is, should we copy relids not only when translation is needed but
+> > also in the general case?  Would that be a bigger band-aid than
+> > necessary?
+>
+> Hmm, I'm concerned this might lead to unnecessary memory usage in
+> other translation scenarios.  After all, the purpose of 5278d0a2e is
+> to reduce memory used by partitionwise joins.  Even in the
+> SpecialJoinInfo case, this approach means that we are copying
+> untranslated Relids and then freeing them later, which seems
+> unnecessary.
+
+
+When the translations happen, we do allocate memory for child bitmaps
+so allocating and freeing memory is expected in the approach. However,
+we can't blatantly copy the Relids returned by adjust_child_relids()
+or we will leak the memory allocated if child Relids is a translation
+of parent Relids. If the Relids output by adjust_child_relids() is not
+the same as its input, we should copy bitmapset.
+
+
+>
+> I'm thinking that a better approach might be to check if each member
+> of the child_sjinfo is a translated copy and only free it if that's
+> the case, something like attached.
+
+
+This approach doesn't allocate memory when translation is not required
+but it requires parent SJinfo to be present when
+free_child_join_sjinfo() is called. It's true right now but future
+changes to the code may not ensure that. So there is a potential
+maintenance overhead here.
+
+
+We have to be always cautious of freeing or modifying the Relids
+returned by adjust_child_relids() [1]. For example, we could free
+intermediate Relids in adjust_child_relids_multilevel() but we need to
+be cautious of them being same as the parent Relids. Amit's approach
+of bms_copy() in adjust_child_relids() frees us from that caution. May
+be we could pass a flag to adjust_child_relids() asking it to create a
+new bitmapset always. So even if it's a larger bandaid, it may be
+useful at multiple places.
+
+
+-- 
+Best Wishes,
+Ashutosh Bapat
+
+
+
+
+
+### MESSAGE 14
+Amit Langote <amitlangote09(at)gmail(dot)com> 于2025年2月13日周四 10:39写道：
+
+
+> Hi Richard,
+>
+> On Wed, Feb 12, 2025 at 11:30 PM Richard Guo <guofenglinux(at)gmail(dot)com>
+> wrote:
+> > On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat
+> > <ashutosh(dot)bapat(dot)oss(at)gmail(dot)com> wrote:
+> > > Hmm. The code there assumes that all the Relids will at least have one
+> > > parent each of the children involved. For some reason
+> > > sjinfo->min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are
+> > > actually the parent relids of the children passed in respectively. The
+> > > join is between 2 and 5, then why is 1 appearing in the min_lefthand.
+> > > It might be legitimate, but we need to find the reason. If it's
+> > > legitimate, I think we need to copy the Relids which haven't undergone
+> > > any translation so as to keep them isolated from the parent relids.
+> >
+> > Yes, it's legitimate.  For the semijoin, its join clause only
+> > references {1} and {5}, with no other ordering restrictions.
+> > Therefore, the minimum LHS for this join consists only of {1}.
+> >
+> > Instead of copying the untranslated Relids and freeing them later, I
+> > think it might be better to modify free_child_join_sjinfo() to avoid
+> > freeing the untranslated members of child_sjinfo.
+>
+> free_child_join_sjinfo() frees min_lefthand and other fields
+> initialized by build_child_join_sjinfo(), assuming that
+> adjust_child_relids() creates a copy. However, this does not always
+> seem to be the case, as demonstrated in this report.
+>
+> I'm wondering if the following line in adjust_child_relids() should be
+> using bms_copy() instead:
+>
+> /* Otherwise, return the original set without modification. */
+> return relids;
+> }
+>
+
+
+This fix is ok for me.  Keeping the child's info isolated from the parents
+seems safer.
+
+
+-- 
+Thanks,
+Tender Wang
+
+
+
+### MESSAGE 15
+On Thu, Feb 13, 2025 at 1:55 PM Ashutosh Bapat
+<ashutosh(dot)bapat(dot)oss(at)gmail(dot)com> wrote:
+> On Thu, Feb 13, 2025 at 8:44 AM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+> > I'm thinking that a better approach might be to check if each member
+> > of the child_sjinfo is a translated copy and only free it if that's
+> > the case, something like attached.
+>
+> This approach doesn't allocate memory when translation is not required
+> but it requires parent SJinfo to be present when
+> free_child_join_sjinfo() is called. It's true right now but future
+> changes to the code may not ensure that. So there is a potential
+> maintenance overhead here.
+
+
+Given the function's name, I don't see a problem with adding a new
+parameter to pass parent_sjinfo. In fact, I'd be especially concerned
+if any caller doesn’t have parent_sjinfo handy -- that could signal an
+unexpected usage or future maintenance risk. Making it explicit helps
+keep things correct and avoids silent errors.
+
+
+> We have to be always cautious of freeing or modifying the Relids
+> returned by adjust_child_relids() [1]. For example, we could free
+> intermediate Relids in adjust_child_relids_multilevel() but we need to
+> be cautious of them being same as the parent Relids. Amit's approach
+> of bms_copy() in adjust_child_relids() frees us from that caution. May
+> be we could pass a flag to adjust_child_relids() asking it to create a
+> new bitmapset always. So even if it's a larger bandaid, it may be
+> useful at multiple places.
+
+
+We could do this separately, but for a bug fix, I'd prefer to keep the
+changes focused on the issue at hand and avoid modifications unrelated
+to the bug.
+
+
+--
+Thanks, Amit Langote
+
+
+
+
+
+### MESSAGE 16
+On Tue, Feb 18, 2025 at 8:23 AM Amit Langote <amitlangote09(at)gmail(dot)com> wrote:
+>
+> On Thu, Feb 13, 2025 at 1:55 PM Ashutosh Bapat
+> <ashutosh(dot)bapat(dot)oss(at)gmail(dot)com> wrote:
+> > On Thu, Feb 13, 2025 at 8:44 AM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+> > > I'm thinking that a better approach might be to check if each member
+> > > of the child_sjinfo is a translated copy and only free it if that's
+> > > the case, something like attached.
+> >
+> > This approach doesn't allocate memory when translation is not required
+> > but it requires parent SJinfo to be present when
+> > free_child_join_sjinfo() is called. It's true right now but future
+> > changes to the code may not ensure that. So there is a potential
+> > maintenance overhead here.
+>
+> Given the function's name, I don't see a problem with adding a new
+> parameter to pass parent_sjinfo. In fact, I'd be especially concerned
+> if any caller doesn’t have parent_sjinfo handy -- that could signal an
+> unexpected usage or future maintenance risk. Making it explicit helps
+> keep things correct and avoids silent errors.
+
+
+Normal SJInfos are created somewhere and put in a list while they are
+passed around. In future, we may do something like that for child
+SJInfos as well. That was my thinking behind this suggestion. But we
+will see what happens when it comes to that.
+
+
+>
+> > We have to be always cautious of freeing or modifying the Relids
+> > returned by adjust_child_relids() [1]. For example, we could free
+> > intermediate Relids in adjust_child_relids_multilevel() but we need to
+> > be cautious of them being same as the parent Relids. Amit's approach
+> > of bms_copy() in adjust_child_relids() frees us from that caution. May
+> > be we could pass a flag to adjust_child_relids() asking it to create a
+> > new bitmapset always. So even if it's a larger bandaid, it may be
+> > useful at multiple places.
+>
+> We could do this separately, but for a bug fix, I'd prefer to keep the
+> changes focused on the issue at hand and avoid modifications unrelated
+> to the bug.
+
+
+That's a fair point.
+
+
+-- 
+Best Wishes,
+Ashutosh Bapat
+
+
+
+
+
+### MESSAGE 17
+On Thu, Feb 13, 2025 at 4:25 PM Tender Wang <tndrwang(at)gmail(dot)com> wrote:
+> Amit Langote <amitlangote09(at)gmail(dot)com> 于2025年2月13日周四 10:39写道：
+>> On Wed, Feb 12, 2025 at 11:30 PM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+>> > On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat
+>> > <ashutosh(dot)bapat(dot)oss(at)gmail(dot)com> wrote:
+>> > > Hmm. The code there assumes that all the Relids will at least have one
+>> > > parent each of the children involved. For some reason
+>> > > sjinfo->min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are
+>> > > actually the parent relids of the children passed in respectively. The
+>> > > join is between 2 and 5, then why is 1 appearing in the min_lefthand.
+>> > > It might be legitimate, but we need to find the reason. If it's
+>> > > legitimate, I think we need to copy the Relids which haven't undergone
+>> > > any translation so as to keep them isolated from the parent relids.
+>> >
+>> > Yes, it's legitimate.  For the semijoin, its join clause only
+>> > references {1} and {5}, with no other ordering restrictions.
+>> > Therefore, the minimum LHS for this join consists only of {1}.
+>> >
+>> > Instead of copying the untranslated Relids and freeing them later, I
+>> > think it might be better to modify free_child_join_sjinfo() to avoid
+>> > freeing the untranslated members of child_sjinfo.
+>>
+>> free_child_join_sjinfo() frees min_lefthand and other fields
+>> initialized by build_child_join_sjinfo(), assuming that
+>> adjust_child_relids() creates a copy. However, this does not always
+>> seem to be the case, as demonstrated in this report.
+>>
+>> I'm wondering if the following line in adjust_child_relids() should be
+>> using bms_copy() instead:
+>>
+>> /* Otherwise, return the original set without modification. */
+>> return relids;
+>> }
+>
+> This fix is ok for me.  Keeping the child's info isolated from the parents seems safer.
+
+
+I'm inclined to go with Richard's proposal, mainly to avoid the
+overhead of copying in a bug fix just to isolate child sjinfo from
+parent_sjinfo.
+
+
+Richard, would you like to commit the patch you proposed (adding
+parent_sjinfo as a parameter to free_child_join_sjinfo()), or would
+you prefer that I do it?
+
+
+-- 
+Thanks, Amit Langote
+
+
+
+
+
+### MESSAGE 18
+On Tue, Feb 18, 2025 at 2:03 PM Amit Langote <amitlangote09(at)gmail(dot)com> wrote:
+> I'm inclined to go with Richard's proposal, mainly to avoid the
+> overhead of copying in a bug fix just to isolate child sjinfo from
+> parent_sjinfo.
+>
+> Richard, would you like to commit the patch you proposed (adding
+> parent_sjinfo as a parameter to free_child_join_sjinfo()), or would
+> you prefer that I do it?
+
+
+Thank you Amit for reviewing.  I'll commit it and will do so shortly.
+
+
+Thanks
+Richard
+
+
+
+
+
+### MESSAGE 19
+On Tue, Feb 18, 2025 at 3:52 PM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+> On Tue, Feb 18, 2025 at 2:03 PM Amit Langote <amitlangote09(at)gmail(dot)com> wrote:
+> > I'm inclined to go with Richard's proposal, mainly to avoid the
+> > overhead of copying in a bug fix just to isolate child sjinfo from
+> > parent_sjinfo.
+> >
+> > Richard, would you like to commit the patch you proposed (adding
+> > parent_sjinfo as a parameter to free_child_join_sjinfo()), or would
+> > you prefer that I do it?
+>
+> Thank you Amit for reviewing.  I'll commit it and will do so shortly.
+
+
+Pushed and back-patched to v17.  The fix will be included in the next
+minor release (17.5).
+
+
+Thanks
+Richard
+
+
+
+
+
+### MESSAGE 20
+On Wed, Feb 19, 2025 at 11:28 AM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+> On Tue, Feb 18, 2025 at 3:52 PM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+> > On Tue, Feb 18, 2025 at 2:03 PM Amit Langote <amitlangote09(at)gmail(dot)com> wrote:
+> > > I'm inclined to go with Richard's proposal, mainly to avoid the
+> > > overhead of copying in a bug fix just to isolate child sjinfo from
+> > > parent_sjinfo.
+> > >
+> > > Richard, would you like to commit the patch you proposed (adding
+> > > parent_sjinfo as a parameter to free_child_join_sjinfo()), or would
+> > > you prefer that I do it?
+> >
+> > Thank you Amit for reviewing.  I'll commit it and will do so shortly.
+>
+> Pushed and back-patched to v17.  The fix will be included in the next
+> minor release (17.5).
+
+
+Thank you!
+
+
+-- 
+Thanks, Amit Langote
+
+
+
+
+
+### MESSAGE 21
+On Wed, Feb 19, 2025 at 7:58 AM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+>
+> On Tue, Feb 18, 2025 at 3:52 PM Richard Guo <guofenglinux(at)gmail(dot)com> wrote:
+> > On Tue, Feb 18, 2025 at 2:03 PM Amit Langote <amitlangote09(at)gmail(dot)com> wrote:
+> > > I'm inclined to go with Richard's proposal, mainly to avoid the
+> > > overhead of copying in a bug fix just to isolate child sjinfo from
+> > > parent_sjinfo.
+> > >
+> > > Richard, would you like to commit the patch you proposed (adding
+> > > parent_sjinfo as a parameter to free_child_join_sjinfo()), or would
+> > > you prefer that I do it?
+> >
+> > Thank you Amit for reviewing.  I'll commit it and will do so shortly.
+>
+> Pushed and back-patched to v17.  The fix will be included in the next
+> minor release (17.5).
+
+
+Thanks Richard.
+
+
+-- 
+Best Wishes,
+Ashutosh Bapat
+
+
+

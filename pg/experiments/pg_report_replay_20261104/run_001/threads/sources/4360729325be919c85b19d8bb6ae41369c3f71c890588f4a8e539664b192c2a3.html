@@ -1,0 +1,1168 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17344: Assert failed on queiring async_capable foreign table with inheritance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17344-226b78b00de73a7e%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2021-12-25T10:00:01" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17344: Assert failed on queiring async_capable foreign table with inheritance" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="3df7d51c7ac1187dd8e5d1c34452da73">BUG #17344: Assert failed on queiring async_capable foreign table with inheritance</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202112251000">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17344-226b78b00de73a7e@postgresql.org"></a>
+<a name="3df7d51c7ac1187dd8e5d1c34452da73"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17344: Assert failed on queiring async_capable foreign table with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-25 10:00:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17344-226b78b00de73a7e%40postgresql.org">17344-226b78b00de73a7e@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17344-226b78b00de73a7e%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17344-226b78b00de73a7e%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17344-226b78b00de73a7e%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17344-226b78b00de73a7e%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112250000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17344<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>When executing the following query:<br>create extension postgres_fdw;<br>do $d$<br>    begin<br>        execute $$create server loopback foreign data wrapper postgres_fdw<br>            options (dbname &#x27;$$||current_database()||$$&#x27;,<br>                     port &#x27;$$||current_setting(&#x27;port&#x27;)||$$&#x27;,<br>                     async_capable &#x27;true&#x27;<br>            )$$;<br>    end;<br>$d$;<br>create user mapping for current_user server loopback;</p>
+
+<p>create table tab1 (a int);<br>insert into tab1 values(1), (2), (3);<br>create foreign table ftab1 (b int) server loopback options (table_name<br>&#x27;tab1&#x27;);</p>
+
+<p>create foreign table ftab2 () inherits (ftab1) server loopback;<br>select a from tab1 where a in (select a from ftab1);</p>
+
+<p>I get an assertion failed with the stacktrace:<br>Core was generated by `postgres: law regression [local] SELECT              <br>                        &#x27;.<br>Program terminated with signal SIGABRT, Aborted.<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>50      ../sysdeps/unix/sysv/linux/raise.c: No such file or directory.<br>(gdb) bt<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>#1  0x00007f2a2f9fa859 in __GI_abort () at abort.c:79<br>#2  0x0000557dece3c5d8 in ExceptionalCondition<br>(conditionName=conditionName(at)entry=0x7f2a225a8da7 &quot;areq != pendingAreq&quot;, <br>    errorType=errorType(at)entry=0x7f2a225a76aa &quot;FailedAssertion&quot;,<br>fileName=0x7ffde2262540 &quot;\271\305\343\354}U&quot;, <br>    fileName(at)entry=0x7f2a225a88af &quot;postgres_fdw.c&quot;,<br>lineNumber=lineNumber(at)entry=6974) at assert.c:69<br>#3  0x00007f2a225a4e34 in produce_tuple_asynchronously (areq=&lt;optimized<br>out&gt;, fetch=&lt;optimized out&gt;)<br>    at postgres_fdw.c:6974<br>#4  0x0000557decb6e152 in ExecAsyncRequest (areq=0x557ded812670) at<br>execAsync.c:38<br>#5  0x0000557decb94e4e in ExecAppendAsyncBegin (node=0x557ded7f2040) at<br>nodeAppend.c:907<br>#6  ExecAppend (pstate=0x557ded7f2040) at nodeAppend.c:317<br>#7  0x0000557decbb0183 in ExecProcNode (node=0x557ded7f2040) at<br>../../../src/include/executor/executor.h:257<br>#8  ExecResult (pstate=0x557ded7f1e38) at nodeResult.c:115<br>#9  0x0000557decbb263d in ExecProcNode (node=0x557ded7f1e38) at<br>../../../src/include/executor/executor.h:257<br>#10 ExecScanSubPlan (isNull=0x557ded81ba35, econtext=0x557ded81b7e8,<br>node=0x557ded81c2e0) at nodeSubplan.c:323<br>#11 ExecSubPlan (node=node(at)entry=0x557ded81c2e0,<br>econtext=econtext(at)entry=0x557ded81b7e8, isNull=0x557ded81ba35)<br>    at nodeSubplan.c:89<br>#12 0x0000557decb77beb in ExecEvalSubPlan (econtext=0x557ded81b7e8,<br>op=&lt;optimized out&gt;, state=0x557ded81ba30)<br>    at execExprInterp.c:3932<br>#13 ExecInterpExpr (state=0x557ded81ba30, econtext=0x557ded81b7e8,<br>isnull=&lt;optimized out&gt;) at execExprInterp.c:1564<br>#14 0x0000557decb865d5 in ExecEvalExprSwitchContext (isNull=0x7ffde2262ad7,<br>econtext=0x557ded81b7e8, <br>    state=0x557ded81ba30) at ../../../src/include/executor/executor.h:339<br>#15 ExecQual (econtext=0x557ded81b7e8, state=0x557ded81ba30) at<br>../../../src/include/executor/executor.h:408<br>#16 ExecScan (node=0x557ded7f3748, accessMtd=0x557decbb0ad0 &lt;SeqNext&gt;,<br>recheckMtd=0x557decbb0ac0 &lt;SeqRecheck&gt;)<br>    at execScan.c:227<br>#17 0x0000557decb7cc7a in ExecProcNode (node=0x557ded7f3748) at<br>../../../src/include/executor/executor.h:257<br>#18 ExecutePlan (execute_once=&lt;optimized out&gt;, dest=0x557ded80a428,<br>direction=&lt;optimized out&gt;, numberTuples=0, <br>    sendTuples=&lt;optimized out&gt;, operation=CMD_SELECT,<br>use_parallel_mode=&lt;optimized out&gt;, planstate=0x557ded7f3748, <br>    estate=0x557ded7f1b90) at execMain.c:1551<br>#19 standard_ExecutorRun (queryDesc=0x557ded800c20, direction=&lt;optimized<br>out&gt;, count=0, execute_once=&lt;optimized out&gt;)<br>    at execMain.c:361<br>#20 0x0000557decd18b9c in PortalRunSelect (portal=0x557ded756860,<br>forward=&lt;optimized out&gt;, count=0, <br>    dest=&lt;optimized out&gt;) at pquery.c:921<br>#21 0x0000557decd1a2cb in PortalRun (portal=portal(at)entry=0x557ded756860,<br>count=count(at)entry=9223372036854775807, <br>    isTopLevel=isTopLevel(at)entry=true, run_once=run_once(at)entry=true,<br>dest=dest(at)entry=0x557ded80a428, <br>    altdest=altdest(at)entry=0x557ded80a428, qc=0x7ffde2262d80) at<br>pquery.c:765<br>#22 0x0000557decd1614b in exec_simple_query (<br>    query_string=0x557ded6e7960 &quot;select a from tab1 where a in (select a<br>from ftab1);&quot;) at postgres.c:1214<br>#23 0x0000557decd17d51 in PostgresMain (argc=argc(at)entry=1,<br>argv=argv(at)entry=0x7ffde22631f0, dbname=&lt;optimized out&gt;, <br>    username=&lt;optimized out&gt;) at postgres.c:4486<br>#24 0x0000557decc83c8d in BackendRun (port=0x557ded70b3d0,<br>port=0x557ded70b3d0) at postmaster.c:4530<br>#25 BackendStartup (port=0x557ded70b3d0) at postmaster.c:4252<br>#26 ServerLoop () at postmaster.c:1745<br>#27 0x0000557decc84c31 in PostmasterMain (argc=&lt;optimized out&gt;,<br>argv=&lt;optimized out&gt;) at postmaster.c:1417<br>#28 0x0000557dec9b24b2 in main (argc=3, argv=0x557ded6e1990) at main.c:209</p>
+
+<p>With async_capable = &#x27;false&#x27; I get expected results.<br>But when ftab1 defined as<br>create foreign table ftab1 (a int) server loopback options (table_name<br>&#x27;tab1&#x27;);<br>The select fails with:<br>psql:query.sql:19: ERROR:  could not connect to server &quot;loopback&quot;<br>DETAIL:  connection to server on socket &quot;/tmp/.s.PGSQL.5432&quot; failed: FATAL: <br>sorry, too many clients already<br>CONTEXT:  remote SQL command: SELECT a FROM public.ftab2<br>remote SQL command: SELECT a FROM public.ftab2<br>remote SQL command: SELECT a FROM public.ftab2<br>remote SQL command: SELECT a FROM public.ftab2<br>...<br>with or without async_capable.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20211225232625.5xuplnlegneh42cw@erthalion.local"></a>
+<a name="d884247a060e42239628704914160a4d"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign
+ table with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-25 23:26:25</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20211225232625.5xuplnlegneh42cw%40erthalion.local">20211225232625.5xuplnlegneh42cw@erthalion.local</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20211225232625.5xuplnlegneh42cw%40erthalion.local">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20211225232625.5xuplnlegneh42cw%40erthalion.local" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20211225232625.5xuplnlegneh42cw%40erthalion.local" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20211225232625.5xuplnlegneh42cw%40erthalion.local" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112250000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; On Sat, Dec 25, 2021 at 10:00:01AM +0000, PG Bug reporting form wrote:<br>&gt;<br>&gt; create extension postgres_fdw;<br>&gt; do $d$<br>&gt;     begin<br>&gt;         execute $$create server loopback foreign data wrapper postgres_fdw<br>&gt;             options (dbname &#x27;$$||current_database()||$$&#x27;,<br>&gt;                      port &#x27;$$||current_setting(&#x27;port&#x27;)||$$&#x27;,<br>&gt;                      async_capable &#x27;true&#x27;<br>&gt;             )$$;<br>&gt;     end;<br>&gt; $d$;<br>&gt; create user mapping for current_user server loopback;<br>&gt;<br>&gt; create table tab1 (a int);<br>&gt; insert into tab1 values(1), (2), (3);<br>&gt; create foreign table ftab1 (b int) server loopback options (table_name<br>&gt; &#x27;tab1&#x27;);<br>&gt;<br>&gt; create foreign table ftab2 () inherits (ftab1) server loopback;<br>&gt; select a from tab1 where a in (select a from ftab1);<br>&gt;<br>&gt; With async_capable = &#x27;false&#x27; I get expected results.<br>&gt; But when ftab1 defined as<br>&gt; create foreign table ftab1 (a int) server loopback options (table_name<br>&gt; &#x27;tab1&#x27;);<br>&gt; The select fails with:<br>&gt; psql:query.sql:19: ERROR:  could not connect to server &quot;loopback&quot;<br>&gt; DETAIL:  connection to server on socket &quot;/tmp/.s.PGSQL.5432&quot; failed: FATAL:<br>&gt; sorry, too many clients already<br>&gt; CONTEXT:  remote SQL command: SELECT a FROM public.ftab2<br>&gt; remote SQL command: SELECT a FROM public.ftab2<br>&gt; remote SQL command: SELECT a FROM public.ftab2<br>&gt; remote SQL command: SELECT a FROM public.ftab2</p>
+
+<p>Apparently in both cases the second foreign scan of append ends up in<br>recursion:</p>
+
+<p>    -&gt;  Foreign Scan on public.ftab2 ftab1_2<br>        Remote SQL: SELECT NULL FROM public.ftab2</p>
+
+<p>This leads to a chain of the same cursor declarations:</p>
+
+<p>    DECLARE c1 CURSOR FOR SELECT a FROM public.ftab4</p>
+
+<p>With a pattern:</p>
+
+<p>    bind -&gt; new backend with the same declare -&gt; execute -&gt; bind -&gt; ...</p>
+
+<p>In the case of async foreign scan it hits limitation when no new<br>requests be sent while there is a pending one. In the second case it<br>hits connection limit. Shouldn&#x27;t this type of foreign paths be avoided<br>by FDW?</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK15F_oKapcDmrBeRD5bOiyTPhN+8UPPz6r0ANKwGei3hsQ@mail.gmail.com"></a>
+<a name="c6e2b08327fd0b90c8f64b69a52f3953"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign table
+ with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-28 13:14:03</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK15F_oKapcDmrBeRD5bOiyTPhN%2B8UPPz6r0ANKwGei3hsQ%40mail.gmail.com">CAPmGK15F_oKapcDmrBeRD5bOiyTPhN+8UPPz6r0ANKwGei3hsQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK15F_oKapcDmrBeRD5bOiyTPhN%2B8UPPz6r0ANKwGei3hsQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK15F_oKapcDmrBeRD5bOiyTPhN%2B8UPPz6r0ANKwGei3hsQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK15F_oKapcDmrBeRD5bOiyTPhN%2B8UPPz6r0ANKwGei3hsQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK15F_oKapcDmrBeRD5bOiyTPhN%2B8UPPz6r0ANKwGei3hsQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Dec 26, 2021 at 8:26 AM Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; On Sat, Dec 25, 2021 at 10:00:01AM +0000, PG Bug reporting form wrote:<br>&gt; &gt;<br>&gt; &gt; create extension postgres_fdw;<br>&gt; &gt; do $d$<br>&gt; &gt;     begin<br>&gt; &gt;         execute $$create server loopback foreign data wrapper postgres_fdw<br>&gt; &gt;             options (dbname &#x27;$$||current_database()||$$&#x27;,<br>&gt; &gt;                      port &#x27;$$||current_setting(&#x27;port&#x27;)||$$&#x27;,<br>&gt; &gt;                      async_capable &#x27;true&#x27;<br>&gt; &gt;             )$$;<br>&gt; &gt;     end;<br>&gt; &gt; $d$;<br>&gt; &gt; create user mapping for current_user server loopback;<br>&gt; &gt;<br>&gt; &gt; create table tab1 (a int);<br>&gt; &gt; insert into tab1 values(1), (2), (3);<br>&gt; &gt; create foreign table ftab1 (b int) server loopback options (table_name<br>&gt; &gt; &#x27;tab1&#x27;);<br>&gt; &gt;<br>&gt; &gt; create foreign table ftab2 () inherits (ftab1) server loopback;<br>&gt; &gt; select a from tab1 where a in (select a from ftab1);<br>&gt; &gt;<br>&gt; &gt; With async_capable = &#x27;false&#x27; I get expected results.<br>&gt; &gt; But when ftab1 defined as<br>&gt; &gt; create foreign table ftab1 (a int) server loopback options (table_name<br>&gt; &gt; &#x27;tab1&#x27;);<br>&gt; &gt; The select fails with:<br>&gt; &gt; psql:query.sql:19: ERROR:  could not connect to server &quot;loopback&quot;<br>&gt; &gt; DETAIL:  connection to server on socket &quot;/tmp/.s.PGSQL.5432&quot; failed: FATAL:<br>&gt; &gt; sorry, too many clients already<br>&gt; &gt; CONTEXT:  remote SQL command: SELECT a FROM public.ftab2<br>&gt; &gt; remote SQL command: SELECT a FROM public.ftab2<br>&gt; &gt; remote SQL command: SELECT a FROM public.ftab2<br>&gt; &gt; remote SQL command: SELECT a FROM public.ftab2</p>
+
+<p>Reproduced here.</p>
+
+<p>&gt; Apparently in both cases the second foreign scan of append ends up in<br>&gt; recursion:<br>&gt;<br>&gt;     -&gt;  Foreign Scan on public.ftab2 ftab1_2<br>&gt;         Remote SQL: SELECT NULL FROM public.ftab2<br>&gt;<br>&gt; This leads to a chain of the same cursor declarations:<br>&gt;<br>&gt;     DECLARE c1 CURSOR FOR SELECT a FROM public.ftab4<br>&gt;<br>&gt; With a pattern:<br>&gt;<br>&gt;     bind -&gt; new backend with the same declare -&gt; execute -&gt; bind -&gt; ...<br>&gt;<br>&gt; In the case of async foreign scan it hits limitation when no new<br>&gt; requests be sent while there is a pending one.</p>
+
+<p>Yeah, but when executing a simple query “select NULL from ftab1”,<br>which would essentially be the same as the sublink subquery used in<br>the first case, I don’t get the assertion failure.  (The simple query<br>only throws the connection limit error.)  The root cause of the<br>assertion failure in the first case might be something other than the<br>limitation.  I’ll look into this in more detail.</p>
+
+<p>Thanks, Alexander and Dmitry!</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK16n1VHbJHTRdrJ3vS8ZEv2vkFsNT_mf00kKffS04uctMw@mail.gmail.com"></a>
+<a name="389520d157c5aa7f290cb45337b73eee"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign table
+ with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-31 07:36:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK16n1VHbJHTRdrJ3vS8ZEv2vkFsNT_mf00kKffS04uctMw%40mail.gmail.com">CAPmGK16n1VHbJHTRdrJ3vS8ZEv2vkFsNT_mf00kKffS04uctMw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK16n1VHbJHTRdrJ3vS8ZEv2vkFsNT_mf00kKffS04uctMw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK16n1VHbJHTRdrJ3vS8ZEv2vkFsNT_mf00kKffS04uctMw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK16n1VHbJHTRdrJ3vS8ZEv2vkFsNT_mf00kKffS04uctMw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK16n1VHbJHTRdrJ3vS8ZEv2vkFsNT_mf00kKffS04uctMw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112310000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Dec 28, 2021 at 10:14 PM Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt; wrote:<br>&gt; The root cause of the<br>&gt; assertion failure in the first case might be something other than the<br>&gt; limitation.  I’ll look into this in more detail.</p>
+
+<p>I think the root cause is that we fail to process a pending async<br>request (if any) in postgresReScanForeignScan() in the case where we<br>just reset the next_tuple counter in that function, without<br>destroying/recreating or rewinding the cursor.  (In the case where we<br>destroy/recreate or rewind the cursor in that function, the pending<br>async request would be processed by pgfdw_exec_query() called from<br>that function.)  This breaks the assumption about ExecAppend() that<br>when called for the first time after ReScan, there are no pending<br>async requests made for async subplans for the Append node, causing<br>the assertion failure in postgresForeignAsyncRequest() called from<br>that ExecAppend().  My oversight in commit 27e1f1456.  :-(</p>
+
+<p>To fix, I modified postgresReScanForeignScan() so that we always<br>process a pending async request (if any) before restarting the foreign<br>scan.  Attached is a patch for that.  I tested the patch with the<br>first case, and it addresses the assertion failure.</p>
+
+<p>Best regards,<br>Etsuro Fujita<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/129424/fix-postgres-fdw-async-rescan.patch">fix-postgres-fdw-async-rescan.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>942 bytes</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20211231123211.dnohvu5exp5dr5oe@erthalion.local"></a>
+<a name="fcb0bf4c25fbcabcd1d4c38c5e83bdb2"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign
+ table with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-31 12:32:11</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20211231123211.dnohvu5exp5dr5oe%40erthalion.local">20211231123211.dnohvu5exp5dr5oe@erthalion.local</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20211231123211.dnohvu5exp5dr5oe%40erthalion.local">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20211231123211.dnohvu5exp5dr5oe%40erthalion.local" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20211231123211.dnohvu5exp5dr5oe%40erthalion.local" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20211231123211.dnohvu5exp5dr5oe%40erthalion.local" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112310000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; On Fri, Dec 31, 2021 at 04:36:42PM +0900, Etsuro Fujita wrote:<br>&gt; On Tue, Dec 28, 2021 at 10:14 PM Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; The root cause of the<br>&gt; &gt; assertion failure in the first case might be something other than the<br>&gt; &gt; limitation.  I’ll look into this in more detail.<br>&gt;<br>&gt; I think the root cause is that we fail to process a pending async<br>&gt; request (if any) in postgresReScanForeignScan() in the case where we<br>&gt; just reset the next_tuple counter in that function, without<br>&gt; destroying/recreating or rewinding the cursor.  (In the case where we<br>&gt; destroy/recreate or rewind the cursor in that function, the pending<br>&gt; async request would be processed by pgfdw_exec_query() called from<br>&gt; that function.)  This breaks the assumption about ExecAppend() that<br>&gt; when called for the first time after ReScan, there are no pending<br>&gt; async requests made for async subplans for the Append node, causing<br>&gt; the assertion failure in postgresForeignAsyncRequest() called from<br>&gt; that ExecAppend().  My oversight in commit 27e1f1456.  :-(<br>&gt;<br>&gt; To fix, I modified postgresReScanForeignScan() so that we always<br>&gt; process a pending async request (if any) before restarting the foreign<br>&gt; scan.  Attached is a patch for that.  I tested the patch with the<br>&gt; first case, and it addresses the assertion failure.</p>
+
+<p>Yep, makes sense now, thank you. The fix works for me, but I&#x27;m curious<br>about the requestee condition:</p>
+
+<p>    fsstate-&gt;conn_state-&gt;pendingAreq-&gt;requestee == (PlanState *) node)</p>
+
+<p>You&#x27;ve mentioned that in those cases where the cursor will be<br>destroyed/recreated or rewind, pgfdw_exec_query will take care of<br>processing pending requests, and looks like it will do this without<br>checking the requestee. Just for me to understand, why is this condition<br>necessary?</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="d10cbf5d-d45a-d3b4-51b3-0a80f5039ed3@gmail.com"></a>
+<a name="63da4123af2924b536899b5b9993edcc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;,
+ Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign table
+ with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-02 19:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/d10cbf5d-d45a-d3b4-51b3-0a80f5039ed3%40gmail.com">d10cbf5d-d45a-d3b4-51b3-0a80f5039ed3@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/d10cbf5d-d45a-d3b4-51b3-0a80f5039ed3%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/d10cbf5d-d45a-d3b4-51b3-0a80f5039ed3%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/d10cbf5d-d45a-d3b4-51b3-0a80f5039ed3%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/d10cbf5d-d45a-d3b4-51b3-0a80f5039ed3%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201020000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello Etsuro-san,<br>31.12.2021 10:36, Etsuro Fujita wrote:<br>&gt; On Tue, Dec 28, 2021 at 10:14 PM Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt; wrote:<br>&gt;&gt; The root cause of the<br>&gt;&gt; assertion failure in the first case might be something other than the<br>&gt;&gt; limitation.  I’ll look into this in more detail.<br>&gt; To fix, I modified postgresReScanForeignScan() so that we always<br>&gt; process a pending async request (if any) before restarting the foreign<br>&gt; scan.  Attached is a patch for that.  I tested the patch with the<br>&gt; first case, and it addresses the assertion failure.<br>Thanks for the fix! I can confirm that it eliminates the failure and<br>propose a simple test case for the issue. Maybe you will find it useful.</p>
+
+<p>Best regards,<br>Alexander<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/129455/posgres_fdw.sql.patch">posgres_fdw.sql.patch</a>
+            
+          </th>
+          <td>text/x-patch</td>
+          <td>968 bytes</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK17_Ry1L96N2u3ahTSs8Hz3TQVTJzbtxKNo8z8=ReDhHhw@mail.gmail.com"></a>
+<a name="5eb2d3eb7a8d7b34834b7fd08c198471"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign table
+ with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-04 08:03:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK17_Ry1L96N2u3ahTSs8Hz3TQVTJzbtxKNo8z8%3DReDhHhw%40mail.gmail.com">CAPmGK17_Ry1L96N2u3ahTSs8Hz3TQVTJzbtxKNo8z8=ReDhHhw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK17_Ry1L96N2u3ahTSs8Hz3TQVTJzbtxKNo8z8%3DReDhHhw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK17_Ry1L96N2u3ahTSs8Hz3TQVTJzbtxKNo8z8%3DReDhHhw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK17_Ry1L96N2u3ahTSs8Hz3TQVTJzbtxKNo8z8%3DReDhHhw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK17_Ry1L96N2u3ahTSs8Hz3TQVTJzbtxKNo8z8%3DReDhHhw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201040000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Dec 31, 2021 at 9:32 PM Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; On Fri, Dec 31, 2021 at 04:36:42PM +0900, Etsuro Fujita wrote:<br>&gt; &gt; I think the root cause is that we fail to process a pending async<br>&gt; &gt; request (if any) in postgresReScanForeignScan() in the case where we<br>&gt; &gt; just reset the next_tuple counter in that function, without<br>&gt; &gt; destroying/recreating or rewinding the cursor.  (In the case where we<br>&gt; &gt; destroy/recreate or rewind the cursor in that function, the pending<br>&gt; &gt; async request would be processed by pgfdw_exec_query() called from<br>&gt; &gt; that function.)  This breaks the assumption about ExecAppend() that<br>&gt; &gt; when called for the first time after ReScan, there are no pending<br>&gt; &gt; async requests made for async subplans for the Append node, causing<br>&gt; &gt; the assertion failure in postgresForeignAsyncRequest() called from<br>&gt; &gt; that ExecAppend().  My oversight in commit 27e1f1456.  :-(<br>&gt; &gt;<br>&gt; &gt; To fix, I modified postgresReScanForeignScan() so that we always<br>&gt; &gt; process a pending async request (if any) before restarting the foreign<br>&gt; &gt; scan.  Attached is a patch for that.  I tested the patch with the<br>&gt; &gt; first case, and it addresses the assertion failure.<br>&gt;<br>&gt; Yep, makes sense now, thank you. The fix works for me, but I&#x27;m curious<br>&gt; about the requestee condition:<br>&gt;<br>&gt;     fsstate-&gt;conn_state-&gt;pendingAreq-&gt;requestee == (PlanState *) node)<br>&gt;<br>&gt; You&#x27;ve mentioned that in those cases where the cursor will be<br>&gt; destroyed/recreated or rewind, pgfdw_exec_query will take care of<br>&gt; processing pending requests, and looks like it will do this without<br>&gt; checking the requestee. Just for me to understand, why is this condition<br>&gt; necessary?</p>
+
+<p>The reason is that the pending request might not need to be processed.<br>Consider this query:</p>
+
+<p>alter server loopback1 options (add async_capable &#x27;true&#x27;);<br>alter server loopback1 options (add use_remote_estimate &#x27;true&#x27;);<br>create table a (aa int, constraint a_pkey primary key (aa));<br>create table loct (aa int, bb text, constraint loct_pkey primary key (aa));<br>create foreign table b (bb text) inherits (a) server loopback1 options<br>(table_name &#x27;loct&#x27;);<br>insert into a select i from generate_series(1, 10000) i;<br>insert into b select i, to_char(i, &#x27;FM00000&#x27;) from generate_series(1, 10000) i;<br>analyze loct;<br>analyze a;</p>
+
+<p>explain verbose select * from a t1, a t2 where t1.aa = t2.aa limit 1;<br>                                            QUERY PLAN<br>---------------------------------------------------------------------------------------------------<br> Limit  (cost=0.29..54.64 rows=1 width=8)<br>   Output: t1.aa, t2.aa<br>   -&gt;  Nested Loop  (cost=0.29..2174178.00 rows=40000 width=8)<br>         Output: t1.aa, t2.aa<br>         -&gt;  Append  (cost=0.00..700.00 rows=20000 width=4)<br>               -&gt;  Seq Scan on public.a t1_1  (cost=0.00..145.00<br>rows=10000 width=4)<br>                     Output: t1_1.aa<br>               -&gt;  Async Foreign Scan on public.b t1_2<br>(cost=100.00..455.00 rows=10000 width=4)<br>                     Output: t1_2.aa<br>                     Remote SQL: SELECT aa FROM public.loct<br>         -&gt;  Append  (cost=0.29..108.65 rows=2 width=4)<br>               -&gt;  Index Only Scan using a_pkey on public.a t2_1<br>(cost=0.29..0.31 rows=1 width=4)<br>                     Output: t2_1.aa<br>                     Index Cond: (t2_1.aa = t1.aa)<br>               -&gt;  Async Foreign Scan on public.b t2_2<br>(cost=100.30..108.33 rows=1 width=4)<br>                     Output: t2_2.aa<br>                     Remote SQL: SELECT aa FROM public.loct WHERE<br>(($1::integer = aa))<br>(17 rows)</p>
+
+<p>Note that when starting the scan for the outer side, we’ll begin an<br>asynchronous fetch for the foreign table on the outer side, but we<br>won’t wait for the results of it until after we get all tuples from<br>the local table on the outer side (see the documentation note about<br>the async_capable option for postgres_fdw [1]).  So when rescanning<br>the inner side after getting the first tuple from the local table on<br>the outer side, the asynchronous fetch begun for the foreign table on<br>the outer side will still be in progress, and we’ll have it as<br>pendingAreq when called from postgresReScanForeignScan() for<br>rescanning the foreign table on the inner side.  BUT it would be<br>useless to process the pending request there, because even without<br>processing the pending request, we can get a matching tuple for the<br>outer tuple from the local table on the inner side, as the local table<br>will be scanned first even in the inner side, and then return the<br>query result.  I think the condition mentioned above is useful to<br>avoid processing such a useless pending request and return result<br>tuples more quickly.</p>
+
+<p>Thanks for reviewing!</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p>[1] <a href="https://www.postgresql.org/docs/14/postgres-fdw.html#id-1.11.7.44.11" rel="nofollow">https://www.postgresql.org/docs/14/postgres-fdw.html#id-1.11.7.44.11</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK14UU-qKKHLhL4-rgxJg6zMtccbkj8diqSwX_o=hWdU1gA@mail.gmail.com"></a>
+<a name="235b6ed7f07acea25781ce144049bd39"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign table
+ with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-07 06:15:56</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK14UU-qKKHLhL4-rgxJg6zMtccbkj8diqSwX_o%3DhWdU1gA%40mail.gmail.com">CAPmGK14UU-qKKHLhL4-rgxJg6zMtccbkj8diqSwX_o=hWdU1gA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK14UU-qKKHLhL4-rgxJg6zMtccbkj8diqSwX_o%3DhWdU1gA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK14UU-qKKHLhL4-rgxJg6zMtccbkj8diqSwX_o%3DhWdU1gA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK14UU-qKKHLhL4-rgxJg6zMtccbkj8diqSwX_o%3DhWdU1gA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK14UU-qKKHLhL4-rgxJg6zMtccbkj8diqSwX_o%3DhWdU1gA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi Alexander,</p>
+
+<p>On Mon, Jan 3, 2022 at 4:00 AM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt; 31.12.2021 10:36, Etsuro Fujita wrote:<br>&gt; &gt; To fix, I modified postgresReScanForeignScan() so that we always<br>&gt; &gt; process a pending async request (if any) before restarting the foreign<br>&gt; &gt; scan.  Attached is a patch for that.  I tested the patch with the<br>&gt; &gt; first case, and it addresses the assertion failure.</p>
+
+<p>&gt; Thanks for the fix! I can confirm that it eliminates the failure and</p>
+
+<p>Good to know.  Thanks for testing!</p>
+
+<p>&gt; propose a simple test case for the issue. Maybe you will find it useful.</p>
+
+<p>Thanks, but in my environment, the test case doesn’t cause any<br>failure.  How about something like the attached, which is made by<br>modifying the original test case to avoid the connection-limit-error<br>issue.  In the attached, I also added a comment to a function to match<br>other places.</p>
+
+<p>Best regards,<br>Etsuro Fujita<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/129656/fix-postgres-fdw-async-rescan-2.patch">fix-postgres-fdw-async-rescan-2.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>4.1 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="aa3cf62a-b105-6360-5418-836ba2ed51a8@gmail.com"></a>
+<a name="c80c475863b1663a22c516cc8db38340"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign table
+ with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 04:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/aa3cf62a-b105-6360-5418-836ba2ed51a8%40gmail.com">aa3cf62a-b105-6360-5418-836ba2ed51a8@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/aa3cf62a-b105-6360-5418-836ba2ed51a8%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/aa3cf62a-b105-6360-5418-836ba2ed51a8%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/aa3cf62a-b105-6360-5418-836ba2ed51a8%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/aa3cf62a-b105-6360-5418-836ba2ed51a8%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>07.01.2022 09:15, Etsuro Fujita wrote:<br>&gt; On Mon, Jan 3, 2022 at 4:00 AM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt;&gt; propose a simple test case for the issue. Maybe you will find it useful.<br>&gt; Thanks, but in my environment, the test case doesn’t cause any<br>&gt; failure. <br>It&#x27;s interesting. I perform on REL_14_STABLE (61c8da50) the following:<br>wget<br><a href="https://www.postgresql.org/message-id/attachment/129455/posgres_fdw.sql.patch" rel="nofollow">https://www.postgresql.org/message-id/attachment/129455/posgres_fdw.sql.patch</a><br>-O - | git apply<br>./configure --enable-debug --enable-cassert &gt;/dev/null &amp;&amp; make -j8<br>&gt;/dev/null &amp;&amp; make -j8 -C contrib &gt;/dev/null &amp;&amp; make check -C<br>contrib/postgres_fdw/<br>and get:<br>test postgres_fdw                 ... FAILED (test process exited with<br>exit code 2)     1116 ms</p>
+
+<p>&gt;  How about something like the attached, which is made by<br>&gt; modifying the original test case to avoid the connection-limit-error<br>&gt; issue.  In the attached, I also added a comment to a function to match<br>&gt; other places.<br>Your modified test fails with unpatched postgres_fdw.c too (as<br>expected). I would prefer your test as more elaborated.</p>
+
+<p>Best regards,<br>Alexander</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK17hrLjX8Xpe30cMVmLiFpD9kYJ0_aRtsdJqz4rqGdcAgA@mail.gmail.com"></a>
+<a name="3a098fa785a070f2fe776900c492a8f1"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign table
+ with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 08:57:51</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK17hrLjX8Xpe30cMVmLiFpD9kYJ0_aRtsdJqz4rqGdcAgA%40mail.gmail.com">CAPmGK17hrLjX8Xpe30cMVmLiFpD9kYJ0_aRtsdJqz4rqGdcAgA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK17hrLjX8Xpe30cMVmLiFpD9kYJ0_aRtsdJqz4rqGdcAgA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK17hrLjX8Xpe30cMVmLiFpD9kYJ0_aRtsdJqz4rqGdcAgA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK17hrLjX8Xpe30cMVmLiFpD9kYJ0_aRtsdJqz4rqGdcAgA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK17hrLjX8Xpe30cMVmLiFpD9kYJ0_aRtsdJqz4rqGdcAgA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, Jan 8, 2022 at 1:00 PM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt; 07.01.2022 09:15, Etsuro Fujita wrote:<br>&gt; &gt; On Mon, Jan 3, 2022 at 4:00 AM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt; &gt;&gt; propose a simple test case for the issue. Maybe you will find it useful.<br>&gt; &gt; Thanks, but in my environment, the test case doesn’t cause any<br>&gt; &gt; failure.<br>&gt; It&#x27;s interesting. I perform on REL_14_STABLE (61c8da50) the following:<br>&gt; wget<br>&gt; <a href="https://www.postgresql.org/message-id/attachment/129455/posgres_fdw.sql.patch" rel="nofollow">https://www.postgresql.org/message-id/attachment/129455/posgres_fdw.sql.patch</a><br>&gt; -O - | git apply<br>&gt; ./configure --enable-debug --enable-cassert &gt;/dev/null &amp;&amp; make -j8<br>&gt; &gt;/dev/null &amp;&amp; make -j8 -C contrib &gt;/dev/null &amp;&amp; make check -C<br>&gt; contrib/postgres_fdw/<br>&gt; and get:<br>&gt; test postgres_fdw                 ... FAILED (test process exited with<br>&gt; exit code 2)     1116 ms</p>
+
+<p>Reproduced.  Sorry for that.  Maybe, I tested this on a<br>non-assertion-enabled build by mistake.  :-(</p>
+
+<p>&gt; &gt;  How about something like the attached, which is made by<br>&gt; &gt; modifying the original test case to avoid the connection-limit-error<br>&gt; &gt; issue.  In the attached, I also added a comment to a function to match<br>&gt; &gt; other places.<br>&gt; Your modified test fails with unpatched postgres_fdw.c too (as<br>&gt; expected). I would prefer your test as more elaborated.</p>
+
+<p>Ok, but I modified the added test case a bit further so that foreign<br>tables are well-defined like in your second test case, which I think<br>is good.  Attached is an updated version of the patch.</p>
+
+<p>Thanks!</p>
+
+<p>Best regards,<br>Etsuro Fujita<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/129679/fix-postgres-fdw-async-rescan-3.patch">fix-postgres-fdw-async-rescan-3.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>4.1 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20ca5fcd-82aa-5386-bd5f-2ceb999dd73f@gmail.com"></a>
+<a name="a7b17ea3553dddc66c910a50fbfffa74"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign table
+ with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-08 19:00:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20ca5fcd-82aa-5386-bd5f-2ceb999dd73f%40gmail.com">20ca5fcd-82aa-5386-bd5f-2ceb999dd73f@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20ca5fcd-82aa-5386-bd5f-2ceb999dd73f%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20ca5fcd-82aa-5386-bd5f-2ceb999dd73f%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20ca5fcd-82aa-5386-bd5f-2ceb999dd73f%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20ca5fcd-82aa-5386-bd5f-2ceb999dd73f%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello Etsuro-san,<br>08.01.2022 11:57, Etsuro Fujita wrote:<br>&gt; Ok, but I modified the added test case a bit further so that foreign<br>&gt; tables are well-defined like in your second test case, which I think<br>&gt; is good.  Attached is an updated version of the patch.<br>Thank you! The updated version looks even better to me.</p>
+
+<p>Best regards,<br>Alexander</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAPmGK15+81PiU05tR6pxazP=_bkR0bkDYqXfry23oP2+D-_QAg@mail.gmail.com"></a>
+<a name="58212038692395a7b71738b1a625c291"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Etsuro Fujita &lt;etsuro(dot)fujita(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Dmitry Dolgov &lt;9erthalion6(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17344: Assert failed on queiring async_capable foreign table
+ with inheritance</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-27 07:25:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAPmGK15%2B81PiU05tR6pxazP%3D_bkR0bkDYqXfry23oP2%2BD-_QAg%40mail.gmail.com">CAPmGK15+81PiU05tR6pxazP=_bkR0bkDYqXfry23oP2+D-_QAg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAPmGK15%2B81PiU05tR6pxazP%3D_bkR0bkDYqXfry23oP2%2BD-_QAg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAPmGK15%2B81PiU05tR6pxazP%3D_bkR0bkDYqXfry23oP2%2BD-_QAg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAPmGK15%2B81PiU05tR6pxazP%3D_bkR0bkDYqXfry23oP2%2BD-_QAg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAPmGK15%2B81PiU05tR6pxazP%3D_bkR0bkDYqXfry23oP2%2BD-_QAg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201270000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Jan 9, 2022 at 4:00 AM Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt; wrote:<br>&gt; 08.01.2022 11:57, Etsuro Fujita wrote:<br>&gt; &gt; Ok, but I modified the added test case a bit further so that foreign<br>&gt; &gt; tables are well-defined like in your second test case, which I think<br>&gt; &gt; is good.  Attached is an updated version of the patch.<br>&gt; Thank you! The updated version looks even better to me.</p>
+
+<p>Thanks for reviewing!  I&#x27;ve committed the patch.</p>
+
+<p>Best regards,<br>Etsuro Fujita</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

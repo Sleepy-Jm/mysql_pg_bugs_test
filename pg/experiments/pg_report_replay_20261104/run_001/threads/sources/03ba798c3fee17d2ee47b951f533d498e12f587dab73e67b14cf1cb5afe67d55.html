@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17340: Unnest discards rows with empty or null arrays</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17340-74d17bbe94cb4190%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2021-12-20T10:38:28" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17340: Unnest discards rows with empty or null arrays" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="2556963ad3e295bfddf89733e3243c09">BUG #17340: Unnest discards rows with empty or null arrays</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202112201038">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17340-74d17bbe94cb4190@postgresql.org"></a>
+<a name="2556963ad3e295bfddf89733e3243c09"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>magnus(dot)falch(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17340: Unnest discards rows with empty or null arrays</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-20 10:38:28</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17340-74d17bbe94cb4190%40postgresql.org">17340-74d17bbe94cb4190@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17340-74d17bbe94cb4190%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17340-74d17bbe94cb4190%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17340-74d17bbe94cb4190%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17340-74d17bbe94cb4190%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17340<br>Logged by:          Magnus Falch<br>Email address:      magnus(dot)falch(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>No part of the documentation covers this behaviour and it feels incorrect.</p>
+
+<p>A function called in the select part of a query discarding other data does<br>not make sense and feels like it breaks with expectations without being<br>documented.</p>
+
+<p>select name,unnest(test_values.int_array) as array_item from<br>(select &#x27;test_a&#x27; as name,null :: int[] as int_array union all<br>select &#x27;test_b&#x27; as name ,array[1,2,3] as int_array ) test_values</p>
+
+<p>Actual result set:<br>name |    array_item<br>test_b |    1<br>test_b |    2<br>test_b |    3 </p>
+
+<p>Expected result set:<br>name |    array_item<br>test_a |    null<br>test_b |    1<br>test_b |    2<br>test_b |    3</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20211222203158.GA4015@momjian.us"></a>
+<a name="c5711cca2e3ab27f49c5fc2a4de4fa15"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Bruce Momjian &lt;bruce(at)momjian(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>magnus(dot)falch(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17340: Unnest discards rows with empty or null arrays</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-22 20:31:58</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20211222203158.GA4015%40momjian.us">20211222203158.GA4015@momjian.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20211222203158.GA4015%40momjian.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20211222203158.GA4015%40momjian.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20211222203158.GA4015%40momjian.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20211222203158.GA4015%40momjian.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Dec 20, 2021 at 10:38:28AM +0000, PG Bug reporting form wrote:<br>&gt; The following bug has been logged on the website:<br>&gt; <br>&gt; Bug reference:      17340<br>&gt; Logged by:          Magnus Falch<br>&gt; Email address:      magnus(dot)falch(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.1<br>&gt; Operating system:   Ubuntu 20.04<br>&gt; Description:        <br>&gt; <br>&gt; No part of the documentation covers this behaviour and it feels incorrect.<br>&gt; <br>&gt; A function called in the select part of a query discarding other data does<br>&gt; not make sense and feels like it breaks with expectations without being<br>&gt; documented.<br>&gt; <br>&gt; select name,unnest(test_values.int_array) as array_item from<br>&gt; (select &#x27;test_a&#x27; as name,null :: int[] as int_array union all<br>&gt; select &#x27;test_b&#x27; as name ,array[1,2,3] as int_array ) test_values<br>&gt; <br>&gt; Actual result set:<br>&gt; name |    array_item<br>&gt; test_b |    1<br>&gt; test_b |    2<br>&gt; test_b |    3 <br>&gt; <br>&gt; <br>&gt; Expected result set:<br>&gt; name |    array_item<br>&gt; test_a |    null<br>&gt; test_b |    1<br>&gt; test_b |    2<br>&gt; test_b |    3</p>
+
+<p>Well, this is a good one.  :-)  I think the reason for the difference is<br>how unnest() treats NULL vs arrays containing NULLs.  Look at this:</p>
+
+<p>	SELECT null::int[];<br>	  int4<br>	--------<br>	 (null)<br>	<br>	SELECT array[null]::int[];<br>	 array<br>	--------<br>	 {NULL}<br>	<br>	-- returns nothing<br>	SELECT unnest(null::int[]);<br>	 unnest<br>	--------<br>--&gt;	<br>	SELECT unnest(array[null]::int[]);<br>	 unnest<br>	--------<br>	 (null)</p>
+
+<p>Be aware that (null) is a null, not an array of nulls.  (That last query<br>returns a null that was extracted from the array.)  In the query you<br>supplied, null::int[] is a null that unnest() ignores since the null is<br>not in an array.  If you do array[null]::int[] you get the result you<br>expected:</p>
+
+<p>	SELECT name, unnest(test_values.int_array) AS array_item<br>	FROM (<br>	    SELECT &#x27;test_a&#x27; AS name, ARRAY[NULL]::INT[] AS int_array<br>	    UNION ALL<br>	    SELECT &#x27;test_b&#x27; AS name, ARRAY[1, 2, 3] AS int_array) test_values;<br>	  name  | array_item<br>	--------+------------<br>	 test_a |     (null)<br>	 test_b |          1<br>	 test_b |          2<br>	 test_b |          3</p>
+
+<p>I hope that helps.</p>
+
+<p>-- <br>  Bruce Momjian  &lt;bruce(at)momjian(dot)us&gt;        <a href="https://momjian.us" rel="nofollow">https://momjian.us</a><br>  EDB                                      <a href="https://enterprisedb.com" rel="nofollow">https://enterprisedb.com</a></p>
+
+<p>  If only the physical world exists, free will is an illusion.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwaNHjCR1C4efXWfGKBcW-8_0sOesACdvbUHiD4NSf-Uaw@mail.gmail.com"></a>
+<a name="866cbd134645163b54d0181ed62a2721"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>magnus(dot)falch(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17340: Unnest discards rows with empty or null arrays</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-22 20:43:49</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwaNHjCR1C4efXWfGKBcW-8_0sOesACdvbUHiD4NSf-Uaw%40mail.gmail.com">CAKFQuwaNHjCR1C4efXWfGKBcW-8_0sOesACdvbUHiD4NSf-Uaw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwaNHjCR1C4efXWfGKBcW-8_0sOesACdvbUHiD4NSf-Uaw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwaNHjCR1C4efXWfGKBcW-8_0sOesACdvbUHiD4NSf-Uaw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwaNHjCR1C4efXWfGKBcW-8_0sOesACdvbUHiD4NSf-Uaw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwaNHjCR1C4efXWfGKBcW-8_0sOesACdvbUHiD4NSf-Uaw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Dec 20, 2021 at 3:42 AM PG Bug reporting form &lt;<br>noreply(at)postgresql(dot)org&gt; wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17340<br>&gt; Logged by:          Magnus Falch<br>&gt; Email address:      magnus(dot)falch(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.1<br>&gt; Operating system:   Ubuntu 20.04<br>&gt; Description:<br>&gt;<br>&gt; No part of the documentation covers this behaviour</p>
+
+<p>Yes, this is under-documented.</p>
+
+<p>and it feels incorrect.<br>&gt;</p>
+
+<p>That may be, but this is how it works.  Placing any set-returning function<br>call directly in the select target list performs an INNER JOIN.  The<br>LATERAL JOIN feature was added to allow the user more flexibility - the<br>syntax you are complaining about should be considered obsolete.</p>
+
+<p>While this hasn&#x27;t been complained about in a while you are the second to<br>question it in the past month or so:</p>
+
+<p><a href="https://www.postgresql.org/message-id/flat/15736efd9ae84d9ebbef14e3e4e8e844@politie.nl#14f68d4b9a12e1aa133abd449cf3ccc5" rel="nofollow">https://www.postgresql.org/message-id/flat/15736efd9ae84d9ebbef14e3e4e8e844%40politie.nl#14f68d4b9a12e1aa133abd449cf3ccc5</a></p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwbMqSaGKs-dCitd0-ZHrcNDN4-MsXL=TyvVr0k-QHb3zw@mail.gmail.com"></a>
+<a name="aa7d027705a399796da3af676833edbf"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>magnus(dot)falch(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17340: Unnest discards rows with empty or null arrays</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-22 20:48:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwbMqSaGKs-dCitd0-ZHrcNDN4-MsXL%3DTyvVr0k-QHb3zw%40mail.gmail.com">CAKFQuwbMqSaGKs-dCitd0-ZHrcNDN4-MsXL=TyvVr0k-QHb3zw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwbMqSaGKs-dCitd0-ZHrcNDN4-MsXL%3DTyvVr0k-QHb3zw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwbMqSaGKs-dCitd0-ZHrcNDN4-MsXL%3DTyvVr0k-QHb3zw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwbMqSaGKs-dCitd0-ZHrcNDN4-MsXL%3DTyvVr0k-QHb3zw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwbMqSaGKs-dCitd0-ZHrcNDN4-MsXL%3DTyvVr0k-QHb3zw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Dec 22, 2021 at 1:43 PM David G. Johnston &lt;<br>david(dot)g(dot)johnston(at)gmail(dot)com&gt; wrote:</p>
+
+<p>&gt; On Mon, Dec 20, 2021 at 3:42 AM PG Bug reporting form &lt;<br>&gt; noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;<br>&gt;&gt; The following bug has been logged on the website:<br>&gt;&gt;<br>&gt;&gt; Bug reference:      17340<br>&gt;&gt; Logged by:          Magnus Falch<br>&gt;&gt; Email address:      magnus(dot)falch(at)gmail(dot)com<br>&gt;&gt; PostgreSQL version: 14.1<br>&gt;&gt; Operating system:   Ubuntu 20.04<br>&gt;&gt; Description:<br>&gt;&gt;<br>&gt;&gt; No part of the documentation covers this behaviour<br>&gt;<br>&gt;<br>&gt; Yes, this is under-documented.<br>&gt;<br>&gt;<br>Specifically, it is documented here [1].</p>
+
+<p>[1]<br><a href="https://www.postgresql.org/docs/current/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET" rel="nofollow">https://www.postgresql.org/docs/current/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET</a></p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAODrA7q=d7RvHRyt-vBr6AmJBAE-c8L7T=VqMBp9cChYUBJ0zg@mail.gmail.com"></a>
+<a name="4a46155efe97e2bf71dca7fa077e6c4f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Magnus Falch &lt;magnus(dot)falch(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17340: Unnest discards rows with empty or null arrays</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-22 21:26:48</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAODrA7q%3Dd7RvHRyt-vBr6AmJBAE-c8L7T%3DVqMBp9cChYUBJ0zg%40mail.gmail.com">CAODrA7q=d7RvHRyt-vBr6AmJBAE-c8L7T=VqMBp9cChYUBJ0zg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAODrA7q%3Dd7RvHRyt-vBr6AmJBAE-c8L7T%3DVqMBp9cChYUBJ0zg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAODrA7q%3Dd7RvHRyt-vBr6AmJBAE-c8L7T%3DVqMBp9cChYUBJ0zg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAODrA7q%3Dd7RvHRyt-vBr6AmJBAE-c8L7T%3DVqMBp9cChYUBJ0zg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAODrA7q%3Dd7RvHRyt-vBr6AmJBAE-c8L7T%3DVqMBp9cChYUBJ0zg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I got an explanation from depesz that boils down to what Bruce explained.<br>Returning an unambiguous answer and discarding data is more explicit than<br>the other alternatives and is therefore the optimal compromise.</p>
+
+<p>I submitted a doc patch suggestion for this.</p>
+
+<p>Once documented and explained it&#x27;s not an issue. And coalescing the target<br>array to an array containing the desired failover value is a good &amp; easy<br>workaround to get what corresponds to what my gut feeling expected.</p>
+
+<p>On Wed, Dec 22, 2021, 21:48 David G. Johnston &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;<br>wrote:</p>
+
+<p>&gt; On Wed, Dec 22, 2021 at 1:43 PM David G. Johnston &lt;<br>&gt; david(dot)g(dot)johnston(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt;&gt; On Mon, Dec 20, 2021 at 3:42 AM PG Bug reporting form &lt;<br>&gt;&gt; noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;&gt;<br>&gt;&gt;&gt; The following bug has been logged on the website:<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; Bug reference:      17340<br>&gt;&gt;&gt; Logged by:          Magnus Falch<br>&gt;&gt;&gt; Email address:      magnus(dot)falch(at)gmail(dot)com<br>&gt;&gt;&gt; PostgreSQL version: 14.1<br>&gt;&gt;&gt; Operating system:   Ubuntu 20.04<br>&gt;&gt;&gt; Description:<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; No part of the documentation covers this behaviour<br>&gt;&gt;<br>&gt;&gt;<br>&gt;&gt; Yes, this is under-documented.<br>&gt;&gt;<br>&gt;&gt;<br>&gt; Specifically, it is documented here [1].<br>&gt;<br>&gt; [1]<br>&gt; <a href="https://www.postgresql.org/docs/current/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET" rel="nofollow">https://www.postgresql.org/docs/current/xfunc-sql.html#XFUNC-SQL-FUNCTIONS-RETURNING-SET</a><br>&gt;<br>&gt; David J.<br>&gt;<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17448: In Windows 10, version 1703 and later, huge_pages doesn&#x27;t work.</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17448-0a96583a67edb1f7%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-03-25T07:52:57" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17448: In Windows 10, version 1703 and later, huge_pages doesn&#x27;t work." />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17448 Logged by: Okano Naoki Email address: okano.naoki@jp.fujitsu.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17448: In Windows 10, version 1703 and later, huge_pages doesn&#x27;t work.</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>okano(dot)naoki(at)jp(dot)fujitsu(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17448: In Windows 10, version 1703 and later, huge_pages doesn&#x27;t work.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-25 07:52:57</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17448-0a96583a67edb1f7%40postgresql.org">17448-0a96583a67edb1f7@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17448-0a96583a67edb1f7%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17448-0a96583a67edb1f7%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17448-0a96583a67edb1f7%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17448-0a96583a67edb1f7%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17448-0a96583a67edb1f7%40postgresql.org" selected="selected">2022-03-25 07:52:57 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="Yj6oxYsBE5LXA8ZP%40paquier.xyz">&nbsp;2022-03-26 05:46:45 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="20220326082408.moh55zuecxjmewnm%40jrouhaud">&nbsp;&nbsp;2022-03-26 08:24:08 from Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</option>
+  <option value="Yj7WzK278PmZaiqT%40paquier.xyz">&nbsp;&nbsp;&nbsp;2022-03-26 09:03:55 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="CA%2BhUKGLwOSf-QwVtCcKx9xvugN2BSzEBBeD5DNyTXgcSRp5sTw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2022-03-26 11:07:57 from Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="Yj76HKWAxZ66SGsc%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;2022-03-26 11:33:48 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="YkQMyhsP7xgLDDT/%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;2022-03-30 07:54:50 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;	&#x1f4ce;</option>
+  <option value="20220331045908.bm5edcacvymgwwv2%40jrouhaud">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-31 04:59:08 from Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</option>
+  <option value="YkVbbZBiC4yxXPuc%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-31 07:42:37 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="20220331080055.hjrrsrd4lxwlt7f5%40jrouhaud">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-31 08:00:55 from Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</option>
+  <option value="20220331104659.ol6pqe7s3tpkymuk%40jrouhaud">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-31 10:46:59 from Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</option>
+  <option value="20220331110309.ws25d6dl5yyzprye%40jrouhaud">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-31 11:03:09 from Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</option>
+  <option value="YkaUuhwppy2hiBi9%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-01 05:59:22 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="YkaZgufzxtyTeJv%2B%40jrouhaud">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-01 06:19:46 from Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</option>
+  <option value="Ymd7C%2BQineDpi7Eb%40jrouhaud">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-26 04:54:35 from Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</option>
+  <option value="Ymj7GHBfTnaN5kWW%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-27 08:13:12 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="9178d683d05d420a887369ffb38d8fbd%40dental-vision.de">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-27 15:04:23 from Wilm Hoyer &lt;W(dot)Hoyer(at)dental-vision(dot)de&gt;</option>
+  <option value="20220427165228.dkxndmm4lsrd5zgg%40jrouhaud">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-27 16:52:28 from Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</option>
+  <option value="6389b5a88e114bee85593af2853c08cd%40dental-vision.de">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-28 09:31:17 from Wilm Hoyer &lt;W(dot)Hoyer(at)dental-vision(dot)de&gt;</option>
+  <option value="20220427164841.xcpdcmq76ixn7zgx%40jrouhaud">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-27 16:48:41 from Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</option>
+  <option value="CABUevExOUiOVjiecHsZWpTzvmbyCs-tF2Nf8RCqHXvoS2VXqNg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-27 10:01:03 from Magnus Hagander &lt;magnus(at)hagander(dot)net&gt;</option>
+  <option value="YsdgeTimQONuzEDQ%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-07-07 22:38:49 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;	&#x1f4ce;</option>
+  <option value="YkaTrRBo6bk5EZ5F%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-04-01 05:54:53 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="YyRxXJ%2BFXOWTBBrb%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;2022-09-16 12:51:40 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  <option value="3677878.1663338578%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-16 14:29:38 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="20220916143612.5mqdrz5anq47sgr4%40jrouhaud">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-16 14:36:12 from Julien Rouhaud &lt;rjuju123(at)gmail(dot)com&gt;</option>
+  <option value="YyVsB9mAWFUwqkZx%40paquier.xyz">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-09-17 06:41:11 from Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203250000">pgsql-bugs</a></span>
+        
+          <span class="listname"><a href="/list/pgsql-hackers/since/202203250000">pgsql-hackers</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17448<br>Logged by:          Okano Naoki<br>Email address:      okano(dot)naoki(at)jp(dot)fujitsu(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Windows<br>Description:        </p>
+
+<p>With huge_pages = on, the postgres process does not appear to use large<br>pages.<br>I checked with VMMap if the large pages are used in the following<br>environment.<br>Environment<br>  PostgreSQL version: 14.2<br>  Operating system  : Windows 10 20H2</p>
+
+<p>On this page (*) says that in Windows 10, version 1703 and later OS<br>versions,  <br>you must specify the FILE_MAP_LARGE_PAGES flag with the MapViewOfFile<br>function <br>to map large pages.</p>
+
+<p>I think it seems to be the cause that MapViewOfFile() in<br>src/backend/port/win32_shmem.c <br>does not specify FILE_MAP_LARGE_PAGES flag.</p>
+
+<p>(*) MapViewOfFileEx function<br><a href="https://docs.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-mapviewoffileex" rel="nofollow">https://docs.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-mapviewoffileex</a></p>
+
+<p>FILE_MAP_LARGE_PAGES<br>  Starting with Windows 10, version 1703, this flag specifies <br>  that the view should be mapped using large page support. <br>  The size of the view must be a multiple of the size of a large page <br>  reported by the GetLargePageMinimum function, <br>  and the file-mapping object must have been created using the<br>SEC_LARGE_PAGES option. <br>  If you provide a non-null value for lpBaseAddress, <br>  then the value must be a multiple of GetLargePageMinimum.</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/Yj6oxYsBE5LXA8ZP%40paquier.xyz">Re: BUG #17448: In Windows 10, version 1703 and later, huge_pages
+ doesn&#x27;t work.</a> at 2022-03-26 05:46:45 from Michael Paquier
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/20220325083856.GA26455%40depesz.com">Next Message</a></th>
+            <td>hubert depesz lubaczewski</td>
+            <td>2022-03-25 08:38:56</td>
+            <td><a href="/message-id/20220325083856.GA26455%40depesz.com">Re: Logical replication stops dropping used initial-sync replication
+ slots</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CAPpHfdsjdwArnbGoChhehd_d_T16of7APhpigK0MhZ13xMp1Pw%40mail.gmail.com">Previous Message</a></th>
+            <td>Alexander Korotkov</td>
+            <td>2022-03-24 22:40:27</td>
+            <td><a href="/message-id/CAPpHfdsjdwArnbGoChhehd_d_T16of7APhpigK0MhZ13xMp1Pw%40mail.gmail.com">Re: BUG #17440: not expected result from jsonb_path_query</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-hackers by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/20220325.172418.1055357550509939415.horikyota.ntt%40gmail.com">Next Message</a></th>
+            <td>Kyotaro Horiguchi</td>
+            <td>2022-03-25 08:24:18</td>
+            <td><a href="/message-id/20220325.172418.1055357550509939415.horikyota.ntt%40gmail.com">Re: shared-memory based stats collector - v66</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CALj2ACUbSQJ2T6KiuWyChSiYiwQy17mn-kOqNT5oSYito3HiaQ%40mail.gmail.com">Previous Message</a></th>
+            <td>Bharath Rupireddy</td>
+            <td>2022-03-25 07:40:27</td>
+            <td><a href="/message-id/CALj2ACUbSQJ2T6KiuWyChSiYiwQy17mn-kOqNT5oSYito3HiaQ%40mail.gmail.com">Run end-of-recovery checkpoint in non-wait mode or skip it entirely
+ for faster server availability?</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "report_id": "17538",
+  "scenario_id": "17538_main",
+  "target_version": "14.2",
+  "source_url": "https://www.postgresql.org/message-id/17538-74a88f3ab5b55670%40postgresql.org",
+  "parts": [
+    {
+      "text": "Then, I update log_hostname to 'yes' in postgresql.conf, and send SIGHUP\nsignal to reload configuration files.\n\n\nI saw the logs showing the parameter was updated:\n2022-07-03 10:50:54.477 UTC [5955] LOG:  received SIGHUP, reloading\nconfiguration files\n2022-07-03 10:50:54.478 UTC [5955] LOG:  parameter \"log_hostname\" changed to\n\"yes\"\n\n\nAfter I disconnected to Postgres, connection log messages kept showing the\nIP address (127.0.0.1), which expected to show the host name (localhost).\nThis means updating log_hostname did not take effect.;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17538.txt",
+      "start_offset": 919,
+      "end_offset": 1460,
+      "start_line": 32,
+      "end_line": 48,
+      "excerpt_sha256": "072c36464590c04842fcc9f1870d7dd7cc5089cd92d2032b099e613eb6709f4d",
+      "transformations": [
+        "trim outer whitespace",
+        "append SQL terminator at excerpt boundary"
+      ],
+      "material_kind": "operational_steps"
+    }
+  ],
+  "mode": "hostname_reload",
+  "oracle": {
+    "kind": "output",
+    "pattern": "disconnection:.*host=127\\.0\\.0\\.1",
+    "reported_phenomenon": "log_hostname从no改yes后已有TCP连接的断开日志仍记IP",
+    "author_expected_behavior": "作者期望断开时记录localhost"
+  },
+  "config": {
+    "listen_addresses": "'127.0.0.1'",
+    "log_connections": "on",
+    "log_disconnections": "on",
+    "log_hostname": "off"
+  },
+  "notes": "用户wang/dbwang映射为隔离集群postgres；无业务SQL，保留同一已建立TCP连接。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "spec_sha256": "03db62719ae1cf859e216f5ce6566cbd1b6dc8a8c05601508e8e7e00fa35f1fb"
+}

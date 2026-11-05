@@ -1,0 +1,42 @@
+{
+  "report_id": "18767",
+  "scenario_id": "18767_main",
+  "target_version": "17.2",
+  "source_url": "https://www.postgresql.org/message-id/18767-e36a4af08c98f883%40postgresql.org",
+  "parts": [
+    {
+      "text": "SET search_path = tst;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18767.txt",
+      "start_offset": 2064,
+      "end_offset": 2086,
+      "start_line": 61,
+      "end_line": 61,
+      "excerpt_sha256": "b857282b45b472d0d750ac512faa42e0bdbaed7ff353c721d8a3f5968417851e",
+      "transformations": []
+    },
+    {
+      "text": "select version();\ndrop schema if exists tst cascade;\ncreate schema tst;\ncreate function tst.caller1() returns text language plpgsql as \n$$ BEGIN return tst.caller2(); END; $$;\ncreate function tst.caller2() returns text language plpgsql as \n$$ BEGIN return tst.called(); END; $$;\nCREATE OR REPLACE FUNCTION tst.called()\nRETURNS text LANGUAGE plpgsql\nSECURITY DEFINER SET search_path = pg_catalog, pg_temp AS\n$$\n  DECLARE\n    v_stack                  TEXT;\n  BEGIN\n    GET DIAGNOSTICS v_stack = PG_CONTEXT;\n    IF v_stack NOT LIKE '%tst.caller2()%' THEN\n      RAISE WARNING 'Beware: the calling function is not the expected\none!';\n    END IF;\n    RETURN v_stack;\n  END;\n$$;\nset search_path = tst;\nshow search_path;\nselect caller1() as stack_in_called;\nreset search_path;\nshow search_path;\nselect tst.caller1() as stack_in_called;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\18767.txt",
+      "start_offset": 796,
+      "end_offset": 1626,
+      "start_line": 23,
+      "end_line": 53,
+      "excerpt_sha256": "8f3accda629728ce23479a8040053f71a1251fbeb37d5b5695f924329457cc73",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    }
+  ],
+  "mode": "psql",
+  "oracle": {
+    "kind": "stderr",
+    "pattern": "WARNING:\\s+Beware: the calling function is not the expected",
+    "reported_phenomenon": "创建函数时的 search_path 使 PG_CONTEXT 省略调用者 schema",
+    "author_expected_behavior": "作者期望按调用时的路径返回限定名"
+  },
+  "config": {},
+  "notes": "执行原文第二种启动方式，保持 SET 与脚本同一会话。",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "spec_sha256": "879500c5f667c91399b59ad45f6dc698ca6261c4eeb11c68eddb86537ad7df4f"
+}

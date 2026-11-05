@@ -1,0 +1,75 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17546
+Logged by:          Su Sinodan
+Email address:      su(dot)sinodan(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Windows Server 2016 (10.0.14393 Build 1439)
+Description:        
+
+
+When a certain number (p, s) with a fractional part (specific examples -
+1.11 and 69.96) is multiplied by a power (10, N), the resulting value is
+distorted.
+However, if the power(10, N) is manually converted to an integer, the
+resulting value is correct.
+It looks like there is some kind of problem with the automatic type
+conversion of the power() function.
+
+
+Test query:
+with w_degree as (
+                   select 0::integer as degree union all
+                   select 1::integer as degree union all
+                   select 2::integer as degree union all
+                   select 3::integer as degree union all
+                   select 4::integer as degree union all
+                   select 5::integer as degree union all
+                   select 6::integer as degree union all
+                   select 7::integer as degree union all
+                   select 8::integer as degree union all
+                   select 9::integer as degree
+                 )
+select
+  power(10, w.degree::integer)                                  as
+"power()"
+, 1.11::numeric(20, 5) * power(10, w.degree::integer)           as " 1.11 *
+power()"
+, 1.11::numeric(20, 5) * power(10, w.degree::integer)::integer  as " 1.11 *
+power()::integer"
+, 69.96::numeric(20, 5) * power(10, w.degree::integer)          as "69.96 *
+power()"
+, 69.96::numeric(20, 5) * power(10, w.degree::integer)::integer as "69.96 *
+power()::integer"
+from w_degree w;
+
+
+Result:
+  power()   |   1.11 * power()   |  1.11 * power()::integer |  69.96 *
+power()  | 69.96 * power()::integer
+------------+--------------------+--------------------------+-------------------+--------------------------
+          1 |               1.11 |                  1.11000 |            
+69.96 |                 69.96000
+         10 | 11.100000000000001 |                 11.10000 |
+699.5999999999999 |                699.60000
+        100 | 111.00000000000001 |                111.00000 |
+6995.999999999999 |               6996.00000
+       1000 |               1110 |               1110.00000 |            
+69960 |              69960.00000
+      10000 | 11100.000000000002 |              11100.00000 |
+699599.9999999999 |             699600.00000
+     100000 | 111000.00000000001 |             111000.00000 |
+6995999.999999999 |            6996000.00000
+    1000000 |            1110000 |            1110000.00000 |         
+69960000 |           69960000.00000
+   10000000 | 11100000.000000002 |           11100000.00000 |
+699599999.9999999 |          699600000.00000
+  100000000 | 111000000.00000001 |          111000000.00000 |
+6995999999.999999 |         6996000000.00000
+ 1000000000 |         1110000000 |         1110000000.00000 |      
+69960000000 |        69960000000.00000
+(10 rows)
+
+
+

@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18755: Using Natts_pg_trigger rather than Natts_pg_event_trigger for event trigger</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18755-daae8f0ea9618715%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2024-12-29T08:52:31" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18755: Using Natts_pg_trigger rather than Natts_pg_event_trigger for event trigger" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="d18c80ecacd3bbc53bc24bd18f6a24fd">BUG #18755: Using Natts_pg_trigger rather than Natts_pg_event_trigger for event trigger</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202412290852">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18755-daae8f0ea9618715@postgresql.org"></a>
+<a name="d18c80ecacd3bbc53bc24bd18f6a24fd"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>zhanghien(at)qq(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18755: Using Natts_pg_trigger rather than Natts_pg_event_trigger for event trigger</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-29 08:52:31</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18755-daae8f0ea9618715%40postgresql.org">18755-daae8f0ea9618715@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18755-daae8f0ea9618715%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18755-daae8f0ea9618715%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18755-daae8f0ea9618715%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18755-daae8f0ea9618715%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18755<br>Logged by:          Xin Zhang<br>Email address:      zhanghien(at)qq(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Any<br>Description:        </p>
+
+<p>In function insert_event_trigger_tuple, the datum array is declared with<br>length Natts_pg_trigger:<br>```c<br>	Datum		values[Natts_pg_trigger];<br>	bool		nulls[Natts_pg_trigger];<br>```</p>
+
+<p>Natts_pg_trigger should only be used in pg_trigger tuple and<br>Natts_pg_event_trigger is for pg_event_trigger?<br>I think this could be a typo. Maybe the author of function<br>insert_event_trigger_tuple copied the variables from CreateTriggerFiringOn<br>but forgot to change the array length to Natts_pg_event_trigger.</p>
+
+<p>The current code works because Natts_pg_trigger is 19 and<br>Natts_pg_event_trigger is 7, the pg_event_trigger values array is allocated<br>with some extra items which is never accessed with index &gt;= 7.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="tencent_05AD0FB321A414EC3661204D2102AA6EF605@qq.com"></a>
+<a name="04d2eee57b6634d173f13956268750c3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>张鑫 &lt;zhanghien(at)qq(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18755: Using Natts_pg_trigger rather than Natts_pg_event_trigger for event trigger</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-29 09:37:18</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/tencent_05AD0FB321A414EC3661204D2102AA6EF605%40qq.com">tencent_05AD0FB321A414EC3661204D2102AA6EF605@qq.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/tencent_05AD0FB321A414EC3661204D2102AA6EF605%40qq.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/tencent_05AD0FB321A414EC3661204D2102AA6EF605%40qq.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/tencent_05AD0FB321A414EC3661204D2102AA6EF605%40qq.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/tencent_05AD0FB321A414EC3661204D2102AA6EF605%40qq.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi&amp;nbsp;everyone!</p>
+
+<p>Here is the fix for BUG #18755. I fail to upload the patch with my mailbox and I just paste the text here because it&#x27;s simple enough.</p>
+
+<p>From 94009c0ae26443d03bd81ec10a1b666a4c10def4 Mon Sep 17 00:00:00 2001<br>From: &quot;Xin Zhang&quot; &lt;zhanghien(at)qq(dot)com&amp;gt;<br>Date: Sun, 29 Dec 2024 17:08:53 +0800<br>Subject: [PATCH] Replace Natts_pg_trigger with Natts_pg_event_trigger for<br>&amp;nbsp;event trigger</p>
+
+<p>---<br>&amp;nbsp;src/backend/commands/event_trigger.c | 4 ++--<br>&amp;nbsp;1 file changed, 2 insertions(+), 2 deletions(-)</p>
+
+<p>diff --git a/src/backend/commands/event_trigger.c b/src/backend/commands/event_trigger.c<br>index dcfc1dbaffd..1f5872554d4 100644<br>--- a/src/backend/commands/event_trigger.c<br>+++ b/src/backend/commands/event_trigger.c<br>@@ -276,8 +276,8 @@ insert_event_trigger_tuple(const char *trigname, const char *eventname, Oid evtO<br>&amp;nbsp;	Relation	tgrel;<br>&amp;nbsp;	Oid			trigoid;<br>&amp;nbsp;	HeapTuple	tuple;<br>-	Datum		values[Natts_pg_trigger];<br>-	bool		nulls[Natts_pg_trigger];<br>+	Datum		values[Natts_pg_event_trigger];<br>+	bool		nulls[Natts_pg_event_trigger];<br>&amp;nbsp;	NameData	evtnamedata,<br>&amp;nbsp;				evteventdata;<br>&amp;nbsp;	ObjectAddress myself,<br>--&amp;nbsp;<br>2.39.3</p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAApHDvowQK_k0P3cbdRg6ekir3wcbdU4d00pQUZtt=RX5byG-g@mail.gmail.com"></a>
+<a name="e4746c1c53703eb5c9aee1f2843cbb5b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>David Rowley &lt;dgrowleyml(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>张鑫 &lt;zhanghien(at)qq(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18755: Using Natts_pg_trigger rather than
+ Natts_pg_event_trigger for event trigger</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-29 10:36:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAApHDvowQK_k0P3cbdRg6ekir3wcbdU4d00pQUZtt%3DRX5byG-g%40mail.gmail.com">CAApHDvowQK_k0P3cbdRg6ekir3wcbdU4d00pQUZtt=RX5byG-g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAApHDvowQK_k0P3cbdRg6ekir3wcbdU4d00pQUZtt%3DRX5byG-g%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAApHDvowQK_k0P3cbdRg6ekir3wcbdU4d00pQUZtt%3DRX5byG-g%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAApHDvowQK_k0P3cbdRg6ekir3wcbdU4d00pQUZtt%3DRX5byG-g%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAApHDvowQK_k0P3cbdRg6ekir3wcbdU4d00pQUZtt%3DRX5byG-g%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, 29 Dec 2024 at 22:37, 张鑫 &lt;zhanghien(at)qq(dot)com&gt; wrote:<br>&gt; Here is the fix for BUG #18755. I fail to upload the patch with my mailbox and I just paste the text here because it&#x27;s simple enough.</p>
+
+<p>I&#x27;ve not seen this bug report. Perhaps it&#x27;s caught up in moderation?</p>
+
+<p>&gt; --- a/src/backend/commands/event_trigger.c<br>&gt; +++ b/src/backend/commands/event_trigger.c<br>&gt; @@ -276,8 +276,8 @@ insert_event_trigger_tuple(const char *trigname, const char *eventname, Oid evtO<br>&gt;   Relation tgrel;<br>&gt;   Oid trigoid;<br>&gt;   HeapTuple tuple;<br>&gt; - Datum values[Natts_pg_trigger];<br>&gt; - bool nulls[Natts_pg_trigger];<br>&gt; + Datum values[Natts_pg_event_trigger];<br>&gt; + bool nulls[Natts_pg_event_trigger];<br>&gt;   NameData evtnamedata,<br>&gt;   evteventdata;<br>&gt;   ObjectAddress myself,</p>
+
+<p>Yes, that&#x27;s better. However, no particular harm done since pg_trigger<br>has more columns than pg_event_trigger.  For that reason, it&#x27;s<br>probably fine to fix in master only. The number of columns in those<br>tables in the back branches isn&#x27;t going to change.</p>
+
+<p>I scanned around to see if there&#x27;s been any similar copy/paste errors,<br>but couldn&#x27;t see any.</p>
+
+<p>I&#x27;ll take care of pushing this. Thanks for the patch.</p>
+
+<p>David</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

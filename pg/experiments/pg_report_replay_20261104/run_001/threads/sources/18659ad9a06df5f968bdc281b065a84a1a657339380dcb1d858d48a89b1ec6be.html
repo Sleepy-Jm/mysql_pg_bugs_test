@@ -1,0 +1,1479 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17406-71e02820ae79bb40%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-02-15T17:32:33" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17406: Segmentation fault on GiST index after 14.2 upgrade" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="e4d42435c511399a6544572482a520a9">BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202202151732">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17406-71e02820ae79bb40@postgresql.org"></a>
+<a name="e4d42435c511399a6544572482a520a9"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>vyegorov(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-15 17:32:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17406-71e02820ae79bb40%40postgresql.org">17406-71e02820ae79bb40@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17406-71e02820ae79bb40%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17406-71e02820ae79bb40%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17406-71e02820ae79bb40%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17406-71e02820ae79bb40%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202150000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17406<br>Logged by:          Victor Yegorov<br>Email address:      vyegorov(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Ubuntu 18.04.6 LTS (bionic)<br>Description:        </p>
+
+<p>KVM guest, on Intel(R) Xeon(R) CPU E5-2697 v2.</p>
+
+<p>PostgreSQL 12.9 had been upgraded to 14.2 using</p>
+
+<p>pg_upgradecluster -k  -m link 12 main /mnt/postgres/14/</p>
+
+<p>After that, one of the queries is crashing with Segmentation Fault.<br>However, after REINDEX problem will be fixed. I thought I should report<br>still.</p>
+
+<p>explain<br>SELECT r.id, r.name, r.map_center_y, r.map_center_x,<br>       COALESCE ((SELECT string_agg(id::TEXT, &#x27;,&#x27;) FROM v3_region AS r2<br>WHERE r2.id != r.id AND r2.ltree_path &lt;@ r.ltree_path), &#x27;&#x27;) AS children<br>  FROM v3_region AS r;<br>                                                 QUERY PLAN<br>-------------------------------------------------------------------------------------------------------------<br> Seq Scan on v3_region r  (cost=0.00..3207.31 rows=349 width=580)<br>   SubPlan 1<br>     -&gt;  Aggregate  (cost=8.17..8.18 rows=1 width=32)<br>           -&gt;  Index Scan using region_ltree_path_idx_gist on v3_region r2 <br>(cost=0.14..8.16 rows=1 width=4)<br>                 Index Cond: (ltree_path &lt;@ r.ltree_path)<br>                 Filter: (id &lt;&gt; r.id)<br>(6 rows)</p>
+
+<p>Here is backtrace:<br>#0  __memmove_sse2_unaligned_erms () at<br>../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:435<br>#1  0x00007f129244c266 in memcpy (__len=&lt;optimized out&gt;,<br>__src=0x55bbbd430f4a, __dest=&lt;optimized out&gt;) at<br>/usr/include/x86_64-linux-gnu/bits/string_fortified.h:34<br>#2  copy_ltree (src=0x55bbbd430f4a) at<br>./build/../contrib/ltree/ltree_gist.c:446<br>#3  0x00007f129244db51 in gist_ischild (siglen=28, query=0x55bbbd410cb8,<br>key=0x55bbbd430f18) at ./build/../contrib/ltree/ltree_gist.c:454<br>#4  ltree_consistent (fcinfo=0x7ffdac2e3e20) at<br>./build/../contrib/ltree/ltree_gist.c:674<br>#5  0x000055bbbb944a5d in FunctionCall5Coll<br>(flinfo=flinfo(at)entry=0x55bbbd416b20, collation=&lt;optimized out&gt;,<br>arg1=arg1(at)entry=140727492165472, arg2=&lt;optimized out&gt;, arg3=&lt;optimized out&gt;,<br>arg4=&lt;optimized out&gt;, arg5=140727492165471)<br>    at ./build/../src/backend/utils/fmgr/fmgr.c:1241<br>#6  0x000055bbbb4db72d in gistindex_keytest (recheck_distances_p=&lt;synthetic<br>pointer&gt;, recheck_p=&lt;synthetic pointer&gt;, offset=4, page=0x7f1293a45180<br>&quot;K\313\003&quot;, tuple=0x7f1293a47058, scan=0x55bbbd4196c8)<br>    at ./build/../src/backend/access/gist/gistget.c:222<br>#7  gistScanPage (scan=scan(at)entry=0x55bbbd4196c8,<br>pageItem=pageItem(at)entry=0x7ffdac2e3fe0, myDistances=myDistances(at)entry=0x0,<br>tbm=tbm(at)entry=0x0, ntids=ntids(at)entry=0x0) at<br>./build/../src/backend/access/gist/gistget.c:438<br>#8  0x000055bbbb4dbf43 in gistgettuple (scan=0x55bbbd4196c8, dir=&lt;optimized<br>out&gt;) at ./build/../src/backend/access/gist/gistget.c:639<br>#9  0x000055bbbb50cb05 in index_getnext_tid (scan=0x55bbbd4196c8,<br>direction=&lt;optimized out&gt;) at<br>./build/../src/backend/access/index/indexam.c:533<br>#10 0x000055bbbb50ccbd in index_getnext_slot<br>(scan=scan(at)entry=0x55bbbd4196c8,<br>direction=direction(at)entry=ForwardScanDirection,<br>slot=slot(at)entry=0x55bbbd4057a0) at<br>./build/../src/backend/access/index/indexam.c:625<br>#11 0x000055bbbb6a3042 in IndexNext (node=node(at)entry=0x55bbbd405500) at<br>./build/../src/backend/executor/nodeIndexscan.c:133<br>#12 0x000055bbbb688281 in ExecScanFetch (recheckMtd=0x55bbbb6a38a0<br>&lt;IndexRecheck&gt;, accessMtd=0x55bbbb6a2fd0 &lt;IndexNext&gt;, node=0x55bbbd405500)<br>at ./build/../src/backend/executor/execScan.c:133<br>#13 ExecScan (node=0x55bbbd405500, accessMtd=0x55bbbb6a2fd0 &lt;IndexNext&gt;,<br>recheckMtd=0x55bbbb6a38a0 &lt;IndexRecheck&gt;) at<br>./build/../src/backend/executor/execScan.c:199<br>#14 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd405500) at<br>./build/../src/backend/executor/execProcnode.c:479<br>#15 0x000055bbbb68fb9c in ExecProcNode (node=0x55bbbd405500) at<br>./build/../src/include/executor/executor.h:257<br>#16 fetch_input_tuple (aggstate=aggstate(at)entry=0x55bbbd404ed8) at<br>./build/../src/backend/executor/nodeAgg.c:581<br>#17 0x000055bbbb692c19 in agg_retrieve_direct (aggstate=0x55bbbd404ed8) at<br>./build/../src/backend/executor/nodeAgg.c:2364<br>#18 ExecAgg (pstate=0x55bbbd404ed8) at<br>./build/../src/backend/executor/nodeAgg.c:2179<br>#19 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd404ed8) at<br>./build/../src/backend/executor/execProcnode.c:479<br>#20 0x000055bbbb6b14a1 in ExecProcNode (node=0x55bbbd404ed8) at<br>./build/../src/include/executor/executor.h:257<br>#21 ExecScanSubPlan (isNull=0x55bbbd4153dd, econtext=0x55bbbd414c00,<br>node=0x55bbbd415c70) at ./build/../src/backend/executor/nodeSubplan.c:323<br>#22 ExecSubPlan (node=node(at)entry=0x55bbbd415c70,<br>econtext=econtext(at)entry=0x55bbbd414c00, isNull=0x55bbbd4153dd) at<br>./build/../src/backend/executor/nodeSubplan.c:89<br>#23 0x000055bbbb678ebd in ExecEvalSubPlan (state=state(at)entry=0x55bbbd4153d8,<br>op=op(at)entry=0x55bbbd415618, econtext=econtext(at)entry=0x55bbbd414c00) at<br>./build/../src/backend/executor/execExprInterp.c:3932<br>#24 0x000055bbbb679b42 in ExecInterpExpr (state=0x55bbbd4153d8,<br>econtext=0x55bbbd414c00, isnull=&lt;optimized out&gt;) at<br>./build/../src/backend/executor/execExprInterp.c:1564<br>#25 0x000055bbbb6883d2 in ExecEvalExprSwitchContext (isNull=0x7ffdac2e4457,<br>econtext=0x55bbbd414c00, state=0x55bbbd4153d8) at<br>./build/../src/include/executor/executor.h:339<br>#26 ExecProject (projInfo=0x55bbbd4153d0) at<br>./build/../src/include/executor/executor.h:373<br>#27 ExecScan (node=&lt;optimized out&gt;, accessMtd=0x55bbbb6afe20 &lt;SeqNext&gt;,<br>recheckMtd=0x55bbbb6afdf0 &lt;SeqRecheck&gt;) at<br>./build/../src/backend/executor/execScan.c:238<br>#28 0x000055bbbb685349 in ExecProcNodeInstr (node=0x55bbbd414af0) at<br>./build/../src/backend/executor/execProcnode.c:479<br>#29 0x000055bbbb67e34d in ExecProcNode (node=0x55bbbd414af0) at<br>./build/../src/include/executor/executor.h:257<br>#30 ExecutePlan (execute_once=&lt;optimized out&gt;, dest=0x55bbbbdbf260<br>&lt;donothingDR&gt;, direction=&lt;optimized out&gt;, numberTuples=0,<br>sendTuples=&lt;optimized out&gt;, operation=CMD_SELECT,<br>use_parallel_mode=&lt;optimized out&gt;, planstate=0x55bbbd414af0,<br>    estate=0x55bbbd404c58) at<br>./build/../src/backend/executor/execMain.c:1551<br>#31 standard_ExecutorRun (queryDesc=0x55bbbd4037c8, direction=&lt;optimized<br>out&gt;, count=0, execute_once=&lt;optimized out&gt;) at<br>./build/../src/backend/executor/execMain.c:361<br>#32 0x00007f13269e0595 in pgss_ExecutorRun (queryDesc=0x55bbbd4037c8,<br>direction=ForwardScanDirection, count=0, execute_once=&lt;optimized out&gt;) at<br>./build/../contrib/pg_stat_statements/pg_stat_statements.c:1003<br>#33 0x000055bbbb60c3e8 in ExplainOnePlan<br>(plannedstmt=plannedstmt(at)entry=0x55bbbd402018, into=into(at)entry=0x0,<br>es=es(at)entry=0x55bbbd2e0f78,<br>    queryString=queryString(at)entry=0x55bbbd289148 &quot;explain (analyze, buffers)<br>SELECT\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.id,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;,<br>&quot;r.name,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.map_center_y,\n&quot;, &#x27; &#x27; &lt;repeats 24<br>times&gt;, &quot;r.map_center_x,\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;..., params=params(at)entry=0x0, queryEnv=&lt;optimized out&gt;,<br>planduration=0x7ffdac2e4700, bufusage=0x7ffdac2e4780) at<br>./build/../src/backend/commands/explain.c:593<br>#34 0x000055bbbb60c7da in ExplainOneQuery (query=&lt;optimized out&gt;,<br>cursorOptions=&lt;optimized out&gt;, into=0x0, es=0x55bbbd2e0f78,<br>    queryString=0x55bbbd289148 &quot;explain (analyze, buffers) SELECT\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.id,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.name,\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.map_center_y,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;,<br>&quot;r.map_center_x,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;..., params=0x0, queryEnv=0x0) at<br>./build/../src/backend/commands/explain.c:410<br>#35 0x000055bbbb60ce7d in ExplainQuery (pstate=pstate(at)entry=0x55bbbd3a0230,<br>stmt=stmt(at)entry=0x55bbbd3b7840, params=params(at)entry=0x0,<br>dest=dest(at)entry=0x55bbbd3a01a0) at<br>./build/../src/backend/commands/explain.c:281<br>#36 0x000055bbbb806783 in standard_ProcessUtility<br>(pstmt=pstmt(at)entry=0x55bbbd3b7fa8,<br>    queryString=queryString(at)entry=0x55bbbd289148 &quot;explain (analyze, buffers)<br>SELECT\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.id,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;,<br>&quot;r.name,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.map_center_y,\n&quot;, &#x27; &#x27; &lt;repeats 24<br>times&gt;, &quot;r.map_center_x,\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;..., readOnlyTree=&lt;optimized out&gt;,<br>context=context(at)entry=PROCESS_UTILITY_TOPLEVEL, params=params(at)entry=0x0,<br>queryEnv=queryEnv(at)entry=0x0, dest=0x55bbbd3a01a0, qc=0x7ffdac2e4c70) at<br>./build/../src/backend/tcop/utility.c:862<br>#37 0x00007f13269e2221 in pgss_ProcessUtility (pstmt=0x55bbbd3b7fa8,<br>    queryString=0x55bbbd289148 &quot;explain (analyze, buffers) SELECT\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.id,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.name,\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.map_center_y,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;,<br>&quot;r.map_center_x,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;..., readOnlyTree=&lt;optimized<br>out&gt;, context=PROCESS_UTILITY_TOPLEVEL, params=0x0, queryEnv=0x0,<br>dest=0x55bbbd3a01a0, qc=0x7ffdac2e4c70) at<br>./build/../contrib/pg_stat_statements/pg_stat_statements.c:1135<br>#38 0x000055bbbb804935 in PortalRunUtility<br>(portal=portal(at)entry=0x55bbbd373888, pstmt=0x55bbbd3b7fa8,<br>isTopLevel=isTopLevel(at)entry=true,<br>setHoldSnapshot=setHoldSnapshot(at)entry=true, dest=dest(at)entry=0x55bbbd3a01a0,<br>qc=qc(at)entry=0x7ffdac2e4c70)<br>    at ./build/../src/backend/tcop/pquery.c:1155<br>#39 0x000055bbbb804cab in FillPortalStore<br>(portal=portal(at)entry=0x55bbbd373888, isTopLevel=isTopLevel(at)entry=true) at<br>./build/../src/backend/tcop/pquery.c:1028<br>#40 0x000055bbbb8050bf in PortalRun (portal=portal(at)entry=0x55bbbd373888,<br>count=count(at)entry=9223372036854775807, isTopLevel=isTopLevel(at)entry=true,<br>run_once=run_once(at)entry=true, dest=dest(at)entry=0x55bbbd3cec48,<br>altdest=altdest(at)entry=0x55bbbd3cec48,<br>    qc=0x7ffdac2e4e80) at ./build/../src/backend/tcop/pquery.c:760<br>#41 0x000055bbbb8008e9 in exec_simple_query (<br>    query_string=0x55bbbd289148 &quot;explain (analyze, buffers) SELECT\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.id,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;, &quot;r.name,\n&quot;, &#x27; &#x27;<br>&lt;repeats 24 times&gt;, &quot;r.map_center_y,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;,<br>&quot;r.map_center_x,\n&quot;, &#x27; &#x27; &lt;repeats 24 times&gt;...) at<br>./build/../src/backend/tcop/postgres.c:1214<br>#42 0x000055bbbb802c4c in PostgresMain (argc=argc(at)entry=1,<br>argv=argv(at)entry=0x7ffdac2e5340, dbname=&lt;optimized out&gt;, username=&lt;optimized<br>out&gt;) at ./build/../src/backend/tcop/postgres.c:4486<br>#43 0x000055bbbb775e2a in BackendRun (port=&lt;optimized out&gt;, port=&lt;optimized<br>out&gt;) at ./build/../src/backend/postmaster/postmaster.c:4530<br>#44 BackendStartup (port=&lt;optimized out&gt;) at<br>./build/../src/backend/postmaster/postmaster.c:4252<br>#45 ServerLoop () at ./build/../src/backend/postmaster/postmaster.c:1745<br>#46 0x000055bbbb776c68 in PostmasterMain (argc=5, argv=0x55bbbd281d90) at<br>./build/../src/backend/postmaster/postmaster.c:1417<br>#47 0x000055bbbb4af83b in main (argc=5, argv=0x55bbbd281d90) at<br>./build/../src/backend/main/main.c:209</p>
+
+<p>I can reproduce the issue easily, if you need more details.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="cb3a777a-99c7-f671-532d-b828a2223502@enterprisedb.com"></a>
+<a name="a22eb04412b58cedb692892dbe710f7b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>vyegorov(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org,
+ PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-15 20:51:47</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/cb3a777a-99c7-f671-532d-b828a2223502%40enterprisedb.com">cb3a777a-99c7-f671-532d-b828a2223502@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/cb3a777a-99c7-f671-532d-b828a2223502%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/cb3a777a-99c7-f671-532d-b828a2223502%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/cb3a777a-99c7-f671-532d-b828a2223502%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/cb3a777a-99c7-f671-532d-b828a2223502%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202150000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p></p>
+
+<p>On 2/15/22 18:32, PG Bug reporting form wrote:<br>&gt; The following bug has been logged on the website:<br>&gt; <br>&gt; Bug reference:      17406<br>&gt; Logged by:          Victor Yegorov<br>&gt; Email address:      vyegorov(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   Ubuntu 18.04.6 LTS (bionic)<br>&gt; Description:<br>&gt; <br>&gt; KVM guest, on Intel(R) Xeon(R) CPU E5-2697 v2.<br>&gt; <br>&gt; PostgreSQL 12.9 had been upgraded to 14.2 using<br>&gt; <br>&gt; pg_upgradecluster -k  -m link 12 main /mnt/postgres/14/<br>&gt; <br>&gt; After that, one of the queries is crashing with Segmentation Fault.<br>&gt; However, after REINDEX problem will be fixed. I thought I should report<br>&gt; still.<br>&gt; </p>
+
+<p>Hmm. So I guess there are three options:</p>
+
+<p>1) The index was already broken on 12.9, but for some reason (choice of <br>a different plan, ...) it was not causing any issues.</p>
+
+<p>2) The index got broken during/after the upgrade, for some reason.</p>
+
+<p>3) The index is fine, but there&#x27;s a newly introduced bug in ltree (or <br>gist in general).</p>
+
+<p>Hard to say which it is.</p>
+
+<p>How large is the table/index? Are you able to run the query with a <br>custom build (without values optimized out)? Any chance you still have a <br>backup from before the pg_upgrade, on which you might run the query?</p>
+
+<p>&gt; explain<br>&gt; SELECT r.id, r.name, r.map_center_y, r.map_center_x,<br>&gt;         COALESCE ((SELECT string_agg(id::TEXT, &#x27;,&#x27;) FROM v3_region AS r2<br>&gt; WHERE r2.id != r.id AND r2.ltree_path &lt;@ r.ltree_path), &#x27;&#x27;) AS children<br>&gt;    FROM v3_region AS r;<br>&gt;                                                   QUERY PLAN<br>&gt; -------------------------------------------------------------------------------------------------------------<br>&gt;   Seq Scan on v3_region r  (cost=0.00..3207.31 rows=349 width=580)<br>&gt;     SubPlan 1<br>&gt;       -&gt;  Aggregate  (cost=8.17..8.18 rows=1 width=32)<br>&gt;             -&gt;  Index Scan using region_ltree_path_idx_gist on v3_region r2<br>&gt; (cost=0.14..8.16 rows=1 width=4)<br>&gt;                   Index Cond: (ltree_path &lt;@ r.ltree_path)<br>&gt;                   Filter: (id &lt;&gt; r.id)<br>&gt; (6 rows)<br>&gt; <br>&gt; Here is backtrace:<br>&gt; #0  __memmove_sse2_unaligned_erms () at<br>&gt; ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:435<br>&gt; #1  0x00007f129244c266 in memcpy (__len=&lt;optimized out&gt;,<br>&gt; __src=0x55bbbd430f4a, __dest=&lt;optimized out&gt;) at<br>&gt; /usr/include/x86_64-linux-gnu/bits/string_fortified.h:34<br>&gt; #2  copy_ltree (src=0x55bbbd430f4a) at<br>&gt; ./build/../contrib/ltree/ltree_gist.c:446<br>&gt; #3  0x00007f129244db51 in gist_ischild (siglen=28, query=0x55bbbd410cb8,<br>&gt; key=0x55bbbd430f18) at ./build/../contrib/ltree/ltree_gist.c:454</p>
+
+<p>Interesting. Too bad the memcpy() parameters are optimized out. But <br>clearly src is not NULL, so perhas something is wrong with the dst pointer?</p>
+
+<p>&gt; #4  ltree_consistent (fcinfo=0x7ffdac2e3e20) at<br>&gt; ./build/../contrib/ltree/ltree_gist.c:674<br>&gt; #5  0x000055bbbb944a5d in FunctionCall5Coll<br>&gt; (flinfo=flinfo(at)entry=0x55bbbd416b20, collation=&lt;optimized out&gt;,<br>&gt; arg1=arg1(at)entry=140727492165472, arg2=&lt;optimized out&gt;, arg3=&lt;optimized out&gt;,<br>&gt; arg4=&lt;optimized out&gt;, arg5=140727492165471)<br>&gt;      at ./build/../src/backend/utils/fmgr/fmgr.c:1241<br>&gt; #6  0x000055bbbb4db72d in gistindex_keytest (recheck_distances_p=&lt;synthetic<br>&gt; pointer&gt;, recheck_p=&lt;synthetic pointer&gt;, offset=4, page=0x7f1293a45180<br>&gt; &quot;K\313\003&quot;, tuple=0x7f1293a47058, scan=0x55bbbd4196c8)<br>&gt;      at ./build/../src/backend/access/gist/gistget.c:222<br>&gt; #7  gistScanPage (scan=scan(at)entry=0x55bbbd4196c8,<br>&gt; pageItem=pageItem(at)entry=0x7ffdac2e3fe0, myDistances=myDistances(at)entry=0x0,<br>&gt; tbm=tbm(at)entry=0x0, ntids=ntids(at)entry=0x0) at<br>&gt; ./build/../src/backend/access/gist/gistget.c:438</p>
+
+<p>Can you print the pageItem-&gt;blkno? That should tell us which index page <br>is causing issues. And then you can dump the page using pageinspect [1]. <br>For example if blkno = 100, then this might tell us more:</p>
+
+<p>  SELECT * FROM<br>  gist_page_opaque_info(get_raw_page(&#x27;region_ltree_path_idx_gist&#x27;, 100));</p>
+
+<p>  SELECT * FROM<br>  gist_page_items(get_raw_page(&#x27;region_ltree_path_idx_gist&#x27;, 100),<br>                               &#x27;region_ltree_path_idx_gist&#x27;);</p>
+
+<p>  SELECT * FROM<br>  gist_page_items_bytea(get_raw_page(&#x27;region_ltree_path_idx_gist&#x27;, 0));</p>
+
+<p>regards</p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAGnEbojzf-uObyWeu1MPNKaYsnL_U2kg48K6Ec43waPRBu3DrQ@mail.gmail.com"></a>
+<a name="9a8d446f72394e889cacb78cbd2b4224"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-16 08:14:49</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAGnEbojzf-uObyWeu1MPNKaYsnL_U2kg48K6Ec43waPRBu3DrQ%40mail.gmail.com">CAGnEbojzf-uObyWeu1MPNKaYsnL_U2kg48K6Ec43waPRBu3DrQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAGnEbojzf-uObyWeu1MPNKaYsnL_U2kg48K6Ec43waPRBu3DrQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAGnEbojzf-uObyWeu1MPNKaYsnL_U2kg48K6Ec43waPRBu3DrQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAGnEbojzf-uObyWeu1MPNKaYsnL_U2kg48K6Ec43waPRBu3DrQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAGnEbojzf-uObyWeu1MPNKaYsnL_U2kg48K6Ec43waPRBu3DrQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>вт, 15 февр. 2022 г. в 22:51, Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;:</p>
+
+<p>&gt; Hmm. So I guess there are three options:<br>&gt;<br>&gt; 1) The index was already broken on 12.9, but for some reason (choice of<br>&gt; a different plan, ...) it was not causing any issues.<br>&gt;</p>
+
+<p>Nope, index is actively used on 12.9, plan hasn&#x27;t changed.</p>
+
+<p>How large is the table/index? Are you able to run the query with a<br>&gt; custom build (without values optimized out)? Any chance you still have a<br>&gt; backup from before the pg_upgrade, on which you might run the query?<br>&gt;</p>
+
+<p>Yes, this is a test DB restored from backup in order to test out 14<br>upgrade, production is still running on 12.9.<br>v3_region is 2832 kB<br>region_ltree_path_idx_gist is 472 kB</p>
+
+<p>For custom build I need some time to actually build it.<br>What options would you recommend (for configure) me to use here?</p>
+
+<p>Can you print the pageItem-&gt;blkno? That should tell us which index page<br>&gt; is causing issues. And then you can dump the page using pageinspect [1].<br>&gt; For example if blkno = 100, then this might tell us more:<br>&gt;</p>
+
+<p>(gdb) frame 7<br>#7  gistScanPage (scan=scan(at)entry=0x55bbbd4196c8,<br>pageItem=pageItem(at)entry=0x7ffdac2e3fe0,<br>myDistances=myDistances(at)entry=0x0, tbm=tbm(at)entry=0x0, ntids=ntids(at)entry=0x0)<br>at ./build/../src/backend/access/gist/gistget.c:438<br>438     ./build/../src/backend/access/gist/gistget.c: No such file or<br>directory.<br>(gdb) p pageItem-&gt;blkno<br>$1 = 0<br>(gdb) p pageItem-&gt;data-&gt;heap<br>$5 = {heapPtr = {ip_blkid = {bi_hi = 0, bi_lo = 0}, ip_posid = 0}, recheck<br>= false, recheckDistances = false, recontup = 0x55bbbb96927e &lt;palloc+46&gt;,<br>offnum = 38600}</p>
+
+<p>This query below also crashes with SegFault:<br>SELECT * FROM gist_page_items(get_raw_page(&#x27;region_ltree_path_idx_gist&#x27;,<br>0), &#x27;region_ltree_path_idx_gist&#x27;);</p>
+
+<p>SELECT * FROM<br>  gist_page_items_bytea(get_raw_page(&#x27;region_ltree_path_idx_gist&#x27;, 0));</p>
+
+<p> itemoffset |    ctid    | itemlen | dead |<br>                                                     key_data<br>------------+------------+---------+------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------<br>          1 | (16,65535) |      72 | f    |<br>\x00001000ffff48407b00000000ffffffffbfffffff800000000300000003003138300000000400313234300000040031323433000040000000010000000400313933300000000000<br>          2 | (7,65535)  |      72 | f    |<br>\x00000700ffff48407b00000000fdbf7ffeffdffbff600000000200000003003231330000000400363039390000600000000200000003003233370000000400313335380000000000<br>          3 | (13,65535) |      64 | f    |<br>\x00000d00ffff40406b00000000fffffffffffeffff60000000020000000400313738350000040031373837000040000000010000000400313836370000000000<br>          4 | (8,65535)  |      72 | f    |<br>\x00000800ffff48407b00000000df7fbbffffffffff600000000200000003003435360000000300343538000000600000000200000003003438300000000300363438000000000000<br>          5 | (12,65535) |      80 | f    |<br>\x00000c00ffff50408b00000000bffffbf5fffffffb6000000002000000020032340000000003003733310000008000000003000000030032343900000004003337373000000400333737380000000000<br>          6 | (27,65535) |      80 | f    |<br>\x00001b00ffff50408b00000000fbefcff3ffffefff6000000002000000030032343900000004003339323500008000000003000000030032363600000004003134343400000400313434350000000000<br>          7 | (10,65535) |      72 | f    |<br>\x00000a00ffff48407b00000000f7fdfffffffbffff600000000200000003003530330000000300353037000000600000000200000001003600000000000400333430330000000000<br>          8 | (3,65535)  |      64 | f    |<br>\x00000300ffff40406b00000000f7dffffff7ffffff40000000010000000300313033000000600000000200000003003131390000000300313238000000000000<br>          9 | (29,65535) |      80 | f    |<br>\x00001d00ffff50408b00000000ffffffffdffff7df6000000002000000030031313900000003003133300000008000000003000000030031363400000004003130373400000400313037350000000000<br>         10 | (30,65535) |      64 | f    |<br>\x00001e00ffff40406b000000007dfffffffffffffb60000000020000000200313700000000030037313900000040000000010000000400313738350000000000<br>         11 | (6,65535)  |      80 | f    |<br>\x00000600ffff50408b00000000ffbbef7ef7df7bee8000000003000000020031370000000003003731370000000300373138000000600000000200000003003137330000000400313738300000000000<br>         12 | (32,65535) |      80 | f    |<br>\x00002000ffff50408b000000001dfff7fbffbff7ff6000000002000000030031373300000004003137383100008000000003000000030031383000000004003132343000000400313234320000000000<br>         13 | (17,65535) |      80 | f    |<br>\x00001100ffff50408b00000000fdffffffffffffff6000000002000000030031333500000004003130303900008000000003000000030031363400000004003130383600000400313038370000000000<br>         14 | (19,65535) |      72 | f    |<br>\x00001300ffff48407b00000000fdbffefedfffff7f600000000200000002003430000000000200353100000000600000000200000003003432300000000400343737370000000000<br>         15 | (35,65535) |      80 | f    |<br>\x00002300ffff50408b0200000080000000030000000300343735000000040036303236000004003630323700008000000003000000020035330000000003003736330000000400323733330000000000<br>         16 | (23,65535) |      72 | f    |<br>\x00001700ffff48407b020000006000000002000000030033393400000004003436393300008000000003000000030034323000000003003532380000000300353239000000000000<br>         17 | (2,65535)  |      72 | f    |<br>\x00000200ffff48407b00000000ff7eff9feffdfeff600000000200000003003236360000000400313434360000600000000200000003003238330000000400333134320000000000<br>         18 | (37,65535) |      80 | f    |<br>\x00002500ffff50408b00000000ffff5ffbfff7bfef6000000002000000030032383300000004003331353100008000000003000000030033323500000004003135333800000400313533390000000000<br>         19 | (38,65535) |      88 | f    |<br>\x00002600ffff58409b00000000ff6fffffffffffff80000000030000000300343333000000040032313134000004003231333900008000000003000000030034373500000004003539383800000400363130380000000000<br>         20 | (34,65535) |      80 | f    |<br>\x00002200ffff50408b00000000ffdffefffd7ffffd6000000002000000030034323000000004003438313400008000000003000000030034333300000004003231313600000400323131370000000000<br>         21 | (39,65535) |      80 | f    |<br>\x00002700ffff50408b00000000fdff7ff87b5e1fe58000000003000000030034333300000004003231313600000400323132300000600000000200000003003434390000000300353634000000000000<br>         22 | (18,65535) |      80 | f    |<br>\x00001200ffff50408b00000000ffffffffef7ffdff6000000002000000030031363400000004003130383400008000000003000000020031370000000004003237363700000400323830320000000000<br>         23 | (40,65535) |      88 | f    |<br>\x00002800ffff58409b00000000fffefedffd7ff2ff80000000030000000200313700000000040032373637000004003238323300008000000003000000020031370000000003003731370000000400323831310000000000<br>         24 | (4,65535)  |      64 | f    |<br>\x00000400ffff40406b00000000febeff7dc7a367d360000000020000000300343439000000030035363800000040000000010000000300343630000000000000<br>         25 | (41,65535) |      72 | f    |<br>\x00002900ffff48407b00000000dfffbfbd7effedff600000000200000003003436300000000300343632000000600000000200000003003437350000000400363130360000000000<br>         26 | (22,65535) |      80 | f    |<br>\x00001600ffff50408b00000000d9ffc3ffffffbff68000000003000000030034373500000004003631303600000400363130370000600000000200000003003438360000000300343931000000000000<br>         27 | (42,65535) |      72 | f    |<br>\x00002a00ffff48407b00000000bf7fbfdaf9f9ffff600000000200000003003438360000000400353032320000600000000200000003003530330000000300353034000000000000<br>         28 | (1,65535)  |      80 | f    |<br>\x00000100ffff50408b00000000efdfffffffbffffe6000000002000000030031303300000004003139353500008000000003000000030031313300000003003931310000000300393132000000000000<br>         29 | (43,65535) |      80 | f    |<br>\x00002b00ffff50408b00000000ffffefdfffffffff6000000002000000030031313300000003003931370000008000000003000000030031333500000004003130303600000400313030380000000000<br>         30 | (28,65535) |      72 | f    |<br>\x00001c00ffff48407b00000000effffeffeffffef7600000000200000001003600000000000400333531370000600000000200000002003730000000000200373100000000000000<br>         31 | (44,65535) |      72 | f    |<br>\x00002c00ffff48407b00000000f3bfff6fff7fbffc600000000200000002003730000000000200373300000000600000000200000002003837000000000200393100000000000000<br>         32 | (45,65535) |      80 | f    |<br>\x00002d00ffff50408b0200000080000000030000000300333039000000040033353437000004003335343800008000000003000000030034333300000004003231313400000400323133320000000000<br>         33 | (36,65535) |      80 | f    |<br>\x00002400ffff50408b00000000feeeffdff876fff36000000002000000030034323000000003003533300000008000000003000000030034333300000004003232313300000400323231370000000000<br>         34 | (46,65535) |      80 | f    |<br>\x00002e00ffff50408b00000000fec7df33bff7ff6f8000000003000000030034333300000004003232313300000400323233360000600000000200000003003435330000000300353834000000000000<br>         35 | (5,65535)  |      88 | f    |<br>\x00000500ffff58409b00000000fffef9dd67feefff80000000030000000300323636000000040031343436000004003134343700008000000003000000030032383300000004003330303300000400333030340000000000<br>         36 | (47,65535) |      72 | f    |<br>\x00002f00ffff48407b000000007eefbfffbfffffff600000000200000003003238330000000400333030350000600000000200000003003330390000000300333133000000000000<br>         37 | (20,65535) |      80 | f    |<br>\x00001400ffff50408b00000000fbaf67cafdff7aff6000000002000000020037380000000002003739000000008000000003000000020039320000000004003430303100000400343030320000000000<br>         38 | (48,65535) |      80 | f    |<br>\x00003000ffff50408b00000000ffbffffedbcfeff38000000003000000020039320000000004003430303100000400343030370000600000000200000002003937000000000200393900000000000000<br>         39 | (9,65535)  |      80 | f    |<br>\x00000900ffff50408b00000000fff5fffd5dfbf3ef6000000002000000030033373100000003003337370000008000000003000000030033383900000004003136383700000400313638380000000000<br>         40 | (49,65535) |      80 | f    |<br>\x00003100ffff50408b00000000eff7ff7ff9edffab8000000003000000030033383900000004003139373400000400313937350000600000000200000002003430000000000200343800000000000000<br>         41 | (25,65535) |      72 | f    |<br>\x00001900ffff48407b00000000bfffffffef7f9fff800000000300000002003137000000000300373137000000040032383337000040000000010000000400313839330000000000<br>         42 | (50,65535) |      64 | f    |<br>\x00003200ffff40406b00000000bfeffe75dbebf7fb40000000010000000400313839340000600000000200000003003231330000000400363038340000000000<br>         43 | (14,65535) |      80 | f    |<br>\x00000e00ffff50408b00000000ffffffffffbfffff8000000003000000030032313300000004003630383400000400363038350000600000000200000003003234390000000400333838380000000000<br>         44 | (51,65535) |      88 | f    |<br>\x00003300ffff58409b00000000fffffff6fff6dfbf80000000030000000300323439000000040033383838000004003338383900008000000003000000030033303900000004003334323000000400333531390000000000<br>         45 | (15,65535) |      72 | f    |<br>\x00000f00ffff48407b00000000cfefe3ff3efdfd6f600000000200000003003332350000000400313534300000600000000200000003003336300000000400313538370000000000<br>         46 | (52,65535) |      80 | f    |<br>\x00003400ffff50408b00000000ffaeffb88affafdd8000000003000000030033363000000004003135383700000400313538380000600000000200000003003337310000000300333732000000000000<br>         47 | (24,65535) |      80 | f    |<br>\x00001800ffff50408b00000000af3ffffd7f7ff5ed6000000002000000030033303900000003003331350000008000000003000000030033323700000004003532363800000400353236390000000000<br>         48 | (53,65535) |      80 | f    |<br>\x00003500ffff50408b00000000ff3ffbfaf8fded7d8000000003000000030033323700000004003532393200000400353239330000600000000200000003003337310000000400313631390000000000<br>         49 | (11,65535) |      80 | f    |<br>\x00000b00ffff50408b00000000fff5ffffeefbf2af8000000003000000030033373100000004003136323900000400313633300000600000000200000003003338360000000400353134310000000000<br>         50 | (54,65535) |      72 | f    |<br>\x00003600ffff48407b00000000ffefbffbef7bf3df600000000200000003003338360000000400353138360000600000000200000003003339340000000400343433380000000000<br>         51 | (21,65535) |      88 | f    |<br>\x00001500ffff58409b00000000cefbbbbbb6fe9ebf80000000030000000300323337000000040031333538000004003133353900008000000003000000030032333900000004003437333300000400343733340000000000<br>         52 | (55,65535) |      80 | f    |<br>\x00003700ffff50408b00000000fbe1df8fef3fff7d6000000002000000030032333900000004003438333500008000000003000000020032340000000003003732390000000300373330000000000000<br>         53 | (33,65535) |      80 | f    |<br>\x00002100ffff50408b000000008ffbb9fffffbf7676000000002000000030031363400000004003130383800008000000003000000030031363800000004003437323000000400343732310000000000<br>         54 | (56,65535) |      88 | f    |<br>\x00003800ffff58409b00000000ffdfff7ffeabfffa80000000030000000300313638000000040034373230000004003437343900008000000003000000020031370000000003003639340000000300363935000000000000<br>         55 | (31,65535) |      88 | f    |<br>\x00001f00ffff58409b00000000df8dfddefffefbd580000000030000000200353300000000030037363300000004003237353500008000000003000000010036000000000003003638360000000300363837000000000000<br>         56 | (57,65535) |      88 | f    |<br>\x00003900ffff58409b00000000ef3afffdf4f5f7ff80000000030000000100360000000000030036383800000003003638390000008000000003000000020037380000000003003738340000000300373835000000000000<br>         57 | (26,65535) |      80 | f    |<br>\x00001a00ffff50408b00000000f37fafbdb1f7afbd6000000002000000030034383000000003003635300000008000000003000000030034393800000004003232303100000400323231310000000000<br>         58 | (58,65535) |      88 | f    |<br>\x00003a00ffff58409b00000000fffeff9d6f71dbef80000000030000000300343938000000040032323332000004003232333500008000000003000000030035323000000004003630373500000400363130350000000000<br>(58 rows)</p>
+
+<p>-- <br>Victor Yegorov<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAFBsxsGDb+bOVpNxvS3r--sTAKTk8aFHvuNche=PmSVK71_mMg@mail.gmail.com"></a>
+<a name="1565533d3dec687b2e0d65c2afe53dff"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>John Naylor &lt;john(dot)naylor(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-16 12:23:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAFBsxsGDb%2BbOVpNxvS3r--sTAKTk8aFHvuNche%3DPmSVK71_mMg%40mail.gmail.com">CAFBsxsGDb+bOVpNxvS3r--sTAKTk8aFHvuNche=PmSVK71_mMg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAFBsxsGDb%2BbOVpNxvS3r--sTAKTk8aFHvuNche%3DPmSVK71_mMg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAFBsxsGDb%2BbOVpNxvS3r--sTAKTk8aFHvuNche%3DPmSVK71_mMg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAFBsxsGDb%2BbOVpNxvS3r--sTAKTk8aFHvuNche%3DPmSVK71_mMg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAFBsxsGDb%2BbOVpNxvS3r--sTAKTk8aFHvuNche%3DPmSVK71_mMg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Feb 16, 2022 at 3:15 PM Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt; wrote:</p>
+
+<p>&gt; For custom build I need some time to actually build it.<br>&gt; What options would you recommend (for configure) me to use here?</p>
+
+<p>Normally for debug builds you would use something like</p>
+
+<p>--enable-cassert \<br>--enable-debug \<br>CFLAGS=&quot;-ggdb -Og -fno-omit-frame-pointer&quot;</p>
+
+<p>-Og still performs some optimization (on gcc it&#x27;s like -O1 but with<br>some optimization passes taken out that interfere with debuging), so<br>it&#x27;s somewhat realistic compared to production code. But to make sure<br>this argument is visible, you might have to use -O0 (no optimization).</p>
+
+<p>-- <br>John Naylor<br>EDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="788a0a51-b1e3-3601-5783-3f6488796ec4@enterprisedb.com"></a>
+<a name="98ec25176b448f8d90e256807f2fc6c3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-17 00:16:47</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/788a0a51-b1e3-3601-5783-3f6488796ec4%40enterprisedb.com">788a0a51-b1e3-3601-5783-3f6488796ec4@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/788a0a51-b1e3-3601-5783-3f6488796ec4%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/788a0a51-b1e3-3601-5783-3f6488796ec4%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/788a0a51-b1e3-3601-5783-3f6488796ec4%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/788a0a51-b1e3-3601-5783-3f6488796ec4%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202170000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p></p>
+
+<p>On 2/16/22 09:14, Victor Yegorov wrote:<br>&gt; вт, 15 февр. 2022 г. в 22:51, Tomas Vondra <br>&gt; &lt;tomas(dot)vondra(at)enterprisedb(dot)com &lt;mailto:tomas(dot)vondra(at)enterprisedb(dot)com&gt;&gt;:<br>&gt; <br>&gt;     Hmm. So I guess there are three options:<br>&gt; <br>&gt;     1) The index was already broken on 12.9, but for some reason (choice of<br>&gt;     a different plan, ...) it was not causing any issues.<br>&gt; <br>&gt; <br>&gt; Nope, index is actively used on 12.9, plan hasn&#x27;t changed.<br>&gt; </p>
+
+<p>OK, that&#x27;s valuable information.</p>
+
+<p>&gt;     How large is the table/index? Are you able to run the query with a<br>&gt;     custom build (without values optimized out)? Any chance you still<br>&gt;     have a<br>&gt;     backup from before the pg_upgrade, on which you might run the query?<br>&gt; <br>&gt; <br>&gt; Yes, this is a test DB restored from backup in order to test out 14 <br>&gt; upgrade, production is still running on 12.9.<br>&gt; v3_region is 2832 kB<br>&gt; region_ltree_path_idx_gist is 472 kB<br>&gt; </p>
+
+<p>That means it should be possible to reproduce the issue elsewhere by <br>copying the files (and schema). Is there any sensitive data that&#x27;d <br>prevent handing over this data?</p>
+
+<p>&gt; <br>&gt; (gdb) frame 7<br>&gt; #7  gistScanPage (scan=scan(at)entry=0x55bbbd4196c8, <br>&gt; pageItem=pageItem(at)entry=0x7ffdac2e3fe0, <br>&gt; myDistances=myDistances(at)entry=0x0, tbm=tbm(at)entry=0x0, <br>&gt; ntids=ntids(at)entry=0x0) at ./build/../src/backend/access/gist/gistget.c:438<br>&gt; 438     ./build/../src/backend/access/gist/gistget.c: No such file or <br>&gt; directory.<br>&gt; (gdb) p pageItem-&gt;blkno<br>&gt; $1 = 0<br>&gt; (gdb) p pageItem-&gt;data-&gt;heap<br>&gt; $5 = {heapPtr = {ip_blkid = {bi_hi = 0, bi_lo = 0}, ip_posid = 0}, <br>&gt; recheck = false, recheckDistances = false, recontup = 0x55bbbb96927e <br>&gt; &lt;palloc+46&gt;, offnum = 38600}<br>&gt; <br>&gt; This query below also crashes with SegFault:<br>&gt; SELECT * FROM gist_page_items(get_raw_page(&#x27;region_ltree_path_idx_gist&#x27;, <br>&gt; 0), &#x27;region_ltree_path_idx_gist&#x27;);<br>&gt; </p>
+
+<p>Interesting! What&#x27;s the backtrace from the crash?</p>
+
+<p>FWIW when I try that query on the gist index from the ltree example in <br>our documentation, I get this:</p>
+
+<p>test=# SELECT * FROM gist_page_items(get_raw_page(&#x27;path_gist_idx&#x27;, 0), <br>&#x27;path_gist_idx&#x27;);<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21b4ae0, chunk 0x21b5ff8<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21b4ae0, chunk 0x21b6f20<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21b4ae0, chunk 0x21b7e48<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21b4ae0, chunk 0x21b8db0<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21b4ae0, chunk 0x21b9d18<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21b4ae0, chunk 0x21bac80<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21b0ad0, chunk 0x21b1360<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21b0ad0, chunk 0x21b2288<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21b0ad0, chunk 0x21b31f0<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21b0ad0, chunk 0x21b4158<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21aaab0, chunk 0x21adb20<br>WARNING:  problem in alloc set ExprContext: detected write past chunk <br>end in block 0x21aaab0, chunk 0x21ae5c8<br>  itemoffset |  ctid  | itemlen | dead |   keys<br>------------+--------+---------+------+-----------<br>           1 | (0,1)  |      32 | f    | (path)=()<br>           2 | (0,2)  |      48 | f    | (path)=()<br>           3 | (0,3)  |      64 | f    | (path)=()<br>           4 | (0,4)  |      80 | f    | (path)=()<br>           5 | (0,5)  |      80 | f    | (path)=()<br>           6 | (0,6)  |      48 | f    | (path)=()<br>           7 | (0,7)  |      72 | f    | (path)=()<br>           8 | (0,8)  |      48 | f    | (path)=()<br>           9 | (0,9)  |      64 | f    | (path)=()<br>          10 | (0,10) |      80 | f    | (path)=()<br>          11 | (0,11) |      88 | f    | (path)=()<br>          12 | (0,12) |      96 | f    | (path)=()<br>          13 | (0,13) |      96 | f    | (path)=()<br>(13 rows)</p>
+
+<p>This is on debug build with asserts. On non-assert build it crashes in <br>AllocSetAlloc, but I&#x27;d bet the exact place where it crashes just depends <br>on what place we corrupt by writing out of ExprContext. The empty paths <br>seem strange too, of course.</p>
+
+<p>But the confusing thing is I get similar issues even on 12.10 (after <br>backporting the pageinspect gist changes) - but only with asserts, and <br>without asserts it works (but the paths are still empty). Perhaps I <br>backported that incorrectly, though.</p>
+
+<p>regards</p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAH2-WzkTvnAfAMLfo5Rs+xn0Jnhf4riRt0Q6gu=_H1NO1XJJxQ@mail.gmail.com"></a>
+<a name="621e6bb1069641cb085bd9fb92e90e4c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-17 02:52:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAH2-WzkTvnAfAMLfo5Rs%2Bxn0Jnhf4riRt0Q6gu%3D_H1NO1XJJxQ%40mail.gmail.com">CAH2-WzkTvnAfAMLfo5Rs+xn0Jnhf4riRt0Q6gu=_H1NO1XJJxQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAH2-WzkTvnAfAMLfo5Rs%2Bxn0Jnhf4riRt0Q6gu%3D_H1NO1XJJxQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAH2-WzkTvnAfAMLfo5Rs%2Bxn0Jnhf4riRt0Q6gu%3D_H1NO1XJJxQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAH2-WzkTvnAfAMLfo5Rs%2Bxn0Jnhf4riRt0Q6gu%3D_H1NO1XJJxQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAH2-WzkTvnAfAMLfo5Rs%2Bxn0Jnhf4riRt0Q6gu%3D_H1NO1XJJxQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202170000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Feb 16, 2022 at 4:16 PM Tomas Vondra<br>&lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt; wrote:<br>&gt; test=# SELECT * FROM gist_page_items(get_raw_page(&#x27;path_gist_idx&#x27;, 0),<br>&gt; &#x27;path_gist_idx&#x27;);</p>
+
+<p>Maybe this is obvious, but just in case: gist_page_items is *very*<br>trusting here. It&#x27;s necessary to use gist_page_items_bytea() if you&#x27;re<br>not 100% sure about the index definition for the index page you<br>provide. The fact that you can display the contents of each tuple<br>using the underlying type&#x27;s own output function is very handy. But<br>potentially hazardous.</p>
+
+<p>-- <br>Peter Geoghegan</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="c0c903ee-d53f-9e78-7e3b-1fee2e69922f@enterprisedb.com"></a>
+<a name="1ac55b6993da5ae803b1c70ef242472f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;,
+ PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-17 12:26:30</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/c0c903ee-d53f-9e78-7e3b-1fee2e69922f%40enterprisedb.com">c0c903ee-d53f-9e78-7e3b-1fee2e69922f@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/c0c903ee-d53f-9e78-7e3b-1fee2e69922f%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/c0c903ee-d53f-9e78-7e3b-1fee2e69922f%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/c0c903ee-d53f-9e78-7e3b-1fee2e69922f%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/c0c903ee-d53f-9e78-7e3b-1fee2e69922f%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202170000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2/17/22 03:52, Peter Geoghegan wrote:<br>&gt; On Wed, Feb 16, 2022 at 4:16 PM Tomas Vondra<br>&gt; &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt; wrote:<br>&gt;&gt; test=# SELECT * FROM gist_page_items(get_raw_page(&#x27;path_gist_idx&#x27;, 0),<br>&gt;&gt; &#x27;path_gist_idx&#x27;);<br>&gt; <br>&gt; Maybe this is obvious, but just in case: gist_page_items is *very*<br>&gt; trusting here. It&#x27;s necessary to use gist_page_items_bytea() if you&#x27;re<br>&gt; not 100% sure about the index definition for the index page you<br>&gt; provide. The fact that you can display the contents of each tuple<br>&gt; using the underlying type&#x27;s own output function is very handy. But<br>&gt; potentially hazardous.<br>&gt; </p>
+
+<p>Sure, but I used this to inspect the index from example in our docs:</p>
+
+<p>   <a href="https://www.postgresql.org/docs/14/ltree.html#id-1.11.7.30.8" rel="nofollow">https://www.postgresql.org/docs/14/ltree.html#id-1.11.7.30.8</a></p>
+
+<p>I doubt we can be even more sure about the index definition.</p>
+
+<p>I don&#x27;t know what the root cause is yet, but the memory corruption <br>happens simply because ltree_out() sees entirely bogus data when <br>executed from gist_page_items.</p>
+
+<p>For example it gets 16B varlena, allocates 16B string for it, and starts <br>iterating over the ltree data. The it finds the first element is 60B <br>long and happily copies it &quot;into&quot; the 16B buffer. That can&#x27;t end well, <br>obviously.</p>
+
+<p>Clearly, the ltree values are mangled somehow / somewhere. The funny <br>thing is the bytea always looks 8B longer and with bogus data. So for <br>example if you select this ltree from the table directly</p>
+
+<p>   Top.Collections.Pictures.Astronomy.Astronauts</p>
+
+<p>then ltree_out sees it as 80B varlena, with 5 levels. But if ltree_out <br>gets called from gist_page_items, then it sees 88B with 1 level, which <br>is completely bogus.</p>
+
+<p>And funnily enough, if you do this at the beginning of ltree_out:</p>
+
+<p>   in = (ltree *) ((char *) in + 8);</p>
+
+<p>then gist_page_items() starts working just fine.</p>
+
+<p>So, I guess gist_page_items() is broken/confused in some way. I&#x27;m not <br>sure if this is related to the crash reported by Victor or a separate, <br>independent issue.</p>
+
+<p>regards</p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="78098996-ca5e-a2ce-ae33-68ec8648ccc7@enterprisedb.com"></a>
+<a name="cb33c1ede786316054a822c1e6628936"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;,
+ PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-17 16:29:37</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/78098996-ca5e-a2ce-ae33-68ec8648ccc7%40enterprisedb.com">78098996-ca5e-a2ce-ae33-68ec8648ccc7@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/78098996-ca5e-a2ce-ae33-68ec8648ccc7%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/78098996-ca5e-a2ce-ae33-68ec8648ccc7%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/78098996-ca5e-a2ce-ae33-68ec8648ccc7%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/78098996-ca5e-a2ce-ae33-68ec8648ccc7%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202170000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p></p>
+
+<p>On 2/17/22 13:26, Tomas Vondra wrote:<br>&gt; On 2/17/22 03:52, Peter Geoghegan wrote:<br>&gt;&gt; On Wed, Feb 16, 2022 at 4:16 PM Tomas Vondra<br>&gt;&gt; &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt; wrote:<br>&gt;&gt;&gt; test=# SELECT * FROM gist_page_items(get_raw_page(&#x27;path_gist_idx&#x27;, 0),<br>&gt;&gt;&gt; &#x27;path_gist_idx&#x27;);<br>&gt;&gt;<br>&gt;&gt; Maybe this is obvious, but just in case: gist_page_items is *very*<br>&gt;&gt; trusting here. It&#x27;s necessary to use gist_page_items_bytea() if you&#x27;re<br>&gt;&gt; not 100% sure about the index definition for the index page you<br>&gt;&gt; provide. The fact that you can display the contents of each tuple<br>&gt;&gt; using the underlying type&#x27;s own output function is very handy. But<br>&gt;&gt; potentially hazardous.<br>&gt;&gt;<br>&gt; <br>&gt; Sure, but I used this to inspect the index from example in our docs:<br>&gt; <br>&gt;   <a href="https://www.postgresql.org/docs/14/ltree.html#id-1.11.7.30.8" rel="nofollow">https://www.postgresql.org/docs/14/ltree.html#id-1.11.7.30.8</a><br>&gt; <br>&gt; I doubt we can be even more sure about the index definition.<br>&gt; <br>&gt; <br>&gt; I don&#x27;t know what the root cause is yet, but the memory corruption<br>&gt; happens simply because ltree_out() sees entirely bogus data when<br>&gt; executed from gist_page_items.<br>&gt; <br>&gt; For example it gets 16B varlena, allocates 16B string for it, and starts<br>&gt; iterating over the ltree data. The it finds the first element is 60B<br>&gt; long and happily copies it &quot;into&quot; the 16B buffer. That can&#x27;t end well,<br>&gt; obviously.<br>&gt; <br>&gt; Clearly, the ltree values are mangled somehow / somewhere. The funny<br>&gt; thing is the bytea always looks 8B longer and with bogus data. So for<br>&gt; example if you select this ltree from the table directly<br>&gt; <br>&gt;   Top.Collections.Pictures.Astronomy.Astronauts<br>&gt; <br>&gt; then ltree_out sees it as 80B varlena, with 5 levels. But if ltree_out<br>&gt; gets called from gist_page_items, then it sees 88B with 1 level, which<br>&gt; is completely bogus.<br>&gt; <br>&gt; And funnily enough, if you do this at the beginning of ltree_out:<br>&gt; <br>&gt;   in = (ltree *) ((char *) in + 8);<br>&gt; <br>&gt; then gist_page_items() starts working just fine.<br>&gt; <br>&gt; So, I guess gist_page_items() is broken/confused in some way. I&#x27;m not<br>&gt; sure if this is related to the crash reported by Victor or a separate,<br>&gt; independent issue.<br>&gt; </p>
+
+<p>I may be wrong, but it seems gist_page_items() is entirely oblivious to<br>the fact that GiST does &quot;compression&quot;, and fails to decompress the<br>values before passing them to out function. So instead of &quot;ltree&quot; it<br>extracts &quot;ltree_gist&quot; and passes that to &quot;ltree_out&quot;.</p>
+
+<p>This is consistent with the 8B offset I mentioned before, because<br>ltree_gist has 8B header and then stores the original ltree value.</p>
+
+<p>But I may be missing something - this seems like such an obvious gap<br>that I don&#x27;t know how this could have worked with anything but the most<br>trivial cases without GiST compression.</p>
+
+<p>Furthermore, it seems more like a pageinspect issue, unrelated to the<br>original issue reported by Victor.</p>
+
+<p>regards</p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="4eac5413-4267-d8e2-4d94-205d5256c498@enterprisedb.com"></a>
+<a name="6bf41bc0d40e95a83c8d2d84b3152144"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-17 16:35:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/4eac5413-4267-d8e2-4d94-205d5256c498%40enterprisedb.com">4eac5413-4267-d8e2-4d94-205d5256c498@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/4eac5413-4267-d8e2-4d94-205d5256c498%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/4eac5413-4267-d8e2-4d94-205d5256c498%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/4eac5413-4267-d8e2-4d94-205d5256c498%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/4eac5413-4267-d8e2-4d94-205d5256c498%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202170000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2/17/22 01:16, Tomas Vondra wrote:<br>&gt;  ...<br>&gt;<br>&gt;&gt;     How large is the table/index? Are you able to run the query with a<br>&gt;&gt;     custom build (without values optimized out)? Any chance you still<br>&gt;&gt;     have a<br>&gt;&gt;     backup from before the pg_upgrade, on which you might run the query?<br>&gt;&gt;<br>&gt;&gt;<br>&gt;&gt; Yes, this is a test DB restored from backup in order to test out 14<br>&gt;&gt; upgrade, production is still running on 12.9.<br>&gt;&gt; v3_region is 2832 kB<br>&gt;&gt; region_ltree_path_idx_gist is 472 kB<br>&gt;&gt;<br>&gt; <br>&gt; That means it should be possible to reproduce the issue elsewhere by<br>&gt; copying the files (and schema). Is there any sensitive data that&#x27;d<br>&gt; prevent handing over this data?<br>&gt; </p>
+
+<p>Maybe we could also try just dumping the data (the ltree_path column),<br>so that we can load it into 12 cluster and do a binary upgrade. That<br>would be simpler than trying to copy the existing data files.</p>
+
+<p>regards</p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAGnEboiQ-cnhXceFa9WfXk7y06fuVVsf9WcmEdPerjqth8QJxA@mail.gmail.com"></a>
+<a name="31acb82e43cbc8791740a7c226dbbecc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-21 17:57:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAGnEboiQ-cnhXceFa9WfXk7y06fuVVsf9WcmEdPerjqth8QJxA%40mail.gmail.com">CAGnEboiQ-cnhXceFa9WfXk7y06fuVVsf9WcmEdPerjqth8QJxA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAGnEboiQ-cnhXceFa9WfXk7y06fuVVsf9WcmEdPerjqth8QJxA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAGnEboiQ-cnhXceFa9WfXk7y06fuVVsf9WcmEdPerjqth8QJxA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAGnEboiQ-cnhXceFa9WfXk7y06fuVVsf9WcmEdPerjqth8QJxA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAGnEboiQ-cnhXceFa9WfXk7y06fuVVsf9WcmEdPerjqth8QJxA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt;<br>&gt; Interesting! What&#x27;s the backtrace from the crash?<br>&gt;</p>
+
+<p>Here&#x27;s the backtrace:<br>(gdb) bt<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:51<br>#1  0x00007f1806417921 in __GI_abort () at abort.c:79<br>#2  0x00007f1806460967 in __libc_message (action=action(at)entry=do_abort,<br>fmt=fmt(at)entry=0x7f180658db0d &quot;%s\n&quot;) at ../sysdeps/posix/libc_fatal.c:181<br>#3  0x00007f18064679da in malloc_printerr (str=str(at)entry=0x7f180658f818<br>&quot;double free or corruption (out)&quot;) at malloc.c:5342<br>#4  0x00007f180646ef6a in _int_free (have_lock=0, p=0x560a0074ec70,<br>av=0x7f18067c2c40 &lt;main_arena&gt;) at malloc.c:4308<br>#5  __GI___libc_free (mem=0x560a0074ec80) at malloc.c:3134<br>#6  0x00005609ffa661d0 in AllocSetReset (context=0x560a00634d10) at<br>./build/../src/backend/utils/mmgr/aset.c:608<br>#7  0x00005609ffa6b879 in MemoryContextResetOnly (context=0x560a00634d10)<br>at ./build/../src/backend/utils/mmgr/mcxt.c:181<br>#8  0x00005609ffa6bae6 in MemoryContextResetOnly (context=&lt;optimized out&gt;)<br>at ./build/../src/backend/utils/mmgr/mcxt.c:154<br>#9  MemoryContextReset (context=&lt;optimized out&gt;) at<br>./build/../src/backend/utils/mmgr/mcxt.c:153<br>#10 0x00005609ff78b205 in ExecScan (node=0x560a00633040,<br>accessMtd=0x5609ff79c670 &lt;FunctionNext&gt;, recheckMtd=0x5609ff79c640<br>&lt;FunctionRecheck&gt;) at ./build/../src/backend/executor/execScan.c:181<br>#11 0x00005609ff78134d in ExecProcNode (node=0x560a00633040) at<br>./build/../src/include/executor/executor.h:257<br>#12 ExecutePlan (execute_once=&lt;optimized out&gt;, dest=0x560a00630608,<br>direction=&lt;optimized out&gt;, numberTuples=0, sendTuples=&lt;optimized out&gt;,<br>operation=CMD_SELECT, use_parallel_mode=&lt;optimized out&gt;,<br>planstate=0x560a00633040, estate=0x560a00632e18)<br>    at ./build/../src/backend/executor/execMain.c:1551<br>#13 standard_ExecutorRun (queryDesc=0x560a00602448, direction=&lt;optimized<br>out&gt;, count=0, execute_once=&lt;optimized out&gt;) at<br>./build/../src/backend/executor/execMain.c:361<br>#14 0x00007f17fedfa595 in pgss_ExecutorRun (queryDesc=0x560a00602448,<br>direction=ForwardScanDirection, count=0, execute_once=&lt;optimized out&gt;) at<br>./build/../contrib/pg_stat_statements/pg_stat_statements.c:1003<br>#15 0x00005609ff906986 in PortalRunSelect (portal=portal(at)entry=0x560a006c7658,<br>forward=forward(at)entry=true, count=0, count(at)entry=9223372036854775807,<br>dest=dest(at)entry=0x560a00630608) at ./build/../src/backend/tcop/pquery.c:921<br>#16 0x00005609ff907ff8 in PortalRun (portal=portal(at)entry=0x560a006c7658,<br>count=count(at)entry=9223372036854775807, isTopLevel=isTopLevel(at)entry=true,<br>run_once=run_once(at)entry=true, dest=dest(at)entry=0x560a00630608,<br>altdest=altdest(at)entry=0x560a00630608,<br>    qc=0x7ffcc729cbf0) at ./build/../src/backend/tcop/pquery.c:765<br>#17 0x00005609ff9038e9 in exec_simple_query (query_string=0x560a005de178<br>&quot;SELECT * FROM gist_page_items(get_raw_page(&#x27;region_ltree_path_idx_gist&#x27;,<br>0), &#x27;region_ltree_path_idx_gist&#x27;);&quot;) at<br>./build/../src/backend/tcop/postgres.c:1214<br>#18 0x00005609ff905c4c in PostgresMain (argc=argc(at)entry=1,<br>argv=argv(at)entry=0x7ffcc729d0b0,<br>dbname=&lt;optimized out&gt;, username=&lt;optimized out&gt;) at<br>./build/../src/backend/tcop/postgres.c:4486<br>#19 0x00005609ff878e2a in BackendRun (port=&lt;optimized out&gt;, port=&lt;optimized<br>out&gt;) at ./build/../src/backend/postmaster/postmaster.c:4530<br>#20 BackendStartup (port=&lt;optimized out&gt;) at<br>./build/../src/backend/postmaster/postmaster.c:4252<br>#21 ServerLoop () at ./build/../src/backend/postmaster/postmaster.c:1745<br>#22 0x00005609ff879c68 in PostmasterMain (argc=5, argv=0x560a005d6dc0) at<br>./build/../src/backend/postmaster/postmaster.c:1417<br>#23 0x00005609ff5b283b in main (argc=5, argv=0x560a005d6dc0) at<br>./build/../src/backend/main/main.c:209</p>
+
+<p>Also, I&#x27;ve looked into the database.<br>It has ltree in unpackaged state for quite some time, I suppose since 8.*<br>times. I&#x27;ve converted into extensions ltree and dblink.</p>
+
+<p>Next, I&#x27;ve performed an upgrade again and the issue is still there.</p>
+
+<p>I got approval to send a table with its data and index in the subject<br>datafile.<br>Taken from the v14 database.</p>
+
+<p>-- <br>Victor Yegorov<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/131162/v3_region.psql.gz">v3_region.psql.gz</a>
+            
+          </th>
+          <td>application/x-gzip</td>
+          <td>403.5 KB</td>
+        </tr>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/131163/region_ltree_path_idx_gist-4221598933.datafile.gz">region_ltree_path_idx_gist-4221598933.datafile.gz</a>
+            
+          </th>
+          <td>application/x-gzip</td>
+          <td>70.3 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="c733dae0-15ba-bcdd-e465-1a9f2fdefebf@enterprisedb.com"></a>
+<a name="5a33a12c6a3cc4c3acf36047a5ed6f1f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;,
+ Alexander Korotkov &lt;a(dot)korotkov(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-23 15:36:32</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/c733dae0-15ba-bcdd-e465-1a9f2fdefebf%40enterprisedb.com">c733dae0-15ba-bcdd-e465-1a9f2fdefebf@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/c733dae0-15ba-bcdd-e465-1a9f2fdefebf%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/c733dae0-15ba-bcdd-e465-1a9f2fdefebf%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/c733dae0-15ba-bcdd-e465-1a9f2fdefebf%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/c733dae0-15ba-bcdd-e465-1a9f2fdefebf%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202230000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt;<br>&gt; I got approval to send a table with its data and index in the subject<br>&gt; datafile.<br>&gt; Taken from the v14 database.<br>&gt; </p>
+
+<p>Thanks for the data! I&#x27;ve been able to reproduce the issue (load into<br>12, pg_upgrade to 14 and run the query). After bisecting this for a<br>while, this seems like a bug in PG13 commit</p>
+
+<p>commit 911e70207703799605f5a0e8aad9f06cff067c63 (HEAD)<br>Author: Alexander Korotkov &lt;akorotkov(at)postgresql(dot)org&gt;<br>Date:   Mon Mar 30 19:17:11 2020 +0300</p>
+
+<p>    Implement operator class parameters</p>
+
+<p>    ...</p>
+
+<p>It works fine when upgrading to an earlier build, and crashes since this<br>commit. I haven&#x27;t investigated this further, but I guess there&#x27;s some<br>thinko in gist_ltree_ops, affecting how we interpret existing indexes.</p>
+
+<p>Alexander, any ideas?</p>
+
+<p>regards</p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="e544c795-2c7a-e662-19d2-e34da12bfa66@enterprisedb.com"></a>
+<a name="227ac920786efc5d257513eb4c24f526"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;,
+ Alexander Korotkov &lt;aekorotkov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-23 15:41:22</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/e544c795-2c7a-e662-19d2-e34da12bfa66%40enterprisedb.com">e544c795-2c7a-e662-19d2-e34da12bfa66@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/e544c795-2c7a-e662-19d2-e34da12bfa66%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/e544c795-2c7a-e662-19d2-e34da12bfa66%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/e544c795-2c7a-e662-19d2-e34da12bfa66%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/e544c795-2c7a-e662-19d2-e34da12bfa66%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202230000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2/23/22 16:36, Tomas Vondra wrote:<br>&gt;&gt;<br>&gt;&gt; I got approval to send a table with its data and index in the subject<br>&gt;&gt; datafile.<br>&gt;&gt; Taken from the v14 database.<br>&gt;&gt;<br>&gt; <br>&gt; Thanks for the data! I&#x27;ve been able to reproduce the issue (load into<br>&gt; 12, pg_upgrade to 14 and run the query). After bisecting this for a<br>&gt; while, this seems like a bug in PG13 commit<br>&gt; <br>&gt; commit 911e70207703799605f5a0e8aad9f06cff067c63 (HEAD)<br>&gt; Author: Alexander Korotkov &lt;akorotkov(at)postgresql(dot)org&gt;<br>&gt; Date:   Mon Mar 30 19:17:11 2020 +0300<br>&gt; <br>&gt;     Implement operator class parameters<br>&gt; <br>&gt;     ...<br>&gt; <br>&gt; It works fine when upgrading to an earlier build, and crashes since this<br>&gt; commit. I haven&#x27;t investigated this further, but I guess there&#x27;s some<br>&gt; thinko in gist_ltree_ops, affecting how we interpret existing indexes.<br>&gt; <br>&gt; Alexander, any ideas?<br>&gt; </p>
+
+<p>Sorry, I accidentally used Alexander&#x27;s old address, so let me CC him<br>with the correct/current one.</p>
+
+<p>regards</p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="14ac4567-3285-f549-67df-debaeab7719f@enterprisedb.com"></a>
+<a name="b66d31ea55ed65adc5bccc42a23a6d34"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;,
+ Alexander Korotkov &lt;aekorotkov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-24 15:18:50</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/14ac4567-3285-f549-67df-debaeab7719f%40enterprisedb.com">14ac4567-3285-f549-67df-debaeab7719f@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/14ac4567-3285-f549-67df-debaeab7719f%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/14ac4567-3285-f549-67df-debaeab7719f%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/14ac4567-3285-f549-67df-debaeab7719f%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/14ac4567-3285-f549-67df-debaeab7719f%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2/23/22 16:41, Tomas Vondra wrote:<br>&gt; On 2/23/22 16:36, Tomas Vondra wrote:<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; I got approval to send a table with its data and index in the subject<br>&gt;&gt;&gt; datafile.<br>&gt;&gt;&gt; Taken from the v14 database.<br>&gt;&gt;&gt;<br>&gt;&gt;<br>&gt;&gt; Thanks for the data! I&#x27;ve been able to reproduce the issue (load into<br>&gt;&gt; 12, pg_upgrade to 14 and run the query). After bisecting this for a<br>&gt;&gt; while, this seems like a bug in PG13 commit<br>&gt;&gt;<br>&gt;&gt; commit 911e70207703799605f5a0e8aad9f06cff067c63 (HEAD)<br>&gt;&gt; Author: Alexander Korotkov &lt;akorotkov(at)postgresql(dot)org&gt;<br>&gt;&gt; Date:   Mon Mar 30 19:17:11 2020 +0300<br>&gt;&gt;<br>&gt;&gt;     Implement operator class parameters<br>&gt;&gt;<br>&gt;&gt;     ...<br>&gt;&gt;<br>&gt;&gt; It works fine when upgrading to an earlier build, and crashes since this<br>&gt;&gt; commit. I haven&#x27;t investigated this further, but I guess there&#x27;s some<br>&gt;&gt; thinko in gist_ltree_ops, affecting how we interpret existing indexes.<br>&gt;&gt;<br>&gt;&gt; Alexander, any ideas?<br>&gt;&gt;<br>&gt; <br>&gt; Sorry, I accidentally used Alexander&#x27;s old address, so let me CC him<br>&gt; with the correct/current one.<br>&gt; </p>
+
+<p>I tried investigating this a bit further, but my gist-foo is rather<br>limited so I haven&#x27;t made much progress so far. But as Victor already<br>mentioned, REINDEX fixes this - so I tried comparing the broken index<br>with a new one built on PG13.</p>
+
+<p>And the it seems the indexes are mostly the same, with the exception of<br>LSN in the page header. The only page that substantially differs is the<br>first page, which is also storing less data (the broken version):</p>
+
+<p>test=# SELECT * FROM<br>page_header(get_raw_page(&#x27;v3_region_copy_ltree_path_idx&#x27;, 0));<br>    lsn    | checksum | flags | lower | upper | special | pagesize | ...<br>----------+----------+-------+-------+-------+---------+----------+- ...<br> 0/1CD80C8 |        0 |     0 |    40 |  7856 |    8176 |     8192 | ...<br>  (1 row)</p>
+
+<p>test=# SELECT * FROM<br>page_header(get_raw_page(&#x27;v3_region_copy_13_ltree_path_idx&#x27;, 0));<br>    lsn    | checksum | flags | lower | upper | special | pagesize | ...<br>-----------+----------+-------+-------+-------+---------+----------+-...<br> 0/7029760 |        0 |     0 |    40 |  7760 |    8176 |     8192 | ...<br>(1 row)</p>
+
+<p>regards</p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="5cd74597-f555-d4e1-4dc2-d399180bb8cc@enterprisedb.com"></a>
+<a name="0cf91fe7cd5afb9a70cf660cf75982da"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;,
+ Alexander Korotkov &lt;aekorotkov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-24 18:36:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/5cd74597-f555-d4e1-4dc2-d399180bb8cc%40enterprisedb.com">5cd74597-f555-d4e1-4dc2-d399180bb8cc@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/5cd74597-f555-d4e1-4dc2-d399180bb8cc%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/5cd74597-f555-d4e1-4dc2-d399180bb8cc%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/5cd74597-f555-d4e1-4dc2-d399180bb8cc%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/5cd74597-f555-d4e1-4dc2-d399180bb8cc%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2/24/22 16:18, Tomas Vondra wrote:<br>&gt; On 2/23/22 16:41, Tomas Vondra wrote:<br>&gt;&gt; On 2/23/22 16:36, Tomas Vondra wrote:<br>&gt;&gt;&gt;&gt;<br>&gt;&gt;&gt;&gt; I got approval to send a table with its data and index in the subject<br>&gt;&gt;&gt;&gt; datafile.<br>&gt;&gt;&gt;&gt; Taken from the v14 database.<br>&gt;&gt;&gt;&gt;<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; Thanks for the data! I&#x27;ve been able to reproduce the issue (load into<br>&gt;&gt;&gt; 12, pg_upgrade to 14 and run the query). After bisecting this for a<br>&gt;&gt;&gt; while, this seems like a bug in PG13 commit<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; commit 911e70207703799605f5a0e8aad9f06cff067c63 (HEAD)<br>&gt;&gt;&gt; Author: Alexander Korotkov &lt;akorotkov(at)postgresql(dot)org&gt;<br>&gt;&gt;&gt; Date:   Mon Mar 30 19:17:11 2020 +0300<br>&gt;&gt;&gt;<br>&gt;&gt;&gt;     Implement operator class parameters<br>&gt;&gt;&gt;<br>&gt;&gt;&gt;     ...<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; It works fine when upgrading to an earlier build, and crashes since this<br>&gt;&gt;&gt; commit. I haven&#x27;t investigated this further, but I guess there&#x27;s some<br>&gt;&gt;&gt; thinko in gist_ltree_ops, affecting how we interpret existing indexes.<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; Alexander, any ideas?<br>&gt;&gt;&gt;<br>&gt;&gt;<br>&gt;&gt; Sorry, I accidentally used Alexander&#x27;s old address, so let me CC him<br>&gt;&gt; with the correct/current one.<br>&gt;&gt;<br>&gt; <br>&gt; I tried investigating this a bit further, but my gist-foo is rather<br>&gt; limited so I haven&#x27;t made much progress so far. But as Victor already<br>&gt; mentioned, REINDEX fixes this - so I tried comparing the broken index<br>&gt; with a new one built on PG13.<br>&gt; <br>&gt; And the it seems the indexes are mostly the same, with the exception of<br>&gt; LSN in the page header. The only page that substantially differs is the<br>&gt; first page, which is also storing less data (the broken version):<br>&gt; <br>&gt; test=# SELECT * FROM<br>&gt; page_header(get_raw_page(&#x27;v3_region_copy_ltree_path_idx&#x27;, 0));<br>&gt;     lsn    | checksum | flags | lower | upper | special | pagesize | ...<br>&gt; ----------+----------+-------+-------+-------+---------+----------+- ...<br>&gt;  0/1CD80C8 |        0 |     0 |    40 |  7856 |    8176 |     8192 | ...<br>&gt;   (1 row)<br>&gt; <br>&gt; test=# SELECT * FROM<br>&gt; page_header(get_raw_page(&#x27;v3_region_copy_13_ltree_path_idx&#x27;, 0));<br>&gt;     lsn    | checksum | flags | lower | upper | special | pagesize | ...<br>&gt; -----------+----------+-------+-------+-------+---------+----------+-...<br>&gt;  0/7029760 |        0 |     0 |    40 |  7760 |    8176 |     8192 | ...<br>&gt; (1 row)<br>&gt; </p>
+
+<p>It took me a bit of digging and debugging, but I think I got it. The<br>problem is that to determine siglen value, some of the functions use</p>
+
+<p>  LTREE_GET_ASIGLEN</p>
+
+<p>macro, which inspects the opclass options and returns the value. But if<br>there are no explicit options for the particular index (as happens for<br>indexes created in older versions), it uses LTREE_ASIGLEN_DEFAULT, which<br>is 28 bytes. But that&#x27;s wrong - this value for ltree[] gist opclass, not<br>for plain ltree - that uses just 8B. So we&#x27;re off by 20B, which messes<br>all kinds of stuff, of course.</p>
+
+<p>My guess this is a simple mistake, because the macro is in section<br>labeled as</p>
+
+<p>  /* GiST support for ltree[] */</p>
+
+<p>and the &quot;A&quot; in the name probably refers to &quot;array&quot; too.</p>
+
+<p>Attached is a patch that fixes this, but I wonder what will happen to<br>new indexes created on 13+. Will check.</p>
+
+<p>Victor, can you try with this patch applied?</p>
+
+<p>regards</p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/131260/0001-ltree-gist-siglen-fix.patch">0001-ltree-gist-siglen-fix.patch</a>
+            
+          </th>
+          <td>text/x-patch</td>
+          <td>5.3 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="6bc7e8a7-382f-9d8d-8b8d-9c6607f7fa15@enterprisedb.com"></a>
+<a name="2b4fc30918f4f77c338880061dc84afd"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tomas Vondra &lt;tomas(dot)vondra(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Victor Yegorov &lt;vyegorov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;,
+ Alexander Korotkov &lt;aekorotkov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17406: Segmentation fault on GiST index after 14.2 upgrade</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-24 21:17:27</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/6bc7e8a7-382f-9d8d-8b8d-9c6607f7fa15%40enterprisedb.com">6bc7e8a7-382f-9d8d-8b8d-9c6607f7fa15@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/6bc7e8a7-382f-9d8d-8b8d-9c6607f7fa15%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/6bc7e8a7-382f-9d8d-8b8d-9c6607f7fa15%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/6bc7e8a7-382f-9d8d-8b8d-9c6607f7fa15%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/6bc7e8a7-382f-9d8d-8b8d-9c6607f7fa15%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 2/24/22 19:36, Tomas Vondra wrote:<br>&gt;<br>&gt; ...<br>&gt; <br>&gt; Attached is a patch that fixes this, but I wonder what will happen to<br>&gt; new indexes created on 13+. Will check.<br>&gt; </p>
+
+<p>Unfortunately, the patch fixes indexes built on PG12, but it also breaks<br>indexes created after pg_upgrade :-(</p>
+
+<p>I&#x27;m not sure if a good solution even exists, because we can&#x27;t really<br>distinguish those indexes. It only affects ltree_gist, though, and we<br>didn&#x27;t get any other reports so far, so either few people are using it<br>or have not upgraded yet.</p>
+
+<p>I&#x27;ve created a thread on pgsql-hackers [1], where it might get more<br>attention from other developers. Maybe they&#x27;ll have a better idea on how<br>to fix this.</p>
+
+<p>regards</p>
+
+<p>[1]<br><a href="https://www.postgresql.org/message-id/d80e0a55-6c3e-5b26-53e3-3c4f973f737c@enterprisedb.com" rel="nofollow">https://www.postgresql.org/message-id/d80e0a55-6c3e-5b26-53e3-3c4f973f737c%40enterprisedb.com</a></p>
+
+<p>-- <br>Tomas Vondra<br>EnterpriseDB: <a href="http://www.enterprisedb.com" rel="nofollow">http://www.enterprisedb.com</a><br>The Enterprise PostgreSQL Company</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

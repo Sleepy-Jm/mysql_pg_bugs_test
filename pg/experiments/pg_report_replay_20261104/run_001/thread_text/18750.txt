@@ -1,0 +1,389 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18750
+Logged by:          Yiran Shen
+Email address:      yrshen(at)stu(dot)xidian(dot)edu(dot)cn
+PostgreSQL version: 17.2
+Operating system:   Ubuntu 22.04
+Description:        
+
+
+Note: Tx1 means transaction 1 and Tx2 means transaciton 2. 
+The bug case for the concurrent transactions is executed in the following
+order.
+How to repeat：
+-----------------------------------------------------------------------------
+/* Tx1 */ BEGIN;
+/* Tx1 */ SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+/* Tx2 */ BEGIN;
+/* Tx2 */ SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+/* Tx1 */ UPDATE t SET b=3;
+/* Tx2 */ UPDATE t SET b=2 WHERE a IS NOT NULL;  
+/* Tx1 */ UPDATE t SET a=1;
+/* Tx1 */ COMMIT;
+/* Tx2 */ COMMIT;
+ 
+/* Tx1 */ SELECT * FROM t; -- actual: [(1, 3), (1 ,2)], expected: [(1, 2),
+(1, 2)]
+-----------------------------------------------------------------------------
+The UPDATE statement of Tx2 was initially blocked by the first UPDATE
+statement of Tx1. It recovered after Tx1's COMMIT, but its query result is
+incorrect. According to the documentation of PostgreSQL 17, the Transaction
+Isolation of the section 13.2 has denoted that the UPDATE statement of Tx2
+should attempt to apply its operation to the updated version of the row in
+RC if the first updater commits. So I'm wondering if this is a bug in RC
+that doesn't meet that isolation level.
+
+
+
+
+
+### MESSAGE 1
+On Mon, Dec 23, 2024 at 12:57 PM PG Bug reporting form <
+noreply(at)postgresql(dot)org> wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      18750
+> Logged by:          Yiran Shen
+> Email address:      yrshen(at)stu(dot)xidian(dot)edu(dot)cn
+> PostgreSQL version: 17.2
+> Operating system:   Ubuntu 22.04
+> Description:
+>
+> Note: Tx1 means transaction 1 and Tx2 means transaciton 2.
+> The bug case for the concurrent transactions is executed in the following
+> order.
+> How to repeat：
+>
+> -----------------------------------------------------------------------------
+> /* Tx1 */ BEGIN;
+> /* Tx1 */ SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+> /* Tx2 */ BEGIN;
+> /* Tx2 */ SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+> /* Tx1 */ UPDATE t SET b=3;
+> /* Tx2 */ UPDATE t SET b=2 WHERE a IS NOT NULL;
+> /* Tx1 */ UPDATE t SET a=1;
+> /* Tx1 */ COMMIT;
+> /* Tx2 */ COMMIT;
+>
+> /* Tx1 */ SELECT * FROM t; -- actual: [(1, 3), (1 ,2)], expected: [(1, 2),
+> (1, 2)]
+>
+> -----------------------------------------------------------------------------
+> The UPDATE statement of Tx2 was initially blocked by the first UPDATE
+> statement of Tx1. It recovered after Tx1's COMMIT, but its query result is
+> incorrect. According to the documentation of PostgreSQL 17, the Transaction
+> Isolation of the section 13.2 has denoted that the UPDATE statement of Tx2
+> should attempt to apply its operation to the updated version of the row in
+> RC if the first updater commits.
+
+
+You haven't shown us the existing values in the table, before the
+transactions started. Was column a, NULL for one row and NOT NULL for the
+other row?
+
+
+> So I'm wondering if this is a bug in RC
+> that doesn't meet that isolation level.
+>
+>
+
+
+
+### MESSAGE 2
+It will re-evaluate the rows it is already slated to update, it is not
+going to re-run the whole query and get a fresh list of rows to update.
+Here's two other examples. Uppercase is messages returned to psql from the
+server.
+
+
+create table t (id int);
+insert into t values (1),(2);
+
+
+/* tx1 */ begin; -- isolation level does not matter
+/* tx1 */ select * from t for update; -- lightweight lock on all rows
+/* tx2 */ begin transaction isolation level read committed;
+/* tx2 */ update t set id=999 where id = 2; -- hangs, waiting for the lock
+/* tx1 */ update t set id = 4; -- the where clause is now no longer true
+for that row
+/* tx1 */ UPDATE 2 -- server says we have updated two rows
+/* tx1 */ commit;
+/* tx2 */ UPDATE 0 -- server says that row no longer meets the WHERE
+clause, so no update
+/* tx2 */ update t set id=999 where id = 2;
+/* tx2 */ UPDATE 0 -- everything is a 4
+/* tx2 */ update t set id=999 where id = 4;
+/* tx2 */ UPDATE 2
+
+
+truncate table t;
+insert into t values (1),(2);
+
+
+/* tx1 */ begin; select * from t for update;
+/* tx2 */ begin transaction isolation level read committed;
+/* tx2 */ update t set id=999 where id = 2; -- hangs, waiting for the lock
+/* tx1 */ update t set id = 2; -- now have two rows that match the where
+clause
+/* tx1 */ UPDATE 2 -- server says we have updated two rows
+/* tx1 */ commit;
+/* tx2 */ UPDATE 1 -- server verifies our original row is still valid, but
+does not update the "new" 2
+/* tx2 */ update t set id=999 where id = 2; -- fresh look at all the rows
+/* tx2 */ UPDATE 1 -- we have updated the "new" 2
+/* tx2 */ update t set id=999 where id = 2;
+/* tx2 */ UPDATE 0 -- nothing left
+
+
+If you set the second transaction to "repeatable read", you will find that
+the above scenario will result in a "could not serialize access due to
+concurrent update" error, which, in my opinion, is a more sane result. One
+of the many reasons I tend to avoid "read committed".
+
+
+Cheers,
+Greg
+
+
+
+### MESSAGE 3
+I'm so sorry that I forgot to provide you with the value of initial table t. The table is created as follows:
+/* init */ CREATE TABLE t(a INT, b INT);
+/* init */ INSERT INTO t VALUES (null, 1), (1, 1);
+
+
+2024-12-24 20:37:10 "Pantelis Theodosiou" <ypercube(at)gmail(dot)com> 写道：
+
+
+On Mon, Dec 23, 2024 at 12:57 PM PG Bug reporting form <noreply(at)postgresql(dot)org> wrote:
+
+
+The following bug has been logged on the website:
+
+
+Bug reference:      18750
+Logged by:          Yiran Shen
+Email address:      yrshen(at)stu(dot)xidian(dot)edu(dot)cn
+PostgreSQL version: 17.2
+Operating system:   Ubuntu 22.04
+Description:       
+
+
+Note: Tx1 means transaction 1 and Tx2 means transaciton 2.
+The bug case for the concurrent transactions is executed in the following
+order.
+How to repeat：
+-----------------------------------------------------------------------------
+/* Tx1 */ BEGIN;
+/* Tx1 */ SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+/* Tx2 */ BEGIN;
+/* Tx2 */ SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+/* Tx1 */ UPDATE t SET b=3;
+/* Tx2 */ UPDATE t SET b=2 WHERE a IS NOT NULL; 
+/* Tx1 */ UPDATE t SET a=1;
+/* Tx1 */ COMMIT;
+/* Tx2 */ COMMIT;
+
+
+/* Tx1 */ SELECT * FROM t; -- actual: [(1, 3), (1 ,2)], expected: [(1, 2),
+(1, 2)]
+-----------------------------------------------------------------------------
+The UPDATE statement of Tx2 was initially blocked by the first UPDATE
+statement of Tx1. It recovered after Tx1's COMMIT, but its query result is
+incorrect. According to the documentation of PostgreSQL 17, the Transaction
+Isolation of the section 13.2 has denoted that the UPDATE statement of Tx2
+should attempt to apply its operation to the updated version of the row in
+RC if the first updater commits.
+
+
+You haven't shown us the existing values in the table, before the transactions started. Was column a, NULL for one row and NOT NULL for the other row?
+ 
+So I'm wondering if this is a bug in RC
+that doesn't meet that isolation level.
+
+
+
+
+
+### MESSAGE 4
+I'm so sorry that I forgot to provide you with the value of initial table t. The table is created as follows:
+/* init */ CREATE TABLE t(a INT, b INT);
+/* init */ INSERT INTO t VALUES (null, 1), (1, 1);
+
+
+2024-12-25 01:24:07 "Greg Sabino Mullane" <htamfids(at)gmail(dot)com> 写道：
+It will re-evaluate the rows it is already slated to update, it is not going to re-run the whole query and get a fresh list of rows to update. Here's two other examples. Uppercase is messages returned to psql from the server.
+
+
+create table t (id int);
+insert into t values (1),(2);
+
+
+/* tx1 */ begin; -- isolation level does not matter
+/* tx1 */ select * from t for update; -- lightweight lock on all rows
+
+
+/* tx2 */ begin transaction isolation level read committed;
+/* tx2 */ update t set id=999 where id = 2; -- hangs, waiting for the lock
+/* tx1 */ update t set id = 4; -- the where clause is now no longer true for that row
+/* tx1 */ UPDATE 2 -- server says we have updated two rows
+/* tx1 */ commit;
+
+
+/* tx2 */ UPDATE 0 -- server says that row no longer meets the WHERE clause, so no update
+/* tx2 */ update t set id=999 where id = 2;
+/* tx2 */ UPDATE 0 -- everything is a 4
+/* tx2 */ update t set id=999 where id = 4;
+/* tx2 */ UPDATE 2
+
+
+truncate table t;
+insert into t values (1),(2);
+
+
+/* tx1 */ begin; select * from t for update;
+/* tx2 */ begin transaction isolation level read committed;
+/* tx2 */ update t set id=999 where id = 2; -- hangs, waiting for the lock
+/* tx1 */ update t set id = 2; -- now have two rows that match the where clause
+/* tx1 */ UPDATE 2 -- server says we have updated two rows
+/* tx1 */ commit;
+
+
+/* tx2 */ UPDATE 1 -- server verifies our original row is still valid, but does not update the "new" 2
+/* tx2 */ update t set id=999 where id = 2; -- fresh look at all the rows
+/* tx2 */ UPDATE 1 -- we have updated the "new" 2
+/* tx2 */ update t set id=999 where id = 2;
+/* tx2 */ UPDATE 0 -- nothing left
+
+
+If you set the second transaction to "repeatable read", you will find that the above scenario will result in a "could not serialize access due to concurrent update" error, which, in my opinion, is a more sane result. One of the many reasons I tend to avoid "read committed". 
+
+
+Cheers,
+Greg
+
+
+
+
+
+### MESSAGE 5
+Thank you very much for your explanation. So, under the READ COMMITTED of PostgreSQL, the UPDATE statement of Tx2 will only re-evaluate and update the initial row (null, 1), which it initially wanted to update, if the (null, 1) is then changed to (1, 3) by Tx1. Therefore, the expected result of the case is [(1,3), (1,2)] according to the rule of PostgreSQL instead of [(1, 2), (1, 2)], am I right?
+-----------------------------------------------------------------------------
+/* init */ CREATE TABLE t(a INT, b INT);
+/* init */ INSERT INTO t VALUES (null, 1), (1, 1);
+
+
+/* Tx1 */ BEGIN;
+/* Tx1 */ SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+/* Tx2 */ BEGIN;
+/* Tx2 */ SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+/* Tx1 */ UPDATE t SET b=3;
+/* Tx2 */ UPDATE t SET b=2 WHERE a IS NOT NULL;  
+/* Tx1 */ UPDATE t SET a=1;
+/* Tx1 */ COMMIT;
+/* Tx2 */ COMMIT;
+ 
+/* Tx1 */ SELECT * FROM t; -- actual: [(1, 3), (1 ,2)], expected: [(1, 2), (1, 2)]
+-----------------------------------------------------------------------------
+
+
+2024-12-25 01:24:07 "Greg Sabino Mullane" <htamfids(at)gmail(dot)com> 写道：
+It will re-evaluate the rows it is already slated to update, it is not going to re-run the whole query and get a fresh list of rows to update. Here's two other examples. Uppercase is messages returned to psql from the server.
+
+
+create table t (id int);
+insert into t values (1),(2);
+
+
+/* tx1 */ begin; -- isolation level does not matter
+/* tx1 */ select * from t for update; -- lightweight lock on all rows
+
+
+/* tx2 */ begin transaction isolation level read committed;
+/* tx2 */ update t set id=999 where id = 2; -- hangs, waiting for the lock
+/* tx1 */ update t set id = 4; -- the where clause is now no longer true for that row
+/* tx1 */ UPDATE 2 -- server says we have updated two rows
+/* tx1 */ commit;
+
+
+/* tx2 */ UPDATE 0 -- server says that row no longer meets the WHERE clause, so no update
+/* tx2 */ update t set id=999 where id = 2;
+/* tx2 */ UPDATE 0 -- everything is a 4
+/* tx2 */ update t set id=999 where id = 4;
+/* tx2 */ UPDATE 2
+
+
+truncate table t;
+insert into t values (1),(2);
+
+
+/* tx1 */ begin; select * from t for update;
+/* tx2 */ begin transaction isolation level read committed;
+/* tx2 */ update t set id=999 where id = 2; -- hangs, waiting for the lock
+/* tx1 */ update t set id = 2; -- now have two rows that match the where clause
+/* tx1 */ UPDATE 2 -- server says we have updated two rows
+/* tx1 */ commit;
+
+
+/* tx2 */ UPDATE 1 -- server verifies our original row is still valid, but does not update the "new" 2
+/* tx2 */ update t set id=999 where id = 2; -- fresh look at all the rows
+/* tx2 */ UPDATE 1 -- we have updated the "new" 2
+/* tx2 */ update t set id=999 where id = 2;
+/* tx2 */ UPDATE 0 -- nothing left
+
+
+If you set the second transaction to "repeatable read", you will find that the above scenario will result in a "could not serialize access due to concurrent update" error, which, in my opinion, is a more sane result. One of the many reasons I tend to avoid "read committed". 
+
+
+Cheers,
+Greg
+
+
+
+
+
+### MESSAGE 6
+On Wed, Dec 25, 2024 at 7:58 AM <yrshen(at)stu(dot)xidian(dot)edu(dot)cn> wrote:
+
+
+>
+> Thank you very much for your explanation. So, under the READ COMMITTED of PostgreSQL, the UPDATE statement of Tx2 will only re-evaluate and update the initial row (null, 1), which it initially wanted to update, if the (null, 1) is then changed to (1, 3) by Tx1. Therefore, the expected result of the case is [(1,3), (1,2)] according to the rule of PostgreSQL instead of [(1, 2), (1, 2)], am I right?
+>
+
+
+Tx2  initially wanted to update the (1,1) row (WHERE a IS NOT NULL), which
+was then changed to (1,3) by Tx1. This is the row that Tx2 UPDATE statement
+will re-evaluate and update to (1,2).
+The initially (null,1) row which is then changed to (1,3) by Tx1 is not
+touched by Tx2.
+
+
+The expected result of the case is [(1,3), (1,2)] , that is correct.
+
+
+
+### MESSAGE 7
+OK， I understand. I'm very grateful for your detailed explanation. Have a nice day, thank you!
+
+
+2024-12-25 20:46:16 "Pantelis Theodosiou" <ypercube(at)gmail(dot)com> 写道：
+
+
+On Wed, Dec 25, 2024 at 7:58 AM <yrshen(at)stu(dot)xidian(dot)edu(dot)cn> wrote:
+
+
+Thank you very much for your explanation. So, under the READ COMMITTED of PostgreSQL, the UPDATE statement of Tx2 will only re-evaluate and update the initial row (null, 1), which it initially wanted to update, if the (null, 1) is then changed to (1, 3) by Tx1. Therefore, the expected result of the case is [(1,3), (1,2)] according to the rule of PostgreSQL instead of [(1, 2), (1, 2)], am I right?
+
+
+ 
+Tx2  initially wanted to update the (1,1) row (WHERE a IS NOT NULL), which was then changed to (1,3) by Tx1. This is the row that Tx2 UPDATE statement will re-evaluate and update to (1,2).
+The initially (null,1) row which is then changed to (1,3) by Tx1 is not touched by Tx2.
+
+
+The expected result of the case is [(1,3), (1,2)] , that is correct.
+

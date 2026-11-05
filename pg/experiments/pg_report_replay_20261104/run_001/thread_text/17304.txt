@@ -1,0 +1,76 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17304
+Logged by:          Martin Liška
+Email address:      marxin(dot)liska(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   Linux
+Description:        
+
+
+F="-fsanitize=undefined -g -O2" && export CFLAGS="$F" && export
+CXXFLAGS="$F" && export LDFLAGS="$F" && ./configure
+...
+make check
+...
+
+
+cat /home/marxin/Programming/postgres/src/test/regress/regression.diffs
+diff -U3
+/home/marxin/Programming/postgres/src/test/regress/expected/errors.out
+/home/marxin/Programming/postgres/src/test/regress/results/errors.out
+---
+/home/marxin/Programming/postgres/src/test/regress/expected/errors.out	2021-08-16
+18:20:32.157439777 +0200
++++
+/home/marxin/Programming/postgres/src/test/regress/results/errors.out	2021-11-30
+15:05:59.927802757 +0100
+@@ -17,6 +17,7 @@
+ -- SELECT
+ -- this used to be a syntax error, but now we allow an empty target list
+ select;
++print.c:969:4: runtime error: null pointer passed as argument 1, which is
+declared to never be null
+ --
+ (1 row)
+ 
+diff -U3
+/home/marxin/Programming/postgres/src/test/regress/expected/union.out
+/home/marxin/Programming/postgres/src/test/regress/results/union.out
+---
+/home/marxin/Programming/postgres/src/test/regress/expected/union.out	2021-11-11
+15:59:29.507314173 +0100
++++
+/home/marxin/Programming/postgres/src/test/regress/results/union.out	2021-11-30
+15:06:00.667797080 +0100
+@@ -936,6 +936,7 @@
+ -- Check behavior with empty select list (allowed since 9.4)
+ --
+ select union select;
++print.c:969:4: runtime error: null pointer passed as argument 1, which is
+declared to never be null
+ --
+ (1 row)
+ 
+diff -U3
+/home/marxin/Programming/postgres/src/test/regress/expected/alter_table.out
+/home/marxin/Programming/postgres/src/test/regress/results/alter_table.out
+---
+/home/marxin/Programming/postgres/src/test/regress/expected/alter_table.out	2021-11-11
+15:59:29.495314262 +0100
++++
+/home/marxin/Programming/postgres/src/test/regress/results/alter_table.out	2021-11-30
+15:06:06.555751926 +0100
+@@ -1530,6 +1530,7 @@
+ alter table atacc1 drop d;
+ alter table atacc1 drop b;
+ select * from atacc1;
++print.c:969:4: runtime error: null pointer passed as argument 1, which is
+declared to never be null
+ --
+ (1 row)
+
+
+

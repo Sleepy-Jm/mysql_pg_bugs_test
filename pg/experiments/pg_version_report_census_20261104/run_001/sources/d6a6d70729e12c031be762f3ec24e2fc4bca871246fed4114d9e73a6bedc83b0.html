@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17368: Assert failed in GetSafeSnapshot() for SERIALIZABLE READ ONLY DEFERRABLE transaction</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17368-98a4f99e8e4b4402%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-15T08:00:01" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17368: Assert failed in GetSafeSnapshot() for SERIALIZABLE READ ONLY DEFERRABLE transaction" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17368 Logged by: Alexander Lakhin Email address: exclusion@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17368: Assert failed in GetSafeSnapshot() for SERIALIZABLE READ ONLY DEFERRABLE transaction</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17368: Assert failed in GetSafeSnapshot() for SERIALIZABLE READ ONLY DEFERRABLE transaction</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-15 08:00:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17368-98a4f99e8e4b4402%40postgresql.org">17368-98a4f99e8e4b4402@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17368-98a4f99e8e4b4402%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17368-98a4f99e8e4b4402%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17368-98a4f99e8e4b4402%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17368-98a4f99e8e4b4402%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17368-98a4f99e8e4b4402%40postgresql.org" selected="selected">2022-01-15 08:00:01 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="18a116d2-7927-6a62-aa60-ab16c53183f9%40gmail.com">&nbsp;2022-01-15 16:00:00 from Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="CA%2BhUKG%2B4m%2BfvnM_Czyp3Z_h4SaqmwR7sq9XE%3Dk0GcaL_afEfUA%40mail.gmail.com">&nbsp;&nbsp;2023-03-06 03:02:02 from Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;</option>
+  <option value="CA%2BhUKGKYLSa4S7cMYgZXXA%2BcNTdr1COWtNj1HSc-Y62jwWmv7w%40mail.gmail.com">&nbsp;&nbsp;&nbsp;2023-03-06 23:39:26 from Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="3766597.1678146140%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;2023-03-06 23:42:20 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CA%2BhUKG%2ByRrVXLzo0v%2BMQ%3D9aZcy8GFAO8MSLnJcNjBDtFU_QQrw%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2023-03-07 01:14:03 from Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;</option>
+  <option value="3777235.1678151797%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2023-03-07 01:16:37 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CA%2BhUKGKT1RCYcy_p8RKGs0C5-8c2%3DJ38xMOcYTxsPL%3Dx6sr-cA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2023-03-08 11:57:20 from Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="33d30d9c-9491-386e-d19f-b58861683fe2%40gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2023-03-08 20:00:00 from Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;	&#x1f4ce;</option>
+  <option value="CA%2BhUKGKRkLpPUEECYwdp8s8TPeDfzwTLi7Q_-H9t%2BRCGC6_ArA%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2023-03-08 20:50:08 from Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;</option>
+  <option value="CA%2BhUKG%2BY96oENFj_boGCw6cBiUhM5wA%3DkiNReodZFLmsBtfwRQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2023-03-09 04:39:24 from Thomas Munro &lt;thomas(dot)munro(at)gmail(dot)com&gt;</option>
+  <option value="77a67fa9-9c69-d1e8-2b83-15b27e11ccf7%40gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2023-03-09 09:00:00 from Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201150000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17368<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>The isolation test &quot;read-only-anomaly-3&quot; modified as follows:<br>setup<br>{<br>	CREATE TABLE bank_account (id TEXT PRIMARY KEY, balance DECIMAL NOT<br>NULL);<br>	INSERT INTO bank_account (id, balance) VALUES (&#x27;X&#x27;, 0), (&#x27;Y&#x27;, 0);<br>}</p>
+
+<p>teardown<br>{<br>	DROP TABLE bank_account;<br>}</p>
+
+<p>session s1<br>setup 		{ BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE; }<br>step s1ry	{ SELECT balance FROM bank_account WHERE id = &#x27;Y&#x27;; }<br>step s1wy	{ UPDATE bank_account SET balance = 20 WHERE id = &#x27;Y&#x27;; }<br>step s1c 	{ COMMIT; }</p>
+
+<p>session s2<br>setup		{ BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE; }<br>step s2rx	{ SELECT balance FROM bank_account WHERE id = &#x27;X&#x27;; }<br>step s2ry	{ SELECT balance FROM bank_account WHERE id = &#x27;Y&#x27;; }<br>step s2wx	{ UPDATE bank_account SET balance = -11 WHERE id = &#x27;X&#x27;; }<br>step s2c	{ COMMIT; }</p>
+
+<p>session s3<br>setup		{ BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY<br>DEFERRABLE; }<br>step s3r	{ SELECT id, balance FROM bank_account WHERE id IN (&#x27;X&#x27;, &#x27;Y&#x27;) ORDER<br>BY id; }<br>step s3c	{ COMMIT; }</p>
+
+<p>session s4<br>setup		{ BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE; }<br>step s4to	{ SET lock_timeout = &#x27;10ms&#x27; }<br>step s4wx	{ UPDATE bank_account SET balance = -11 WHERE id = &#x27;X&#x27;; }<br>step s4c	{ COMMIT; }</p>
+
+<p>permutation s2rx s2ry s1ry s1wy s1c s3r s2wx s2c s3c<br>permutation s2ry s1wy s1c s2wx s4to s4wx s4c s3r s2c s3c</p>
+
+<p>causes an assertion failure with the following stacktrace:<br>Core was generated by `postgres: law isolation_regression [local] SELECT    <br>                        &#x27;.<br>Program terminated with signal SIGABRT, Aborted.<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>50      ../sysdeps/unix/sysv/linux/raise.c: No such file or directory.<br>(gdb) bt<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>#1  0x00007f53a8a7c859 in __GI_abort () at abort.c:79<br>#2  0x000055edb1e89381 in ExceptionalCondition (conditionName=0x55edb2832980<br>&quot;SxactIsROSafe(MySerializableXact)&quot;, <br>    errorType=0x55edb2831da0 &quot;FailedAssertion&quot;, fileName=0x55edb2831d60<br>&quot;predicate.c&quot;, lineNumber=1612) at assert.c:69<br>#3  0x000055edb1714442 in GetSafeSnapshot (origSnapshot=0x55edb6ac6e40<br>&lt;CurrentSnapshotData&gt;) at predicate.c:1612<br>#4  0x000055edb1714b91 in GetSerializableTransactionSnapshot<br>(snapshot=0x55edb6ac6e40 &lt;CurrentSnapshotData&gt;)<br>    at predicate.c:1703<br>#5  0x000055edb201d623 in GetTransactionSnapshot () at snapmgr.c:291<br>#6  0x000055edb17613b5 in exec_simple_query (<br>    query_string=0x625000005220 &quot;SELECT id, balance FROM bank_account WHERE<br>id IN (&#x27;X&#x27;, &#x27;Y&#x27;) ORDER BY id;&quot;)<br>    at postgres.c:1103<br>#7  0x000055edb176ea2e in PostgresMain (argc=1, argv=0x7ffdfa7290d0,<br>dbname=&lt;optimized out&gt;, <br>    username=0x629000011258 &quot;law&quot;) at postgres.c:4486<br>#8  0x000055edb13ea951 in BackendRun (port=0x615000004900) at<br>postmaster.c:4530<br>#9  0x000055edb13e9142 in BackendStartup (port=0x615000004900) at<br>postmaster.c:4252<br>#10 0x000055edb13df0a3 in ServerLoop () at postmaster.c:1745<br>#11 0x000055edb13dcf20 in PostmasterMain (argc=8, argv=0x607000000170) at<br>postmaster.c:1417<br>#12 0x000055edb0f075c3 in main (argc=8, argv=0x607000000170) at main.c:209</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/18a116d2-7927-6a62-aa60-ab16c53183f9%40gmail.com">Re: BUG #17368: Assert failed in GetSafeSnapshot() for SERIALIZABLE
+ READ ONLY DEFERRABLE transaction</a> at 2022-01-15 16:00:00 from Alexander Lakhin
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/18a116d2-7927-6a62-aa60-ab16c53183f9%40gmail.com">Next Message</a></th>
+            <td>Alexander Lakhin</td>
+            <td>2022-01-15 16:00:00</td>
+            <td><a href="/message-id/18a116d2-7927-6a62-aa60-ab16c53183f9%40gmail.com">Re: BUG #17368: Assert failed in GetSafeSnapshot() for SERIALIZABLE
+ READ ONLY DEFERRABLE transaction</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/CA%2BhUKG%2BzrWbCX6MGm%3DXJtMH6PiChS5Pxn%2BJqyUTEwpozaaapow%40mail.gmail.com">Previous Message</a></th>
+            <td>Thomas Munro</td>
+            <td>2022-01-15 05:41:42</td>
+            <td><a href="/message-id/CA%2BhUKG%2BzrWbCX6MGm%3DXJtMH6PiChS5Pxn%2BJqyUTEwpozaaapow%40mail.gmail.com">Re: BUG #17116: Assert failed in SerialSetActiveSerXmin() on commit
+ of parallelized serializable transaction</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

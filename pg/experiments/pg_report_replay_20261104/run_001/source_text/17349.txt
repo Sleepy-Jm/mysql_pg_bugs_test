@@ -1,0 +1,37 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17349
+Logged by:          Andreas Dijkman
+Email address:      andreas(dot)dijkman(at)cygnis(dot)nl
+PostgreSQL version: 14.1
+Operating system:   Oracle Linux 8
+Description:        
+
+
+As stated in
+https://www.postgresql.org/docs/current/pgcrypto.html#id-1.11.7.35.10, the
+function gen_random_uuid is now part of core PostgreSQL. Shouldn't this
+function be removed from the pgcrypto-extension as of PostgreSQL 13?
+I'm installing this extension in a PostgreSQL 14.1 database on Oracle Linux
+8 (I think this is valid for every OS with every version of PostgreSQL 13
+and up).
+
+
+If you install the pgcrypto-extension in the pg_catalog-schema (yes, I'm
+aware if installing it in public the error doesn't occur) you get an
+error:
+postgres=# create database testdb;
+CREATE DATABASE
+postgres=# \c testdb
+You are now connected to database "testdb" as user "postgres".
+testdb=# create extension pgcrypto schema pg_catalog;
+ERROR:  function "gen_random_uuid" already exists with same argument types
+
+
+If you install the pgcrypto-extension in the public-schema, the function
+gen_random_uuid probably never gets used because the same function in
+pg_catalog (probably) has precedence by default.
+
+
+

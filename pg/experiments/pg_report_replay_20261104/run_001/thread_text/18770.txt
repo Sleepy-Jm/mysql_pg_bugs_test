@@ -1,0 +1,54 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18770
+Logged by:          fengyao
+Email address:      2365868844(at)qq(dot)com
+PostgreSQL version: 17.2
+Operating system:   linux
+Description:        
+
+
+Hello, 
+
+
+In line 1965 of the trgm_regexp.c file
+
+
+1965:	arcs = (TrgmPackArcInfo *)
+1966:		palloc(sizeof(TrgmPackArcInfo) * trgmNFA->arcsCount);
+
+
+The memory requested 'arcs' was not freed.
+
+
+Have a good day!
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> In line 1965 of the trgm_regexp.c file
+> 1965:	arcs = (TrgmPackArcInfo *)
+> 1966:		palloc(sizeof(TrgmPackArcInfo) * trgmNFA->arcsCount);
+> The memory requested 'arcs' was not freed.
+
+
+This is not a bug, unless you can show that the memory is allocated
+in a long-lived context that won't get freed reasonably soon.  We
+generally assume that letting memory context cleanup recover memory
+is both faster and more oversight-proof than retail pfree calls.
+
+
+In this particular case, it looks to me like the memory will come from
+the temp context made by createTrgmNFA, and therefore will be freed
+before that returns.
+
+
+			regards, tom lane
+
+
+

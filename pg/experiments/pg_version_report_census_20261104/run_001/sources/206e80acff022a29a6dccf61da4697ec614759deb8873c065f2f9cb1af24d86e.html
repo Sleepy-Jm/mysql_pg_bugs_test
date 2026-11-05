@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/17445-fb74db6348391e85%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-03-21T20:37:15" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded" />
+  <meta property="og:description" content="The following bug has been logged on the website: Bug reference: 17445 Logged by: Yaser Amiri Email address: yaser.amiri95@gmail.com PostgreSQL …" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 class="subject">BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded</h1>
+
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>yaser(dot)amiri95(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-21 20:37:15</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17445-fb74db6348391e85%40postgresql.org">17445-fb74db6348391e85@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17445-fb74db6348391e85%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17445-fb74db6348391e85%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17445-fb74db6348391e85%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17445-fb74db6348391e85%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+   <tr>
+    <th class="align-middle" scope="row">Thread:</th>
+    <td>
+     <select id="thread_select" class="custom-select">
+  <option value="17445-fb74db6348391e85%40postgresql.org" selected="selected">2022-03-21 20:37:15 from PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</option>
+  <option value="CAKFQuwbb-DPeu6v9ECyY6C1Ebk0zgzShsjmii%3DOv5FpaeVSkxA%40mail.gmail.com">&nbsp;2022-03-21 22:23:30 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="2405214.1647901437%40sss.pgh.pa.us">&nbsp;2022-03-21 22:23:57 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAKFQuwY3xQpwHR%3DXRJ8ntiM7B-PpygmTdf8oV7b2K8XWo9iT-A%40mail.gmail.com">&nbsp;&nbsp;2022-03-21 22:50:32 from &quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</option>
+  <option value="CAH2-WznReJ_0FbTXJHV%3DzrfS6G7mOhTQLL5CqGJ5mJp9u8yAnA%40mail.gmail.com">&nbsp;&nbsp;2022-03-21 22:53:12 from Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</option>
+  <option value="2409082.1647903795%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;2022-03-21 23:03:15 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAH2-Wzmbdn1DdJoY5G-_7WuwiqLJM8tWdJaMMsPX8gimLPSdZg%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;2022-03-21 23:14:21 from Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</option>
+  <option value="2411144.1647905253%40sss.pgh.pa.us">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-21 23:27:33 from Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</option>
+  <option value="CAH2-Wznwk8ObL233%2B4jbHc2Bp0S9vW9MaBrM_fG-_0kkzRkaCQ%40mail.gmail.com">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2022-03-21 23:49:56 from Peter Geoghegan &lt;pg(at)bowt(dot)ie&gt;</option>
+  
+     </select>
+    </td>
+   </tr>
+  
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17445<br>Logged by:          Yaser Amiri<br>Email address:      yaser(dot)amiri95(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   openSUSE Leap 15.3 / Kernel: 5.3.18-150300.59.49-d<br>Description:        </p>
+
+<p>Hi,<br>I think I found a bug or at least a confusing behavior that I can&#x27;t find any<br>documentation about.</p>
+
+<p>Summary:<br>I have an INSERT query that has an &quot;ON CONFLICT&quot; and a &quot;WHERE&quot; clause which<br>suppose to hit a partial multicolumn unique index.<br>When I try to insert some records in a transaction (one insert per record)<br>When I pass the parameter which is used in the &quot;WHERE&quot; condition in prepared<br>statement params, the transaction fails, but if I hard code it, everything<br>will be OK (no rollback or errors).<br>Error: `ERROR:  there is no unique or exclusion constraint matching the ON<br>CONFLICT specification`</p>
+
+<p>Here&#x27;s another weird thing, in the situation in which transaction fails, If<br>I reduce the inserts to less than 6, it doesn&#x27;t fail! (It fails on 6th<br>execution)</p>
+
+<p>How to reproduce:<br>I tested this on postgres:14.2 docker image and a couple of other versions.<br>(This is my first report and I&#x27;m doing this with the submit form of the<br>website. I don&#x27;t know if it escapes characters or not, so I just write some<br>raw things, sorry!)</p>
+
+<p>I start Postgres:<br>docker run --rm -p 5432:5432 --name pg -e &#x27;POSGRES_USER=postgres&#x27; -e<br>&#x27;POSTGRES_DB=postgres&#x27; -e &#x27;POSTGRES_PASSWORD=postgres&#x27; -d postgres:14.2</p>
+
+<p>This is the schema file (which contains a table named balance and a partial<br>index and some configs)<br><a href="https://paste.opensuse.org/19058183" rel="nofollow">https://paste.opensuse.org/19058183</a></p>
+
+<p>I import  it:<br>cat schema.sql | docker exec -i pg psql -U postgres -d postgres</p>
+
+<p>This is the query that is OK, It commits successfully and we&#x27;ll have one<br>record in the table, I run it:<br><a href="https://paste.opensuse.org/61559625" rel="nofollow">https://paste.opensuse.org/61559625</a><br>cat works.sql | docker exec -i pg psql -U postgres -d postgres<br>Note: In line 8 you can see I don&#x27;t pass &#x27;2025-01-01&#x27; as prepared statement<br>parameter.</p>
+
+<p>And I make it a parameter and it fails:<br><a href="https://paste.opensuse.org/44857745" rel="nofollow">https://paste.opensuse.org/44857745</a><br>ERROR:  there is no unique or exclusion constraint matching the ON CONFLICT<br>specification<br>If you delete one of the executions (one of the lines between 14 and 19) and<br>reduce them to 5 calls, It won&#x27;t raise an error and works as it should!</p>
+
+<p>Extra info:<br>Docker Image Name: postgres:14.2<br>Host Kernel: Linux 5.3.18-150300.59.49-default</p>
+
+<p>Let me know if you need anything else.<br>Thank you.</p>
+
+<p></p></div>
+
+
+
+
+
+
+  <h3 class="messages" style="margin: 0.5em 0;">Responses</h3>
+  <ul>
+    
+      <li class="message-responses">
+        <a href="/message-id/CAKFQuwbb-DPeu6v9ECyY6C1Ebk0zgzShsjmii%3DOv5FpaeVSkxA%40mail.gmail.com">Re: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param
+ is passed with prepared stmt or hard coded</a> at 2022-03-21 22:23:30 from David G. Johnston
+      </li>
+    
+      <li class="message-responses">
+        <a href="/message-id/2405214.1647901437%40sss.pgh.pa.us">Re: BUG #17445: &quot;ON CONFLICT&quot; has different behaviors when its param is passed with prepared stmt or hard coded</a> at 2022-03-21 22:23:57 from Tom Lane
+      </li>
+    
+  </ul>
+
+
+
+  
+    <h3 class="messages" style="margin: 0.5em 0;">Browse pgsql-bugs by date</h3>
+    <table class="table table-sm table-responsive message-nav">
+      <thead>
+        <tr>
+          <th scope="col">&nbsp;</th>
+          <th scope="col">From</th>
+          <th scope="col">Date</th>
+          <th scope="col">Subject</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <th scope="row"><a href="/message-id/2319370.1647896994%40sss.pgh.pa.us">Next Message</a></th>
+            <td>Tom Lane</td>
+            <td>2022-03-21 21:09:54</td>
+            <td><a href="/message-id/2319370.1647896994%40sss.pgh.pa.us">Re: BUG #17088: FailedAssertion in prepagg.c</a></td>
+          </tr>
+        
+        
+          <tr>
+            <th scope="row"><a href="/message-id/20220321144341.GA27089%40depesz.com">Previous Message</a></th>
+            <td>hubert depesz lubaczewski</td>
+            <td>2022-03-21 14:43:41</td>
+            <td><a href="/message-id/20220321144341.GA27089%40depesz.com">Re: Logical replication stops dropping used initial-sync replication
+ slots</a></td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

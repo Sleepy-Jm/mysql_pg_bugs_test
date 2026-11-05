@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18751: Sub-optimal UNION ALL plan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18751-887c7bf4e67e65a7%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2024-12-23T09:53:06" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18751: Sub-optimal UNION ALL plan" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="d0729c5c053931db1a9898f83129daac">BUG #18751: Sub-optimal UNION ALL plan</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202412230953">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18751-887c7bf4e67e65a7@postgresql.org"></a>
+<a name="d0729c5c053931db1a9898f83129daac"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pingw33n(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18751: Sub-optimal UNION ALL plan</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-23 09:53:06</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18751-887c7bf4e67e65a7%40postgresql.org">18751-887c7bf4e67e65a7@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18751-887c7bf4e67e65a7%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18751-887c7bf4e67e65a7%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18751-887c7bf4e67e65a7%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18751-887c7bf4e67e65a7%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412230000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18751<br>Logged by:          Dmytro Lysai<br>Email address:      pingw33n(at)gmail(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Debian 12<br>Description:        </p>
+
+<p>-- PostgreSQL 17.2 (Debian 17.2-1.pgdg120+1) on aarch64-unknown-linux-gnu,<br>compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit<br>select version();</p>
+
+<p>create table t1(t timestamptz primary key, v text);<br>create table t2(t timestamptz primary key, v text);</p>
+
+<p>insert into t1(t, v)<br>select to_timestamp(i * 3600), i::text<br>from generate_series(0, 24 * 7 - 1) as t(i);</p>
+
+<p>insert into t2(t, v)<br>select to_timestamp(i * 3600), i::text<br>from generate_series(24 * 7, 100000) as t(i);</p>
+
+<p>explain analyze select * from (<br>(select * from t1)<br>union all<br>(select * from t2)<br>)<br>order by t<br>limit 10;<br>/* Good:<br>Limit  (cost=0.45..0.86 rows=10 width=13) (actual time=0.257..0.260 rows=10<br>loops=1)<br>  -&gt;  Merge Append  (cost=0.45..4155.47 rows=100001 width=13) (actual<br>time=0.256..0.258 rows=10 loops=1)<br>        Sort Key: t1.t<br>        -&gt;  Index Scan using t1_pkey on t1  (cost=0.14..14.66 rows=168<br>width=11) (actual time=0.142..0.143 rows=10 loops=1)<br>        -&gt;  Index Scan using t2_pkey on t2  (cost=0.29..3140.79 rows=99833<br>width=13) (actual time=0.112..0.112 rows=1 loops=1)<br>Planning Time: 0.132 ms<br>Execution Time: 0.289 ms<br>*/</p>
+
+<p>explain analyze select * from (<br>(select * from t1)<br>union all<br>(select * from t2 where true) -- Not just `true`, any condition here<br>)<br>order by t<br>limit 10;<br>/* Bad:<br>Limit  (cost=3649.09..3650.25 rows=10 width=13) (actual<br>time=101.379..110.060 rows=10 loops=1)<br>  -&gt;  Gather Merge  (cost=3649.09..13372.06 rows=83334 width=13) (actual<br>time=101.378..110.058 rows=10 loops=1)<br>        Workers Planned: 2<br>        Workers Launched: 2<br>        -&gt;  Sort  (cost=2649.06..2753.23 rows=41667 width=13) (actual<br>time=17.794..17.795 rows=3 loops=3)<br>              Sort Key: t2.t<br>              Sort Method: top-N heapsort  Memory: 25kB<br>              Worker 0:  Sort Method: quicksort  Memory: 25kB<br>              Worker 1:  Sort Method: quicksort  Memory: 25kB<br>              -&gt;  Parallel Append  (cost=0.00..1748.65 rows=41667 width=13)<br>(actual time=0.120..11.686 rows=33334 loops=3)<br>                    -&gt;  Seq Scan on t2  (cost=0.00..1538.33 rows=99833<br>width=13) (actual time=0.136..29.043 rows=99833 loops=1)<br>                    -&gt;  Parallel Seq Scan on t1  (cost=0.00..1.99 rows=99<br>width=11) (actual time=0.350..0.360 rows=168 loops=1)<br>Planning Time: 0.866 ms<br>Execution Time: 110.219 ms<br> */</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CALdSSPg3Dvw1oy+AJgUX15hDgFHYkjt7w5gGfVABt1vbSNewUg@mail.gmail.com"></a>
+<a name="abf99d4390cedfd6677bfaa0dc421a38"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Kirill Reshke &lt;reshkekirill(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pingw33n(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18751: Sub-optimal UNION ALL plan</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-23 14:24:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CALdSSPg3Dvw1oy%2BAJgUX15hDgFHYkjt7w5gGfVABt1vbSNewUg%40mail.gmail.com">CALdSSPg3Dvw1oy+AJgUX15hDgFHYkjt7w5gGfVABt1vbSNewUg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CALdSSPg3Dvw1oy%2BAJgUX15hDgFHYkjt7w5gGfVABt1vbSNewUg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CALdSSPg3Dvw1oy%2BAJgUX15hDgFHYkjt7w5gGfVABt1vbSNewUg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CALdSSPg3Dvw1oy%2BAJgUX15hDgFHYkjt7w5gGfVABt1vbSNewUg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CALdSSPg3Dvw1oy%2BAJgUX15hDgFHYkjt7w5gGfVABt1vbSNewUg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412230000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, 23 Dec 2024 at 15:57, PG Bug reporting form<br>&lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;<br>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      18751<br>&gt; Logged by:          Dmytro Lysai<br>&gt; Email address:      pingw33n(at)gmail(dot)com<br>&gt; PostgreSQL version: 17.2<br>&gt; Operating system:   Debian 12<br>&gt; Description:<br>&gt;<br>&gt; -- PostgreSQL 17.2 (Debian 17.2-1.pgdg120+1) on aarch64-unknown-linux-gnu,<br>&gt; compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit<br>&gt; select version();<br>&gt;<br>&gt; create table t1(t timestamptz primary key, v text);<br>&gt; create table t2(t timestamptz primary key, v text);<br>&gt;<br>&gt;<br>&gt; insert into t1(t, v)<br>&gt; select to_timestamp(i * 3600), i::text<br>&gt; from generate_series(0, 24 * 7 - 1) as t(i);<br>&gt;<br>&gt; insert into t2(t, v)<br>&gt; select to_timestamp(i * 3600), i::text<br>&gt; from generate_series(24 * 7, 100000) as t(i);<br>&gt;<br>&gt; explain analyze select * from (<br>&gt; (select * from t1)<br>&gt; union all<br>&gt; (select * from t2)<br>&gt; )<br>&gt; order by t<br>&gt; limit 10;<br>&gt; /* Good:<br>&gt; Limit  (cost=0.45..0.86 rows=10 width=13) (actual time=0.257..0.260 rows=10<br>&gt; loops=1)<br>&gt;   -&gt;  Merge Append  (cost=0.45..4155.47 rows=100001 width=13) (actual<br>&gt; time=0.256..0.258 rows=10 loops=1)<br>&gt;         Sort Key: t1.t<br>&gt;         -&gt;  Index Scan using t1_pkey on t1  (cost=0.14..14.66 rows=168<br>&gt; width=11) (actual time=0.142..0.143 rows=10 loops=1)<br>&gt;         -&gt;  Index Scan using t2_pkey on t2  (cost=0.29..3140.79 rows=99833<br>&gt; width=13) (actual time=0.112..0.112 rows=1 loops=1)<br>&gt; Planning Time: 0.132 ms<br>&gt; Execution Time: 0.289 ms<br>&gt; */<br>&gt;<br>&gt; explain analyze select * from (<br>&gt; (select * from t1)<br>&gt; union all<br>&gt; (select * from t2 where true) -- Not just `true`, any condition here<br>&gt; )<br>&gt; order by t<br>&gt; limit 10;<br>&gt; /* Bad:<br>&gt; Limit  (cost=3649.09..3650.25 rows=10 width=13) (actual<br>&gt; time=101.379..110.060 rows=10 loops=1)<br>&gt;   -&gt;  Gather Merge  (cost=3649.09..13372.06 rows=83334 width=13) (actual<br>&gt; time=101.378..110.058 rows=10 loops=1)<br>&gt;         Workers Planned: 2<br>&gt;         Workers Launched: 2<br>&gt;         -&gt;  Sort  (cost=2649.06..2753.23 rows=41667 width=13) (actual<br>&gt; time=17.794..17.795 rows=3 loops=3)<br>&gt;               Sort Key: t2.t<br>&gt;               Sort Method: top-N heapsort  Memory: 25kB<br>&gt;               Worker 0:  Sort Method: quicksort  Memory: 25kB<br>&gt;               Worker 1:  Sort Method: quicksort  Memory: 25kB<br>&gt;               -&gt;  Parallel Append  (cost=0.00..1748.65 rows=41667 width=13)<br>&gt; (actual time=0.120..11.686 rows=33334 loops=3)<br>&gt;                     -&gt;  Seq Scan on t2  (cost=0.00..1538.33 rows=99833<br>&gt; width=13) (actual time=0.136..29.043 rows=99833 loops=1)<br>&gt;                     -&gt;  Parallel Seq Scan on t1  (cost=0.00..1.99 rows=99<br>&gt; width=11) (actual time=0.350..0.360 rows=168 loops=1)<br>&gt; Planning Time: 0.866 ms<br>&gt; Execution Time: 110.219 ms<br>&gt;  */<br>&gt;</p>
+
+<p>Hi!<br>I reproduced this on REL_16_STABLE, HEAD &amp; REL_13_STABLE, so this is<br>not really a bug, just a missing optimization?<br>Did you experienced regression after PostgreSQL major upgrade or just<br>discovered sub-optimal query?</p>
+
+<p>-- <br>Best regards,<br>Kirill Reshke</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1347038.1734967136@sss.pgh.pa.us"></a>
+<a name="8e80cb7a235596ddd045163d4ec5db12"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Kirill Reshke &lt;reshkekirill(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pingw33n(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18751: Sub-optimal UNION ALL plan</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-23 15:18:56</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1347038.1734967136%40sss.pgh.pa.us">1347038.1734967136@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1347038.1734967136%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1347038.1734967136%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1347038.1734967136%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1347038.1734967136%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412230000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Kirill Reshke &lt;reshkekirill(at)gmail(dot)com&gt; writes:<br>&gt; I reproduced this on REL_16_STABLE, HEAD &amp; REL_13_STABLE, so this is<br>&gt; not really a bug, just a missing optimization?</p>
+
+<p>Yeah.  I believe what is happening is that the addition of the WHERE<br>clause forces the second sub-SELECT to be planned as an independent<br>query.  And that level of planning has no idea that it might be<br>useful to produce a result ordered by &quot;t&quot;, so it doesn&#x27;t generate<br>a sub-plan that can do that.  Then the best that the outer level<br>can do is sort after-the-fact.</p>
+
+<p>You could work around this by writing the second sub-SELECT like</p>
+
+<p>	(select * from t2 where ... order by t)</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="e405c80a-49ee-4a37-827d-d53b5189ad3e@gmail.com"></a>
+<a name="7595cc095b3fcbe997f55104d7795390"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andrei Lepikhov &lt;lepihov(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, Kirill Reshke &lt;reshkekirill(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pingw33n(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18751: Sub-optimal UNION ALL plan</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-24 02:57:31</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/e405c80a-49ee-4a37-827d-d53b5189ad3e%40gmail.com">e405c80a-49ee-4a37-827d-d53b5189ad3e@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/e405c80a-49ee-4a37-827d-d53b5189ad3e%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/e405c80a-49ee-4a37-827d-d53b5189ad3e%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/e405c80a-49ee-4a37-827d-d53b5189ad3e%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/e405c80a-49ee-4a37-827d-d53b5189ad3e%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 12/23/24 22:18, Tom Lane wrote:<br>&gt; Kirill Reshke &lt;reshkekirill(at)gmail(dot)com&gt; writes:<br>&gt;&gt; I reproduced this on REL_16_STABLE, HEAD &amp; REL_13_STABLE, so this is<br>&gt;&gt; not really a bug, just a missing optimization?<br>&gt; <br>&gt; Yeah.  I believe what is happening is that the addition of the WHERE<br>&gt; clause forces the second sub-SELECT to be planned as an independent<br>&gt; query.  And that level of planning has no idea that it might be<br>&gt; useful to produce a result ordered by &quot;t&quot;, so it doesn&#x27;t generate<br>&gt; a sub-plan that can do that.  Then the best that the outer level<br>&gt; can do is sort after-the-fact.<br>I didn&#x27;t discover the case deeply yet, but it looks similar to your <br>improvement of CTEs in a65724d.<br>BTW, SQL Server also uses bad variant of the plan for this query, or I <br>just don&#x27;t know how to cook that soup properly.</p>
+
+<p>-- <br>regards, Andrei Lepikhov</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1531450.1735012018@sss.pgh.pa.us"></a>
+<a name="350aad5c2ed11817c51d9cb629ebdee1"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Andrei Lepikhov &lt;lepihov(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Kirill Reshke &lt;reshkekirill(at)gmail(dot)com&gt;, pingw33n(at)gmail(dot)com,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18751: Sub-optimal UNION ALL plan</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-24 03:46:58</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1531450.1735012018%40sss.pgh.pa.us">1531450.1735012018@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1531450.1735012018%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1531450.1735012018%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1531450.1735012018%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1531450.1735012018%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Andrei Lepikhov &lt;lepihov(at)gmail(dot)com&gt; writes:<br>&gt; On 12/23/24 22:18, Tom Lane wrote:<br>&gt;&gt; Yeah.  I believe what is happening is that the addition of the WHERE<br>&gt;&gt; clause forces the second sub-SELECT to be planned as an independent<br>&gt;&gt; query.  And that level of planning has no idea that it might be<br>&gt;&gt; useful to produce a result ordered by &quot;t&quot;, so it doesn&#x27;t generate<br>&gt;&gt; a sub-plan that can do that.  Then the best that the outer level<br>&gt;&gt; can do is sort after-the-fact.</p>
+
+<p>&gt; I didn&#x27;t discover the case deeply yet, but it looks similar to your <br>&gt; improvement of CTEs in a65724d.</p>
+
+<p>No, that was about passing information the other way: from the<br>subquery&#x27;s planning results out to the outer level.  We would<br>need to do that, sure, but first we have to pass info down to<br>the subquery to say &quot;results sorted like this could be useful&quot;.</p>
+
+<p>As of v17 there is some mechanism to do that (see the setops<br>argument to subquery_planner), but I now realize that that<br>was designed in a really short-sighted fashion: it *only*<br>works with SetOperation nodes.  We&#x27;d have to refactor that<br>so that what the upper query passes down is desired pathkeys,<br>or at least something closer to a pathkey than a SetOperation.</p>
+
+<p>Another thing that&#x27;s going on here is that the reason the<br>WHERE clause makes a difference is that it prevents flattening<br>the sub-query, per is_safe_append_member():</p>
+
+<p>     * Also, the child can&#x27;t have any WHERE quals because there&#x27;s no place to<br>     * put them in an appendrel.  (This is a bit annoying...)</p>
+
+<p>I&#x27;ve never been entirely sure whether it is worth improving that.<br>Doing so would fix this particular issue, but there are plenty<br>of other un-flattenable sub-queries, so the other thing has a<br>potential for improving matters more widely.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="bcbe800f-56b8-498a-ace3-94ecbe1a90ad@gmail.com"></a>
+<a name="e00fb9d6dd6766b8b0988f382762f263"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Andrei Lepikhov &lt;lepihov(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Kirill Reshke &lt;reshkekirill(at)gmail(dot)com&gt;, pingw33n(at)gmail(dot)com,
+ pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18751: Sub-optimal UNION ALL plan</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-24 09:05:38</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/bcbe800f-56b8-498a-ace3-94ecbe1a90ad%40gmail.com">bcbe800f-56b8-498a-ace3-94ecbe1a90ad@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/bcbe800f-56b8-498a-ace3-94ecbe1a90ad%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/bcbe800f-56b8-498a-ace3-94ecbe1a90ad%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/bcbe800f-56b8-498a-ace3-94ecbe1a90ad%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/bcbe800f-56b8-498a-ace3-94ecbe1a90ad%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On 12/24/24 10:46, Tom Lane wrote:<br>&gt; Andrei Lepikhov &lt;lepihov(at)gmail(dot)com&gt; writes:<br>&gt;&gt; On 12/23/24 22:18, Tom Lane wrote:<br>&gt; As of v17 there is some mechanism to do that (see the setops<br>&gt; argument to subquery_planner), but I now realize that that<br>&gt; was designed in a really short-sighted fashion: it *only*<br>&gt; works with SetOperation nodes.  We&#x27;d have to refactor that<br>&gt; so that what the upper query passes down is desired pathkeys,<br>&gt; or at least something closer to a pathkey than a SetOperation.<br>I have waited for such a proposal for years!<br>It would be beneficial, of course. I may imagine an implementation that <br>will consider LIMIT statements or grouping columns because they exist in <br>the parse tree.<br>But sometimes I have seen examples where MergeJoin or IncrementalSort <br>could bring speedup in case of sorted subquery output. But without <br>planning, we don&#x27;t realise we need this type of sorting.</p>
+
+<p>For example:<br>------------</p>
+
+<p>CREATE TABLE test (x int PRIMARY KEY);<br>INSERT INTO test SELECT gs FROM generate_series(1,1E4) AS gs;<br>VACUUM ANALYZE;</p>
+
+<p>SET enable_nestloop = f;<br>SET enable_hashjoin = f;<br>EXPLAIN (COSTS OFF)<br>SELECT q1.x FROM<br>   (SELECT t1.x FROM test t1 LIMIT 10) AS q1, test t2<br>WHERE q1.x=t2.x LIMIT 10;<br>/*<br>  Limit<br>    -&gt;  Merge Join<br>          Merge Cond: (t2.x = t1.x)<br>          -&gt;  Index Only Scan using test_pkey on test t2<br>          -&gt;  Sort<br>                Sort Key: t1.x<br>                -&gt;  Limit<br>                      -&gt;  Seq Scan on test t1<br>*/</p>
+
+<p>-- <br>regards, Andrei Lepikhov</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

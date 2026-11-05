@@ -1,0 +1,42 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18760
+Logged by:          Thomas Petazzoni
+Email address:      thomas(dot)petazzoni(at)bootlin(dot)com
+PostgreSQL version: 17.2
+Operating system:   Linux
+Description:        
+
+
+When building PostgreSQL 17.2 on a Linux host machine (within a Debian
+Bullseye container), the build fails with:
+
+
+../doc/src/sgml/postgres.sgml:24: element book: validity error : No
+declaration for attribute id of element book
+<book id="postgres">
+                   ^
+../doc/src/sgml/postgres.sgml:25: element title: validity error : No
+declaration for element title
+ <title>PostgreSQL &version; Documentation</title>
+
+
+and many other similar failures. Complete build log available at
+http://autobuild.buildroot.net/results/378/378027db50fdcb311b420ad6886795dd8c2888f6/build-end.log.
+
+
+Passing -Ddocs=disabled -Ddocs_pdf=disabled does not fix the issue: indeed
+despite those options, the PostgreSQL build system detects that xmllint and
+xsltproc are available, and uses them nevertheless. Passing bogus
+-DXMLLINT=/nowhere -DXSLTPROC=/nowhere options prevents PostgreSQL from
+finding xmllint and xsltproc, which makes it skip build the documentation,
+and gets a successful build, but that's really more a hack than a correct
+solution.
+
+
+It looks like doc/src/sgml/meson.build would need some changes to properly
+obey to the "docs" and "docs_pdf" meson options.
+
+
+

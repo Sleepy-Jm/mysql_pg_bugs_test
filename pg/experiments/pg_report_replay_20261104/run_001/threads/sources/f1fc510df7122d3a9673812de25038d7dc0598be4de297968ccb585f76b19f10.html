@@ -1,0 +1,1340 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17476: ERROR:  &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17476-cf579fc6b204baa2%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-05-08T22:11:03" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17476: ERROR:  &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="d06811f2191fbb20bcfa3b7212571a0e">BUG #17476: ERROR:  &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202205082211">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17476-cf579fc6b204baa2@postgresql.org"></a>
+<a name="d06811f2191fbb20bcfa3b7212571a0e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>milos(dot)urbanek(at)email(dot)cz</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17476: ERROR:  &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-08 22:11:03</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17476-cf579fc6b204baa2%40postgresql.org">17476-cf579fc6b204baa2@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17476-cf579fc6b204baa2%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17476-cf579fc6b204baa2%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17476-cf579fc6b204baa2%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17476-cf579fc6b204baa2%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17476<br>Logged by:          Milos Urbanek<br>Email address:      milos(dot)urbanek(at)email(dot)cz<br>PostgreSQL version: 14.2<br>Operating system:   Windows 2012 R2 Foundation<br>Description:        </p>
+
+<p>Trying to run simple SELECT COUNT(*) from some table gives me the following<br>error (either running by hand or trying to run EXPLAIN using pgadmin or by<br>hand):</p>
+
+<p>2022-05-09 00:06:30.428 CEST [1196] ERROR:  variable not found in subplan<br>target list<br>2022-05-09 00:06:30.428 CEST [1196] STATEMENT:  SELECT COUNT(*) FROM<br>&quot;domino_efekty_havarijniprojev&quot;<br>2022-05-09 00:06:31.884 CEST [1196] ERROR:  variable not found in subplan<br>target list<br>2022-05-09 00:06:31.884 CEST [1196] STATEMENT:  EXPLAIN (FORMAT JSON,<br>ANALYZE false, VERBOSE false, COSTS false, TIMING false, BUFFERS false,<br>SUMMARY false, SETTINGS false) SELECT COUNT(*) FROM<br>&quot;domino_efekty_havarijniprojev&quot;<br>2022-05-09 00:06:39.820 CEST [1196] ERROR:  variable not found in subplan<br>target list<br>2022-05-09 00:06:39.820 CEST [1196] STATEMENT:  EXPLAIN SELECT COUNT(*) FROM<br>&quot;domino_efekty_havarijniprojev&quot;</p>
+
+<p>Differences against standard config:<br>shared_buffers = 8192MB<br>effective_cache_size = 16GB<br>cursor_tuple_fraction = 1.0</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3488097.1652055721@sss.pgh.pa.us"></a>
+<a name="b4594c683e0ff886698f58663e275ee3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>milos(dot)urbanek(at)email(dot)cz</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 00:22:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3488097.1652055721%40sss.pgh.pa.us">3488097.1652055721@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3488097.1652055721%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3488097.1652055721%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3488097.1652055721%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3488097.1652055721%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; Trying to run simple SELECT COUNT(*) from some table gives me the following<br>&gt; error (either running by hand or trying to run EXPLAIN using pgadmin or by<br>&gt; hand):</p>
+
+<p>&gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR:  variable not found in subplan<br>&gt; target list<br>&gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT:  SELECT COUNT(*) FROM<br>&gt; &quot;domino_efekty_havarijniprojev&quot;</p>
+
+<p>Is that really just a table?  I could believe a bug like this for<br>some types of views, but it&#x27;s a bit hard to credit for a plain table.</p>
+
+<p>In any case, we can&#x27;t do much with this report unless you can provide<br>a reproducer case --- preferably a SQL script that creates an object<br>that triggers the problem.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="5wS.wBLd.2GdiEutIVdh.1YUC4K@scif.cz"></a>
+<a name="c6a187df4686c677535728f77a4b1cbe"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;Tom Lane&quot; &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 07:21:56</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/5wS.wBLd.2GdiEutIVdh.1YUC4K%40scif.cz">5wS.wBLd.2GdiEutIVdh.1YUC4K@scif.cz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/5wS.wBLd.2GdiEutIVdh.1YUC4K%40scif.cz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/5wS.wBLd.2GdiEutIVdh.1YUC4K%40scif.cz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/5wS.wBLd.2GdiEutIVdh.1YUC4K%40scif.cz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/5wS.wBLd.2GdiEutIVdh.1YUC4K%40scif.cz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>I have 2 (ordinary) tables in 900+ table database restored from PG 9.6 (with<br>PostGIS geometries BTW) where this problem occurs.</p>
+
+<p>The count() queries into the other tables are OK.</p>
+
+<p>Also the problem happens only at the server but not at my Windows 10 <br>workstation with the same PG 14.2.</p>
+
+<p>No clue what could be wrong.</p>
+
+<p>PGAdmin4 fails even when trying to list SQL creation statement.</p>
+
+<p>--</p>
+
+<p>Milos Urbanek</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;<br>Komu: milos(dot)urbanek(at)email(dot)cz<br>Datum: 9. 5. 2022 2:22:10<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes: <br>&gt; Trying to run simple SELECT COUNT(*) from some table gives me the <br>following <br>&gt; error (either running by hand or trying to run EXPLAIN using pgadmin or by</p>
+
+<p>&gt; hand): </p>
+
+<p>&gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan <br>&gt; target list <br>&gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM <br>&gt; &quot;domino_efekty_havarijniprojev&quot; </p>
+
+<p>Is that really just a table? I could believe a bug like this for <br>some types of views, but it&#x27;s a bit hard to credit for a plain table. </p>
+
+<p>In any case, we can&#x27;t do much with this report unless you can provide <br>a reproducer case --- preferably a SQL script that creates an object <br>that triggers the problem. </p>
+
+<p>regards, tom lane <br>&quot;</p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAFj8pRCmTZHid9CzwK55ehx33M5VcbY+b5sWDYwC844R27u76g@mail.gmail.com"></a>
+<a name="bfc08d33a9d6f414b085dbbcc7fd7937"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot;
+ when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 08:21:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAFj8pRCmTZHid9CzwK55ehx33M5VcbY%2Bb5sWDYwC844R27u76g%40mail.gmail.com">CAFj8pRCmTZHid9CzwK55ehx33M5VcbY+b5sWDYwC844R27u76g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAFj8pRCmTZHid9CzwK55ehx33M5VcbY%2Bb5sWDYwC844R27u76g%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAFj8pRCmTZHid9CzwK55ehx33M5VcbY%2Bb5sWDYwC844R27u76g%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAFj8pRCmTZHid9CzwK55ehx33M5VcbY%2Bb5sWDYwC844R27u76g%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAFj8pRCmTZHid9CzwK55ehx33M5VcbY%2Bb5sWDYwC844R27u76g%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi</p>
+
+<p>po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>napsal:</p>
+
+<p>&gt; I have 2 (ordinary) tables in 900+ table database restored from PG 9.6<br>&gt; (with PostGIS geometries BTW) where this problem occurs.<br>&gt; The count() queries into the other tables are OK.<br>&gt; Also the problem happens only at the server but not at my Windows 10<br>&gt; workstation with the same PG 14.2.<br>&gt;</p>
+
+<p>Is there the same configuration on the server like on your workstation?<br>The different configuration can enforce a different execution plan.</p>
+
+<p>Regards</p>
+
+<p>Pavel</p>
+
+<p>No clue what could be wrong.<br>&gt;<br>&gt; PGAdmin4 fails even when trying to list SQL creation statement.<br>&gt;<br>&gt; --<br>&gt; Milos Urbanek<br>&gt;<br>&gt; ---------- Původní e-mail ----------<br>&gt; Od: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;<br>&gt; Komu: milos(dot)urbanek(at)email(dot)cz<br>&gt; Datum: 9. 5. 2022 2:22:10<br>&gt; Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target<br>&gt; list&quot; when running SELECT COUNT(*)<br>&gt;<br>&gt; PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; &gt; Trying to run simple SELECT COUNT(*) from some table gives me the<br>&gt; following<br>&gt; &gt; error (either running by hand or trying to run EXPLAIN using pgadmin or<br>&gt; by<br>&gt; &gt; hand):<br>&gt;<br>&gt; &gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan<br>&gt; &gt; target list<br>&gt; &gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM<br>&gt; &gt; &quot;domino_efekty_havarijniprojev&quot;<br>&gt;<br>&gt; Is that really just a table? I could believe a bug like this for<br>&gt; some types of views, but it&#x27;s a bit hard to credit for a plain table.<br>&gt;<br>&gt; In any case, we can&#x27;t do much with this report unless you can provide<br>&gt; a reproducer case --- preferably a SQL script that creates an object<br>&gt; that triggers the problem.<br>&gt;<br>&gt; regards, tom lane<br>&gt;<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="609.wBLt.62HW}58GAL}.1YUD9L@scif.cz"></a>
+<a name="824874d3f154b9ab270cbc23f8f72699"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;Pavel Stehule&quot; &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;Tom Lane&quot; &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, &quot;PostgreSQL mailing lists&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 08:35:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/609.wBLt.62HW%7D58GAL%7D.1YUD9L%40scif.cz">609.wBLt.62HW}58GAL}.1YUD9L@scif.cz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/609.wBLt.62HW%7D58GAL%7D.1YUD9L%40scif.cz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/609.wBLt.62HW%7D58GAL%7D.1YUD9L%40scif.cz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/609.wBLt.62HW%7D58GAL%7D.1YUD9L%40scif.cz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/609.wBLt.62HW%7D58GAL%7D.1YUD9L%40scif.cz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>Difference in shared_buffers (1GB) and effective_cache_size (default) only.</p>
+
+<p>When I delete all data from the table, SELECT count(*) works..</p>
+
+<p>-- </p>
+
+<p>Miloš Urbánek</p>
+
+<p>tel.: 736 608 345</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;<br>Komu: Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>Datum: 9. 5. 2022 10:22:16<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;</p>
+
+<p>Hi</p>
+
+<p>po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz<br>(mailto:milos(dot)urbanek(at)email(dot)cz)&gt; napsal:</p>
+
+<p>&quot;</p>
+
+<p>I have 2 (ordinary) tables in 900+ table database restored from PG 9.6 (with<br>PostGIS geometries BTW) where this problem occurs.</p>
+
+<p>The count() queries into the other tables are OK.</p>
+
+<p>Also the problem happens only at the server but not at my Windows 10 <br>workstation with the same PG 14.2.</p>
+
+<p>&quot;</p>
+
+<p>Is there the same configuration on the server like on your workstation?  The<br>different configuration can enforce a different execution plan.</p>
+
+<p>Regards</p>
+
+<p>Pavel</p>
+
+<p>&quot;</p>
+
+<p>No clue what could be wrong.</p>
+
+<p>PGAdmin4 fails even when trying to list SQL creation statement.</p>
+
+<p>--</p>
+
+<p>Milos Urbanek</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us(mailto:tgl(at)sss(dot)pgh(dot)pa(dot)us)&gt;<br>Komu: milos(dot)urbanek(at)email(dot)cz(mailto:milos(dot)urbanek(at)email(dot)cz)<br>Datum: 9. 5. 2022 2:22:10<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;PG Bug reporting form &lt;noreply(at)postgresql(dot)org<br>(mailto:noreply(at)postgresql(dot)org)&gt; writes: <br>&gt; Trying to run simple SELECT COUNT(*) from some table gives me the <br>following <br>&gt; error (either running by hand or trying to run EXPLAIN using pgadmin or by</p>
+
+<p>&gt; hand): </p>
+
+<p>&gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan <br>&gt; target list <br>&gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM <br>&gt; &quot;domino_efekty_havarijniprojev&quot; </p>
+
+<p>Is that really just a table? I could believe a bug like this for <br>some types of views, but it&#x27;s a bit hard to credit for a plain table. </p>
+
+<p>In any case, we can&#x27;t do much with this report unless you can provide <br>a reproducer case --- preferably a SQL script that creates an object <br>that triggers the problem. </p>
+
+<p>regards, tom lane <br>&quot;<br>&quot;</p>
+
+<p>&quot;</p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="60O.wBLp.14yuVyE8P3I.1YUDCl@scif.cz"></a>
+<a name="312a211675e47cd3201c62a8a7de7890"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;Pavel Stehule&quot; &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;Tom Lane&quot; &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, &quot;PostgreSQL mailing lists&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 08:39:11</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/60O.wBLp.14yuVyE8P3I.1YUDCl%40scif.cz">60O.wBLp.14yuVyE8P3I.1YUDCl@scif.cz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/60O.wBLp.14yuVyE8P3I.1YUDCl%40scif.cz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/60O.wBLp.14yuVyE8P3I.1YUDCl%40scif.cz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/60O.wBLp.14yuVyE8P3I.1YUDCl%40scif.cz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/60O.wBLp.14yuVyE8P3I.1YUDCl%40scif.cz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>I actually pray that my issue is just this one:</p>
+
+<p><a href="https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html" rel="nofollow">https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html</a></p>
+
+<p>--</p>
+
+<p>Milosh</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;<br>Komu: Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>Datum: 9. 5. 2022 10:22:16<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;</p>
+
+<p>Hi</p>
+
+<p>po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz<br>(mailto:milos(dot)urbanek(at)email(dot)cz)&gt; napsal:</p>
+
+<p>&quot;</p>
+
+<p>I have 2 (ordinary) tables in 900+ table database restored from PG 9.6 (with<br>PostGIS geometries BTW) where this problem occurs.</p>
+
+<p>The count() queries into the other tables are OK.</p>
+
+<p>Also the problem happens only at the server but not at my Windows 10 <br>workstation with the same PG 14.2.</p>
+
+<p>&quot;</p>
+
+<p>Is there the same configuration on the server like on your workstation?  The<br>different configuration can enforce a different execution plan.</p>
+
+<p>Regards</p>
+
+<p>Pavel</p>
+
+<p>&quot;</p>
+
+<p>No clue what could be wrong.</p>
+
+<p>PGAdmin4 fails even when trying to list SQL creation statement.</p>
+
+<p>--</p>
+
+<p>Milos Urbanek</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us(mailto:tgl(at)sss(dot)pgh(dot)pa(dot)us)&gt;<br>Komu: milos(dot)urbanek(at)email(dot)cz(mailto:milos(dot)urbanek(at)email(dot)cz)<br>Datum: 9. 5. 2022 2:22:10<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;PG Bug reporting form &lt;noreply(at)postgresql(dot)org<br>(mailto:noreply(at)postgresql(dot)org)&gt; writes: <br>&gt; Trying to run simple SELECT COUNT(*) from some table gives me the <br>following <br>&gt; error (either running by hand or trying to run EXPLAIN using pgadmin or by</p>
+
+<p>&gt; hand): </p>
+
+<p>&gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan <br>&gt; target list <br>&gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM <br>&gt; &quot;domino_efekty_havarijniprojev&quot; </p>
+
+<p>Is that really just a table? I could believe a bug like this for <br>some types of views, but it&#x27;s a bit hard to credit for a plain table. </p>
+
+<p>In any case, we can&#x27;t do much with this report unless you can provide <br>a reproducer case --- preferably a SQL script that creates an object <br>that triggers the problem. </p>
+
+<p>regards, tom lane <br>&quot;<br>&quot;</p>
+
+<p>&quot;</p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="61T.wBL}.7P5DeHGHwts.1YUDPV@scif.cz"></a>
+<a name="88e165f4dbc94563212d3a73a670d5cc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;Pavel Stehule&quot; &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;Tom Lane&quot; &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, &quot;PostgreSQL mailing lists&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 08:52:47</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/61T.wBL%7D.7P5DeHGHwts.1YUDPV%40scif.cz">61T.wBL}.7P5DeHGHwts.1YUDPV@scif.cz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/61T.wBL%7D.7P5DeHGHwts.1YUDPV%40scif.cz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/61T.wBL%7D.7P5DeHGHwts.1YUDPV%40scif.cz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/61T.wBL%7D.7P5DeHGHwts.1YUDPV%40scif.cz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/61T.wBL%7D.7P5DeHGHwts.1YUDPV%40scif.cz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>The problem occurs in test database restored from PG 14 backup. There are 2 <br>tables (out of 900 other) where this problem occurs (when running SELECT <br>COUNT(*) on the table).</p>
+
+<p>I can not look at the query plan because EXPLAIN fails aswell, but my guess <br>is that planner is trying to use index on the table to count the rows.</p>
+
+<p>There are only 10 records in the table. When I run VACUUM FULL, the problem <br>disappears (planner is going to use Seq Scan which works).</p>
+
+<p>The database schema for both tables is complex, there are 20+ columns, 3+ <br>spatial data columns, 5 foreign keys, not such an easy task to create some <br>test case for you.</p>
+
+<p>But my guess is that the root cause is planner trying to use index scan to <br>count the rows.</p>
+
+<p>Therefore I hope that this is just another occurence of <a href="https://www.mail-" rel="nofollow">https://www.mail-</a><br><a href="http://archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html" rel="nofollow">archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html</a>.</p>
+
+<p>Regards</p>
+
+<p>-- </p>
+
+<p>Milosh</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;<br>Komu: Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>Datum: 9. 5. 2022 10:22:16<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;</p>
+
+<p>Hi</p>
+
+<p>po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz<br>(mailto:milos(dot)urbanek(at)email(dot)cz)&gt; napsal:</p>
+
+<p>&quot;</p>
+
+<p>I have 2 (ordinary) tables in 900+ table database restored from PG 9.6 (with<br>PostGIS geometries BTW) where this problem occurs.</p>
+
+<p>The count() queries into the other tables are OK.</p>
+
+<p>Also the problem happens only at the server but not at my Windows 10 <br>workstation with the same PG 14.2.</p>
+
+<p>&quot;</p>
+
+<p>Is there the same configuration on the server like on your workstation?  The<br>different configuration can enforce a different execution plan.</p>
+
+<p>Regards</p>
+
+<p>Pavel</p>
+
+<p>&quot;</p>
+
+<p>No clue what could be wrong.</p>
+
+<p>PGAdmin4 fails even when trying to list SQL creation statement.</p>
+
+<p>--</p>
+
+<p>Milos Urbanek</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us(mailto:tgl(at)sss(dot)pgh(dot)pa(dot)us)&gt;<br>Komu: milos(dot)urbanek(at)email(dot)cz(mailto:milos(dot)urbanek(at)email(dot)cz)<br>Datum: 9. 5. 2022 2:22:10<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;PG Bug reporting form &lt;noreply(at)postgresql(dot)org<br>(mailto:noreply(at)postgresql(dot)org)&gt; writes: <br>&gt; Trying to run simple SELECT COUNT(*) from some table gives me the <br>following <br>&gt; error (either running by hand or trying to run EXPLAIN using pgadmin or by</p>
+
+<p>&gt; hand): </p>
+
+<p>&gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan <br>&gt; target list <br>&gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM <br>&gt; &quot;domino_efekty_havarijniprojev&quot; </p>
+
+<p>Is that really just a table? I could believe a bug like this for <br>some types of views, but it&#x27;s a bit hard to credit for a plain table. </p>
+
+<p>In any case, we can&#x27;t do much with this report unless you can provide <br>a reproducer case --- preferably a SQL script that creates an object <br>that triggers the problem. </p>
+
+<p>regards, tom lane <br>&quot;<br>&quot;</p>
+
+<p>&quot;</p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="620.wBLx.mpsJ89z3rK.1YUDVQ@scif.cz"></a>
+<a name="97038cf049e0be2b2079f4075ee04083"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;Tom Lane&quot; &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 08:59:06</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/620.wBLx.mpsJ89z3rK.1YUDVQ%40scif.cz">620.wBLx.mpsJ89z3rK.1YUDVQ@scif.cz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/620.wBLx.mpsJ89z3rK.1YUDVQ%40scif.cz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/620.wBLx.mpsJ89z3rK.1YUDVQ%40scif.cz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/620.wBLx.mpsJ89z3rK.1YUDVQ%40scif.cz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/620.wBLx.mpsJ89z3rK.1YUDVQ%40scif.cz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>When I set:</p>
+
+<p>enable_bitmapscan = off<br>enable_seqscan = off</p>
+
+<p>I can reproduce the problem. The table has 42 columns. Seems like https://<br><a href="http://www.postgresql.org/message-id/2121219.1644607692@sss.pgh.pa.us" rel="nofollow">www.postgresql.org/message-id/2121219.1644607692%40sss.pgh.pa.us</a></p>
+
+<p>I will wait for 9.3 and give it a try.</p>
+
+<p>-- </p>
+
+<p>Milosh</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;<br>Komu: milos(dot)urbanek(at)email(dot)cz<br>Datum: 9. 5. 2022 2:22:10<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes: <br>&gt; Trying to run simple SELECT COUNT(*) from some table gives me the <br>following <br>&gt; error (either running by hand or trying to run EXPLAIN using pgadmin or by</p>
+
+<p>&gt; hand): </p>
+
+<p>&gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan <br>&gt; target list <br>&gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM <br>&gt; &quot;domino_efekty_havarijniprojev&quot; </p>
+
+<p>Is that really just a table? I could believe a bug like this for <br>some types of views, but it&#x27;s a bit hard to credit for a plain table. </p>
+
+<p>In any case, we can&#x27;t do much with this report unless you can provide <br>a reproducer case --- preferably a SQL script that creates an object <br>that triggers the problem. </p>
+
+<p>regards, tom lane <br>&quot;</p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAFj8pRBDyPCsnzq6yKNvsRiifpuV8=seMNku8u+bx9vWX05d8A@mail.gmail.com"></a>
+<a name="2b53b726b292e4017aad601affaf0c74"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot;
+ when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 09:50:18</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAFj8pRBDyPCsnzq6yKNvsRiifpuV8%3DseMNku8u%2Bbx9vWX05d8A%40mail.gmail.com">CAFj8pRBDyPCsnzq6yKNvsRiifpuV8=seMNku8u+bx9vWX05d8A@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAFj8pRBDyPCsnzq6yKNvsRiifpuV8%3DseMNku8u%2Bbx9vWX05d8A%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAFj8pRBDyPCsnzq6yKNvsRiifpuV8%3DseMNku8u%2Bbx9vWX05d8A%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAFj8pRBDyPCsnzq6yKNvsRiifpuV8%3DseMNku8u%2Bbx9vWX05d8A%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAFj8pRBDyPCsnzq6yKNvsRiifpuV8%3DseMNku8u%2Bbx9vWX05d8A%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>po 9. 5. 2022 v 10:52 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>napsal:</p>
+
+<p>&gt; The problem occurs in test database restored from PG 14 backup. There are<br>&gt; 2 tables (out of 900 other) where this problem occurs (when running SELECT<br>&gt; COUNT(*) on the table).<br>&gt;<br>&gt; I can not look at the query plan because EXPLAIN fails aswell, but my<br>&gt; guess is that planner is trying to use index on the table to count the rows.<br>&gt;<br>&gt; There are only 10 records in the table. When I run VACUUM FULL, the<br>&gt; problem disappears (planner is going to use Seq Scan which works).<br>&gt;</p>
+
+<p>Did you run ANALYZE?</p>
+
+<p>Regads</p>
+
+<p>Pavel</p>
+
+<p>&gt;<br>&gt; The database schema for both tables is complex, there are 20+ columns, 3+<br>&gt; spatial data columns, 5 foreign keys, not such an easy task to create some<br>&gt; test case for you.<br>&gt;<br>&gt; But my guess is that the root cause is planner trying to use index scan to<br>&gt; count the rows.<br>&gt;<br>&gt; Therefore I hope that this is just another occurence of<br>&gt; <a href="https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html" rel="nofollow">https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html</a>.<br>&gt;<br>&gt; Regards<br>&gt;<br>&gt; --<br>&gt; Milosh<br>&gt;<br>&gt; ---------- Původní e-mail ----------<br>&gt; Od: Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;<br>&gt; Komu: Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>&gt; Datum: 9. 5. 2022 10:22:16<br>&gt; Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target<br>&gt; list&quot; when running SELECT COUNT(*)<br>&gt;<br>&gt; Hi<br>&gt;<br>&gt; po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>&gt; napsal:<br>&gt;<br>&gt; I have 2 (ordinary) tables in 900+ table database restored from PG 9.6<br>&gt; (with PostGIS geometries BTW) where this problem occurs.<br>&gt; The count() queries into the other tables are OK.<br>&gt; Also the problem happens only at the server but not at my Windows 10<br>&gt; workstation with the same PG 14.2.<br>&gt;<br>&gt;<br>&gt; Is there the same configuration on the server like on your workstation?<br>&gt; The different configuration can enforce a different execution plan.<br>&gt;<br>&gt; Regards<br>&gt;<br>&gt; Pavel<br>&gt;<br>&gt;<br>&gt; No clue what could be wrong.<br>&gt;<br>&gt; PGAdmin4 fails even when trying to list SQL creation statement.<br>&gt;<br>&gt; --<br>&gt; Milos Urbanek<br>&gt;<br>&gt; ---------- Původní e-mail ----------<br>&gt; Od: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;<br>&gt; Komu: milos(dot)urbanek(at)email(dot)cz<br>&gt; Datum: 9. 5. 2022 2:22:10<br>&gt; Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target<br>&gt; list&quot; when running SELECT COUNT(*)<br>&gt;<br>&gt; PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; &gt; Trying to run simple SELECT COUNT(*) from some table gives me the<br>&gt; following<br>&gt; &gt; error (either running by hand or trying to run EXPLAIN using pgadmin or<br>&gt; by<br>&gt; &gt; hand):<br>&gt;<br>&gt; &gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan<br>&gt; &gt; target list<br>&gt; &gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM<br>&gt; &gt; &quot;domino_efekty_havarijniprojev&quot;<br>&gt;<br>&gt; Is that really just a table? I could believe a bug like this for<br>&gt; some types of views, but it&#x27;s a bit hard to credit for a plain table.<br>&gt;<br>&gt; In any case, we can&#x27;t do much with this report unless you can provide<br>&gt; a reproducer case --- preferably a SQL script that creates an object<br>&gt; that triggers the problem.<br>&gt;<br>&gt; regards, tom lane<br>&gt;<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="27.wBLD.1Y3Kkn9D3f4.1YUEQz@scif.cz"></a>
+<a name="2f63837c4bfd7065acd0378f02269d71"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;Pavel Stehule&quot; &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;Tom Lane&quot; &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;, &quot;PostgreSQL mailing lists&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 10:02:37</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/27.wBLD.1Y3Kkn9D3f4.1YUEQz%40scif.cz">27.wBLD.1Y3Kkn9D3f4.1YUEQz@scif.cz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/27.wBLD.1Y3Kkn9D3f4.1YUEQz%40scif.cz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/27.wBLD.1Y3Kkn9D3f4.1YUEQz%40scif.cz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/27.wBLD.1Y3Kkn9D3f4.1YUEQz%40scif.cz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/27.wBLD.1Y3Kkn9D3f4.1YUEQz%40scif.cz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>No. But it would probably work as workaround aswell.</p>
+
+<p>-- </p>
+
+<p>Milosh</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;<br>Komu: Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>Datum: 9. 5. 2022 11:51:05<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;</p>
+
+<p>po 9. 5. 2022 v 10:52 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz<br>(mailto:milos(dot)urbanek(at)email(dot)cz)&gt; napsal:</p>
+
+<p>&quot;</p>
+
+<p>The problem occurs in test database restored from PG 14 backup. There are 2 <br>tables (out of 900 other) where this problem occurs (when running SELECT <br>COUNT(*) on the table).</p>
+
+<p>I can not look at the query plan because EXPLAIN fails aswell, but my guess <br>is that planner is trying to use index on the table to count the rows.</p>
+
+<p>There are only 10 records in the table. When I run VACUUM FULL, the problem <br>disappears (planner is going to use Seq Scan which works).</p>
+
+<p>&quot;</p>
+
+<p>Did you run ANALYZE?</p>
+
+<p>Regads</p>
+
+<p>Pavel</p>
+
+<p> </p>
+
+<p>&quot;</p>
+
+<p>The database schema for both tables is complex, there are 20+ columns, 3+ <br>spatial data columns, 5 foreign keys, not such an easy task to create some <br>test case for you.</p>
+
+<p>But my guess is that the root cause is planner trying to use index scan to <br>count the rows.</p>
+
+<p>Therefore I hope that this is just another occurence of <a href="https://www.mail-" rel="nofollow">https://www.mail-</a><br><a href="http://archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html" rel="nofollow">archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html</a><br>(<a href="https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html" rel="nofollow">https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html</a>)</p>
+
+<p>Regards</p>
+
+<p>-- </p>
+
+<p>Milosh</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com(mailto:pavel(dot)stehule(at)gmail(dot)com)&gt;<br>Komu: Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz(mailto:milos(dot)urbanek(at)email(dot)cz)&gt;<br>Datum: 9. 5. 2022 10:22:16<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;</p>
+
+<p>Hi</p>
+
+<p>po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz<br>(mailto:milos(dot)urbanek(at)email(dot)cz)&gt; napsal:</p>
+
+<p>&quot;</p>
+
+<p>I have 2 (ordinary) tables in 900+ table database restored from PG 9.6 (with<br>PostGIS geometries BTW) where this problem occurs.</p>
+
+<p>The count() queries into the other tables are OK.</p>
+
+<p>Also the problem happens only at the server but not at my Windows 10 <br>workstation with the same PG 14.2.</p>
+
+<p>&quot;</p>
+
+<p>Is there the same configuration on the server like on your workstation?  The<br>different configuration can enforce a different execution plan.</p>
+
+<p>Regards</p>
+
+<p>Pavel</p>
+
+<p>&quot;</p>
+
+<p>No clue what could be wrong.</p>
+
+<p>PGAdmin4 fails even when trying to list SQL creation statement.</p>
+
+<p>--</p>
+
+<p>Milos Urbanek</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us(mailto:tgl(at)sss(dot)pgh(dot)pa(dot)us)&gt;<br>Komu: milos(dot)urbanek(at)email(dot)cz(mailto:milos(dot)urbanek(at)email(dot)cz)<br>Datum: 9. 5. 2022 2:22:10<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;PG Bug reporting form &lt;noreply(at)postgresql(dot)org<br>(mailto:noreply(at)postgresql(dot)org)&gt; writes: <br>&gt; Trying to run simple SELECT COUNT(*) from some table gives me the <br>following <br>&gt; error (either running by hand or trying to run EXPLAIN using pgadmin or by</p>
+
+<p>&gt; hand): </p>
+
+<p>&gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan <br>&gt; target list <br>&gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM <br>&gt; &quot;domino_efekty_havarijniprojev&quot; </p>
+
+<p>Is that really just a table? I could believe a bug like this for <br>some types of views, but it&#x27;s a bit hard to credit for a plain table. </p>
+
+<p>In any case, we can&#x27;t do much with this report unless you can provide <br>a reproducer case --- preferably a SQL script that creates an object <br>that triggers the problem. </p>
+
+<p>regards, tom lane <br>&quot;<br>&quot;</p>
+
+<p>&quot;<br>&quot;</p>
+
+<p>&quot;</p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAFj8pRDRoZGjqG2RNcd5L7qzL2HGauBEZGeHmSnr0NywBKxurw@mail.gmail.com"></a>
+<a name="29778a264ebffd3a0ae169c58e787c5e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot;
+ when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 10:25:10</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAFj8pRDRoZGjqG2RNcd5L7qzL2HGauBEZGeHmSnr0NywBKxurw%40mail.gmail.com">CAFj8pRDRoZGjqG2RNcd5L7qzL2HGauBEZGeHmSnr0NywBKxurw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAFj8pRDRoZGjqG2RNcd5L7qzL2HGauBEZGeHmSnr0NywBKxurw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAFj8pRDRoZGjqG2RNcd5L7qzL2HGauBEZGeHmSnr0NywBKxurw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAFj8pRDRoZGjqG2RNcd5L7qzL2HGauBEZGeHmSnr0NywBKxurw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAFj8pRDRoZGjqG2RNcd5L7qzL2HGauBEZGeHmSnr0NywBKxurw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>po 9. 5. 2022 v 12:02 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>napsal:</p>
+
+<p>&gt; No. But it would probably work as workaround aswell.<br>&gt;</p>
+
+<p>Diagnostics of every issue on Postgres should be started by ANALYZE.  And<br>after any migration, restore, ... running ANALYZE is really part of best<br>practicies</p>
+
+<p>Regards</p>
+
+<p>Pavel</p>
+
+<p>&gt;<br>&gt; --<br>&gt; Milosh<br>&gt;<br>&gt; ---------- Původní e-mail ----------<br>&gt; Od: Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;<br>&gt; Komu: Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>&gt; Datum: 9. 5. 2022 11:51:05<br>&gt; Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target<br>&gt; list&quot; when running SELECT COUNT(*)<br>&gt;<br>&gt;<br>&gt;<br>&gt; po 9. 5. 2022 v 10:52 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>&gt; napsal:<br>&gt;<br>&gt; The problem occurs in test database restored from PG 14 backup. There are<br>&gt; 2 tables (out of 900 other) where this problem occurs (when running SELECT<br>&gt; COUNT(*) on the table).<br>&gt;<br>&gt; I can not look at the query plan because EXPLAIN fails aswell, but my<br>&gt; guess is that planner is trying to use index on the table to count the rows.<br>&gt;<br>&gt; There are only 10 records in the table. When I run VACUUM FULL, the<br>&gt; problem disappears (planner is going to use Seq Scan which works).<br>&gt;<br>&gt;<br>&gt; Did you run ANALYZE?<br>&gt;<br>&gt; Regads<br>&gt;<br>&gt; Pavel<br>&gt;<br>&gt;<br>&gt;<br>&gt; The database schema for both tables is complex, there are 20+ columns, 3+<br>&gt; spatial data columns, 5 foreign keys, not such an easy task to create some<br>&gt; test case for you.<br>&gt;<br>&gt; But my guess is that the root cause is planner trying to use index scan to<br>&gt; count the rows.<br>&gt;<br>&gt; Therefore I hope that this is just another occurence of<br>&gt; <a href="https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html" rel="nofollow">https://www.mail-archive.com/postgis-users(at)lists(dot)osgeo(dot)org/msg09410.html</a>.<br>&gt;<br>&gt; Regards<br>&gt;<br>&gt; --<br>&gt; Milosh<br>&gt;<br>&gt; ---------- Původní e-mail ----------<br>&gt; Od: Pavel Stehule &lt;pavel(dot)stehule(at)gmail(dot)com&gt;<br>&gt; Komu: Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>&gt; Datum: 9. 5. 2022 10:22:16<br>&gt; Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target<br>&gt; list&quot; when running SELECT COUNT(*)<br>&gt;<br>&gt; Hi<br>&gt;<br>&gt; po 9. 5. 2022 v 9:22 odesílatel Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;<br>&gt; napsal:<br>&gt;<br>&gt; I have 2 (ordinary) tables in 900+ table database restored from PG 9.6<br>&gt; (with PostGIS geometries BTW) where this problem occurs.<br>&gt; The count() queries into the other tables are OK.<br>&gt; Also the problem happens only at the server but not at my Windows 10<br>&gt; workstation with the same PG 14.2.<br>&gt;<br>&gt;<br>&gt; Is there the same configuration on the server like on your workstation?<br>&gt; The different configuration can enforce a different execution plan.<br>&gt;<br>&gt; Regards<br>&gt;<br>&gt; Pavel<br>&gt;<br>&gt;<br>&gt; No clue what could be wrong.<br>&gt;<br>&gt; PGAdmin4 fails even when trying to list SQL creation statement.<br>&gt;<br>&gt; --<br>&gt; Milos Urbanek<br>&gt;<br>&gt; ---------- Původní e-mail ----------<br>&gt; Od: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;<br>&gt; Komu: milos(dot)urbanek(at)email(dot)cz<br>&gt; Datum: 9. 5. 2022 2:22:10<br>&gt; Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target<br>&gt; list&quot; when running SELECT COUNT(*)<br>&gt;<br>&gt; PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; &gt; Trying to run simple SELECT COUNT(*) from some table gives me the<br>&gt; following<br>&gt; &gt; error (either running by hand or trying to run EXPLAIN using pgadmin or<br>&gt; by<br>&gt; &gt; hand):<br>&gt;<br>&gt; &gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan<br>&gt; &gt; target list<br>&gt; &gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM<br>&gt; &gt; &quot;domino_efekty_havarijniprojev&quot;<br>&gt;<br>&gt; Is that really just a table? I could believe a bug like this for<br>&gt; some types of views, but it&#x27;s a bit hard to credit for a plain table.<br>&gt;<br>&gt; In any case, we can&#x27;t do much with this report unless you can provide<br>&gt; a reproducer case --- preferably a SQL script that creates an object<br>&gt; that triggers the problem.<br>&gt;<br>&gt; regards, tom lane<br>&gt;<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="d4.wBKh.7WBaDbIyNTm.1YUQCP@scif.cz"></a>
+<a name="5aa34cdd16c7cb7d63a13081a6f6cfca"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Miloš Urbánek &lt;milos(dot)urbanek(at)email(dot)cz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;Tom Lane&quot; &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; when running SELECT COUNT(*)</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-05-09 23:26:17</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/d4.wBKh.7WBaDbIyNTm.1YUQCP%40scif.cz">d4.wBKh.7WBaDbIyNTm.1YUQCP@scif.cz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/d4.wBKh.7WBaDbIyNTm.1YUQCP%40scif.cz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/d4.wBKh.7WBaDbIyNTm.1YUQCP%40scif.cz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/d4.wBKh.7WBaDbIyNTm.1YUQCP%40scif.cz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/d4.wBKh.7WBaDbIyNTm.1YUQCP%40scif.cz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202205090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>Hi,</p>
+
+<p>the simplest script is something like:</p>
+
+<p>create extension if not exists postgis;<br>CREATE TABLE IF NOT EXISTS public.table_with_geom<br>(<br>    id integer NOT NULL,<br>    geom geometry(Point,5514)<br>);<br>CREATE INDEX IF NOT EXISTS table_with_geom_id ON table_with_geom USING gist <br>(geom);<br>SET enable_seqscan = OFF;<br>SET enable_bitmapscan = OFF;<br>explain select count(*) from table_with_geom;</p>
+
+<p>This should print:</p>
+
+<p>NOTICE: extension &quot;postgis&quot; already exists, skipping ERROR: variable not <br>found in subplan target list SQL state: XX000</p>
+
+<p>Regards</p>
+
+<p>-- </p>
+
+<p>Milosh</p>
+
+<p>---------- Původní e-mail ----------<br>Od: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;<br>Komu: milos(dot)urbanek(at)email(dot)cz<br>Datum: 9. 5. 2022 2:22:10<br>Předmět: Re: BUG #17476: ERROR: &quot;variable not found in subplan target list&quot; <br>when running SELECT COUNT(*) <br>&quot;PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes: <br>&gt; Trying to run simple SELECT COUNT(*) from some table gives me the <br>following <br>&gt; error (either running by hand or trying to run EXPLAIN using pgadmin or by</p>
+
+<p>&gt; hand): </p>
+
+<p>&gt; 2022-05-09 00:06:30.428 CEST [1196] ERROR: variable not found in subplan <br>&gt; target list <br>&gt; 2022-05-09 00:06:30.428 CEST [1196] STATEMENT: SELECT COUNT(*) FROM <br>&gt; &quot;domino_efekty_havarijniprojev&quot; </p>
+
+<p>Is that really just a table? I could believe a bug like this for <br>some types of views, but it&#x27;s a bit hard to credit for a plain table. </p>
+
+<p>In any case, we can&#x27;t do much with this report unless you can provide <br>a reproducer case --- preferably a SQL script that creates an object <br>that triggers the problem. </p>
+
+<p>regards, tom lane <br>&quot;</p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

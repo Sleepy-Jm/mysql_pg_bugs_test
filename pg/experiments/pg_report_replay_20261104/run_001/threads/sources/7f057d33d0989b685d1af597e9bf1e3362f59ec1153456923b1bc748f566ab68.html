@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18886: identity duplicate key</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18886-7a7ebc1b03f6ad9c%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-04-09T23:04:20" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18886: identity duplicate key" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="cd6c056ef6baa7506635d4219e4dd9c6">BUG #18886: identity duplicate key</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202504092304">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18886-7a7ebc1b03f6ad9c@postgresql.org"></a>
+<a name="cd6c056ef6baa7506635d4219e4dd9c6"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>gweatherby(at)uchc(dot)edu</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18886: identity duplicate key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-04-09 23:04:20</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18886-7a7ebc1b03f6ad9c%40postgresql.org">18886-7a7ebc1b03f6ad9c@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18886-7a7ebc1b03f6ad9c%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18886-7a7ebc1b03f6ad9c%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18886-7a7ebc1b03f6ad9c%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18886-7a7ebc1b03f6ad9c%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202504090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18886<br>Logged by:          Gerard Weatherby<br>Email address:      gweatherby(at)uchc(dot)edu<br>PostgreSQL version: 17.2<br>Operating system:   Ubuntu 24<br>Description:        </p>
+
+<p>I observed this:</p>
+
+<p>registry=#  SELECT last_value, is_called FROM performance.vm_load_id_seq;<br> last_value | is_called <br>------------+-----------<br>   12935994 | t<br>(1 row)</p>
+
+<p>registry=# \d performance.vm_load<br>                                Table &quot;performance.vm_load&quot;<br>  Column   |           Type           | Collation | Nullable |          <br>Default        <br>-----------+--------------------------+-----------+----------+------------------------------<br> id        | integer                  |           | not null | generated<br>always as identity<br> vm_id     | integer                  |           | not null |  <br> load15    | double precision         |           | not null |  <br> idle      | double precision         |           | not null |  <br> stat_time | timestamp with time zone |           | not null |  <br>Indexes:<br>    &quot;vm_load_pk&quot; PRIMARY KEY, btree (id)<br>    &quot;vm_load_id_vm_id_stat_time_index&quot; btree (id, vm_id, stat_time)<br>    &quot;vm_load_stat_time_index&quot; btree (stat_time)<br>Foreign-key constraints:<br>    &quot;vm_load_virtual_machines_id_fk&quot; FOREIGN KEY (vm_id) REFERENCES<br>performance.virtual_machines(id) ON UPDATE RESTRICT ON DELETE RESTRICT</p>
+
+<p>registry=# INSERT INTO performance.vm_load(vm_id,load15,idle,stat_time)<br>values(437,0.0,94.31128026560856,&#x27;2025-04-09T22:25:26.326639+00:00&#x27;::timestamptz)<br>;<br>ERROR:  duplicate key value violates unique constraint &quot;vm_load_pk&quot;<br>DETAIL:  Key (id)=(1314208) already exists. </p>
+
+<p>Unable to figure out what was going on, I did this, and it seemed to fix the<br>issue:</p>
+
+<p>-- Step 1: Drop the identity from the id column<br>ALTER TABLE performance.vm_load<br>ALTER COLUMN id DROP IDENTITY IF EXISTS;</p>
+
+<p>-- Step 2: Re-add the identity (you can choose BY DEFAULT or ALWAYS)<br>ALTER TABLE performance.vm_load<br>ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY;</p>
+
+<p>-- Step 3: (Optional but recommended) realign the sequence<br>-- In case rows were added manually and the sequence is behind<br>SELECT setval(<br>  pg_get_serial_sequence(&#x27;performance.vm_load&#x27;, &#x27;id&#x27;),<br>  (SELECT MAX(id) FROM performance.vm_load)<br>);</p>
+
+<p>Note: at one point the id column was &quot;default&quot; as identity instead of<br>&quot;always&quot;. I&#x27;m not aware of any inserts that tried to set the id explicitly.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Z_en1_3NGRauUKIP@depesz.com"></a>
+<a name="c130200c13a44872b37f2762f8af51c6"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>hubert depesz lubaczewski &lt;depesz(at)depesz(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>gweatherby(at)uchc(dot)edu, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18886: identity duplicate key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-04-10 11:13:27</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Z_en1_3NGRauUKIP%40depesz.com">Z_en1_3NGRauUKIP@depesz.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Z_en1_3NGRauUKIP%40depesz.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Z_en1_3NGRauUKIP%40depesz.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Z_en1_3NGRauUKIP%40depesz.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Z_en1_3NGRauUKIP%40depesz.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202504100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Apr 09, 2025 at 11:04:20PM +0000, PG Bug reporting form wrote:<br>&gt; The following bug has been logged on the website:<br>&gt; <br>&gt; Bug reference:      18886<br>&gt; Logged by:          Gerard Weatherby<br>&gt; Email address:      gweatherby(at)uchc(dot)edu<br>&gt; PostgreSQL version: 17.2<br>&gt; Operating system:   Ubuntu 24<br>&gt; Description:        <br>&gt; <br>&gt; I observed this:<br>&gt; <br>&gt; registry=#  SELECT last_value, is_called FROM performance.vm_load_id_seq;<br>&gt;  last_value | is_called <br>&gt; ------------+-----------<br>&gt;    12935994 | t<br>&gt; (1 row)<br>&gt; <br>&gt; registry=# \d performance.vm_load<br>&gt;                                 Table &quot;performance.vm_load&quot;<br>&gt;   Column   |           Type           | Collation | Nullable |          <br>&gt; Default        <br>&gt; -----------+--------------------------+-----------+----------+------------------------------<br>&gt;  id        | integer                  |           | not null | generated<br>&gt; always as identity<br>&gt;  vm_id     | integer                  |           | not null |  <br>&gt;  load15    | double precision         |           | not null |  <br>&gt;  idle      | double precision         |           | not null |  <br>&gt;  stat_time | timestamp with time zone |           | not null |  <br>&gt; Indexes:<br>&gt;     &quot;vm_load_pk&quot; PRIMARY KEY, btree (id)<br>&gt;     &quot;vm_load_id_vm_id_stat_time_index&quot; btree (id, vm_id, stat_time)<br>&gt;     &quot;vm_load_stat_time_index&quot; btree (stat_time)<br>&gt; Foreign-key constraints:<br>&gt;     &quot;vm_load_virtual_machines_id_fk&quot; FOREIGN KEY (vm_id) REFERENCES<br>&gt; performance.virtual_machines(id) ON UPDATE RESTRICT ON DELETE RESTRICT<br>&gt; <br>&gt; registry=# INSERT INTO performance.vm_load(vm_id,load15,idle,stat_time)<br>&gt; values(437,0.0,94.31128026560856,&#x27;2025-04-09T22:25:26.326639+00:00&#x27;::timestamptz)<br>&gt; ;<br>&gt; ERROR:  duplicate key value violates unique constraint &quot;vm_load_pk&quot;<br>&gt; DETAIL:  Key (id)=(1314208) already exists. <br>&gt; <br>&gt; Unable to figure out what was going on, I did this, and it seemed to fix the<br>&gt; issue:</p>
+
+<p>You must have inserted some rows specifying value for id column. In such<br>case identity/sequence is not updated, so afterwards you will get<br>duplicate errors, as sequence returns (as new/next) value that already<br>exists in table.</p>
+
+<p>Solution:</p>
+
+<p>select setval(&#x27;performance.vm_load_id_seq&#x27;::regclass, max(id) + 1 ) from performance.vm_load;</p>
+
+<p>and find whatever was doing these inserts, and fix it.</p>
+
+<p>Best regards,</p>
+
+<p>depesz</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Z_eo980Ge03avLno@depesz.com"></a>
+<a name="4c1cc5133ab45786d9865cb7ef70eab5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>hubert depesz lubaczewski &lt;depesz(at)depesz(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>gweatherby(at)uchc(dot)edu, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18886: identity duplicate key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-04-10 11:18:15</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Z_eo980Ge03avLno%40depesz.com">Z_eo980Ge03avLno@depesz.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Z_eo980Ge03avLno%40depesz.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Z_eo980Ge03avLno%40depesz.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Z_eo980Ge03avLno%40depesz.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Z_eo980Ge03avLno%40depesz.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202504100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Apr 09, 2025 at 11:04:20PM +0000, PG Bug reporting form wrote:<br>&gt; The following bug has been logged on the website:<br>&gt; <br>&gt; Bug reference:      18886<br>&gt; Logged by:          Gerard Weatherby<br>&gt; Email address:      gweatherby(at)uchc(dot)edu<br>&gt; PostgreSQL version: 17.2<br>&gt; Operating system:   Ubuntu 24<br>&gt; Description:        <br>&gt; <br>&gt; I observed this:<br>&gt; <br>&gt; registry=#  SELECT last_value, is_called FROM performance.vm_load_id_seq;<br>&gt;  last_value | is_called <br>&gt; ------------+-----------<br>&gt;    12935994 | t<br>&gt; (1 row)<br>&gt; <br>&gt; registry=# \d performance.vm_load<br>&gt;                                 Table &quot;performance.vm_load&quot;<br>&gt;   Column   |           Type           | Collation | Nullable |          <br>&gt; Default        <br>&gt; -----------+--------------------------+-----------+----------+------------------------------<br>&gt;  id        | integer                  |           | not null | generated<br>&gt; always as identity<br>&gt;  vm_id     | integer                  |           | not null |  <br>&gt;  load15    | double precision         |           | not null |  <br>&gt;  idle      | double precision         |           | not null |  <br>&gt;  stat_time | timestamp with time zone |           | not null |  <br>&gt; Indexes:<br>&gt;     &quot;vm_load_pk&quot; PRIMARY KEY, btree (id)<br>&gt;     &quot;vm_load_id_vm_id_stat_time_index&quot; btree (id, vm_id, stat_time)<br>&gt;     &quot;vm_load_stat_time_index&quot; btree (stat_time)<br>&gt; Foreign-key constraints:<br>&gt;     &quot;vm_load_virtual_machines_id_fk&quot; FOREIGN KEY (vm_id) REFERENCES<br>&gt; performance.virtual_machines(id) ON UPDATE RESTRICT ON DELETE RESTRICT<br>&gt; <br>&gt; registry=# INSERT INTO performance.vm_load(vm_id,load15,idle,stat_time)<br>&gt; values(437,0.0,94.31128026560856,&#x27;2025-04-09T22:25:26.326639+00:00&#x27;::timestamptz)<br>&gt; ;<br>&gt; ERROR:  duplicate key value violates unique constraint &quot;vm_load_pk&quot;<br>&gt; DETAIL:  Key (id)=(1314208) already exists. <br>&gt; <br>&gt; Unable to figure out what was going on, I did this, and it seemed to fix the<br>&gt; issue:</p>
+
+<p>You must have inserted some rows specifying value for id column. In such<br>case identity/sequence is not updated, so afterwards you will get<br>duplicate errors, as sequence returns (as new/next) value that already<br>exists in table.</p>
+
+<p>Solution:</p>
+
+<p>select setval(&#x27;performance.vm_load_id_seq&#x27;::regclass, max(id) + 1 ) from performance.vm_load;</p>
+
+<p>and find whatever was doing these inserts, and fix it.</p>
+
+<p>Also, please note that this mailing list for reporting bugs in<br>PostgreSQL, and your situation doesn&#x27;t qualify as such. It&#x27;s simple<br>operator/programmer error.</p>
+
+<p>Best regards,</p>
+
+<p>depesz</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

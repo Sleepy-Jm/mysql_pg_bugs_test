@@ -1,0 +1,520 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17358
+Logged by:          Nazir Bilal Yavuz
+Email address:      byavuz81(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   NetBSD 9.2
+Description:        
+
+
+Hi, 
+
+
+While installing PostgreSQL from source code, uuid_ossp test fails on NetBSD
+9.2.
+The commands I used are:
+./configure \
+--with-uuid=bsd \
+\
+--with-includes=/usr/pkg/include --with-libs=/usr/pgk/lib && \
+gmake -s world-bin && gmake -s check-world
+
+
+OS: 
+NetBSD localhost 9.2 NetBSD 9.2 (GENERIC) #0: Wed May 12 13:15:55 UTC 2021 
+mkrepro(at)mkrepro(dot)NetBSD(dot)org:/usr/src/sys/arch/amd64/compile/GENERIC amd64
+
+
+Error message: 
+test uuid                         ... ok           11 ms
+test uuid                         ... ok           12 ms
+test uuid_ossp                    ... FAILED       11 ms
+
+
+Diff:
+diff -U3 /home/postgres/postgres/contrib/uuid-ossp/expected/uuid_ossp.out
+/home/postgres/postgres/contrib/uuid-ossp/results/uuid_ossp.out
+--- /home/postgres/postgres/contrib/uuid-ossp/expected/uuid_ossp.out   
+2022-01-07 09:54:27.613601852 +0000
++++ /home/postgres/postgres/contrib/uuid-ossp/results/uuid_ossp.out    
+2022-01-07 10:02:25.833291382 +0000
+@@ -59,7 +59,7 @@
+        uuid_reserved_bits(uuid_generate_v1());
+  uuid_version_bits | uuid_reserved_bits 
+ -------------------+--------------------
+- 00010000          | 10000000
++ 01000000          | 10000000
+ (1 row)
+ 
+ -- Although RFC 4122 only requires the multicast bit to be set in V1MC
+style
+@@ -70,20 +70,20 @@
+        uuid_local_admin_bit(uuid_generate_v1mc());
+  uuid_version_bits | uuid_reserved_bits | uuid_multicast_bit |
+uuid_local_admin_bit 
+
+
+-------------------+--------------------+--------------------+----------------------
+- 00010000          | 10000000           | t                  | t
++ 01000000          | 10000000           | t                  | t
+ (1 row)
+ 
+ -- timestamp+clock sequence should be monotonic increasing in v1
+ SELECT uuid_timestamp_bits(uuid_generate_v1()) <
+uuid_timestamp_bits(uuid_generate_v1());
+  ?column? 
+ ----------
+- t
++ f
+ (1 row)
+ 
+ SELECT uuid_timestamp_bits(uuid_generate_v1mc()) <
+uuid_timestamp_bits(uuid_generate_v1mc());
+  ?column? 
+ ----------
+- t
++ f
+ (1 row)
+ 
+ -- Ideally, the node value is stable in V1 addresses, but OSSP UUID
+@@ -96,7 +96,7 @@
+        END;
+  case 
+ ------
+- t
++ f
+ (1 row)
+ 
+ -- In any case, V1MC node addresses should be random.
+
+
+Thanks,
+Nazir Bilal Yavuz
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> While installing PostgreSQL from source code, uuid_ossp test fails on NetBSD
+> 9.2.
+
+
+Hmm, yeah, reproduced here.  It looks like NetBSD 9 and later have
+decided to generate version-4 UUIDs instead of the version-1 UUIDs
+that we're expecting uuid_create() to return.  How annoying.
+
+
+Their uuid_create(3) man page doesn't actually commit to anything
+either way, but I suppose it's based on the uuidgen(2) syscall,
+and that page clearly changed between 8.2 and 9.0:
+
+
+https://man.netbsd.org/NetBSD-8.2/uuidgen.2
+https://man.netbsd.org/NetBSD-9.0/uuidgen.2
+
+
+We hadn't noticed because our one NetBSD 9.x buildfarm animal
+isn't building with --with-uuid :-(.
+
+
+Not sure about how to fix this nicely.  We've tried to avoid
+writing our own code for V1 UUIDs, but maybe we should just
+bite the bullet and do that?  The hard part seems like it'd
+be to get a MAC address from someplace.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 2
+
+
+
+> We hadn't noticed because our one NetBSD 9.x buildfarm animal
+> isn't building with --with-uuid :-(.
+
+
+Want me to add that or hold off until we have found a work around first?
+
+
+/Mikael
+
+
+
+
+
+### MESSAGE 3
+=?UTF-8?Q?Mikael_Kjellstr=c3=b6m?= <mikael(dot)kjellstrom(at)mksoft(dot)nu> writes:
+>> We hadn't noticed because our one NetBSD 9.x buildfarm animal
+>> isn't building with --with-uuid :-(.
+
+
+> Want me to add that or hold off until we have found a work around first?
+
+
+Right now you'd just break the animal, so hold off.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 4
+
+>> Want me to add that or hold off until we have found a work around first?
+> 
+> Right now you'd just break the animal, so hold off.
+
+
+Ok, will hold off then.
+
+
+/Mikael
+
+
+
+
+
+### MESSAGE 5
+Hi,
+
+
+On 2022-01-07 15:48:52 -0500, Tom Lane wrote:
+> https://man.netbsd.org/NetBSD-8.2/uuidgen.2
+> https://man.netbsd.org/NetBSD-9.0/uuidgen.2
+> 
+> We hadn't noticed because our one NetBSD 9.x buildfarm animal
+> isn't building with --with-uuid :-(.
+
+
+It's interesting that freebsd seems to continue generating a v1 uuid, given
+that the manpage for netbsd says that uuidgen() stems from freebsd.
+
+
+> Not sure about how to fix this nicely.  We've tried to avoid
+> writing our own code for V1 UUIDs, but maybe we should just
+> bite the bullet and do that?
+
+
+It might be the most reasonable approach. We certainly seem to have spent at
+least as much effort avoiding our own implementation than implementing it
+ourselves.
+
+
+We could also just have a configure test rejecting netbsd's uuidgen, so that
+--with-uuid=bsd wouldn't support it anymore? Presumably forcing e2fs to be
+used?
+
+
+> The hard part seems like it'd be to get a MAC address from someplace.
+
+
+We could grab it from ossp-uuid or e2fs - both seem to be compatibly licensed?
+
+
+Greetings,
+
+
+Andres Freund
+
+
+
+
+
+### MESSAGE 6
+Andres Freund <andres(at)anarazel(dot)de> writes:
+> On 2022-01-07 15:48:52 -0500, Tom Lane wrote:
+>> Not sure about how to fix this nicely.  We've tried to avoid
+>> writing our own code for V1 UUIDs, but maybe we should just
+>> bite the bullet and do that?
+
+
+> It might be the most reasonable approach. We certainly seem to have spent at
+> least as much effort avoiding our own implementation than implementing it
+> ourselves.
+
+
+Yeah, exactly :-(.  Other than finding a MAC address, it doesn't seem
+like there's much there, and we've spent an awful lot of work on
+supporting N different libraries for this.
+
+
+> We could grab it from ossp-uuid or e2fs - both seem to be compatibly licensed?
+
+
+Right, I was planning to have a look at how they'd done it.  The BSD
+implementation seems to be inside the kernel, so that's not likely
+to be helpful, but the other two must be in userspace.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 7
+On 2022-01-08 14:59:56 -0500, Tom Lane wrote:
+> > We could grab it from ossp-uuid or e2fs - both seem to be compatibly licensed?
+> 
+> Right, I was planning to have a look at how they'd done it.  The BSD
+> implementation seems to be inside the kernel, so that's not likely
+> to be helpful, but the other two must be in userspace.
+
+
+https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid.c#L240
+https://github.com/sean-/ossp-uuid/blob/master/uuid_mac.c#L92
+
+
+
+
+
+### MESSAGE 8
+Andres Freund <andres(at)anarazel(dot)de> writes:
+> On 2022-01-08 14:59:56 -0500, Tom Lane wrote:
+>> Right, I was planning to have a look at how they'd done it.  The BSD
+>> implementation seems to be inside the kernel, so that's not likely
+>> to be helpful, but the other two must be in userspace.
+
+
+> https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid.c#L240
+> https://github.com/sean-/ossp-uuid/blob/master/uuid_mac.c#L92
+
+
+Thanks for the pointers!  I was hoping for a Windows version, but
+neither one seems to cover that.  OTOH, that means that we can't
+build uuid-ossp on Windows today anyway, so failing to support it
+makes things no worse than before ... and anybody who wants that
+can always send a patch.
+
+
+Before I start writing code, there seem to be two possible approaches
+here:
+
+
+1. Rip out all the external-library dependencies, lock stock and
+barrel.  contrib/uuid-ossp is always built.  --with-uuid configure
+argument becomes a no-op or an error.
+
+
+2. contrib/uuid-ossp is always built, but if you say --with-uuid
+then the existing code for that library is used.  We fall back to
+homegrown code if you didn't say --with-uuid.
+
+
+The main argument for #2 would be to preserve bug compatibility with
+the existing behavior, in case (say) we pick a different interface's
+MAC address than you got before.  I suppose also it's possible that
+the existing libraries try harder to avoid collisions across UUIDs
+generated in different processes than I envision doing in our own
+version.  (I think v1 UUID uniqueness is snake-oil anyway, so I'm
+just thinking of choosing a random "clock sequence" in each process
+and calling it good.)
+
+
+Whether these are good enough reasons to continue carrying all
+that code is unclear to me.  Thoughts?
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 9
+Hi,
+
+
+On 2022-01-08 15:35:33 -0500, Tom Lane wrote:
+> Andres Freund <andres(at)anarazel(dot)de> writes:
+> > On 2022-01-08 14:59:56 -0500, Tom Lane wrote:
+> >> Right, I was planning to have a look at how they'd done it.  The BSD
+> >> implementation seems to be inside the kernel, so that's not likely
+> >> to be helpful, but the other two must be in userspace.
+>
+> > https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid.c#L240
+> > https://github.com/sean-/ossp-uuid/blob/master/uuid_mac.c#L92
+>
+> Thanks for the pointers!  I was hoping for a Windows version, but
+> neither one seems to cover that.
+
+
+e2fs does have something, in a separate file:
+https://github.com/tytso/e2fsprogs/blob/master/lib/uuid/gen_uuid_nt.c
+
+
+but it looks pretty ugly. But it seems like it'd not be too hard to just use
+UuidCreateSequential() or UuidCreate() on windows.
+
+
+https://docs.microsoft.com/en-us/windows/win32/api/rpcdce/nf-rpcdce-uuidcreate
+
+
+> Before I start writing code, there seem to be two possible approaches
+> here:
+>
+> 1. Rip out all the external-library dependencies, lock stock and
+> barrel.  contrib/uuid-ossp is always built.  --with-uuid configure
+> argument becomes a no-op or an error.
+>
+> 2. contrib/uuid-ossp is always built, but if you say --with-uuid
+> then the existing code for that library is used.  We fall back to
+> homegrown code if you didn't say --with-uuid.
+>
+> The main argument for #2 would be to preserve bug compatibility with
+> the existing behavior, in case (say) we pick a different interface's
+> MAC address than you got before.  I suppose also it's possible that
+> the existing libraries try harder to avoid collisions across UUIDs
+> generated in different processes than I envision doing in our own
+> version.
+>
+> Whether these are good enough reasons to continue carrying all
+> that code is unclear to me.  Thoughts?
+
+
+I'm inclined to think that we shouldn't carry that much code just for some
+pretty tenuous backward compatibility reasons.
+
+
+I wonder if we shouldn't just move all the uuid stuff to core, and make
+uuid-ossp be an empty shell for a few releases. It's already pretty
+confusingly named, with awkward quoting etc. In a few years it'll be
+completely unintelligible.
+
+
+> (I think v1 UUID uniqueness is snake-oil anyway, so I'm just thinking of
+> choosing a random "clock sequence" in each process and calling it good.)
+
+
+Hm. Not so sure about that... If we go there, why don't we just rip out the
+ability to create v1 UUIDs?
+
+
+Greetings,
+
+
+Andres Freund
+
+
+
+
+
+### MESSAGE 10
+Andres Freund <andres(at)anarazel(dot)de> writes:
+> On 2022-01-08 15:35:33 -0500, Tom Lane wrote:
+>> (I think v1 UUID uniqueness is snake-oil anyway, so I'm just thinking of
+>> choosing a random "clock sequence" in each process and calling it good.)
+
+
+> Hm. Not so sure about that... If we go there, why don't we just rip out the
+> ability to create v1 UUIDs?
+
+
+Well, maybe.  Just considering having our own generator already puts us
+in a state of sin, because the whole argument for v1 UUID uniqueness
+hinges on there being just one generator per machine (or per MAC
+address, anyway).  As soon as there are independent generators using
+the same MAC address, they can't positively guarantee uniqueness.
+My thought about it is that once you've crossed that boundary, allowing
+each process to generate UUIDs independently is not much of a leap.
+
+
+And, of course, the reason that the whole thing is snake oil is that
+global uniqueness of MAC addresses is a fiction.  I think it probably
+was from the get-go, but in these days of MAC addresses being just
+made up on the fly, it certainly is.  (Need I mention macaddr8, and
+the lack of space for it in v1 UUIDs?)
+
+
+So maybe what we should really do is follow the lead of NetBSD
+(and OpenBSD too, it seems) and just desupport v1 UUID.  That
+still leaves us with two alternatives: throw error, or silently
+hand back a v4 UUID instead, as they're doing.
+
+
+But I don't especially like that, because v4 UUIDs are pretty
+index-unfriendly, more so than v1 anyway.  I'd rather continue
+to support v1 to the extent we can practically do so.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 11
+I wrote:
+> Well, maybe.  Just considering having our own generator already puts us
+> in a state of sin, because the whole argument for v1 UUID uniqueness
+> hinges on there being just one generator per machine (or per MAC
+> address, anyway).  As soon as there are independent generators using
+> the same MAC address, they can't positively guarantee uniqueness.
+> My thought about it is that once you've crossed that boundary, allowing
+> each process to generate UUIDs independently is not much of a leap.
+
+
+After a bit of further thought, it seems like a reasonable compromise
+could be to move the code into core PG and maintain the UUID assignment
+state in shared memory.  We'd still set the clock sequence number to
+something random at shmem initialization, but thereafter all backends
+would draw from that shared state, allowing us to provide a guarantee
+of uniqueness across the PG instance rather than just per-process.
+
+
+(I don't see any value in trying to preserve the clock sequence number
+across restarts.  A restart should take long enough that the timestamp
+will advance, making it moot.  The main value of the clock sequence number
+is to make it less likely that we'll generate the same UUID as some other
+generator running on the same machine, so a random choice seems optimal.)
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 12
+On 09.01.22 01:38, Tom Lane wrote:
+> I wrote:
+>> Well, maybe.  Just considering having our own generator already puts us
+>> in a state of sin, because the whole argument for v1 UUID uniqueness
+>> hinges on there being just one generator per machine (or per MAC
+>> address, anyway).  As soon as there are independent generators using
+>> the same MAC address, they can't positively guarantee uniqueness.
+>> My thought about it is that once you've crossed that boundary, allowing
+>> each process to generate UUIDs independently is not much of a leap.
+> 
+> After a bit of further thought, it seems like a reasonable compromise
+> could be to move the code into core PG and maintain the UUID assignment
+> state in shared memory.  We'd still set the clock sequence number to
+> something random at shmem initialization, but thereafter all backends
+> would draw from that shared state, allowing us to provide a guarantee
+> of uniqueness across the PG instance rather than just per-process.
+
+
+I look forward to the new more database-friendly UUID versions being 
+standardized:
+
+
+https://datatracker.ietf.org/doc/html/draft-peabody-dispatch-new-uuid-format-02
+
+
+I don't think we need to do a lot of work in the meantime to rescue 
+obsolete UUID versions that no one really uses in practice, based on a 
+problem on one marginal platform.
+
+
+

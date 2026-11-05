@@ -1,0 +1,609 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17393
+Logged by:          Christopher Lorenz
+Email address:      christopher(dot)lorenz(at)zit-bb(dot)brandenburg(dot)de
+PostgreSQL version: 14.1
+Operating system:   RHEL 7, RHEL 8, Ubuntu
+Description:        
+
+
+Hello,
+
+
+a recovery from a basebackup and PIT-recovery after a acccedently DROP
+DATABASE before the deletion, the database is listed in list of database,
+but if I try to connect, the files and directory for that database are
+missing. 
+
+
+Reproduce:
+0. configure postgresql to backup pg_wal
+1. Create a database (e.g. test)
+2. make a backup with pg_basebackup
+3. save the current timestamp (at 14:01:31)
+4. drop the database (at 14:01:37)
+5. Save all pg_wal with pg_switch_wal()
+6. Restore the basebackup to $PGDATA
+7. Starting point in time recovery to 14:01:31
+8. Wait and check the database 
+ a. database is show with \l in psql => OK
+ b. connection shows error that the directory in PGDATA/base is missing =>
+Not OK
+
+
+Expected:
+Recovery stops before DROP DATABASE command. The list of database shows my
+delete database and all files are existing as in given PIT timestamp.
+
+
+Logfile:
+2022-02-03 14:01:47.073 CET [5526] LOG:  starting point-in-time recovery to
+2022-02-03 14:01:31+01
+2022-02-03 14:01:47.093 CET [5526] LOG:  restored log file
+"000000010000000000000002" from archive
+2022-02-03 14:01:47.148 CET [5526] LOG:  redo starts at 0/2000028
+2022-02-03 14:01:47.156 CET [5526] LOG:  consistent recovery state reached
+at 0/2000100
+2022-02-03 14:01:47.156 CET [5524] LOG:  database system is ready to accept
+read only connections
+2022-02-03 14:01:47.175 CET [5526] LOG:  restored log file
+"000000010000000000000003" from archive
+2022-02-03 14:01:47.224 CET [5526] LOG:  recovery stopping before commit of
+transaction 486, time 2022-02-03 14:01:37.011667+01
+2022-02-03 14:01:47.224 CET [5526] LOG:  pausing at the end of recovery
+2022-02-03 14:01:47.224 CET [5526] HINT:  Execute pg_wal_replay_resume() to
+promote.
+2022-02-03 14:01:52.199 CET [5546] FATAL:  database "test" does not exist
+2022-02-03 14:01:52.199 CET [5546] DETAIL:  The database subdirectory
+"base/16384" is missing.
+
+
+Steps in script:
+psql -c 'CREATE DATABASE test'
+# basebackup
+pg_basebackup -D $backup_dir/0
+sleep 5
+rec_pit=`date +'%Y-%m-%d %H:%M:%S'`
+sleep 5
+# drop db
+psql -c 'DROP DATABASE test'
+# save backup
+psql -c 'SELECT pg_switch_wal()'
+sleep 5
+# Stop db
+pg_ctl -D $PGDATAstop
+# recovery
+rm -rf $PGDATA/*
+cp -r $backup_dir/0/* $PGDATA/
+touch $PGDATA/recovery.signal
+echo "recovery_target_time='$rec_pit'" >> $inst_dir/postgresql.conf
+# start
+pg_ctl -D $PGDATA -l ${log_dir}/pgsql.log start
+sleep 5
+echo "\c test" | psql
+
+
+Notes:
+ - Before stating the database and recovery process the files in base
+exists
+ - I also have the same behaviour In version 12 to 14
+
+
+
+
+
+### MESSAGE 1
+Hello,
+
+
+was anyone able to reproduce and confirm this bug? I don't found any response.
+
+
+Christopher Lorenz
+
+
+
+
+
+### MESSAGE 2
+Hi,
+
+
+On Thu, Feb 03, 2022 at 01:26:03PM +0000, PG Bug reporting form wrote:
+> 
+> a recovery from a basebackup and PIT-recovery after a acccedently DROP
+> DATABASE before the deletion, the database is listed in list of database,
+> but if I try to connect, the files and directory for that database are
+> missing. 
+> 
+> Reproduce:
+> 0. configure postgresql to backup pg_wal
+> 1. Create a database (e.g. test)
+> 2. make a backup with pg_basebackup
+> 3. save the current timestamp (at 14:01:31)
+> 4. drop the database (at 14:01:37)
+> 5. Save all pg_wal with pg_switch_wal()
+> 6. Restore the basebackup to $PGDATA
+> 7. Starting point in time recovery to 14:01:31
+> 8. Wait and check the database 
+>  a. database is show with \l in psql => OK
+>  b. connection shows error that the directory in PGDATA/base is missing =>
+> Not OK
+> 
+> Expected:
+> Recovery stops before DROP DATABASE command. The list of database shows my
+> delete database and all files are existing as in given PIT timestamp.
+> 
+> Logfile:
+> 2022-02-03 14:01:47.073 CET [5526] LOG:  starting point-in-time recovery to
+> 2022-02-03 14:01:31+01
+> 2022-02-03 14:01:47.093 CET [5526] LOG:  restored log file
+> "000000010000000000000002" from archive
+> 2022-02-03 14:01:47.148 CET [5526] LOG:  redo starts at 0/2000028
+> 2022-02-03 14:01:47.156 CET [5526] LOG:  consistent recovery state reached
+> at 0/2000100
+> 2022-02-03 14:01:47.156 CET [5524] LOG:  database system is ready to accept
+> read only connections
+> 2022-02-03 14:01:47.175 CET [5526] LOG:  restored log file
+> "000000010000000000000003" from archive
+> 2022-02-03 14:01:47.224 CET [5526] LOG:  recovery stopping before commit of
+> transaction 486, time 2022-02-03 14:01:37.011667+01
+> 2022-02-03 14:01:47.224 CET [5526] LOG:  pausing at the end of recovery
+> 2022-02-03 14:01:47.224 CET [5526] HINT:  Execute pg_wal_replay_resume() to
+> promote.
+> 2022-02-03 14:01:52.199 CET [5546] FATAL:  database "test" does not exist
+> 2022-02-03 14:01:52.199 CET [5546] DETAIL:  The database subdirectory
+> "base/16384" is missing.
+
+
+I can't reproduce the problem. Now, given what you seem to be using, this is
+likely an operator error:
+
+
+> Steps in script:
+> [...]
+> # Stop db
+> pg_ctl -D $PGDATAstop
+
+
+this won't stop the instance.  If that's what you're really doing it's clearly
+going to be broken.
+
+
+> # recovery
+> rm -rf $PGDATA/*
+> cp -r $backup_dir/0/* $PGDATA/
+> touch $PGDATA/recovery.signal
+> echo "recovery_target_time='$rec_pit'" >> $inst_dir/postgresql.conf
+
+
+no WAL recovery?
+
+
+I recommend reading
+https://www.postgresql.org/docs/current/continuous-archiving.html to see what
+are the correct steps to restore a PITR backup, and if you still have a problem
+please show a script that is self contained (ie. provide all parameter
+initialization), safe, and actually works.
+
+
+
+
+
+### MESSAGE 3
+Hello,
+
+
+I created a script which do the complete procedure of create database backup and reproduce the bug while recovery. 
+I created this used by rpm from official postgresql yum repo. I used a RedHat 7 OS. I also add the output of the script.
+You need to set your path to binary in the script: Line 9 pg_bin, as described before I also can reproduce this behavior in Versions 12 to 14
+
+
+The line with the wrong stop in bug report seams to be a copy&paste error and was done correctly.
+
+
+The WAL recovery is done by recovery_command which restores all previous saved files. In the log you can see that the WAL files are used for recovery:
+2022-03-29 10:30:19.686 CEST [15169] LOG:  restored log file "000000010000000000000003" from archive
+2022-03-29 10:30:19.727 CEST [15169] LOG:  recovery stopping before commit of transaction 486, time 2022-03-29 10:30:08.739965+02
+2022-03-29 10:30:19.727 CEST [15169] LOG:  pausing at the end of recovery
+
+
+Regards,
+
+
+Christopher Lorenz
+
+
+-----Ursprüngliche Nachricht-----
+Von: Julien Rouhaud <rjuju123(at)gmail(dot)com> 
+Gesendet: Sonntag, 6. März 2022 08:42
+An: Lorenz, Christopher <Christopher(dot)Lorenz(at)ZIT-BB(dot)Brandenburg(dot)de>; pgsql-bugs(at)lists(dot)postgresql(dot)org
+Betreff: Re: BUG #17393: Delete database after recovery with point-in-time is still missing datafiles
+
+
+...
+
+
+I can't reproduce the problem. Now, given what you seem to be using, this is
+likely an operator error:
+
+
+...
+
+
+> pg_ctl -D $PGDATAstop
+
+
+this won't stop the instance.  If that's what you're really doing it's clearly
+going to be broken.
+...
+
+
+no WAL recovery?
+
+
+I recommend reading
+https://www.postgresql.org/docs/current/continuous-archiving.html to see what
+are the correct steps to restore a PITR backup, and if you still have a problem
+please show a script that is self contained (ie. provide all parameter
+initialization), safe, and actually works.
+
+
+
+### MESSAGE 4
+Hello,
+
+
+I can reproduce your issue with your base_recovery.sh with PG 13.6 on Alma
+Linux 8.5.
+
+
+If I modify your script to display transaction numbers before and after
+DROP DATABASE with:
+
+
+echo -e $rt `date` "drop the database test ..." $wt
+# Drop DB
+psql -c 'select txid_current();'
+psql -c 'DROP DATABASE test'
+psql -c 'select txid_current();'
+
+
+I get:
+
+
+Wed Mar 30 20:56:27 CEST 2022 drop the database test ...
+ txid_current
+--------------
+          486
+(1 row)
+
+
+DROP DATABASE
+ txid_current
+--------------
+          488
+(1 row)
+
+
+and database test is successfully restored:
+
+
+You are now connected to database "test" as user "postgres".
+
+
+ Wed Mar 30 20:56:40 CEST 2022 Check datafiles of test ... - there are
+missing datafiles
+total 52
+drwx------.  6 postgres postgres   54 Mar 30 20:56 .
+drwx------. 20 postgres postgres 4096 Mar 30 20:56 ..
+drwx------.  2 postgres postgres 8192 Mar 30 20:56 1
+drwx------.  2 postgres postgres 8192 Mar 30 20:56 13433
+drwx------.  2 postgres postgres 8192 Mar 30 20:56 13434
+drwx------.  2 postgres postgres 8192 Mar 30 20:56 16384
+
+
+ Wed Mar 30 20:56:40 CEST 2022 Check the logs what's happened ...
+2022-03-30 20:56:14.542 CEST [15788] LOG:  starting PostgreSQL 13.6 on
+x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat
+8.5.0-4), 64-bit
+2022-03-30 20:56:14.542 CEST [15788] LOG:  listening on IPv6 address "::1",
+port 5555
+2022-03-30 20:56:14.542 CEST [15788] LOG:  listening on IPv4 address
+"127.0.0.1", port 5555
+2022-03-30 20:56:14.548 CEST [15788] LOG:  listening on Unix socket
+"/var/lib/pgsql/pg_test/run/.s.PGSQL.5555"
+2022-03-30 20:56:14.555 CEST [15790] LOG:  database system was shut down at
+2022-03-30 20:56:12 CEST
+2022-03-30 20:56:14.561 CEST [15788] LOG:  database system is ready to
+accept connections
+2022-03-30 20:56:33.243 CEST [15853] LOG:  starting PostgreSQL 13.6 on
+x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat
+8.5.0-4), 64-bit
+2022-03-30 20:56:33.244 CEST [15853] LOG:  listening on IPv6 address "::1",
+port 5555
+2022-03-30 20:56:33.244 CEST [15853] LOG:  listening on IPv4 address
+"127.0.0.1", port 5555
+2022-03-30 20:56:33.249 CEST [15853] LOG:  listening on Unix socket
+"/var/lib/pgsql/pg_test/run/.s.PGSQL.5555"
+2022-03-30 20:56:33.256 CEST [15855] LOG:  database system was interrupted;
+last known up at 2022-03-30 20:56:15 CEST
+cp: cannot stat '/var/lib/pgsql/pg_test/wal_backup/00000002.history': No
+such file or directory
+2022-03-30 20:56:35.554 CEST [15855] LOG:  starting point-in-time recovery
+to 2022-03-30 20:56:22+02
+2022-03-30 20:56:35.561 CEST [15855] LOG:  restored log file
+"000000010000000000000002" from archive
+2022-03-30 20:56:35.581 CEST [15855] LOG:  redo starts at 0/2000028
+2022-03-30 20:56:35.584 CEST [15855] LOG:  consistent recovery state
+reached at 0/2000100
+2022-03-30 20:56:35.585 CEST [15853] LOG:  database system is ready to
+accept read only connections
+2022-03-30 20:56:35.592 CEST [15855] LOG:  restored log file
+"000000010000000000000003" from archive
+2022-03-30 20:56:35.604 CEST [15855] LOG:  recovery stopping before commit
+of transaction 486, time 2022-03-30 20:56:27.81682+02
+2022-03-30 20:56:35.604 CEST [15855] LOG:  pausing at the end of recovery
+2022-03-30 20:56:35.604 CEST [15855] HINT:  Execute pg_wal_replay_resume()
+to promote.
+
+
+ Wed Mar 30 20:56:40 CEST 2022 Postgresql knows the Database test but don't
+have the datafiles anymore.
+
+
+I cannot really explain what is really going on when the script fails.
+It looks like that in some cases recovery goes too far maybe because there
+are not enough transactions in the WAL files ?
+
+
+Le mer. 30 mars 2022 à 13:50, Lorenz, Christopher <
+Christopher(dot)Lorenz(at)zit-bb(dot)brandenburg(dot)de> a écrit :
+
+
+> Hello,
+>
+> I created a script which do the complete procedure of create database
+> backup and reproduce the bug while recovery.
+> I created this used by rpm from official postgresql yum repo. I used a
+> RedHat 7 OS. I also add the output of the script.
+> You need to set your path to binary in the script: Line 9 pg_bin, as
+> described before I also can reproduce this behavior in Versions 12 to 14
+>
+> The line with the wrong stop in bug report seams to be a copy&paste error
+> and was done correctly.
+>
+> The WAL recovery is done by recovery_command which restores all previous
+> saved files. In the log you can see that the WAL files are used for
+> recovery:
+> 2022-03-29 10:30:19.686 CEST [15169] LOG:  restored log file
+> "000000010000000000000003" from archive
+> 2022-03-29 10:30:19.727 CEST [15169] LOG:  recovery stopping before commit
+> of transaction 486, time 2022-03-29 10:30:08.739965+02
+> 2022-03-29 10:30:19.727 CEST [15169] LOG:  pausing at the end of recovery
+>
+> Regards,
+>
+> Christopher Lorenz
+>
+>
+> -----Ursprüngliche Nachricht-----
+> Von: Julien Rouhaud <rjuju123(at)gmail(dot)com>
+> Gesendet: Sonntag, 6. März 2022 08:42
+> An: Lorenz, Christopher <Christopher(dot)Lorenz(at)ZIT-BB(dot)Brandenburg(dot)de>;
+> pgsql-bugs(at)lists(dot)postgresql(dot)org
+> Betreff: Re: BUG #17393: Delete database after recovery with point-in-time
+> is still missing datafiles
+>
+> ...
+>
+> I can't reproduce the problem. Now, given what you seem to be using, this
+> is
+> likely an operator error:
+>
+> ...
+>
+> > pg_ctl -D $PGDATAstop
+>
+> this won't stop the instance.  If that's what you're really doing it's
+> clearly
+> going to be broken.
+> ...
+>
+> no WAL recovery?
+>
+> I recommend reading
+> https://www.postgresql.org/docs/current/continuous-archiving.html to see
+> what
+> are the correct steps to restore a PITR backup, and if you still have a
+> problem
+> please show a script that is self contained (ie. provide all parameter
+> initialization), safe, and actually works.
+>
+
+
+
+### MESSAGE 5
+At Wed, 30 Mar 2022 21:07:40 +0200, Pierre Forstmann <pierre(dot)forstmann(at)gmail(dot)com> wrote in 
+> I can reproduce your issue with your base_recovery.sh with PG 13.6 on Alma
+> Linux 8.5.
+> 
+> If I modify your script to display transaction numbers before and after
+> DROP DATABASE with:
+> 
+> echo -e $rt `date` "drop the database test ..." $wt
+> # Drop DB
+> psql -c 'select txid_current();'
+> psql -c 'DROP DATABASE test'
+> psql -c 'select txid_current();'
+
+
+This is not a bug, rather a limitation of recovery_target_time.
+
+
+The script specifies recovery target by time. The target time time is
+compared with timestamps embedded in some kinds of WAL record, mainly
+COMMIT.
+
+
+The reason why it works is that the query creates COMMIT
+records. Otherwise no timestamp seen since the backup point and before
+the DROP record. Thus recovery has no means to stop by the target time
+before the DROP.
+
+
+The WAL for the bad case looks like this (abbreviated and thinned out):
+
+
+tx:  486,  desc: DROP dir 1663/16384
+tx:  486,  desc: COMMIT 2022-03-31 16:58:05.981976 JST; inval msgs: catcache 21; sync
+tx:    0,  desc: SWITCH
+
+
+> 2022-03-31 16:58:11.448 JST [145533] LOG:  recovery stopping before commit of transaction 486, time 2022-03-31 16:58:05.981976+09
+
+
+There's no timestamped WAL record found before the DROP, recovery runs
+until the COMMIT record *after* the DROP, so the directory is removed.
+
+
+If txid_current() is performed, it looks like:
+
+
+tx: 486,  desc: COMMIT 2022-03-31 17:10:25.775619 JST
+tx: 487,  desc: DELETE off 4 flags 0x00 KEYS_UPDATED , blkref #0: rel 1664/0/1262 blk 0 FPW
+tx: 487,  desc: DROP dir 1663/16384
+tx: 487,  desc: COMMIT 2022-03-31 17:10:25.794775 JST
+tx: 488,  desc: COMMIT 2022-03-31 17:10:25.801121 JST
+tx:   0,  desc: SWITCH 
+
+
+> recovery stopping before commit of transaction 486, time 2022-03-31 17:10:25.775619+09
+
+
+In this case, revovery stops *before* the DROP.
+
+
+regards.
+
+
+-- 
+Kyotaro Horiguchi
+NTT Open Source Software Center
+
+
+
+
+
+### MESSAGE 6
+Hello,
+
+
+Thanks your answer posted on the World Backup Day:
+https://worldbackupday.com/en :-)
+
+
+Regards
+
+
+Le jeu. 31 mars 2022 à 10:26, Kyotaro Horiguchi <horikyota(dot)ntt(at)gmail(dot)com> a
+écrit :
+
+
+> At Wed, 30 Mar 2022 21:07:40 +0200, Pierre Forstmann <
+> pierre(dot)forstmann(at)gmail(dot)com> wrote in
+> > I can reproduce your issue with your base_recovery.sh with PG 13.6 on
+> Alma
+> > Linux 8.5.
+> >
+> > If I modify your script to display transaction numbers before and after
+> > DROP DATABASE with:
+> >
+> > echo -e $rt `date` "drop the database test ..." $wt
+> > # Drop DB
+> > psql -c 'select txid_current();'
+> > psql -c 'DROP DATABASE test'
+> > psql -c 'select txid_current();'
+>
+> This is not a bug, rather a limitation of recovery_target_time.
+>
+> The script specifies recovery target by time. The target time time is
+> compared with timestamps embedded in some kinds of WAL record, mainly
+> COMMIT.
+>
+> The reason why it works is that the query creates COMMIT
+> records. Otherwise no timestamp seen since the backup point and before
+> the DROP record. Thus recovery has no means to stop by the target time
+> before the DROP.
+>
+>
+> The WAL for the bad case looks like this (abbreviated and thinned out):
+>
+> tx:  486,  desc: DROP dir 1663/16384
+> tx:  486,  desc: COMMIT 2022-03-31 16:58:05.981976 JST; inval msgs:
+> catcache 21; sync
+> tx:    0,  desc: SWITCH
+>
+> > 2022-03-31 16:58:11.448 JST [145533] LOG:  recovery stopping before
+> commit of transaction 486, time 2022-03-31 16:58:05.981976+09
+>
+> There's no timestamped WAL record found before the DROP, recovery runs
+> until the COMMIT record *after* the DROP, so the directory is removed.
+>
+>
+> If txid_current() is performed, it looks like:
+>
+> tx: 486,  desc: COMMIT 2022-03-31 17:10:25.775619 JST
+> tx: 487,  desc: DELETE off 4 flags 0x00 KEYS_UPDATED , blkref #0: rel
+> 1664/0/1262 blk 0 FPW
+> tx: 487,  desc: DROP dir 1663/16384
+> tx: 487,  desc: COMMIT 2022-03-31 17:10:25.794775 JST
+> tx: 488,  desc: COMMIT 2022-03-31 17:10:25.801121 JST
+> tx:   0,  desc: SWITCH
+>
+> > recovery stopping before commit of transaction 486, time 2022-03-31
+> 17:10:25.775619+09
+>
+> In this case, revovery stops *before* the DROP.
+>
+> regards.
+>
+> --
+> Kyotaro Horiguchi
+> NTT Open Source Software Center
+>
+
+
+
+### MESSAGE 7
+Hi,
+
+
+Thanks for your explanation. I makes sense cause the DML command DROP isn't transactional so it don't have a COMMIT which can be rolled back. I also can get an valid restore if I set an recovery_target_name before. In most cases I don't have the txid or a named recovery point, cause the DROP was done accidentally. 
+
+
+I've don't test it, but to get a restore as I need:
+- Run a recovery to get the txid and exactly time of the DROP, so I also have the last wal I've have to start looking
+- find out the last txid of a COMMIT before current stopping point of recovery using pg_waldump, decreasing the txid by 1 isn't sure cause the txids are maybe unordered
+- Run the recover a second time with supplied txid to stop after the transaction before the DROP (recovery_target_xid)
+
+
+> This is not a bug, rather a limitation of recovery_target_time.
+
+
+I know this is not "real" a bug, it should be in the documentation (I don't found this anywhere in context of recovery). Or better I should be printed out in log of the recovery if it happened. This case of recovery produce an postgresql cluster with database (which is show in list of databases) without datafiles. It recovered a corrupt database which isn't fine. After it happened for me I spend time to find the reason of the faulty recovery.
+
+
+If postgresql is doing an empty commit before DML commands it should also work.
+
+
+Regards
+
+
+Christopher Lorenz
+
+
+

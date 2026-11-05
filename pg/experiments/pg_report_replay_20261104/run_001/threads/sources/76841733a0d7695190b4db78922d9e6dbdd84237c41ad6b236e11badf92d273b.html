@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17454: Using psql without ipv4 address,the inet_server_port do not return PORT.</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17454-f120d78fa9c3013d%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-04-02T01:15:20" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17454: Using psql without ipv4 address,the inet_server_port do not return PORT." />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="1e57bc3f6a9c10c65d1b93f1435464c3">BUG #17454: Using psql without ipv4 address,the inet_server_port do not return PORT.</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202204020115">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17454-f120d78fa9c3013d@postgresql.org"></a>
+<a name="1e57bc3f6a9c10c65d1b93f1435464c3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>thbytwo(at)live(dot)cn</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17454: Using psql without ipv4 address,the inet_server_port do not return PORT.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-02 01:15:20</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17454-f120d78fa9c3013d%40postgresql.org">17454-f120d78fa9c3013d@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17454-f120d78fa9c3013d%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17454-f120d78fa9c3013d%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17454-f120d78fa9c3013d%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17454-f120d78fa9c3013d%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204020000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17454<br>Logged by:          Laowu wong<br>Email address:      thbytwo(at)live(dot)cn<br>PostgreSQL version: 14.2<br>Operating system:   centos 7<br>Description:        </p>
+
+<p>It should return the server port when I execute &#x27;select inet_server_port();&#x27;<br>with the command line &#x27;psql -p 15431&#x27;.<br>It seems that if I do not enter the ipv4 address in the<br>psql-command-line,the pg will return null.</p>
+
+<p>the current behavior:<br>[postgres(at)pc67 ~]$ /home/postgres/pgREL1402/bin/psql -p 15431<br>psql (14.2)<br>Type &quot;help&quot; for help.</p>
+
+<p>postgres=# select inet_server_port();<br> inet_server_port <br>------------------</p>
+
+<p>(1 row)</p>
+
+<p>the expected:<br>[postgres(at)pc67 ~]$ /home/postgres/pgREL1402/bin/psql -p 15431<br>psql (14.2)<br>Type &quot;help&quot; for help.</p>
+
+<p>postgres=# select inet_server_port();<br> inet_server_port <br>------------------<br>            15431<br>(1 row)</p>
+
+<p>the env：<br>centos 7  x86<br>PG14.2</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwavFAL0uSc=FiujzAFdoEDkkz1K6_Sw4o=GNygV18ydbg@mail.gmail.com"></a>
+<a name="8234d127717112de90a967886ba6ef24"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;thbytwo(at)live(dot)cn&quot; &lt;thbytwo(at)live(dot)cn&gt;,  &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17454: Using psql without ipv4 address,the inet_server_port
+ do not return PORT.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-02 15:07:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwavFAL0uSc%3DFiujzAFdoEDkkz1K6_Sw4o%3DGNygV18ydbg%40mail.gmail.com">CAKFQuwavFAL0uSc=FiujzAFdoEDkkz1K6_Sw4o=GNygV18ydbg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwavFAL0uSc%3DFiujzAFdoEDkkz1K6_Sw4o%3DGNygV18ydbg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwavFAL0uSc%3DFiujzAFdoEDkkz1K6_Sw4o%3DGNygV18ydbg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwavFAL0uSc%3DFiujzAFdoEDkkz1K6_Sw4o%3DGNygV18ydbg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwavFAL0uSc%3DFiujzAFdoEDkkz1K6_Sw4o%3DGNygV18ydbg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204020000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Friday, April 1, 2022, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;<br>wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17454<br>&gt; Logged by:          Laowu wong<br>&gt; Email address:      thbytwo(at)live(dot)cn<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   centos 7<br>&gt; Description:<br>&gt;<br>&gt; It should return the server port when I execute &#x27;select<br>&gt; inet_server_port();&#x27;<br>&gt; with the command line &#x27;psql -p 15431&#x27;.<br>&gt; It seems that if I do not enter the ipv4 address in the<br>&gt; psql-command-line,the pg will return null.</p>
+
+<p>Right, because the default is to use a local socket.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="OS3PR01MB6344210DA6DD0567F072C187A4E29@OS3PR01MB6344.jpnprd01.prod.outlook.com"></a>
+<a name="43bb7732f6bed5df5a1ddc38856348b8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Wong Simon &lt;thbytwo(at)live(dot)cn&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;, &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>回复: BUG #17454: Using psql without ipv4 address,the inet_server_port do not return PORT.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-03 01:37:53</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/OS3PR01MB6344210DA6DD0567F072C187A4E29%40OS3PR01MB6344.jpnprd01.prod.outlook.com">OS3PR01MB6344210DA6DD0567F072C187A4E29@OS3PR01MB6344.jpnprd01.prod.outlook.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/OS3PR01MB6344210DA6DD0567F072C187A4E29%40OS3PR01MB6344.jpnprd01.prod.outlook.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/OS3PR01MB6344210DA6DD0567F072C187A4E29%40OS3PR01MB6344.jpnprd01.prod.outlook.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/OS3PR01MB6344210DA6DD0567F072C187A4E29%40OS3PR01MB6344.jpnprd01.prod.outlook.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/OS3PR01MB6344210DA6DD0567F072C187A4E29%40OS3PR01MB6344.jpnprd01.prod.outlook.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>If I run multiple instances on one server with local socket, how can I distinguish them?I think the port is need.</p>
+
+<p>________________________________<br>发件人: David G. Johnston &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;<br>发送时间: 2022年4月2日 23:07<br>收件人: thbytwo(at)live(dot)cn &lt;thbytwo(at)live(dot)cn&gt;; pgsql-bugs(at)lists(dot)postgresql(dot)org &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;<br>主题: Re: BUG #17454: Using psql without ipv4 address,the inet_server_port do not return PORT.</p>
+
+<p>On Friday, April 1, 2022, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&lt;mailto:noreply(at)postgresql(dot)org&gt;&gt; wrote:<br>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17454<br>Logged by:          Laowu wong<br>Email address:      thbytwo(at)live(dot)cn&lt;mailto:thbytwo(at)live(dot)cn&gt;<br>PostgreSQL version: 14.2<br>Operating system:   centos 7<br>Description:</p>
+
+<p>It should return the server port when I execute &#x27;select inet_server_port();&#x27;<br>with the command line &#x27;psql -p 15431&#x27;.<br>It seems that if I do not enter the ipv4 address in the<br>psql-command-line,the pg will return null.</p>
+
+<p>Right, because the default is to use a local socket.</p>
+
+<p>David J.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwZm==rNg0z9XYG5OSCB0oiMJn=6d9x+rdTpbsz7G0TVvQ@mail.gmail.com"></a>
+<a name="a435800cd91187f920e71732d099346f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Wong Simon &lt;thbytwo(at)live(dot)cn&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17454: Using psql without ipv4 address,the inet_server_port
+ do not return PORT.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-03 01:40:32</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwZm%3D%3DrNg0z9XYG5OSCB0oiMJn%3D6d9x%2BrdTpbsz7G0TVvQ%40mail.gmail.com">CAKFQuwZm==rNg0z9XYG5OSCB0oiMJn=6d9x+rdTpbsz7G0TVvQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwZm%3D%3DrNg0z9XYG5OSCB0oiMJn%3D6d9x%2BrdTpbsz7G0TVvQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwZm%3D%3DrNg0z9XYG5OSCB0oiMJn%3D6d9x%2BrdTpbsz7G0TVvQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwZm%3D%3DrNg0z9XYG5OSCB0oiMJn%3D6d9x%2BrdTpbsz7G0TVvQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwZm%3D%3DrNg0z9XYG5OSCB0oiMJn%3D6d9x%2BrdTpbsz7G0TVvQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sat, Apr 2, 2022 at 6:37 PM Wong Simon &lt;thbytwo(at)live(dot)cn&gt; wrote:</p>
+
+<p>&gt; If I run multiple instances on one server with local socket, how can I<br>&gt; distinguish them?I think the port is need.<br>&gt;<br>&gt;<br>You do have the right idea, but you need to inspect the static<br>configuration setting the server is using as opposed to the connection<br>state reported by the function.</p>
+
+<p><a href="https://www.postgresql.org/docs/current/runtime-config-connection.html#RUNTIME-CONFIG-CONNECTION-SETTINGS" rel="nofollow">https://www.postgresql.org/docs/current/runtime-config-connection.html#RUNTIME-CONFIG-CONNECTION-SETTINGS</a></p>
+
+<p>port</p>
+
+<p>The TCP port the server listens on; 5432 by default. Note that the same<br>port number is used for all IP addresses the server listens on. This<br>parameter can only be set at server start.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CA+bJJbzPYe4py-dnzoKEQ9_m_rvduTs_8BSThwWPUUamSK18dQ@mail.gmail.com"></a>
+<a name="aadbd6d65741ac67766b1b20d7c87085"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Francisco Olarte &lt;folarte(at)peoplecall(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Wong Simon &lt;thbytwo(at)live(dot)cn&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,  &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17454: Using psql without ipv4 address,the inet_server_port
+ do not return PORT.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-03 15:35:56</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CA%2BbJJbzPYe4py-dnzoKEQ9_m_rvduTs_8BSThwWPUUamSK18dQ%40mail.gmail.com">CA+bJJbzPYe4py-dnzoKEQ9_m_rvduTs_8BSThwWPUUamSK18dQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CA%2BbJJbzPYe4py-dnzoKEQ9_m_rvduTs_8BSThwWPUUamSK18dQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CA%2BbJJbzPYe4py-dnzoKEQ9_m_rvduTs_8BSThwWPUUamSK18dQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CA%2BbJJbzPYe4py-dnzoKEQ9_m_rvduTs_8BSThwWPUUamSK18dQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CA%2BbJJbzPYe4py-dnzoKEQ9_m_rvduTs_8BSThwWPUUamSK18dQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, 3 Apr 2022 at 16:50, Wong Simon &lt;thbytwo(at)live(dot)cn&gt; wrote:<br>&gt; If I run multiple instances on one server with local socket, how can I distinguish them?I think the port is need.</p>
+
+<p>You distinguish them by the socket NAME whose &quot;extension&quot; is the port<br>as a decimal string. The socket name is derived from the port option,<br>but it is not a port. It&#x27;s clearly specified:</p>
+
+<p>inet_server_addr () → inet<br>Returns the IP address on which the server accepted the current<br>connection, or NULL if the current connection is via a Unix-domain<br>socket.</p>
+
+<p>inet_server_port () → integer<br>Returns the IP port number on which the server accepted the current<br>connection, or NULL if the current connection is via a Unix-domain<br>socket.</p>
+
+<p>I do not know if there is  an &quot;unix_socket_path&quot; option, as there can<br>be multiple sockets, may be those functions predate<br>unix_socket_directories being multivalued ( in TCP, with a single<br>socket listening on 0.0.0.0, you can have connection on different<br>local address, so it getsockname(2) is needed more ).</p>
+
+<p>But if you just need to distinguish instance on diferent ports, query<br>the &quot;port&quot; configuration parameter, IIRC this is unique ( although may<br>be you can somehow reuse it with careful usage of listen_addresses and<br>unix_socket_directories ).</p>
+
+<p>Francisco Olarte.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwZy=KscPcsXbRsutx5AcAxJSYMjku_avuP=LmNoGAxpsA@mail.gmail.com"></a>
+<a name="c6a9e268c4eb4d3ff38bb1d1b14de5d3"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Francisco Olarte &lt;folarte(at)peoplecall(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Wong Simon &lt;thbytwo(at)live(dot)cn&gt;,  &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17454: Using psql without ipv4 address,the inet_server_port
+ do not return PORT.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-03 15:50:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwZy%3DKscPcsXbRsutx5AcAxJSYMjku_avuP%3DLmNoGAxpsA%40mail.gmail.com">CAKFQuwZy=KscPcsXbRsutx5AcAxJSYMjku_avuP=LmNoGAxpsA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwZy%3DKscPcsXbRsutx5AcAxJSYMjku_avuP%3DLmNoGAxpsA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwZy%3DKscPcsXbRsutx5AcAxJSYMjku_avuP%3DLmNoGAxpsA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwZy%3DKscPcsXbRsutx5AcAxJSYMjku_avuP%3DLmNoGAxpsA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwZy%3DKscPcsXbRsutx5AcAxJSYMjku_avuP%3DLmNoGAxpsA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Apr 3, 2022 at 8:36 AM Francisco Olarte &lt;folarte(at)peoplecall(dot)com&gt;<br>wrote:</p>
+
+<p>&gt; On Sun, 3 Apr 2022 at 16:50, Wong Simon &lt;thbytwo(at)live(dot)cn&gt; wrote:<br>&gt; &gt; If I run multiple instances on one server with local socket, how can I<br>&gt; distinguish them?I think the port is need.<br>&gt;<br>&gt; You distinguish them by the socket NAME whose &quot;extension&quot; is the port<br>&gt; as a decimal string. The socket name is derived from the port option,<br>&gt; but it is not a port. It&#x27;s clearly specified:<br>&gt;</p>
+
+<p>Resorting to string parsing is never desirable, nor is it necessary here.</p>
+
+<p>&gt;<br>&gt; But if you just need to distinguish instance on diferent ports, query<br>&gt; the &quot;port&quot; configuration parameter, IIRC this is unique ( although may<br>&gt; be you can somehow reuse it with careful usage of listen_addresses and<br>&gt; unix_socket_directories ).<br>&gt;<br>&gt;<br>Per the docs It is indeed single-valued.  I don&#x27;t know what &quot;reuse&quot; would<br>mean in this context but both sockets and IP have a specific usage of this<br>setting&#x27;s value that the DBA cannot alter.</p>
+
+<p>One could also inspect data_directory, it has the same &quot;unique per cluster<br>on the same machine&quot; property.</p>
+
+<p>The function inet_server_addr() can help to distinguish which machine if<br>there are multiple.  Though what &quot;local&quot; means may be a problem.  I suppose<br>what is useful depends on &quot;why&quot; one needs to distinguish them.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CA+bJJbxZ7H6e2YC5JkWGC7pW=SxgLj5BBrdF_=wgF4w0fo3fyQ@mail.gmail.com"></a>
+<a name="b4049ca96602dd01f7be3e3e73cbb92f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Francisco Olarte &lt;folarte(at)peoplecall(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Wong Simon &lt;thbytwo(at)live(dot)cn&gt;,  &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17454: Using psql without ipv4 address,the inet_server_port
+ do not return PORT.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-03 16:28:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CA%2BbJJbxZ7H6e2YC5JkWGC7pW%3DSxgLj5BBrdF_%3DwgF4w0fo3fyQ%40mail.gmail.com">CA+bJJbxZ7H6e2YC5JkWGC7pW=SxgLj5BBrdF_=wgF4w0fo3fyQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CA%2BbJJbxZ7H6e2YC5JkWGC7pW%3DSxgLj5BBrdF_%3DwgF4w0fo3fyQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CA%2BbJJbxZ7H6e2YC5JkWGC7pW%3DSxgLj5BBrdF_%3DwgF4w0fo3fyQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CA%2BbJJbxZ7H6e2YC5JkWGC7pW%3DSxgLj5BBrdF_%3DwgF4w0fo3fyQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CA%2BbJJbxZ7H6e2YC5JkWGC7pW%3DSxgLj5BBrdF_%3DwgF4w0fo3fyQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, 3 Apr 2022 at 17:50, David G. Johnston<br>&lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; wrote:<br>&gt; On Sun, Apr 3, 2022 at 8:36 AM Francisco Olarte &lt;folarte(at)peoplecall(dot)com&gt; wrote:<br>&gt;&gt;<br>&gt;&gt; On Sun, 3 Apr 2022 at 16:50, Wong Simon &lt;thbytwo(at)live(dot)cn&gt; wrote:<br>&gt;&gt; &gt; If I run multiple instances on one server with local socket, how can I distinguish them?I think the port is need.<br>&gt;&gt; You distinguish them by the socket NAME whose &quot;extension&quot; is the port<br>&gt;&gt; as a decimal string. The socket name is derived from the port option,<br>&gt;&gt; but it is not a port. It&#x27;s clearly specified:<br>&gt; Resorting to string parsing is never desirable, nor is it necessary here.</p>
+
+<p>Socket name seems not to be accessible, as let per a cursory look at<br>the docs, anyway, but I just looked for unix and for socket in the<br>index.<br>And as extension must be port, you are right, no info there.</p>
+
+<p>&gt;&gt; But if you just need to distinguish instance on diferent ports, query<br>&gt;&gt; the &quot;port&quot; configuration parameter, IIRC this is unique ( although may<br>&gt;&gt; be you can somehow reuse it with careful usage of listen_addresses and<br>&gt;&gt; unix_socket_directories ).</p>
+
+<p>&gt; Per the docs It is indeed single-valued.  I don&#x27;t know what &quot;reuse&quot; would mean in this context but both sockets and IP have a specific usage of this setting&#x27;s value that the DBA cannot alter.</p>
+
+<p>Port is single valued, what I meant is I&#x27;m not sure if using<br>socket_dir=/socka, listen_addr=127.0.0.1, data_dir=/dataA and<br>port=5432 plus socket_dir=/sockb, listen_addr=127.0.0.2,<br>data_dir=/datab and port=5432 would let you start two correctly<br>functioning instances in the same machine. In my usage postgres<br>normally behaves as expected, does not bother doing extra checks, just<br>listens where it is told to and hums along ( I know of some stupid<br>programs which, in a situation like this, have code to check if there<br>is another process listening in the same port, where there is no<br>transport address collision at all ).</p>
+
+<p>Francisco Olarte.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1646105.1649004154@sss.pgh.pa.us"></a>
+<a name="33bdf325210e8615f1ae22101dfa5dbc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Francisco Olarte &lt;folarte(at)peoplecall(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        Wong Simon &lt;thbytwo(at)live(dot)cn&gt;,
+        &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17454: Using psql without ipv4 address,the inet_server_port do not return PORT.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-04-03 16:42:34</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1646105.1649004154%40sss.pgh.pa.us">1646105.1649004154@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1646105.1649004154%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1646105.1649004154%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1646105.1649004154%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1646105.1649004154%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202204030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Francisco Olarte &lt;folarte(at)peoplecall(dot)com&gt; writes:<br>&gt;&gt; On Sun, 3 Apr 2022 at 16:50, Wong Simon &lt;thbytwo(at)live(dot)cn&gt; wrote:<br>&gt;&gt;&gt; If I run multiple instances on one server with local socket, how can I distinguish them?I think the port is need.</p>
+
+<p>&gt; Port is single valued, what I meant is I&#x27;m not sure if using<br>&gt; socket_dir=/socka, listen_addr=127.0.0.1, data_dir=/dataA and<br>&gt; port=5432 plus socket_dir=/sockb, listen_addr=127.0.0.2,<br>&gt; data_dir=/datab and port=5432 would let you start two correctly<br>&gt; functioning instances in the same machine.</p>
+
+<p>I think relying on port for this purpose is misguided anyway.<br>We&#x27;ve had requests in the past to let one postmaster listen on<br>multiple different port numbers; I think the only reason it&#x27;s<br>not happened yet is nobody got excited enough to write a patch.</p>
+
+<p>Likewise, inet_server_addr() seems a bit shaky as a server<br>identity value, since it&#x27;s already possible to have a postmaster<br>listening on multiple IP addresses.</p>
+
+<p>If you&#x27;re trying to identify an installation uniquely, the<br>machine name and data_directory are probably the best key.<br>Getting a suitably unique machine name might be tricky.<br>For localhost connections, though, you could ignore that.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,3 @@
+SELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM
+t0 t00) r, t
+WHERE t.id > CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;

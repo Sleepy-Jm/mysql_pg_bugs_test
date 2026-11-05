@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17339: Assert failed on attempt to detach a sequence concurrently</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17339-a9e09aaf38a3457a%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2021-12-19T06:00:02" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17339: Assert failed on attempt to detach a sequence concurrently" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="dff3842cb69acf91248c4c904ceb7a3e">BUG #17339: Assert failed on attempt to detach a sequence concurrently</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202112190600">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17339-a9e09aaf38a3457a@postgresql.org"></a>
+<a name="dff3842cb69acf91248c4c904ceb7a3e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17339: Assert failed on attempt to detach a sequence concurrently</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-19 06:00:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17339-a9e09aaf38a3457a%40postgresql.org">17339-a9e09aaf38a3457a@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17339-a9e09aaf38a3457a%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17339-a9e09aaf38a3457a%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17339-a9e09aaf38a3457a%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17339-a9e09aaf38a3457a%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17339<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   Ubuntu 20.04<br>Description:        </p>
+
+<p>The following query:<br>CREATE SEQUENCE seq;<br>CREATE TABLE range_parted(a int) PARTITION BY RANGE(a);<br>ALTER TABLE range_parted DETACH PARTITION seq CONCURRENTLY;</p>
+
+<p>Leads to a failed assertion with the following stacktrace:<br>Core was generated by `postgres: law regression [local] ALTER TABLE         <br>                        &#x27;.<br>Program terminated with signal SIGABRT, Aborted.<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>50      ../sysdeps/unix/sysv/linux/raise.c: No such file or directory.<br>(gdb) bt<br>#0  __GI_raise (sig=sig(at)entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50<br>#1  0x00007f270bc93859 in __GI_abort () at abort.c:79<br>#2  0x000056140a973f94 in ExceptionalCondition (<br>    conditionName=0x56140aaf2260 &quot;child_rel-&gt;rd_rel-&gt;relkind ==<br>RELKIND_RELATION || child_rel-&gt;rd_rel-&gt;relkind ==<br>RELKIND_PARTITIONED_TABLE&quot;, errorType=0x56140aaed143 &quot;FailedAssertion&quot;,<br>fileName=0x56140aaed6b7 &quot;tablecmds.c&quot;, <br>    lineNumber=14790) at assert.c:69<br>#3  0x000056140a4ed790 in MarkInheritDetached (child_rel=0x7f26fcb7f7d8,<br>parent_rel=0x7f26fcb7e658) at tablecmds.c:14790<br>#4  0x000056140a4f4e9f in ATExecDetachPartition (wqueue=0x7ffcb3947328,<br>tab=0x56140bc9d558, rel=0x7f26fcb7e658, <br>    name=0x56140bca1ed0, concurrent=true) at tablecmds.c:17785<br>#5  0x000056140a4d5cab in ATExecCmd (wqueue=0x7ffcb3947328,<br>tab=0x56140bc9d558, cmd=0x56140bc9ae18, lockmode=4, <br>    cur_pass=10, context=0x7ffcb3947520) at tablecmds.c:5134<br>#6  0x000056140a4d4bf1 in ATRewriteCatalogs (wqueue=0x7ffcb3947328,<br>lockmode=4, context=0x7ffcb3947520)<br>    at tablecmds.c:4792<br>#7  0x000056140a4d4030 in ATController (parsetree=0x56140bc79e20,<br>rel=0x7f26fcb7e658, cmds=0x56140bc79e58, <br>    recurse=true, lockmode=4, context=0x7ffcb3947520) at tablecmds.c:4388<br>#8  0x000056140a4d3c37 in AlterTable (stmt=0x56140bc79e20, lockmode=4,<br>context=0x7ffcb3947520) at tablecmds.c:4035<br>#9  0x000056140a7bac4a in ProcessUtilitySlow (pstate=0x56140bc9ab90,<br>pstmt=0x56140bc7a1c8, <br>    queryString=0x56140bc79280 &quot;ALTER TABLE range_parted DETACH PARTITION<br>seq CONCURRENTLY;&quot;, <br>    context=PROCESS_UTILITY_TOPLEVEL, params=0x0, queryEnv=0x0,<br>dest=0x56140bc7a2b8, qc=0x7ffcb3947b70)<br>    at utility.c:1317<br>#10 0x000056140a7ba4f1 in standard_ProcessUtility (pstmt=0x56140bc7a1c8, <br>    queryString=0x56140bc79280 &quot;ALTER TABLE range_parted DETACH PARTITION<br>seq CONCURRENTLY;&quot;, readOnlyTree=false, <br>    context=PROCESS_UTILITY_TOPLEVEL, params=0x0, queryEnv=0x0,<br>dest=0x56140bc7a2b8, qc=0x7ffcb3947b70)<br>    at utility.c:1066<br>#11 0x000056140a7b9461 in ProcessUtility (pstmt=0x56140bc7a1c8, <br>    queryString=0x56140bc79280 &quot;ALTER TABLE range_parted DETACH PARTITION<br>seq CONCURRENTLY;&quot;, readOnlyTree=false, <br>    context=PROCESS_UTILITY_TOPLEVEL, params=0x0, queryEnv=0x0,<br>dest=0x56140bc7a2b8, qc=0x7ffcb3947b70) at utility.c:527<br>#12 0x000056140a7b7d00 in PortalRunUtility (portal=0x56140bce8180,<br>pstmt=0x56140bc7a1c8, isTopLevel=true, <br>    setHoldSnapshot=false, dest=0x56140bc7a2b8, qc=0x7ffcb3947b70) at<br>pquery.c:1155<br>#13 0x000056140a7b7f8b in PortalRunMulti (portal=0x56140bce8180,<br>isTopLevel=true, setHoldSnapshot=false, <br>    dest=0x56140bc7a2b8, altdest=0x56140bc7a2b8, qc=0x7ffcb3947b70) at<br>pquery.c:1312<br>#14 0x000056140a7b73ba in PortalRun (portal=0x56140bce8180,<br>count=9223372036854775807, isTopLevel=true, run_once=true, <br>    dest=0x56140bc7a2b8, altdest=0x56140bc7a2b8, qc=0x7ffcb3947b70) at<br>pquery.c:788<br>#15 0x000056140a7b01f6 in exec_simple_query (<br>    query_string=0x56140bc79280 &quot;ALTER TABLE range_parted DETACH PARTITION<br>seq CONCURRENTLY;&quot;) at postgres.c:1214<br>#16 0x000056140a7b50e5 in PostgresMain (argc=1, argv=0x7ffcb3947d90,<br>dbname=0x56140bca53d8 &quot;regression&quot;, <br>    username=0x56140bca53b8 &quot;law&quot;) at postgres.c:4486<br>#17 0x000056140a6d9974 in BackendRun (port=0x56140bc9ccf0) at<br>postmaster.c:4530<br>#18 0x000056140a6d91cf in BackendStartup (port=0x56140bc9ccf0) at<br>postmaster.c:4252<br>#19 0x000056140a6d4fc4 in ServerLoop () at postmaster.c:1745<br>#20 0x000056140a6d4721 in PostmasterMain (argc=3, argv=0x56140bc73540) at<br>postmaster.c:1417<br>#21 0x000056140a5c3f0c in main (argc=3, argv=0x56140bc73540) at main.c:209</p>
+
+<p>without CONCURRENTLY I get:<br>ERROR:  relation &quot;seq&quot; is not a partition of relation &quot;range_parted&quot;<br>This error is also returned on a build without asserts.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YcB5K6/Mrh9X82lG@paquier.xyz"></a>
+<a name="fda0cdcffd1014b4453dd2a8f9231b6e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>exclusion(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17339: Assert failed on attempt to detach a sequence
+ concurrently</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-20 12:38:03</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YcB5K6/Mrh9X82lG%40paquier.xyz">YcB5K6/Mrh9X82lG@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YcB5K6/Mrh9X82lG%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YcB5K6/Mrh9X82lG%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YcB5K6/Mrh9X82lG%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YcB5K6/Mrh9X82lG%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, Dec 19, 2021 at 06:00:02AM +0000, PG Bug reporting form wrote:<br>&gt; CREATE SEQUENCE seq;<br>&gt; CREATE TABLE range_parted(a int) PARTITION BY RANGE(a);<br>&gt; ALTER TABLE range_parted DETACH PARTITION seq CONCURRENTLY;</p>
+
+<p>The same error happens additionally for views or materialized views.<br>Looking at the code, I think that we should just apply<br>ATSimplePermissions() on (ATT_TABLE | ATT_FOREIGN_TABLE) when<br>executing the detach command to check for the supported relkinds.<br>That would make the logic consistent with the attach code path that<br>does the same check on the partition attached, while generating an<br>error message already generic enough for this purpose.</p>
+
+<p>Attached is a patch, with some regression tests.<br>--<br>Michael<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/129161/partition-detach-assert.patch">partition-detach-assert.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>3.2 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="c19d2596-c525-1405-fe14-73bed9af6bde@enterprisedb.com"></a>
+<a name="8b618596e4b7cfb03437a995297183c4"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, exclusion(at)gmail(dot)com,
+ pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17339: Assert failed on attempt to detach a sequence
+ concurrently</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-20 20:57:47</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/c19d2596-c525-1405-fe14-73bed9af6bde%40enterprisedb.com">c19d2596-c525-1405-fe14-73bed9af6bde@enterprisedb.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/c19d2596-c525-1405-fe14-73bed9af6bde%40enterprisedb.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/c19d2596-c525-1405-fe14-73bed9af6bde%40enterprisedb.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/c19d2596-c525-1405-fe14-73bed9af6bde%40enterprisedb.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/c19d2596-c525-1405-fe14-73bed9af6bde%40enterprisedb.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On 20.12.21 13:38, Michael Paquier wrote:<br>&gt; On Sun, Dec 19, 2021 at 06:00:02AM +0000, PG Bug reporting form wrote:<br>&gt;&gt; CREATE SEQUENCE seq;<br>&gt;&gt; CREATE TABLE range_parted(a int) PARTITION BY RANGE(a);<br>&gt;&gt; ALTER TABLE range_parted DETACH PARTITION seq CONCURRENTLY;<br>&gt; <br>&gt; The same error happens additionally for views or materialized views.<br>&gt; Looking at the code, I think that we should just apply<br>&gt; ATSimplePermissions() on (ATT_TABLE | ATT_FOREIGN_TABLE) when<br>&gt; executing the detach command to check for the supported relkinds.<br>&gt; That would make the logic consistent with the attach code path that<br>&gt; does the same check on the partition attached, while generating an<br>&gt; error message already generic enough for this purpose.<br>&gt; <br>&gt; Attached is a patch, with some regression tests.</p>
+
+<p>Is it possible for child tables in partitioned tables to have different <br>ownerships?  Then this change would introduce a new failure mode.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YcEgMqPy3VkWmgiJ@paquier.xyz"></a>
+<a name="0eff559d73f1ab19ecf27f67cd3d6bf7"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Peter Eisentraut &lt;peter(dot)eisentraut(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17339: Assert failed on attempt to detach a sequence
+ concurrently</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-21 00:30:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YcEgMqPy3VkWmgiJ%40paquier.xyz">YcEgMqPy3VkWmgiJ@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YcEgMqPy3VkWmgiJ%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YcEgMqPy3VkWmgiJ%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YcEgMqPy3VkWmgiJ%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YcEgMqPy3VkWmgiJ%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Dec 20, 2021 at 09:57:47PM +0100, Peter Eisentraut wrote:<br>&gt; On 20.12.21 13:38, Michael Paquier wrote:<br>&gt;&gt; Attached is a patch, with some regression tests.<br>&gt; <br>&gt; Is it possible for child tables in partitioned tables to have different<br>&gt; ownerships?  Then this change would introduce a new failure mode.</p>
+
+<p>Hmm.  Yes, you are right here.  It is possible to change the ownership<br>of a partition after it gets attached, so this could cause a<br>regression.  I recalled that this was not possible, so my memories<br>were wrong.</p>
+
+<p>At the end, perhaps we should just remove the assertion that assumes<br>which relkind is right for the partition, as of:<br>--- a/src/backend/commands/tablecmds.c<br>+++ b/src/backend/commands/tablecmds.c<br>@@ -15013,8 +15013,6 @@ MarkInheritDetached(Relation child_rel,<br>Relation parent_rel)<br>    HeapTuple   inheritsTuple;<br>        bool        found = false;</p>
+
+<p>-   Assert(child_rel-&gt;rd_rel-&gt;relkind == RELKIND_RELATION ||<br>-          child_rel-&gt;rd_rel-&gt;relkind == RELKIND_PARTITIONED_TABLE);<br>    Assert(parent_rel-&gt;rd_rel-&gt;relkind == RELKIND_PARTITIONED_TABLE);</p>
+
+<p>This would also fail when attempting to detach a foreign table, as<br>well, and these are legal relkinds in a partition tree.  Once we do<br>that, we fall down into the same failure as for the non-concurrent<br>mode in RemoveInheritance(), telling that the relation is not a member<br>of the partition tree.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20211221.120322.916207154734438884.horikyota.ntt@gmail.com"></a>
+<a name="a40e32d8e8e3382b647615cd091ee39b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>michael(at)paquier(dot)xyz</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>peter(dot)eisentraut(at)enterprisedb(dot)com, exclusion(at)gmail(dot)com,
+ pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17339: Assert failed on attempt to detach a sequence
+ concurrently</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-21 03:03:22</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20211221.120322.916207154734438884.horikyota.ntt%40gmail.com">20211221.120322.916207154734438884.horikyota.ntt@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20211221.120322.916207154734438884.horikyota.ntt%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20211221.120322.916207154734438884.horikyota.ntt%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20211221.120322.916207154734438884.horikyota.ntt%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20211221.120322.916207154734438884.horikyota.ntt%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>At Tue, 21 Dec 2021 09:30:42 +0900, Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; wrote in <br>&gt; On Mon, Dec 20, 2021 at 09:57:47PM +0100, Peter Eisentraut wrote:<br>&gt; &gt; On 20.12.21 13:38, Michael Paquier wrote:<br>&gt; &gt;&gt; Attached is a patch, with some regression tests.<br>&gt; &gt; <br>&gt; &gt; Is it possible for child tables in partitioned tables to have different<br>&gt; &gt; ownerships?  Then this change would introduce a new failure mode.<br>&gt; <br>&gt; Hmm.  Yes, you are right here.  It is possible to change the ownership<br>&gt; of a partition after it gets attached, so this could cause a<br>&gt; regression.  I recalled that this was not possible, so my memories<br>&gt; were wrong.<br>&gt; <br>&gt; At the end, perhaps we should just remove the assertion that assumes<br>&gt; which relkind is right for the partition, as of:<br>&gt; --- a/src/backend/commands/tablecmds.c<br>&gt; +++ b/src/backend/commands/tablecmds.c<br>&gt; @@ -15013,8 +15013,6 @@ MarkInheritDetached(Relation child_rel,<br>&gt; Relation parent_rel)<br>&gt;     HeapTuple   inheritsTuple;<br>&gt;         bool        found = false;<br>&gt; <br>&gt; -   Assert(child_rel-&gt;rd_rel-&gt;relkind == RELKIND_RELATION ||<br>&gt; -          child_rel-&gt;rd_rel-&gt;relkind == RELKIND_PARTITIONED_TABLE);<br>&gt;     Assert(parent_rel-&gt;rd_rel-&gt;relkind == RELKIND_PARTITIONED_TABLE);<br>&gt; <br>&gt; This would also fail when attempting to detach a foreign table, as<br>&gt; well, and these are legal relkinds in a partition tree.  Once we do<br>&gt; that, we fall down into the same failure as for the non-concurrent<br>&gt; mode in RemoveInheritance(), telling that the relation is not a member<br>&gt; of the partition tree.</p>
+
+<p>I agree to the discussion above thus it seems to me right that we just<br>remove the assertion.  We never have a partition of un-attachable<br>relkind so such kind of relations are surely rejected just after. The<br>assertion on &quot;== RELKIND_PARTITIONED_TABLE&quot; is still valid since we<br>don&#x27;t reach there for the case of the traditional inheritance.</p>
+
+<p>regards.</p>
+
+<p>-- <br>Kyotaro Horiguchi<br>NTT Open Source Software Center</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="91a6d779-126b-734c-5f73-e9282a3405a5@gmail.com"></a>
+<a name="737ad651fa0e507c868aa17e0a163fae"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;, michael(at)paquier(dot)xyz</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>peter(dot)eisentraut(at)enterprisedb(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17339: Assert failed on attempt to detach a sequence
+ concurrently</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-21 04:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/91a6d779-126b-734c-5f73-e9282a3405a5%40gmail.com">91a6d779-126b-734c-5f73-e9282a3405a5@gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/91a6d779-126b-734c-5f73-e9282a3405a5%40gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/91a6d779-126b-734c-5f73-e9282a3405a5%40gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/91a6d779-126b-734c-5f73-e9282a3405a5%40gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/91a6d779-126b-734c-5f73-e9282a3405a5%40gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112210000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello Michael and Kyotaro-san,<br>21.12.2021 06:03, Kyotaro Horiguchi wrote:<br>&gt;&gt; This would also fail when attempting to detach a foreign table, as<br>&gt;&gt; well, and these are legal relkinds in a partition tree.  Once we do<br>&gt;&gt; that, we fall down into the same failure as for the non-concurrent<br>&gt;&gt; mode in RemoveInheritance(), telling that the relation is not a member<br>&gt;&gt; of the partition tree.<br>&gt; I agree to the discussion above thus it seems to me right that we just<br>&gt; remove the assertion.  We never have a partition of un-attachable<br>&gt; relkind so such kind of relations are surely rejected just after. The<br>&gt; assertion on &quot;== RELKIND_PARTITIONED_TABLE&quot; is still valid since we<br>&gt; don&#x27;t reach there for the case of the traditional inheritance.<br>&gt;<br>&gt;<br>As detaching a foreign table is a valid scenario (not covered before),<br>maybe it&#x27;s worth to exercise it as following:</p>
+
+<p>--- a/contrib/postgres_fdw/sql/postgres_fdw.sql<br>+++ b/contrib/postgres_fdw/sql/postgres_fdw.sql<br>@@ -1490,6 +1490,8 @@ CREATE FOREIGN TABLE foreign_tbl (a int, b int)<br> <br> CREATE TABLE parent_tbl (a int, b int) PARTITION BY RANGE(a);<br> ALTER TABLE parent_tbl ATTACH PARTITION foreign_tbl FOR VALUES FROM (0)<br>TO (100);<br>+ALTER TABLE parent_tbl DETACH PARTITION foreign_tbl CONCURRENTLY;<br>+ALTER TABLE parent_tbl ATTACH PARTITION foreign_tbl FOR VALUES FROM (0)<br>TO (100);<br> <br> CREATE VIEW rw_view AS SELECT * FROM parent_tbl<br>   WHERE a &lt; b WITH CHECK OPTION;</p>
+
+<p>Thanks!</p>
+
+<p>Best regards,<br>Alexander</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="YcLMh+Uhw9nVKmKE@paquier.xyz"></a>
+<a name="2fdc1f43920b3e3e3f457490a64cc555"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Alexander Lakhin &lt;exclusion(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Kyotaro Horiguchi &lt;horikyota(dot)ntt(at)gmail(dot)com&gt;, peter(dot)eisentraut(at)enterprisedb(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17339: Assert failed on attempt to detach a sequence
+ concurrently</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2021-12-22 06:58:15</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/YcLMh%2BUhw9nVKmKE%40paquier.xyz">YcLMh+Uhw9nVKmKE@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/YcLMh%2BUhw9nVKmKE%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/YcLMh%2BUhw9nVKmKE%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/YcLMh%2BUhw9nVKmKE%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/YcLMh%2BUhw9nVKmKE%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202112220000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Dec 21, 2021 at 07:00:00AM +0300, Alexander Lakhin wrote:<br>&gt; As detaching a foreign table is a valid scenario (not covered before),<br>&gt; maybe it&#x27;s worth to exercise it as following:</p>
+
+<p>Yeah, I was going to add something in the main regression test suite<br>as of foreign_data.sql, but the detached partitions are used with<br>constraint checks so that was a bit confusing.  What you are<br>suggesting is fine by me, so I have included these and pushed a fix<br>for the issue.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

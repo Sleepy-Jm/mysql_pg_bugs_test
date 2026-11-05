@@ -1,0 +1,69 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17462
+Logged by:          Daniil Anisimov
+Email address:      anisimow(dot)d(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Ubuntu 20.04.4 LTS
+Description:        
+
+
+When running parallel queries using pgbench with valgrind-enabled server:
+pgbench -i -s 1
+pgbench -t 1000 -c 10 -j 10
+
+
+I get:
+==00:00:03:09.642 456530== Invalid read of size 2
+==00:00:03:09.642 456530==    at 0x23820E: heapam_tuple_lock
+(heapam_handler.c:509)
+==00:00:03:09.642 456530==    by 0x41B07F: table_tuple_lock
+(tableam.h:1554)
+==00:00:03:09.642 456530==    by 0x41B07F: ExecUpdate
+(nodeModifyTable.c:1851)
+==00:00:03:09.642 456530==    by 0x41C7DA: ExecModifyTable
+(nodeModifyTable.c:2594)
+==00:00:03:09.642 456530==    by 0x3EF0AE: ExecProcNodeFirst
+(execProcnode.c:463)
+==00:00:03:09.642 456530==    by 0x3E7278: ExecProcNode (executor.h:257)
+==00:00:03:09.642 456530==    by 0x3E7278: ExecutePlan (execMain.c:1551)
+==00:00:03:09.642 456530==    by 0x3E7E90: standard_ExecutorRun
+(execMain.c:361)
+==00:00:03:09.642 456530==    by 0x3E7F5E: ExecutorRun (execMain.c:305)
+==00:00:03:09.642 456530==    by 0x5A7CAD: ProcessQuery (pquery.c:160)
+==00:00:03:09.642 456530==    by 0x5A888B: PortalRunMulti (pquery.c:1274)
+==00:00:03:09.642 456530==    by 0x5A8E3C: PortalRun (pquery.c:788)
+==00:00:03:09.642 456530==    by 0x5A5029: exec_simple_query
+(postgres.c:1214)
+==00:00:03:09.642 456530==    by 0x5A6FEF: PostgresMain (postgres.c:4496)
+==00:00:03:09.642 456530==  Address 0x6ea7f74 is in a rw- anonymous
+segment
+==00:00:03:09.642 456530==
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr2
+   fun:heapam_tuple_lock
+   fun:table_tuple_lock
+   fun:ExecUpdate
+   fun:ExecModifyTable
+   fun:ExecProcNodeFirst
+   fun:ExecProcNode
+   fun:ExecutePlan
+   fun:standard_ExecutorRun
+   fun:ExecutorRun
+   fun:ProcessQuery
+   fun:PortalRunMulti
+   fun:PortalRun
+   fun:exec_simple_query
+   fun:PostgresMain
+}
+==00:00:03:09.642 456530==
+==00:00:03:09.642 456530== Exit program on first error
+(--exit-on-first-error=yes)
+
+
+This starts happening at commit 1e0dfd166b3fa7fc79e4fad73b6fae056bab598a
+
+
+

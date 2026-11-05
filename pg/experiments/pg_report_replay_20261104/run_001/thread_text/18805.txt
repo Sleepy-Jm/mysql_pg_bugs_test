@@ -1,0 +1,156 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18805
+Logged by:          weijie JL
+Email address:      weijie1006jl(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Rocky Linux release 8.10 (Green Obsidian)
+Description:        
+
+
+Executing a specific SQL query in the database consistently results in a
+"signal 11: Segmentation fault" error, and other connections report the
+error: FATAL: 57P03: the database system is in recovery mode.
+
+
+When the error occurs, the system log shows: kernel: XFS (dm-2): Corruption
+of in-memory data (0x8) detected at xfs_trans_cancel+0xc6/0x130 [xfs]
+(fs/xfs/xfs_trans.c:958). Shutting down filesystem. This indicates in-memory
+data corruption in the XFS system, and the issue appears after this error.
+
+
+We conducted the following tests:
+
+
+Yesterday, we restored a backup using pgBackRest to another instance and
+configured streaming replication. Initially, the issue did not reoccur, and
+we switched to using this instance as the primary database. Since the
+business team had adjusted the SQL, everything worked fine. However, when we
+tested the problematic SQL again today, the issue reappeared.
+On the problematic virtual machine, we tried restarting, reinstalling the
+database software, and repairing the filesystem with xfs_repair, but the
+issue persisted.
+We moved the pgdata directory to a new disk space, but the issue still
+persisted after starting the database.
+We reinstalled the PostgreSQL software, but the issue persisted.
+We uploaded the PostgreSQL source code to a test environment for debugging
+and eventually identified that the issue was caused by the
+enable_partitionwise_join parameter. Disabling the enable_partitionwise_join
+parameter in the database prevented the issue from recurring.
+
+
+
+
+
+### MESSAGE 1
+On Wed, 2025-02-12 at 03:53 +0000, PG Bug reporting form wrote:
+> Executing a specific SQL query in the database consistently results in a
+> "signal 11: Segmentation fault" error, and other connections report the
+> error: FATAL: 57P03: the database system is in recovery mode.
+> 
+> When the error occurs, the system log shows: kernel: XFS (dm-2): Corruption
+> of in-memory data (0x8) detected at xfs_trans_cancel+0xc6/0x130 [xfs]
+> (fs/xfs/xfs_trans.c:958). Shutting down filesystem. This indicates in-memory
+> data corruption in the XFS system, and the issue appears after this error.
+
+
+That sounds like a hardware problem that leads to data corruption.
+
+
+Check your memory.
+
+
+Restore your last good backup.
+
+
+Yours,
+Laurenz Albe
+
+
+-- 
+
+
+*E-Mail Disclaimer*
+Der Inhalt dieser E-Mail ist ausschliesslich fuer den 
+bezeichneten Adressaten bestimmt. Wenn Sie nicht der vorgesehene Adressat 
+dieser E-Mail oder dessen Vertreter sein sollten, so beachten Sie bitte, 
+dass jede Form der Kenntnisnahme, Veroeffentlichung, Vervielfaeltigung oder 
+Weitergabe des Inhalts dieser E-Mail unzulaessig ist. Wir bitten Sie, sich 
+in diesem Fall mit dem Absender der E-Mail in Verbindung zu setzen.
+
+
+*CONFIDENTIALITY NOTICE & DISCLAIMER
+*This message and any attachment are 
+confidential and may be privileged or otherwise protected from disclosure 
+and solely for the use of the person(s) or entity to whom it is intended. 
+If you have received this message in error and are not the intended 
+recipient, please notify the sender immediately and delete this message and 
+any attachment from your system. If you are not the intended recipient, be 
+advised that any use of this message is prohibited and may be unlawful, and 
+you must not copy this message or attachment or disclose the contents to 
+any other person.
+
+
+
+
+
+### MESSAGE 2
+It is the same project scenario as the issue below ( BUG 18806）.
+
+
+https://www.postgresql.org/message-id/18806-d70b0c9fdf63dcbf%40postgresql.org￼
+BUG #18806: When enable_rartitionwise_join is set to ON, the database shuts down abnormally
+postgresql.org
+
+
+> 下面是被转发的邮件：
+> 
+> 发件人: Laurenz Albe <laurenz(dot)albe(at)cybertec(dot)at>
+> 主题: 回复：BUG #18805: A specific query on a hash partitioned table always causes a "signal 11: Segmentation fault" error.
+> 日期: 2025年2月12日 GMT+8 15:40:01
+> 收件人: weijie1006jl(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org
+> 
+> On Wed, 2025-02-12 at 03:53 +0000, PG Bug reporting form wrote:
+>> Executing a specific SQL query in the database consistently results in a
+>> "signal 11: Segmentation fault" error, and other connections report the
+>> error: FATAL: 57P03: the database system is in recovery mode.
+>> 
+>> When the error occurs, the system log shows: kernel: XFS (dm-2): Corruption
+>> of in-memory data (0x8) detected at xfs_trans_cancel+0xc6/0x130 [xfs]
+>> (fs/xfs/xfs_trans.c:958). Shutting down filesystem. This indicates in-memory
+>> data corruption in the XFS system, and the issue appears after this error.
+> 
+> That sounds like a hardware problem that leads to data corruption.
+> 
+> Check your memory.
+> 
+> Restore your last good backup.
+> 
+> Yours,
+> Laurenz Albe
+> 
+> -- 
+> 
+> *E-Mail Disclaimer*
+> Der Inhalt dieser E-Mail ist ausschliesslich fuer den 
+> bezeichneten Adressaten bestimmt. Wenn Sie nicht der vorgesehene Adressat 
+> dieser E-Mail oder dessen Vertreter sein sollten, so beachten Sie bitte, 
+> dass jede Form der Kenntnisnahme, Veroeffentlichung, Vervielfaeltigung oder 
+> Weitergabe des Inhalts dieser E-Mail unzulaessig ist. Wir bitten Sie, sich 
+> in diesem Fall mit dem Absender der E-Mail in Verbindung zu setzen.
+> 
+> *CONFIDENTIALITY NOTICE & DISCLAIMER
+> *This message and any attachment are 
+> confidential and may be privileged or otherwise protected from disclosure 
+> and solely for the use of the person(s) or entity to whom it is intended. 
+> If you have received this message in error and are not the intended 
+> recipient, please notify the sender immediately and delete this message and 
+> any attachment from your system. If you are not the intended recipient, be 
+> advised that any use of this message is prohibited and may be unlawful, and 
+> you must not copy this message or attachment or disclose the contents to 
+> any other person.
+
+
+

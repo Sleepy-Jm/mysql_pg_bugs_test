@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17537: Dynamically updating statement_timeout not affect the insert query right now.</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17537-9c5b29383602bca0%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-07-03T05:24:10" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17537: Dynamically updating statement_timeout not affect the insert query right now." />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="45563d7ffb575a4b39ee04f86f6f86c4">BUG #17537: Dynamically updating statement_timeout not affect the insert query right now.</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202207030524">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17537-9c5b29383602bca0@postgresql.org"></a>
+<a name="45563d7ffb575a4b39ee04f86f6f86c4"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>teng_wang13(at)163(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17537: Dynamically updating statement_timeout not affect the insert query right now.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-03 05:24:10</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17537-9c5b29383602bca0%40postgresql.org">17537-9c5b29383602bca0@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17537-9c5b29383602bca0%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17537-9c5b29383602bca0%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17537-9c5b29383602bca0%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17537-9c5b29383602bca0%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17537<br>Logged by:          Parachute Parachute<br>Email address:      teng_wang13(at)163(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Ubuntu 18.04<br>Description:        </p>
+
+<p>As per the manual,<br>statement_timeout (integer)<br>Abort any statement that takes more than the specified amount of time. A<br>value of zero (the default) disables the timeout. The timeout is measured<br>from the time a command arrives at the server until it is completed by the<br>server.<br><a href="https://www.postgresql.org/docs/14/runtime-config-client.html" rel="nofollow">https://www.postgresql.org/docs/14/runtime-config-client.html</a></p>
+
+<p>However, dynamically updating statement_timeout did not affect the insert<br>query right now.<br>I start up Postgres with statement_timeout set 0, which means disabling the<br>timeout. Then I insert 100000000 rows into a table, which finally takes<br>166498.487ms. During the insert operation, I consider the operation would<br>takes too much time. So I update statement_timeout to 10s in<br>postgresql.conf, and &quot;select pg_reload_conf();&quot; in another session to reload<br>configuration files.</p>
+
+<p>I saw the logs showing the parameter was updated:<br>2022-07-03  [4229] LOG:  received SIGHUP, reloading configuration files<br>2022-07-03  [4229] LOG:  parameter &quot;statement_timeout&quot; changed to &quot;1000&quot;</p>
+
+<p>However, the insert query did not been cancelled, and finally toke about<br>166s. I think that updating the timeout parameter should also affect the<br>operation in progress. Because an operation may sometimes take too long, but<br>it is not safe to interrupt it abruptly.</p>
+
+<p>The scenario:</p>
+
+<p>postgres=# show statement_timeout;<br> statement_timeout <br>-------------------<br> 0<br>(1 row)</p>
+
+<p>postgres=# insert into tbl_test select<br>generate_series(1,100000000),md5(random()::text),clock_timestamp();</p>
+
+<p>2022-07-03 03:25:10.470 UTC [4229] LOG:  received SIGHUP, reloading<br>configuration files<br>2022-07-03 03:25:10.471 UTC [4229] LOG:  parameter &quot;statement_timeout&quot;<br>changed to &quot;1000&quot;<br>INSERT 0 100000000<br>Time: 166498.487 ms (02:46.498)</p>
+
+<p>In another session:(to update parameter &quot;statement_timeout&quot;)<br>postgres=# select pg_reload_conf();<br> pg_reload_conf <br>----------------<br> t<br>(1 row)</p>
+
+<p>postgres=# show statement_timeout;<br> statement_timeout <br>-------------------<br> 10s<br>(1 row)</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1216663.1656860480@sss.pgh.pa.us"></a>
+<a name="35d165e9a54fc185aa1b64af157c1307"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>teng_wang13(at)163(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17537: Dynamically updating statement_timeout not affect the insert query right now.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-03 15:01:20</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1216663.1656860480%40sss.pgh.pa.us">1216663.1656860480@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1216663.1656860480%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1216663.1656860480%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1216663.1656860480%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1216663.1656860480%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; However, dynamically updating statement_timeout did not affect the insert<br>&gt; query right now.<br>&gt; I start up Postgres with statement_timeout set 0, which means disabling the<br>&gt; timeout. Then I insert 100000000 rows into a table, which finally takes<br>&gt; 166498.487ms. During the insert operation, I consider the operation would<br>&gt; takes too much time. So I update statement_timeout to 10s in<br>&gt; postgresql.conf, and &quot;select pg_reload_conf();&quot; in another session to reload<br>&gt; configuration files.</p>
+
+<p>This is not a bug.  Active sessions absorb new values from postgresql.conf<br>only when idle, not instantaneously mid-query (and I&#x27;m pretty sure that is<br>documented, though I&#x27;m too lazy to search the docs right now).  I think<br>trying to do the latter would break far more scenarios than it would<br>improve.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwbqosK8cU-aUDdqTSq05wPxq9iravv9CyAfeT-vH5pHGw@mail.gmail.com"></a>
+<a name="f59aa6edfe24988b94923c04cd3eec2b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;teng_wang13(at)163(dot)com&quot; &lt;teng_wang13(at)163(dot)com&gt;,  &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17537: Dynamically updating statement_timeout not affect the
+ insert query right now.</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-07-03 15:09:44</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwbqosK8cU-aUDdqTSq05wPxq9iravv9CyAfeT-vH5pHGw%40mail.gmail.com">CAKFQuwbqosK8cU-aUDdqTSq05wPxq9iravv9CyAfeT-vH5pHGw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwbqosK8cU-aUDdqTSq05wPxq9iravv9CyAfeT-vH5pHGw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwbqosK8cU-aUDdqTSq05wPxq9iravv9CyAfeT-vH5pHGw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwbqosK8cU-aUDdqTSq05wPxq9iravv9CyAfeT-vH5pHGw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwbqosK8cU-aUDdqTSq05wPxq9iravv9CyAfeT-vH5pHGw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202207030000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Saturday, July 2, 2022, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;<br>wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17537<br>&gt; Logged by:          Parachute Parachute<br>&gt; Email address:      teng_wang13(at)163(dot)com<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   Ubuntu 18.04<br>&gt; Description:<br>&gt;<br>&gt; As per the manual,<br>&gt; statement_timeout (integer)<br>&gt; Abort any statement that takes more than the specified amount of time. A<br>&gt; value of zero (the default) disables the timeout. The timeout is measured<br>&gt; from the time a command arrives at the server until it is completed by the<br>&gt; server.<br>&gt; <a href="https://www.postgresql.org/docs/14/runtime-config-client.html" rel="nofollow">https://www.postgresql.org/docs/14/runtime-config-client.html</a><br>&gt;<br>&gt; However, dynamically updating statement_timeout did not affect the insert<br>&gt; query right now.<br>&gt; I start up Postgres with statement_timeout set 0, which means disabling the<br>&gt; timeout. Then I insert 100000000 rows into a table, which finally takes<br>&gt; 166498.487ms. During the insert operation, I consider the operation would<br>&gt; takes too much time. So I update statement_timeout to 10s in<br>&gt; postgresql.conf, and &quot;select pg_reload_conf();&quot; in another session to<br>&gt; reload<br>&gt; configuration files.<br>&gt;<br>&gt; I saw the logs showing the parameter was updated:<br>&gt; 2022-07-03  [4229] LOG:  received SIGHUP, reloading configuration files<br>&gt; 2022-07-03  [4229] LOG:  parameter &quot;statement_timeout&quot; changed to &quot;1000&quot;<br>&gt;<br>&gt; However, the insert query did not been cancelled, and finally toke about<br>&gt; 166s. I think that updating the timeout parameter should also affect the<br>&gt; operation in progress. Because an operation may sometimes take too long,<br>&gt; but<br>&gt; it is not safe to interrupt it abruptly.<br>&gt;</p>
+
+<p>Not a bug.</p>
+
+<p>Per the documentation:</p>
+
+<p>“The configuration file is reread whenever the main server process receives<br>a SIGHUP signal; this signal is most easily sent by running pg_ctl reload from<br>the command line or by calling the SQL function pg_reload_conf(). The main<br>server process also propagates this signal to all currently running server<br>processes, so that existing sessions also adopt the new values (this will<br>happen after they complete any currently-executing client command).”</p>
+
+<p>Note the parenthetical.</p>
+
+<p>If you want to cancel a running query you can do so directly<br>(pg_cancel_backend function) changing a server default to do so makes no<br>sense.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

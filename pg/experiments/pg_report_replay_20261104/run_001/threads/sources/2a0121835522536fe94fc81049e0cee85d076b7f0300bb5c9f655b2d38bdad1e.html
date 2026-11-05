@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17428: last_value incorrect for uninitialized sequence</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17428-848dee31a3b899ab%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-03-07T00:31:33" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17428: last_value incorrect for uninitialized sequence" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="6ab300e71eb82f18ab5b7d379479e9c2">BUG #17428: last_value incorrect for uninitialized sequence</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202203070031">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17428-848dee31a3b899ab@postgresql.org"></a>
+<a name="6ab300e71eb82f18ab5b7d379479e9c2"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>glen(dot)edmonds(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17428: last_value incorrect for uninitialized sequence</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-07 00:31:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17428-848dee31a3b899ab%40postgresql.org">17428-848dee31a3b899ab@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17428-848dee31a3b899ab%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17428-848dee31a3b899ab%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17428-848dee31a3b899ab%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17428-848dee31a3b899ab%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17428<br>Logged by:          Glen Edmonds<br>Email address:      glen(dot)edmonds(at)gmail(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   MacOS Monterey 12.2.1<br>Description:        </p>
+
+<p>For a freshly defined sequence, the following:</p>
+
+<p>select last_value from mytable_id_seq</p>
+
+<p>should return 0, but returns 1.</p>
+
+<p>Reasoning: In every case except the uninitialised case, last_value is the<br>same as the current value of the sequence, which is the same as the number<br>of rows in the table (assuming no deletions). Logically, if there are no<br>rows in the table, last_value should return 0 to be consistent.</p>
+
+<p>To reproduce:</p>
+
+<p>create table mytable (<br>    id serial,<br>    other int<br>);<br>select (select count(*) from mytable), last_value from mytable_id_seq; -- 0,<br>1<br>insert into mytable (other) values (0);<br>select (select count(*) from mytable), last_value from mytable_id_seq; -- 1,<br>1<br>insert into mytable (other) values (0);<br>select (select count(*) from mytable), last_value from mytable_id_seq; -- 2,<br>2<br>insert into mytable (other) values (0);<br>select (select count(*) from mytable), last_value from mytable_id_seq; -- 3,<br>3<br>-- etc</p>
+
+<p>As you can see, only the first row returns different results for the same<br>expression.</p>
+
+<p>This isn&#x27;t just theoretical. I was writing some DB units tests and this<br>caused my code to break, but was also a surprise.<br>IMHO this is a bug.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwaZ06rmQQsdZh3zQoeTby7=Yu0Pp=z5ts+5iGo80-EXyw@mail.gmail.com"></a>
+<a name="26ed9c00f2dc273e4c96618ad8fab8fb"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>glen(dot)edmonds(at)gmail(dot)com,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17428: last_value incorrect for uninitialized sequence</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-07 13:35:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwaZ06rmQQsdZh3zQoeTby7%3DYu0Pp%3Dz5ts%2B5iGo80-EXyw%40mail.gmail.com">CAKFQuwaZ06rmQQsdZh3zQoeTby7=Yu0Pp=z5ts+5iGo80-EXyw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwaZ06rmQQsdZh3zQoeTby7%3DYu0Pp%3Dz5ts%2B5iGo80-EXyw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwaZ06rmQQsdZh3zQoeTby7%3DYu0Pp%3Dz5ts%2B5iGo80-EXyw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwaZ06rmQQsdZh3zQoeTby7%3DYu0Pp%3Dz5ts%2B5iGo80-EXyw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwaZ06rmQQsdZh3zQoeTby7%3DYu0Pp%3Dz5ts%2B5iGo80-EXyw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Mar 7, 2022 at 12:15 AM PG Bug reporting form &lt;<br>noreply(at)postgresql(dot)org&gt; wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17428<br>&gt; Logged by:          Glen Edmonds<br>&gt; Email address:      glen(dot)edmonds(at)gmail(dot)com<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   MacOS Monterey 12.2.1<br>&gt; Description:<br>&gt;<br>&gt; For a freshly defined sequence, the following:<br>&gt;<br>&gt; select last_value from mytable_id_seq<br>&gt;<br>&gt; should return 0, but returns 1.<br>&gt;</p>
+
+<p>One seems as good a choice as zero if a non-null value is to be returned.</p>
+
+<p>&quot;Also, last_value will reflect the latest value reserved by any session,<br>whether or not it has yet been returned by nextval.&quot;</p>
+
+<p>I don&#x27;t understand how last_value can return anything if nextval hasn&#x27;t<br>been called at least one.  So if there is a bug here it&#x27;s that the value<br>one is returned instead of null.</p>
+
+<p>Zero is a valid value for the sequence, just change the start value for a<br>newly created sequence to zero.</p>
+
+<p>&gt;<br>&gt; Reasoning: In every case except the uninitialised case, last_value is the<br>&gt; same as the current value of the sequence,</p>
+
+<p>which is the same as the number<br>&gt; of rows in the table (assuming no deletions).</p>
+
+<p>This point doesn&#x27;t seem relevant.  That isn&#x27;t what the value represents so<br>basing the premise of a bug report on it is wrong.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="189261.1646664485@sss.pgh.pa.us"></a>
+<a name="ac50ecb7de1e31e9e0043491ff3705b5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>glen(dot)edmonds(at)gmail(dot)com,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17428: last_value incorrect for uninitialized sequence</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-07 14:48:05</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/189261.1646664485%40sss.pgh.pa.us">189261.1646664485@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/189261.1646664485%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/189261.1646664485%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/189261.1646664485%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/189261.1646664485%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; On Mon, Mar 7, 2022 at 12:15 AM PG Bug reporting form &lt;<br>&gt; noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;&gt; For a freshly defined sequence, the following:<br>&gt;&gt; select last_value from mytable_id_seq<br>&gt;&gt; should return 0, but returns 1.</p>
+
+<p>&gt; One seems as good a choice as zero if a non-null value is to be returned.</p>
+
+<p>The larger point here is that any change is much more likely to<br>break applications expecting the historical behavior than it is<br>to make anyone&#x27;s life better.  In a green field I&#x27;d tend to<br>agree that returning NULL (and dispensing with is_called) would<br>be a better design, but that opportunity was missed decades ago.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CALqkxFMZ2LuM1YYNL6CTSqPz4Zxw+i9OvKYkMMnyLG7LmoPs0Q@mail.gmail.com"></a>
+<a name="2f21a5f62f949fd57673526d62421ad6"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Glen Edmonds &lt;glen(dot)edmonds(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17428: last_value incorrect for uninitialized sequence</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-07 15:14:44</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CALqkxFMZ2LuM1YYNL6CTSqPz4Zxw%2Bi9OvKYkMMnyLG7LmoPs0Q%40mail.gmail.com">CALqkxFMZ2LuM1YYNL6CTSqPz4Zxw+i9OvKYkMMnyLG7LmoPs0Q@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CALqkxFMZ2LuM1YYNL6CTSqPz4Zxw%2Bi9OvKYkMMnyLG7LmoPs0Q%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CALqkxFMZ2LuM1YYNL6CTSqPz4Zxw%2Bi9OvKYkMMnyLG7LmoPs0Q%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CALqkxFMZ2LuM1YYNL6CTSqPz4Zxw%2Bi9OvKYkMMnyLG7LmoPs0Q%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CALqkxFMZ2LuM1YYNL6CTSqPz4Zxw%2Bi9OvKYkMMnyLG7LmoPs0Q%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>David, Tom,</p>
+
+<p>The problem really is that the two states of not initialized and post first<br>usage are indistinguishable (both return 1), but the sequence next value is<br>different. ie it’s a reasonable expectation that the next value is<br>last_value + 1. IMHO violating this makes it a bug. Further, this situation<br>means there’s no query that can be run on the sequence that can determine<br>if the next value is 1 or 2.</p>
+
+<p>As for existing code relying of current behaviour, given that current<br>behaviour can’t be relied upon to predict the next value, I don’t think<br>it’s possible for any usage to rely on 1 being returned when uninitialized.</p>
+
+<p>I agree though that returning null is a better choice for uninitialized<br>sequences than returning 0.</p>
+
+<p>This whole line of enquiry came about because currval(&#x27;mytable_id_seq&#x27;)<br>explodes when called on an uninitialized sequence (another surprise - I was<br>expecting null); how about fixing that too? If that was fixed is would<br>provide a work around for the lack of distinction between the two states of<br>next value being 1 and next value being 2.</p>
+
+<p>Regards,<br>Glen</p>
+
+<p>On Tue, 8 Mar 2022 at 1:48 am, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; &quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; &gt; On Mon, Mar 7, 2022 at 12:15 AM PG Bug reporting form &lt;<br>&gt; &gt; noreply(at)postgresql(dot)org&gt; wrote:<br>&gt; &gt;&gt; For a freshly defined sequence, the following:<br>&gt; &gt;&gt; select last_value from mytable_id_seq<br>&gt; &gt;&gt; should return 0, but returns 1.<br>&gt;<br>&gt; &gt; One seems as good a choice as zero if a non-null value is to be returned.<br>&gt;<br>&gt; The larger point here is that any change is much more likely to<br>&gt; break applications expecting the historical behavior than it is<br>&gt; to make anyone&#x27;s life better.  In a green field I&#x27;d tend to<br>&gt; agree that returning NULL (and dispensing with is_called) would<br>&gt; be a better design, but that opportunity was missed decades ago.<br>&gt;<br>&gt;                         regards, tom lane<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="192171.1646666622@sss.pgh.pa.us"></a>
+<a name="cb840da8747793bd1df038d3e8f44481"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Glen Edmonds &lt;glen(dot)edmonds(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;,
+        PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17428: last_value incorrect for uninitialized sequence</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-07 15:23:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/192171.1646666622%40sss.pgh.pa.us">192171.1646666622@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/192171.1646666622%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/192171.1646666622%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/192171.1646666622%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/192171.1646666622%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Glen Edmonds &lt;glen(dot)edmonds(at)gmail(dot)com&gt; writes:<br>&gt; The problem really is that the two states of not initialized and post first<br>&gt; usage are indistinguishable (both return 1), but the sequence next value is<br>&gt; different.</p>
+
+<p>They&#x27;re not indistinguishable: if you look at the is_called flag<br>you&#x27;ll see that it changes.</p>
+
+<p>&gt; ie it’s a reasonable expectation that the next value is<br>&gt; last_value + 1. IMHO violating this makes it a bug.</p>
+
+<p>You can call it that if you like, but it&#x27;s operating as designed<br>and documented.  I fear it&#x27;s about twenty years too late to propose<br>a redesign.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwZrRHHxf8UzP+QCE+TSAeuVTytQ8W5oOJrvtLvpdtZt7w@mail.gmail.com"></a>
+<a name="29c57017db8fa83b831d10e975e73b32"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Glen Edmonds &lt;glen(dot)edmonds(at)gmail(dot)com&gt;,  PostgreSQL mailing lists &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17428: last_value incorrect for uninitialized sequence</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-07 15:40:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwZrRHHxf8UzP%2BQCE%2BTSAeuVTytQ8W5oOJrvtLvpdtZt7w%40mail.gmail.com">CAKFQuwZrRHHxf8UzP+QCE+TSAeuVTytQ8W5oOJrvtLvpdtZt7w@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwZrRHHxf8UzP%2BQCE%2BTSAeuVTytQ8W5oOJrvtLvpdtZt7w%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwZrRHHxf8UzP%2BQCE%2BTSAeuVTytQ8W5oOJrvtLvpdtZt7w%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwZrRHHxf8UzP%2BQCE%2BTSAeuVTytQ8W5oOJrvtLvpdtZt7w%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwZrRHHxf8UzP%2BQCE%2BTSAeuVTytQ8W5oOJrvtLvpdtZt7w%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Mar 7, 2022 at 8:23 AM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; Glen Edmonds &lt;glen(dot)edmonds(at)gmail(dot)com&gt; writes:<br>&gt; &gt; The problem really is that the two states of not initialized and post<br>&gt; first<br>&gt; &gt; usage are indistinguishable (both return 1), but the sequence next value<br>&gt; is<br>&gt; &gt; different.<br>&gt;<br>&gt; They&#x27;re not indistinguishable: if you look at the is_called flag<br>&gt; you&#x27;ll see that it changes.<br>&gt;<br>&gt; Correct, the boolean is a superior solution to defining null to mean<br>something.  A bit more verbose but equally functional and easier to read.</p>
+
+<p>&gt; &gt; ie it’s a reasonable expectation that the next value is<br>&gt; &gt; last_value + 1. IMHO violating this makes it a bug.</p>
+
+<p>&gt; You can call it that if you like, but it&#x27;s operating as designed<br>&gt; and documented.  I fear it&#x27;s about twenty years too late to propose<br>&gt; a redesign.<br>&gt;<br>&gt;<br>And next_value isn&#x27;t last_value + 1 in any case since we have a block<br>caching feature.  One cannot predict (i.e., without consuming) the<br>next_value from current state.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

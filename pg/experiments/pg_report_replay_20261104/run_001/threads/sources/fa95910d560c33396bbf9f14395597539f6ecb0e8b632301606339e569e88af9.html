@@ -1,0 +1,2081 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18735-4acdb3998bb9f2b1%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2024-12-05T02:25:37" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18735: Specific multibyte character in psql file path command parameter for Windows" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="6ae46e51c6a75fb59d7f1c1caf4adfdc">BUG #18735: Specific multibyte character in psql file path command parameter for Windows</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202412050225">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18735-4acdb3998bb9f2b1@postgresql.org"></a>
+<a name="6ae46e51c6a75fb59d7f1c1caf4adfdc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-05 02:25:37</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18735-4acdb3998bb9f2b1%40postgresql.org">18735-4acdb3998bb9f2b1@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18735-4acdb3998bb9f2b1%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18735-4acdb3998bb9f2b1%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18735-4acdb3998bb9f2b1%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18735-4acdb3998bb9f2b1%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412050000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18735<br>Logged by:          Koichi Suzuki<br>Email address:      koichi(dot)dbms(at)gmail(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Windows 10, Japanese language version<br>Description:        </p>
+
+<p>In psql for Windows 10, version 17.2, some multibyte character in the file<br>path of psql command causes error such as:<br>=======<br>Server [localhost]:<br>Database [postgres]:<br>Port [5432]:<br>Username [postgres]:<br>Client Encoding [SJIS]:<br>ユーザー postgres のパスワード:<br>psql (17.2)<br>&quot;help&quot;でヘルプを表示します。</p>
+
+<p>postgres=# \cd &#x27;c:/work/09_環境構築&#x27;<br>postgres=# \o &#x27;c:/work/09_環境構築/work.out&#x27;<br>postgres=# select * from pg_database;<br>postgres=# \o<br>postgres=# \! type c:\work\09_環境構築\work.out<br> oid |  datname  | datdba | encoding | datlocprovider | datistemplate |<br>datallowconn | dathasloginevt | datconnlimit | datfrozenxid | datminmxid |<br>dattablespace |     datcollate     |      datctype      | datlocale |<br>daticurules | datcollversion |               datacl<br>-----+-----------+--------+----------+----------------+---------------+--------------+----------------+--------------+--------------+------------+---------------+--------------------+--------------------+-----------+-------------+----------------+-------------------------------------<br>   5 | postgres  |     10 |        6 | c              | f             | t   <br>        | f              |           -1 |          731 |          1 |       <br>  1663 | Japanese_Japan.932 | Japanese_Japan.932 |           |             |<br>               |<br>   1 | template1 |     10 |        6 | c              | t             | t   <br>        | f              |           -1 |          731 |          1 |       <br>  1663 | Japanese_Japan.932 | Japanese_Japan.932 |           |             |<br>               | {=c/postgres,postgres=CTc/postgres}<br>   4 | template0 |     10 |        6 | c              | t             | f   <br>        | f              |           -1 |          731 |          1 |       <br>  1663 | Japanese_Japan.932 | Japanese_Japan.932 |           |             |<br>               | {=c/postgres,postgres=CTc/postgres}<br>(3 行)</p>
+
+<p>postgres=#<br>postgres=# \i &#x27;c:/work/09_環境構築/sqmple.sql&#x27;<br>c:/work/09_環境穀z/sqmple.sql: No such file or directory<br>postgres=# copy pg_database to &#x27;c:/work/09_環境構築/database.out&#x27;<br>postgres-# \copy pg_database to &#x27;c:/work/09_環境構築/database.csv&#x27; with (format<br>csv, header)<br>c:/work/09_環境・築/database.csv: No such file or directory<br>=====</p>
+
+<p>Analysis:<br>* Latter byte valueof the character in question is same as &#x27;\&#x27; (backslash). <br>  It looks that this byte value is handled as escape characters.   This<br>happns SHIFT JIS client encoding.<br>* The issue happens in \i, \ir and \copy but does not happen in \cd, \o and<br>\! command.<br>* The similar issue may happen if the latter byte value of a multibyte<br>character is same as &#x27;/&#x27; (directory delimiter).</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2572359.1733424649@sss.pgh.pa.us"></a>
+<a name="844bc534f5df865679514c67041f18b7"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-05 18:50:49</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2572359.1733424649%40sss.pgh.pa.us">2572359.1733424649@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2572359.1733424649%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2572359.1733424649%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2572359.1733424649%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2572359.1733424649%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412050000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; Analysis:<br>&gt; * Latter byte valueof the character in question is same as &#x27;\&#x27; (backslash). <br>&gt;   It looks that this byte value is handled as escape characters.   This<br>&gt; happns SHIFT JIS client encoding.<br>&gt; * The issue happens in \i, \ir and \copy but does not happen in \cd, \o and<br>&gt; \! command.</p>
+
+<p>I imagine what is happening here is that canonicalize_path() interprets<br>the backslash bytes as directory separators.</p>
+
+<p>The only thing I can think of to improve that is to make<br>canonicalize_path() encoding-aware and have it skip over multibyte<br>characters.  Unfortunately, I fear that would introduce as many<br>misbehaviors as it would remove, because we don&#x27;t always know the<br>relevant encoding.  We might be able to limit the hazard by<br>confining the encoding-awareness to the initial Windows-only<br>conversion of &#x27;\&#x27; to &#x27;/&#x27;, but it&#x27;d still be pretty squishy.</p>
+
+<p>&gt; * The similar issue may happen if the latter byte value of a multibyte<br>&gt; character is same as &#x27;/&#x27; (directory delimiter).</p>
+
+<p>I don&#x27;t believe Shift-JIS uses &#x27;/&#x27; as part of multibyte characters,<br>so it should be sufficient to consider &#x27;\&#x27;.</p>
+
+<p>BTW, according to wikipedia[1], backslash is not even part of the<br>Shift-JIS character set:</p>
+
+<p>    The single-byte characters 0x00 to 0x7F match the ASCII encoding,<br>    except for a yen sign (U+00A5) at 0x5C and an overline (U+203E) at<br>    0x7E in place of the ASCII character set&#x27;s backslash and tilde<br>    respectively (these deviations from ASCII align with JIS X<br>    0201). The single-byte characters from 0xA1 to 0xDF map to the<br>    half-width katakana characters found in JIS X 0201.</p>
+
+<p>    For double-byte characters, the first byte is always in the range<br>    0x81 to 0x9F or the range 0xE0 to 0xEF (these ranges are<br>    unassigned in JIS X 0201). If the first byte is odd, the second<br>    byte must be in the range 0x40 to 0x9E (but cannot be 0x7F); if<br>    the first byte is even, the second byte must in the range 0x9F to<br>    0xFC.</p>
+
+<p>This might mean that it&#x27;d be okay to just skip the backslash-to-slash<br>conversion loops altogether if we think the encoding is Shift-JIS.</p>
+
+<p>There&#x27;s still the question of how we determine the relevant encoding.<br>I don&#x27;t think client_encoding is what to use (and we won&#x27;t have that<br>at hand anyway, in programs other than psql).  What we want to know<br>is what fopen and related system calls will do with the path: they<br>must have different behavior for Shift-JIS than other encodings,<br>else none of your examples could work at all.  I assume there&#x27;s<br>a way to find out what they think the relevant encoding is.</p>
+
+<p>make_native_path() adds even more fun: when should we convert &#x27;/&#x27;<br>back to &#x27;\&#x27;?  From the comments, this function is concerned with<br>producing something that will be accepted as a command-line<br>argument by other programs, so I wonder if we can even know what<br>to do with any certainty.</p>
+
+<p>(In case it&#x27;s not clear, I&#x27;m not volunteering to write or test<br>any of this.)</p>
+
+<p>			regards, tom lane</p>
+
+<p>[1] <a href="https://en.wikipedia.org/wiki/Shift_JIS" rel="nofollow">https://en.wikipedia.org/wiki/Shift_JIS</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CABEZHFuqEkpoEf91VkK8A2Gbmcp0ELhYAYz_5J0SRCim=KJwWA@mail.gmail.com"></a>
+<a name="9261e74ca7d46949474d888ed430b281"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 04:12:50</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CABEZHFuqEkpoEf91VkK8A2Gbmcp0ELhYAYz_5J0SRCim%3DKJwWA%40mail.gmail.com">CABEZHFuqEkpoEf91VkK8A2Gbmcp0ELhYAYz_5J0SRCim=KJwWA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CABEZHFuqEkpoEf91VkK8A2Gbmcp0ELhYAYz_5J0SRCim%3DKJwWA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CABEZHFuqEkpoEf91VkK8A2Gbmcp0ELhYAYz_5J0SRCim%3DKJwWA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CABEZHFuqEkpoEf91VkK8A2Gbmcp0ELhYAYz_5J0SRCim%3DKJwWA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CABEZHFuqEkpoEf91VkK8A2Gbmcp0ELhYAYz_5J0SRCim%3DKJwWA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello;</p>
+
+<p>Very short response.</p>
+
+<p>Lexical analysis of backshash commands in psql is handled<br>by psqlscanslash.l and this module scans iput byte-by-byte, not<br>character-by-character.   I&#x27;m afraid that the cause of the bug is in<br>this part..   Is there any way to make this flex syntax local-dependent?</p>
+
+<p>We need to analyze the behavior of this flex module to get practical idea<br>for fix.</p>
+
+<p>Regards;<br>---<br>Koichi Suzuki<br><a href="https://www.linkedin.com/in/koichidbms" rel="nofollow">https://www.linkedin.com/in/koichidbms</a></p>
+
+<p>2024年12月6日(金) 3:50 Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;:</p>
+
+<p>&gt; PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; &gt; Analysis:<br>&gt; &gt; * Latter byte valueof the character in question is same as &#x27;\&#x27;<br>&gt; (backslash).<br>&gt; &gt;   It looks that this byte value is handled as escape characters.   This<br>&gt; &gt; happns SHIFT JIS client encoding.<br>&gt; &gt; * The issue happens in \i, \ir and \copy but does not happen in \cd, \o<br>&gt; and<br>&gt; &gt; \! command.<br>&gt;<br>&gt; I imagine what is happening here is that canonicalize_path() interprets<br>&gt; the backslash bytes as directory separators.<br>&gt;<br>&gt; The only thing I can think of to improve that is to make<br>&gt; canonicalize_path() encoding-aware and have it skip over multibyte<br>&gt; characters.  Unfortunately, I fear that would introduce as many<br>&gt; misbehaviors as it would remove, because we don&#x27;t always know the<br>&gt; relevant encoding.  We might be able to limit the hazard by<br>&gt; confining the encoding-awareness to the initial Windows-only<br>&gt; conversion of &#x27;\&#x27; to &#x27;/&#x27;, but it&#x27;d still be pretty squishy.<br>&gt;<br>&gt; &gt; * The similar issue may happen if the latter byte value of a multibyte<br>&gt; &gt; character is same as &#x27;/&#x27; (directory delimiter).<br>&gt;<br>&gt; I don&#x27;t believe Shift-JIS uses &#x27;/&#x27; as part of multibyte characters,<br>&gt; so it should be sufficient to consider &#x27;\&#x27;.<br>&gt;<br>&gt; BTW, according to wikipedia[1], backslash is not even part of the<br>&gt; Shift-JIS character set:<br>&gt;<br>&gt;     The single-byte characters 0x00 to 0x7F match the ASCII encoding,<br>&gt;     except for a yen sign (U+00A5) at 0x5C and an overline (U+203E) at<br>&gt;     0x7E in place of the ASCII character set&#x27;s backslash and tilde<br>&gt;     respectively (these deviations from ASCII align with JIS X<br>&gt;     0201). The single-byte characters from 0xA1 to 0xDF map to the<br>&gt;     half-width katakana characters found in JIS X 0201.<br>&gt;<br>&gt;     For double-byte characters, the first byte is always in the range<br>&gt;     0x81 to 0x9F or the range 0xE0 to 0xEF (these ranges are<br>&gt;     unassigned in JIS X 0201). If the first byte is odd, the second<br>&gt;     byte must be in the range 0x40 to 0x9E (but cannot be 0x7F); if<br>&gt;     the first byte is even, the second byte must in the range 0x9F to<br>&gt;     0xFC.<br>&gt;<br>&gt; This might mean that it&#x27;d be okay to just skip the backslash-to-slash<br>&gt; conversion loops altogether if we think the encoding is Shift-JIS.<br>&gt;<br>&gt; There&#x27;s still the question of how we determine the relevant encoding.<br>&gt; I don&#x27;t think client_encoding is what to use (and we won&#x27;t have that<br>&gt; at hand anyway, in programs other than psql).  What we want to know<br>&gt; is what fopen and related system calls will do with the path: they<br>&gt; must have different behavior for Shift-JIS than other encodings,<br>&gt; else none of your examples could work at all.  I assume there&#x27;s<br>&gt; a way to find out what they think the relevant encoding is.<br>&gt;<br>&gt; make_native_path() adds even more fun: when should we convert &#x27;/&#x27;<br>&gt; back to &#x27;\&#x27;?  From the comments, this function is concerned with<br>&gt; producing something that will be accepted as a command-line<br>&gt; argument by other programs, so I wonder if we can even know what<br>&gt; to do with any certainty.<br>&gt;<br>&gt; (In case it&#x27;s not clear, I&#x27;m not volunteering to write or test<br>&gt; any of this.)<br>&gt;<br>&gt;                         regards, tom lane<br>&gt;<br>&gt; [1] <a href="https://en.wikipedia.org/wiki/Shift_JIS" rel="nofollow">https://en.wikipedia.org/wiki/Shift_JIS</a><br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2744315.1733461500@sss.pgh.pa.us"></a>
+<a name="c8611d333334e1e03ef284ffee124215"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 05:05:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2744315.1733461500%40sss.pgh.pa.us">2744315.1733461500@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2744315.1733461500%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2744315.1733461500%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2744315.1733461500%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2744315.1733461500%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt; writes:<br>&gt; Lexical analysis of backshash commands in psql is handled<br>&gt; by psqlscanslash.l and this module scans iput byte-by-byte, not<br>&gt; character-by-character.   I&#x27;m afraid that the cause of the bug is in<br>&gt; this part..   Is there any way to make this flex syntax local-dependent?</p>
+
+<p>I think you&#x27;re mistaken: see the &quot;safe_encoding&quot; hackery in<br>psqlscan.l (which does also operate for the rules in psqlscanslash.l).<br>Now it could be that psqlscan.l has been misinformed about the<br>encoding that&#x27;s in use, but that wouldn&#x27;t be its fault.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20241206.142130.1661155698933375612.ishii@postgresql.org"></a>
+<a name="57c1263e87d92105e59b79e69c064221"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>tgl(at)sss(dot)pgh(dot)pa(dot)us</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 05:21:30</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20241206.142130.1661155698933375612.ishii%40postgresql.org">20241206.142130.1661155698933375612.ishii@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20241206.142130.1661155698933375612.ishii%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20241206.142130.1661155698933375612.ishii%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20241206.142130.1661155698933375612.ishii%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20241206.142130.1661155698933375612.ishii%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; I don&#x27;t believe Shift-JIS uses &#x27;/&#x27; as part of multibyte characters,</p>
+
+<p>Correct.</p>
+
+<p>&gt; so it should be sufficient to consider &#x27;\&#x27;.</p>
+
+<p>Agreed.</p>
+
+<p>&gt; BTW, according to wikipedia[1], backslash is not even part of the<br>&gt; Shift-JIS character set:<br>&gt; <br>&gt;     The single-byte characters 0x00 to 0x7F match the ASCII encoding,<br>&gt;     except for a yen sign (U+00A5) at 0x5C and an overline (U+203E) at<br>&gt;     0x7E in place of the ASCII character set&#x27;s backslash and tilde<br>&gt;     respectively (these deviations from ASCII align with JIS X<br>&gt;     0201). The single-byte characters from 0xA1 to 0xDF map to the<br>&gt;     half-width katakana characters found in JIS X 0201.<br>&gt; <br>&gt;     For double-byte characters, the first byte is always in the range<br>&gt;     0x81 to 0x9F or the range 0xE0 to 0xEF (these ranges are<br>&gt;     unassigned in JIS X 0201). If the first byte is odd, the second<br>&gt;     byte must be in the range 0x40 to 0x9E (but cannot be 0x7F); if<br>&gt;     the first byte is even, the second byte must in the range 0x9F to<br>&gt;     0xFC.<br>&gt; <br>&gt; This might mean that it&#x27;d be okay to just skip the backslash-to-slash<br>&gt; conversion loops altogether if we think the encoding is Shift-JIS.</p>
+
+<p>I suggest to not do so because majority of Shift-JIS users treat 0x5C<br>as a backslash. They understand that a 0x5C means a backslash in<br>Shift-JIS files if the files are for programming (source code) or for<br>the technical documentations and so on.</p>
+
+<p>Best reagards,<br>--<br>Tatsuo Ishii<br>SRA OSS K.K.<br>English: <a href="http://www.sraoss.co.jp/index_en/" rel="nofollow">http://www.sraoss.co.jp/index_en/</a><br>Japanese:http://www.sraoss.co.jp</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CABEZHFurokPoY+Vs0zhSf7J5ahZV1p7naOPiH5_3C-ubPdDWgA@mail.gmail.com"></a>
+<a name="2d8a36b6e1f0717496f3e57519abaff0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>tgl(at)sss(dot)pgh(dot)pa(dot)us, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 05:26:34</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CABEZHFurokPoY%2BVs0zhSf7J5ahZV1p7naOPiH5_3C-ubPdDWgA%40mail.gmail.com">CABEZHFurokPoY+Vs0zhSf7J5ahZV1p7naOPiH5_3C-ubPdDWgA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CABEZHFurokPoY%2BVs0zhSf7J5ahZV1p7naOPiH5_3C-ubPdDWgA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CABEZHFurokPoY%2BVs0zhSf7J5ahZV1p7naOPiH5_3C-ubPdDWgA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CABEZHFurokPoY%2BVs0zhSf7J5ahZV1p7naOPiH5_3C-ubPdDWgA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CABEZHFurokPoY%2BVs0zhSf7J5ahZV1p7naOPiH5_3C-ubPdDWgA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>2024年12月6日(金) 14:21 Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;:</p>
+
+<p>&gt; &gt; I don&#x27;t believe Shift-JIS uses &#x27;/&#x27; as part of multibyte characters,<br>&gt;<br>&gt; Correct.<br>&gt;<br>&gt; &gt; so it should be sufficient to consider &#x27;\&#x27;.<br>&gt;<br>&gt; Agreed.<br>&gt;<br>&gt; &gt; BTW, according to wikipedia[1], backslash is not even part of the<br>&gt; &gt; Shift-JIS character set:<br>&gt; &gt;<br>&gt; &gt;     The single-byte characters 0x00 to 0x7F match the ASCII encoding,<br>&gt; &gt;     except for a yen sign (U+00A5) at 0x5C and an overline (U+203E) at<br>&gt; &gt;     0x7E in place of the ASCII character set&#x27;s backslash and tilde<br>&gt; &gt;     respectively (these deviations from ASCII align with JIS X<br>&gt; &gt;     0201). The single-byte characters from 0xA1 to 0xDF map to the<br>&gt; &gt;     half-width katakana characters found in JIS X 0201.<br>&gt; &gt;<br>&gt; &gt;     For double-byte characters, the first byte is always in the range<br>&gt; &gt;     0x81 to 0x9F or the range 0xE0 to 0xEF (these ranges are<br>&gt; &gt;     unassigned in JIS X 0201). If the first byte is odd, the second<br>&gt; &gt;     byte must be in the range 0x40 to 0x9E (but cannot be 0x7F); if<br>&gt; &gt;     the first byte is even, the second byte must in the range 0x9F to<br>&gt; &gt;     0xFC.<br>&gt; &gt;<br>&gt; &gt; This might mean that it&#x27;d be okay to just skip the backslash-to-slash<br>&gt; &gt; conversion loops altogether if we think the encoding is Shift-JIS.<br>&gt;<br>&gt; I suggest to not do so because majority of Shift-JIS users treat 0x5C<br>&gt; as a backslash. They understand that a 0x5C means a backslash in<br>&gt; Shift-JIS files if the files are for programming (source code) or for<br>&gt; the technical documentations and so on.<br>&gt;</p>
+
+<p>Better way is to treat &#x27;backslash&#x27; byte value in the latter byte of<br>SJIS-encoded character as is, not treat this byte as escape character.</p>
+
+<p>I&#x27;m not sure if we can fix src/fe_utils/psqlscan.l and/or<br>src/bin/psql/psqlscanslash.l for this.  Needs some more investigqation.</p>
+
+<p>&gt; Best reagards,<br>&gt; --<br>&gt; Tatsuo Ishii<br>&gt; SRA OSS K.K.<br>&gt; English: <a href="http://www.sraoss.co.jp/index_en/" rel="nofollow">http://www.sraoss.co.jp/index_en/</a><br>&gt; Japanese:http://www.sraoss.co.jp</p>
+
+<p>All the best and thanks to all the kind inputs.</p>
+
+<p>---<br>Koichi Suzuki<br><a href="https://www.linkedin.com/in/koichidbms" rel="nofollow">https://www.linkedin.com/in/koichidbms</a><br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2750622.1733463850@sss.pgh.pa.us"></a>
+<a name="7d2f3c178d35adfb6372bb396c749f8d"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 05:44:10</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2750622.1733463850%40sss.pgh.pa.us">2750622.1733463850@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2750622.1733463850%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2750622.1733463850%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2750622.1733463850%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2750622.1733463850%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt; writes:<br>&gt;&gt; This might mean that it&#x27;d be okay to just skip the backslash-to-slash<br>&gt;&gt; conversion loops altogether if we think the encoding is Shift-JIS.</p>
+
+<p>&gt; I suggest to not do so because majority of Shift-JIS users treat 0x5C<br>&gt; as a backslash. They understand that a 0x5C means a backslash in<br>&gt; Shift-JIS files if the files are for programming (source code) or for<br>&gt; the technical documentations and so on.</p>
+
+<p>Sure, we can do it that way.  I think the hard part is figuring<br>out whether Windows thinks the file names are in Shift-JIS.<br>Do you have any idea about finding that out?</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2751825.1733464455@sss.pgh.pa.us"></a>
+<a name="50ba0948d8f40d5161da0c430f76cedc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 05:54:15</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2751825.1733464455%40sss.pgh.pa.us">2751825.1733464455@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2751825.1733464455%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2751825.1733464455%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2751825.1733464455%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2751825.1733464455%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt; writes:<br>&gt; I&#x27;m not sure if we can fix src/fe_utils/psqlscan.l and/or<br>&gt; src/bin/psql/psqlscanslash.l for this.  Needs some more investigqation.</p>
+
+<p>I don&#x27;t believe the theory that the fault lies there.  If the flex<br>rules were taking the backslash-embedded-in-a-shift-JIS-character<br>as a backslash, they would think it is the start of a new backslash<br>command, with the result being that the filename argument gets<br>truncated there.  That doesn&#x27;t match the reported symptoms: we<br>see more of the filename than that echoed back in the error message.<br>So I think the filename is getting through that part just fine,<br>and then we&#x27;re messing it up in canonicalize_path or adjacent<br>processing.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CABEZHFsmies3X5BJ5xGZVrOeMikwwR7GVGhQ9N4Ee7OsKXi3OQ@mail.gmail.com"></a>
+<a name="27387c59df9da886fdf3da38d3ed6021"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 06:11:49</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CABEZHFsmies3X5BJ5xGZVrOeMikwwR7GVGhQ9N4Ee7OsKXi3OQ%40mail.gmail.com">CABEZHFsmies3X5BJ5xGZVrOeMikwwR7GVGhQ9N4Ee7OsKXi3OQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CABEZHFsmies3X5BJ5xGZVrOeMikwwR7GVGhQ9N4Ee7OsKXi3OQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CABEZHFsmies3X5BJ5xGZVrOeMikwwR7GVGhQ9N4Ee7OsKXi3OQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CABEZHFsmies3X5BJ5xGZVrOeMikwwR7GVGhQ9N4Ee7OsKXi3OQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CABEZHFsmies3X5BJ5xGZVrOeMikwwR7GVGhQ9N4Ee7OsKXi3OQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>In the Japanese version of Windows, file names are in Shift-JIS.</p>
+
+<p>For sure, we need to check client_encoding.</p>
+
+<p>Regards;<br>---<br>Koichi Suzuki<br><a href="https://www.linkedin.com/in/koichidbms" rel="nofollow">https://www.linkedin.com/in/koichidbms</a></p>
+
+<p>2024年12月6日(金) 14:44 Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;:</p>
+
+<p>&gt; Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt; writes:<br>&gt; &gt;&gt; This might mean that it&#x27;d be okay to just skip the backslash-to-slash<br>&gt; &gt;&gt; conversion loops altogether if we think the encoding is Shift-JIS.<br>&gt;<br>&gt; &gt; I suggest to not do so because majority of Shift-JIS users treat 0x5C<br>&gt; &gt; as a backslash. They understand that a 0x5C means a backslash in<br>&gt; &gt; Shift-JIS files if the files are for programming (source code) or for<br>&gt; &gt; the technical documentations and so on.<br>&gt;<br>&gt; Sure, we can do it that way.  I think the hard part is figuring<br>&gt; out whether Windows thinks the file names are in Shift-JIS.<br>&gt; Do you have any idea about finding that out?<br>&gt;<br>&gt;                         regards, tom lane<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CABEZHFvs7Oq2g8kGvAwc7MRZO8mDrD7G9h-DMagykdfLPvK3Nw@mail.gmail.com"></a>
+<a name="f2eb12c6f9080a7a0de7a949bdf3a864"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 06:13:30</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CABEZHFvs7Oq2g8kGvAwc7MRZO8mDrD7G9h-DMagykdfLPvK3Nw%40mail.gmail.com">CABEZHFvs7Oq2g8kGvAwc7MRZO8mDrD7G9h-DMagykdfLPvK3Nw@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CABEZHFvs7Oq2g8kGvAwc7MRZO8mDrD7G9h-DMagykdfLPvK3Nw%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CABEZHFvs7Oq2g8kGvAwc7MRZO8mDrD7G9h-DMagykdfLPvK3Nw%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CABEZHFvs7Oq2g8kGvAwc7MRZO8mDrD7G9h-DMagykdfLPvK3Nw%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CABEZHFvs7Oq2g8kGvAwc7MRZO8mDrD7G9h-DMagykdfLPvK3Nw%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello;</p>
+
+<p>We need to investigate how backslash in the latter byte of Shift-JIS<br>encoded string is handled in psql.<br>---<br>Koichi Suzuki<br><a href="https://www.linkedin.com/in/koichidbms" rel="nofollow">https://www.linkedin.com/in/koichidbms</a></p>
+
+<p>2024年12月6日(金) 15:11 Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt;:</p>
+
+<p>&gt; In the Japanese version of Windows, file names are in Shift-JIS.<br>&gt;<br>&gt; For sure, we need to check client_encoding.<br>&gt;<br>&gt; Regards;<br>&gt; ---<br>&gt; Koichi Suzuki<br>&gt; <a href="https://www.linkedin.com/in/koichidbms" rel="nofollow">https://www.linkedin.com/in/koichidbms</a><br>&gt;<br>&gt;<br>&gt;<br>&gt; 2024年12月6日(金) 14:44 Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;:<br>&gt;<br>&gt;&gt; Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt; writes:<br>&gt;&gt; &gt;&gt; This might mean that it&#x27;d be okay to just skip the backslash-to-slash<br>&gt;&gt; &gt;&gt; conversion loops altogether if we think the encoding is Shift-JIS.<br>&gt;&gt;<br>&gt;&gt; &gt; I suggest to not do so because majority of Shift-JIS users treat 0x5C<br>&gt;&gt; &gt; as a backslash. They understand that a 0x5C means a backslash in<br>&gt;&gt; &gt; Shift-JIS files if the files are for programming (source code) or for<br>&gt;&gt; &gt; the technical documentations and so on.<br>&gt;&gt;<br>&gt;&gt; Sure, we can do it that way.  I think the hard part is figuring<br>&gt;&gt; out whether Windows thinks the file names are in Shift-JIS.<br>&gt;&gt; Do you have any idea about finding that out?<br>&gt;&gt;<br>&gt;&gt;                         regards, tom lane<br>&gt;&gt;<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20241206.152901.833675745256351050.ishii@postgresql.org"></a>
+<a name="f71c5d73c5c208c2568553d6587ee24b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>tgl(at)sss(dot)pgh(dot)pa(dot)us</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 06:29:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20241206.152901.833675745256351050.ishii%40postgresql.org">20241206.152901.833675745256351050.ishii@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20241206.152901.833675745256351050.ishii%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20241206.152901.833675745256351050.ishii%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20241206.152901.833675745256351050.ishii%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20241206.152901.833675745256351050.ishii%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt; writes:<br>&gt;&gt;&gt; This might mean that it&#x27;d be okay to just skip the backslash-to-slash<br>&gt;&gt;&gt; conversion loops altogether if we think the encoding is Shift-JIS.<br>&gt; <br>&gt;&gt; I suggest to not do so because majority of Shift-JIS users treat 0x5C<br>&gt;&gt; as a backslash. They understand that a 0x5C means a backslash in<br>&gt;&gt; Shift-JIS files if the files are for programming (source code) or for<br>&gt;&gt; the technical documentations and so on.<br>&gt; <br>&gt; Sure, we can do it that way.  I think the hard part is figuring<br>&gt; out whether Windows thinks the file names are in Shift-JIS.<br>&gt; Do you have any idea about finding that out?</p>
+
+<p>I am not familiar with Windows and have no idea, but from the original<br>report:</p>
+
+<p>postgres=# \cd &#x27;c:/work/09_環境構築&#x27;</p>
+
+<p>it seems the KANJI characters are shown properly even if a part of the<br>KANJI characters include a backslash. This could indicate Windows<br>thinks the file names are in Shift-JIS.</p>
+
+<p>Best reagards,<br>--<br>Tatsuo Ishii<br>SRA OSS K.K.<br>English: <a href="http://www.sraoss.co.jp/index_en/" rel="nofollow">http://www.sraoss.co.jp/index_en/</a><br>Japanese:http://www.sraoss.co.jp</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20241206.154248.1191531539866262856.ishii@postgresql.org"></a>
+<a name="509e4b3f8a8956bce60d36e3cfbc1d3e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>tgl(at)sss(dot)pgh(dot)pa(dot)us</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 06:42:48</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20241206.154248.1191531539866262856.ishii%40postgresql.org">20241206.154248.1191531539866262856.ishii@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20241206.154248.1191531539866262856.ishii%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20241206.154248.1191531539866262856.ishii%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20241206.154248.1191531539866262856.ishii%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20241206.154248.1191531539866262856.ishii%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; I don&#x27;t believe the theory that the fault lies there.  If the flex<br>&gt; rules were taking the backslash-embedded-in-a-shift-JIS-character<br>&gt; as a backslash, they would think it is the start of a new backslash<br>&gt; command, with the result being that the filename argument gets<br>&gt; truncated there.  That doesn&#x27;t match the reported symptoms: we<br>&gt; see more of the filename than that echoed back in the error message.<br>&gt; So I think the filename is getting through that part just fine,<br>&gt; and then we&#x27;re messing it up in canonicalize_path or adjacent<br>&gt; processing.</p>
+
+<p>I have looked into canonicalize_path() and found this:</p>
+
+<p>#ifdef WIN32</p>
+
+<p>	/*<br>	 * The Windows command processor will accept suitably quoted paths with<br>	 * forward slashes, but barfs badly with mixed forward and back slashes.<br>	 */<br>	for (p = path; *p; p++)<br>	{<br>		if (*p == &#x27;\\&#x27;)<br>			*p = &#x27;/&#x27;;<br>	}</p>
+
+<p>Here &quot;path&quot; is the filename encoded in Shift-JIS I think.  It seems<br>canonicalize_path() unconditionaly replaces a backslash with a slash.<br>For me this seems to break any Shift-JIS KANJI characters that a<br>backslash in the second byte.</p>
+
+<p>Best reagards,<br>--<br>Tatsuo Ishii<br>SRA OSS K.K.<br>English: <a href="http://www.sraoss.co.jp/index_en/" rel="nofollow">http://www.sraoss.co.jp/index_en/</a><br>Japanese:http://www.sraoss.co.jp</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2840430.1733510664@sss.pgh.pa.us"></a>
+<a name="211cd238305fbfa9ae699527cea63cc0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 18:44:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2840430.1733510664%40sss.pgh.pa.us">2840430.1733510664@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2840430.1733510664%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2840430.1733510664%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2840430.1733510664%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2840430.1733510664%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt; writes:<br>&gt; I have looked into canonicalize_path() and found this:</p>
+
+<p>&gt; 		if (*p == &#x27;\\&#x27;)<br>&gt; 			*p = &#x27;/&#x27;;</p>
+
+<p>Right, that&#x27;s where the trouble is.  It&#x27;d be easy enough to make<br>that loop (and the similar one in cleanup_path) encoding-aware,<br>if we knew what encoding applies.  Deciding that is the sticky part.</p>
+
+<p>After sleeping on it, I&#x27;m coming around to the opinion that<br>client_encoding (pset.encoding) is what to use in psql, for<br>two reasons:<br>* we already do our best to set that correctly, and the user<br>is able to change it if it&#x27;s wrong;<br>* as previously noted, psqlscan.l will do the wrong things<br>if it&#x27;s not set correctly, so you&#x27;re probably already hosed<br>if working in a non-server-safe encoding with the wrong<br>setting of client_encoding.</p>
+
+<p>However, there are a bunch of callers of canonicalize_path()<br>that are not in psql, and those arguments don&#x27;t apply to them;<br>in fact places like initdb and pg_ctl don&#x27;t really have a<br>concept of client encoding at all.  So what to do?</p>
+
+<p>After looking through the callers I think we might not be in as bad<br>shape as this sounds, because all of the other callers are dealing<br>with Postgres installation paths or data directory-related paths that<br>are also dealt with by the server.  So it&#x27;s not unreasonable to<br>require that those paths must be written in server-safe encodings.<br>If they&#x27;re not, you&#x27;re going to have trouble with stuff like<br>&quot;show data_directory&quot;.</p>
+
+<p>I wonder whether we ought to try to enforce that.  It&#x27;d be feasible<br>I think for initdb to verify that the selected paths are validly<br>encoded according to whatever encoding it&#x27;s about to set the server<br>up with.  If we were feeling draconian we could insist that<br>the installation path and data directory path be all-ASCII, which<br>is the only way to be sure that you won&#x27;t have issues if you later<br>create a database that uses some other encoding.  But I think we&#x27;d<br>likely get pushback from that.  (This ties into the nearby<br>discussion about encoding of shared-catalog names [1], which is<br>more or less the same problem --- maybe the path encoding checks<br>could vary depending on how we&#x27;re setting that up?)</p>
+
+<p>Anyway, what I&#x27;m now thinking is that we can have two variants<br>of canonicalize_path:<br>	extern void canonicalize_path(char *path);<br>	extern void canonicalize_path_enc(char *path, int encoding);<br>The first one assumes a server-safe encoding, the second doesn&#x27;t,<br>and at least to start with only psql would bother with the second.</p>
+
+<p>It looks like we don&#x27;t need cleanup_path_enc, not yet anyway,<br>since that&#x27;s only applied to installation paths.</p>
+
+<p>I am also guessing that we don&#x27;t need an encoding-aware variant<br>of make_native_path: since it only changes &#x27;/&#x27; it can&#x27;t create<br>an incorrectly encoded path, assuming the input is OK.  However,<br>this is assuming that it&#x27;s okay to use &#x27;\&#x27; as a Windows directory<br>separator even in shift-JIS, which I&#x27;m not too sure about.</p>
+
+<p>			regards, tom lane</p>
+
+<p>[1] <a href="https://www.postgresql.org/message-id/CA+hUKGKDC7tKMZ1v0JGH5D23F-=ADf-3UfcriVepqoi7Q_SKgQ@mail.gmail.com" rel="nofollow">https://www.postgresql.org/message-id/CA%2BhUKGKDC7tKMZ1v0JGH5D23F-%3DADf-3UfcriVepqoi7Q_SKgQ%40mail.gmail.com</a></p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2850994.1733516077@sss.pgh.pa.us"></a>
+<a name="9a248239ef980687e8164ec4151345d0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 20:14:37</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2850994.1733516077%40sss.pgh.pa.us">2850994.1733516077@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2850994.1733516077%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2850994.1733516077%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2850994.1733516077%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2850994.1733516077%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I wrote:<br>&gt; Anyway, what I&#x27;m now thinking is that we can have two variants<br>&gt; of canonicalize_path:<br>&gt; 	extern void canonicalize_path(char *path);<br>&gt; 	extern void canonicalize_path_enc(char *path, int encoding);<br>&gt; The first one assumes a server-safe encoding, the second doesn&#x27;t,<br>&gt; and at least to start with only psql would bother with the second.</p>
+
+<p>I thought that part would be trivial, but there&#x27;s a small annoying<br>problem.  The obvious way to write the encoding-aware version of<br>the de-backslashing loop is to use pg_encoding_mblen_bounded().<br>However, that function is in src/common/wchar.c while path.c<br>is in src/port/ --- and I believe we have a rule that libpgport<br>can&#x27;t depend on libpgcommon.  (The dependencies go the other way,<br>instead.)</p>
+
+<p>Now it&#x27;s pretty dubious that path.c is in src/port/ at all, because<br>it does not meet the expectation that that directory is for<br>functions that replace missing system-library functionality.<br>(We&#x27;ve trodden pretty hard on that expectation over the years,<br>but whatever.)  So one reasonable fix could be to move path.c<br>to src/common, but I&#x27;m concerned that that would be unsafe to<br>back-patch.  Also, we&#x27;d really want to move the externs for<br>path.c out of port.h, which would cause additional code churn<br>for callers.</p>
+
+<p>Another way, given that we only really need this to work for<br>SJIS, is to hard-wire the logic into path.c --- it&#x27;s not like<br>pg_sjis_mblen is either long or likely to change.  That&#x27;s<br>ugly but would be a lot less invasive and safer to back-patch.</p>
+
+<p>I&#x27;m leaning a bit to the second way, mainly because of the<br>extern-relocation annoyance.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20241207.081412.2050532354647835961.ishii@postgresql.org"></a>
+<a name="d1e4ede583aeee281ced1bd1fe0167e8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>tgl(at)sss(dot)pgh(dot)pa(dot)us</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-06 23:14:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20241207.081412.2050532354647835961.ishii%40postgresql.org">20241207.081412.2050532354647835961.ishii@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20241207.081412.2050532354647835961.ishii%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20241207.081412.2050532354647835961.ishii%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20241207.081412.2050532354647835961.ishii%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20241207.081412.2050532354647835961.ishii%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412060000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt; writes:<br>&gt;&gt; I have looked into canonicalize_path() and found this:<br>&gt; <br>&gt;&gt; 		if (*p == &#x27;\\&#x27;)<br>&gt;&gt; 			*p = &#x27;/&#x27;;<br>&gt; <br>&gt; Right, that&#x27;s where the trouble is.  It&#x27;d be easy enough to make<br>&gt; that loop (and the similar one in cleanup_path) encoding-aware,<br>&gt; if we knew what encoding applies.  Deciding that is the sticky part.<br>&gt; <br>&gt; After sleeping on it, I&#x27;m coming around to the opinion that<br>&gt; client_encoding (pset.encoding) is what to use in psql, for<br>&gt; two reasons:<br>&gt; * we already do our best to set that correctly, and the user<br>&gt; is able to change it if it&#x27;s wrong;<br>&gt; * as previously noted, psqlscan.l will do the wrong things<br>&gt; if it&#x27;s not set correctly, so you&#x27;re probably already hosed<br>&gt; if working in a non-server-safe encoding with the wrong<br>&gt; setting of client_encoding.</p>
+
+<p>I think the encoding we need to supply to canonicalize_path() is not<br>necessarily the same as client_encoding. For example we could set<br>client_encoding to UTF-8 but use a file which has Shift-JIS encode<br>file name.  I think what we really need to supply to<br>canonicalize_path() is the &quot;file system encoding&quot;, not<br>client_encoding.</p>
+
+<p>Among the file system encodings, the only problematic one is<br>Shift-JIS. As far as I know, currently there&#x27;s no OS except Windows<br>which uses Shift-JIS as the file system encoding. So probably we can<br>safely assume that if the OS is Windows for Japanese, we can assume<br>that the file system encoding is Shift-JIS. If we know how to<br>determine the OS is Windows for Japanese inside the<br>canonicalize_path(), we don&#x27;t need to change the API of it.</p>
+
+<p>Quick gooling found this page (sorry, in Japanese)<br><a href="https://tarenagashi.hatenablog.jp/entry/2023/07/17/160149" rel="nofollow">https://tarenagashi.hatenablog.jp/entry/2023/07/17/160149</a><br>and it says:</p>
+
+<p>- In Windows &quot;system locale&quot; represents the language/country used.</p>
+
+<p>- The code for system locale is called &quot;LCID&quot; and it&#x27;s 1041 (decimal)<br>  for Japanese/Japan.</p>
+
+<p>- There are some APIs to obtain LCID (GetSystemDefaultLocaleName etc.)</p>
+
+<p>As I am not familiar with Windows and I cannot test these. Can someone<br>confirm?</p>
+
+<p>Best reagards,<br>--<br>Tatsuo Ishii<br>SRA OSS K.K.<br>English: <a href="http://www.sraoss.co.jp/index_en/" rel="nofollow">http://www.sraoss.co.jp/index_en/</a><br>Japanese:http://www.sraoss.co.jp</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3066301.1733530061@sss.pgh.pa.us"></a>
+<a name="6b82628ce095b03b333b72ae28c30782"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-07 00:07:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3066301.1733530061%40sss.pgh.pa.us">3066301.1733530061@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3066301.1733530061%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3066301.1733530061%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3066301.1733530061%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3066301.1733530061%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt; writes:<br>&gt; I think the encoding we need to supply to canonicalize_path() is not<br>&gt; necessarily the same as client_encoding. For example we could set<br>&gt; client_encoding to UTF-8 but use a file which has Shift-JIS encode<br>&gt; file name.  I think what we really need to supply to<br>&gt; canonicalize_path() is the &quot;file system encoding&quot;, not<br>&gt; client_encoding.</p>
+
+<p>That was what I was thinking yesterday, but seems to me it could<br>not really work to have client_encoding set to UTF-8 while you&#x27;re<br>trying to type an SJIS file name.  Even if your terminal program<br>doesn&#x27;t mangle anything, it&#x27;s likely that psqlscan.l will.</p>
+
+<p>I suppose if we think that&#x27;s the situation, we could try to translate<br>the file path names from UTF8 to SJIS.  But that&#x27;s a chunk of<br>functionality that doesn&#x27;t exist right now, plus I&#x27;m afraid it&#x27;d<br>often make things worse not better.  We don&#x27;t have nearly as much<br>certainty as we could wish about which encoding incoming data is in.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20241208.193736.1748337256420999108.ishii@postgresql.org"></a>
+<a name="dae6998826c09a706871781e3b9f1e8e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>tgl(at)sss(dot)pgh(dot)pa(dot)us</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-08 10:37:36</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20241208.193736.1748337256420999108.ishii%40postgresql.org">20241208.193736.1748337256420999108.ishii@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20241208.193736.1748337256420999108.ishii%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20241208.193736.1748337256420999108.ishii%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20241208.193736.1748337256420999108.ishii%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20241208.193736.1748337256420999108.ishii%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; That was what I was thinking yesterday, but seems to me it could<br>&gt; not really work to have client_encoding set to UTF-8 while you&#x27;re<br>&gt; trying to type an SJIS file name.  Even if your terminal program<br>&gt; doesn&#x27;t mangle anything, it&#x27;s likely that psqlscan.l will.</p>
+
+<p>Ok. So if the client encoding is not a &quot;safe&quot; encoding like Shift-JIS,<br>we have to use the same encoding for both the client encoding and the<br>file system encoding. I don&#x27;t think this is an unreasonable<br>limitation.</p>
+
+<p>&gt; I suppose if we think that&#x27;s the situation, we could try to translate<br>&gt; the file path names from UTF8 to SJIS.  But that&#x27;s a chunk of<br>&gt; functionality that doesn&#x27;t exist right now, plus I&#x27;m afraid it&#x27;d<br>&gt; often make things worse not better.  We don&#x27;t have nearly as much<br>&gt; certainty as we could wish about which encoding incoming data is in.</p>
+
+<p>Yes. Also in PostgreSQL encoding conversion is extensible and the<br>feature is only available in backend.</p>
+
+<p>Best reagards,<br>--<br>Tatsuo Ishii<br>SRA OSS K.K.<br>English: <a href="http://www.sraoss.co.jp/index_en/" rel="nofollow">http://www.sraoss.co.jp/index_en/</a><br>Japanese:http://www.sraoss.co.jp</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="20241208.200118.410748201504579781.ishii@postgresql.org"></a>
+<a name="b304f475194b4d75540a89c164b75852"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>tgl(at)sss(dot)pgh(dot)pa(dot)us</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-08 11:01:18</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/20241208.200118.410748201504579781.ishii%40postgresql.org">20241208.200118.410748201504579781.ishii@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/20241208.200118.410748201504579781.ishii%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/20241208.200118.410748201504579781.ishii%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/20241208.200118.410748201504579781.ishii%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/20241208.200118.410748201504579781.ishii%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&gt; Another way, given that we only really need this to work for<br>&gt; SJIS, is to hard-wire the logic into path.c --- it&#x27;s not like<br>&gt; pg_sjis_mblen is either long or likely to change.  That&#x27;s<br>&gt; ugly but would be a lot less invasive and safer to back-patch.<br>&gt; <br>&gt; I&#x27;m leaning a bit to the second way, mainly because of the<br>&gt; extern-relocation annoyance.</p>
+
+<p>+1. I believe the logic of detecting byte length in Shift-JIS will not<br>be changed.</p>
+
+<p>Best reagards,<br>--<br>Tatsuo Ishii<br>SRA OSS K.K.<br>English: <a href="http://www.sraoss.co.jp/index_en/" rel="nofollow">http://www.sraoss.co.jp/index_en/</a><br>Japanese:http://www.sraoss.co.jp</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3768611.1733698512@sss.pgh.pa.us"></a>
+<a name="5331b5a6a9cbbeec4ea14a49db2a628f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>koichi(dot)dbms(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-12-08 22:55:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3768611.1733698512%40sss.pgh.pa.us">3768611.1733698512@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3768611.1733698512%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3768611.1733698512%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3768611.1733698512%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3768611.1733698512%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202412080000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt; writes:<br>&gt;&gt; Another way, given that we only really need this to work for<br>&gt;&gt; SJIS, is to hard-wire the logic into path.c --- it&#x27;s not like<br>&gt;&gt; pg_sjis_mblen is either long or likely to change.  That&#x27;s<br>&gt;&gt; ugly but would be a lot less invasive and safer to back-patch.<br>&gt;&gt; I&#x27;m leaning a bit to the second way, mainly because of the<br>&gt;&gt; extern-relocation annoyance.</p>
+
+<p>&gt; +1. I believe the logic of detecting byte length in Shift-JIS will not<br>&gt; be changed.</p>
+
+<p>OK.  I know I said I wasn&#x27;t going to write this, but here&#x27;s a draft<br>patch that assumes we need only touch psql and can rely on its idea<br>of client_encoding.</p>
+
+<p>I&#x27;m not in a position to test this.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/168720/v1-encoding-safe-canonicalize_path.patch">v1-encoding-safe-canonicalize_path.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>7.0 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAAhp3gdpyJ7TQXrHFWY=2ZcEBZi6yDfY_4G=Rdz8mhp=F0-ioA@mail.gmail.com"></a>
+<a name="5f215312b61bf15603fed2d746ce7118"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)suzuki(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;, koichi(dot)dbms(at)gmail(dot)com,  pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-28 06:34:17</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAAhp3gdpyJ7TQXrHFWY%3D2ZcEBZi6yDfY_4G%3DRdz8mhp%3DF0-ioA%40mail.gmail.com">CAAhp3gdpyJ7TQXrHFWY=2ZcEBZi6yDfY_4G=Rdz8mhp=F0-ioA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAAhp3gdpyJ7TQXrHFWY%3D2ZcEBZi6yDfY_4G%3DRdz8mhp%3DF0-ioA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAAhp3gdpyJ7TQXrHFWY%3D2ZcEBZi6yDfY_4G%3DRdz8mhp%3DF0-ioA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAAhp3gdpyJ7TQXrHFWY%3D2ZcEBZi6yDfY_4G%3DRdz8mhp%3DF0-ioA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAAhp3gdpyJ7TQXrHFWY%3D2ZcEBZi6yDfY_4G%3DRdz8mhp%3DF0-ioA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello Here;</p>
+
+<p>My colleagues in EDB kindly built PG 17.2 test installer for WIndows with<br>Tom&#x27;s patch.   I ran this in my Windows environment and the patch looks to<br>work fine.   Anybody can download this package from<br><a href="https://get.enterprisedb.com/test-installers/postgresql-17.2-0.0snapshot12926810582.1090.1.7c5fded.3-windows-x64.exe" rel="nofollow">https://get.enterprisedb.com/test-installers/postgresql-17.2-0.0snapshot12926810582.1090.1.7c5fded.3-windows-x64.exe</a><br>for test.</p>
+
+<p>Hope this is helpful.   If possible, I&#x27;d like to ask to commit Tom&#x27;s patch,<br>not only to the latest major but also to older majors.</p>
+
+<p>Regards;<br>---<br>*Koichi Suzuki*<br>Senior Principal Support Engineer</p>
+
+<p>On Mon, Dec 9, 2024 at 5:33 PM Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>&gt; Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt; writes:<br>&gt; &gt;&gt; Another way, given that we only really need this to work for<br>&gt; &gt;&gt; SJIS, is to hard-wire the logic into path.c --- it&#x27;s not like<br>&gt; &gt;&gt; pg_sjis_mblen is either long or likely to change.  That&#x27;s<br>&gt; &gt;&gt; ugly but would be a lot less invasive and safer to back-patch.<br>&gt; &gt;&gt; I&#x27;m leaning a bit to the second way, mainly because of the<br>&gt; &gt;&gt; extern-relocation annoyance.<br>&gt;<br>&gt; &gt; +1. I believe the logic of detecting byte length in Shift-JIS will not<br>&gt; &gt; be changed.<br>&gt;<br>&gt; OK.  I know I said I wasn&#x27;t going to write this, but here&#x27;s a draft<br>&gt; patch that assumes we need only touch psql and can rely on its idea<br>&gt; of client_encoding.<br>&gt;<br>&gt; I&#x27;m not in a position to test this.<br>&gt;<br>&gt;                         regards, tom lane<br>&gt;<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1069358.1738047600@sss.pgh.pa.us"></a>
+<a name="b5192cfd7c317168f4867e43a2ea1741"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)suzuki(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;, koichi(dot)dbms(at)gmail(dot)com,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-28 07:00:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1069358.1738047600%40sss.pgh.pa.us">1069358.1738047600@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1069358.1738047600%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1069358.1738047600%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1069358.1738047600%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1069358.1738047600%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Koichi Suzuki &lt;koichi(dot)suzuki(at)enterprisedb(dot)com&gt; writes:<br>&gt; Hope this is helpful.   If possible, I&#x27;d like to ask to commit Tom&#x27;s patch,<br>&gt; not only to the latest major but also to older majors.</p>
+
+<p>If there are not objections, I will get that done before the<br>upcoming releases.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CABEZHFuVb-6tLyw5n6EOvJ_OQLQEY7SF2fMGQCoK1J-8GaF98g@mail.gmail.com"></a>
+<a name="8d3deb404661d607dbb67c3f233467e8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)suzuki(at)enterprisedb(dot)com&gt;, Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-28 07:28:45</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CABEZHFuVb-6tLyw5n6EOvJ_OQLQEY7SF2fMGQCoK1J-8GaF98g%40mail.gmail.com">CABEZHFuVb-6tLyw5n6EOvJ_OQLQEY7SF2fMGQCoK1J-8GaF98g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CABEZHFuVb-6tLyw5n6EOvJ_OQLQEY7SF2fMGQCoK1J-8GaF98g%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CABEZHFuVb-6tLyw5n6EOvJ_OQLQEY7SF2fMGQCoK1J-8GaF98g%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CABEZHFuVb-6tLyw5n6EOvJ_OQLQEY7SF2fMGQCoK1J-8GaF98g%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CABEZHFuVb-6tLyw5n6EOvJ_OQLQEY7SF2fMGQCoK1J-8GaF98g%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello Tom;</p>
+
+<p>Thank you very much.<br>---<br>Koichi Suzuki<br><a href="https://www.linkedin.com/in/koichidbms" rel="nofollow">https://www.linkedin.com/in/koichidbms</a></p>
+
+<p>2025年1月28日(火) 16:00 Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;:</p>
+
+<p>&gt; Koichi Suzuki &lt;koichi(dot)suzuki(at)enterprisedb(dot)com&gt; writes:<br>&gt; &gt; Hope this is helpful.   If possible, I&#x27;d like to ask to commit Tom&#x27;s<br>&gt; patch,<br>&gt; &gt; not only to the latest major but also to older majors.<br>&gt;<br>&gt; If there are not objections, I will get that done before the<br>&gt; upcoming releases.<br>&gt;<br>&gt;                         regards, tom lane<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2149695.1738178862@sss.pgh.pa.us"></a>
+<a name="061e2e9138d04cd16abcda238cd6c515"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)suzuki(at)enterprisedb(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;, koichi(dot)dbms(at)gmail(dot)com,
+        pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-29 19:27:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2149695.1738178862%40sss.pgh.pa.us">2149695.1738178862@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2149695.1738178862%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2149695.1738178862%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2149695.1738178862%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2149695.1738178862%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I wrote:<br>&gt; Koichi Suzuki &lt;koichi(dot)suzuki(at)enterprisedb(dot)com&gt; writes:<br>&gt;&gt; Hope this is helpful.   If possible, I&#x27;d like to ask to commit Tom&#x27;s patch,<br>&gt;&gt; not only to the latest major but also to older majors.</p>
+
+<p>&gt; If there are not objections, I will get that done before the<br>&gt; upcoming releases.</p>
+
+<p>And done.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CABEZHFu2=7ZEe05o-_pFSQv3CCep4e0OPjh6-uAfV2CEscA53Q@mail.gmail.com"></a>
+<a name="cee0b2b01cbc6815b646e24a40afb498"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)dbms(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Koichi Suzuki &lt;koichi(dot)suzuki(at)enterprisedb(dot)com&gt;, Tatsuo Ishii &lt;ishii(at)postgresql(dot)org&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18735: Specific multibyte character in psql file path
+ command parameter for Windows</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-29 23:39:40</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CABEZHFu2%3D7ZEe05o-_pFSQv3CCep4e0OPjh6-uAfV2CEscA53Q%40mail.gmail.com">CABEZHFu2=7ZEe05o-_pFSQv3CCep4e0OPjh6-uAfV2CEscA53Q@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CABEZHFu2%3D7ZEe05o-_pFSQv3CCep4e0OPjh6-uAfV2CEscA53Q%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CABEZHFu2%3D7ZEe05o-_pFSQv3CCep4e0OPjh6-uAfV2CEscA53Q%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CABEZHFu2%3D7ZEe05o-_pFSQv3CCep4e0OPjh6-uAfV2CEscA53Q%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CABEZHFu2%3D7ZEe05o-_pFSQv3CCep4e0OPjh6-uAfV2CEscA53Q%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501290000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Great! I found patch committed to all major/master branches.</p>
+
+<p>Thank you very much.<br>---<br>Koichi Suzuki<br><a href="https://www.linkedin.com/in/koichidbms" rel="nofollow">https://www.linkedin.com/in/koichidbms</a></p>
+
+<p>2025年1月30日(木) 4:27 Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;:</p>
+
+<p>&gt; I wrote:<br>&gt; &gt; Koichi Suzuki &lt;koichi(dot)suzuki(at)enterprisedb(dot)com&gt; writes:<br>&gt; &gt;&gt; Hope this is helpful.   If possible, I&#x27;d like to ask to commit Tom&#x27;s<br>&gt; patch,<br>&gt; &gt;&gt; not only to the latest major but also to older majors.<br>&gt;<br>&gt; &gt; If there are not objections, I will get that done before the<br>&gt; &gt; upcoming releases.<br>&gt;<br>&gt; And done.<br>&gt;<br>&gt;                         regards, tom lane<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,197 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18782
+Logged by:          Julian Wreford
+Email address:      julian(dot)wreford(at)gearset(dot)com
+PostgreSQL version: 17.2
+Operating system:   Windows 11 Pro, 24H2, 26100.2605
+Description:        
+
+
+We have been seeing behaviour of the interaction between triggers and row
+level security being inconsistent depending on the number of inserts that
+have previously been made to the table which the trigger is attached to. I
+will attach full a code reproduction at the end of the issue.
+
+
+Our expectation is that a trigger which calls RLS which throws an exception
+should always throw an exception. But our observed behaviour is that this is
+only the case straight after the table has been made, and after some number
+of inserts (at least 6) the trigger stops throwing an exception even when
+the RLS policy should throw an exception
+
+
+I create two tables (`no_rls_table` and `rls_table`). These tables both have
+a column called `should_not_duplicate` where the aim is that we block
+inserts into one table if the other table has the same value already
+existing.
+
+
+`no_rls_table` has not got any RLS on it and the app user has full
+permissions on it
+`rls_table` has RLS on it which checks if the `team_id` (uuid type) column
+matches a setting called `team.team_id` (which we check using
+`current_setting`). When `team.team_id` is missing we expect the RLS to
+throw an exception (because Postgres reads it as an empty string and an
+empty string can't be converted to a UUID).
+
+
+We then add a trigger to `no_rls_table` which checks for every row inserted
+if the value already exists in `rls_table`. If it does then we raise an
+exception, otherwise continue with the insert.
+
+
+(1) As expected, we can correctly INSERT into `no_rls_table` if we use `SET
+LOCAL team.team_id = '6a43cea8-4a5c-4989-bae2-ef5a77d92620'`
+(2) And again, as expected the INSERT into `no_rls_table` will fail with an
+exception if we don't set `team.team_id` to a value
+
+
+(3) HOWEVER, if we then do a bunch (6+) of inserts into the `no_rls_table`
+we observe different behaviours for the above.
+(4) Specifically, we now try and do an INSERT without setting `team.team_id`
+and we expect the behaviour to be a thrown exception as was the case above,
+but now the INSERT completes with no exceptions. 
+
+
+It was our understanding that the RLS function is the first thing that is
+called before accessing any table, so we would expect the trigger to ALWAYS
+fail if there is no local variable set, but this is not the case if it
+follows a chunk of inserts into the relevant table.
+
+
+I would be very grateful if anyone was able to help provide some light on
+this situation! We have tested this on v14.5, 16.6 and 17.2 and found
+consistent behaviour
+
+
+Full code to reproduce the scenario
+```sql
+-- Create less privileged user
+CREATE USER app_user;
+
+
+-- Create table which has no Row level security and give necessary
+permissions to app user
+CREATE TABLE no_rls_table
+(
+    id BIGSERIAL PRIMARY KEY,
+    should_not_duplicate uuid
+);
+GRANT SELECT, INSERT, DELETE ON TABLE no_rls_table to app_user;
+GRANT USAGE, SELECT ON SEQUENCE no_rls_table_id_seq to app_user;
+
+
+-- Create table which has row level security based on local settings
+(team.team_id)
+CREATE TABLE rls_table
+(
+    id BIGSERIAL PRIMARY KEY,
+    team_id uuid,
+    should_not_duplicate uuid
+);
+GRANT SELECT, INSERT, DELETE ON TABLE rls_table to app_user;
+GRANT USAGE, SELECT ON SEQUENCE rls_table_id_seq to app_user;
+
+
+CREATE POLICY rls_table_policy
+    ON rls_table
+    TO app_user
+    USING (
+        team_id = current_setting('team.team_id') :: uuid
+        )
+    WITH CHECK (
+        team_id = current_setting('team.team_id') :: uuid
+    );
+
+
+ALTER TABLE rls_table ENABLE ROW LEVEL SECURITY;
+
+
+-- Add a trigger on the no_rls_table which checks if the rls_table has a
+particular value
+CREATE OR REPLACE FUNCTION ensure_not_duplicated_on_rls_table() RETURNS
+TRIGGER AS
+$$
+    BEGIN
+        IF EXISTS (
+            SELECT 1
+            FROM rls_table
+            WHERE rls_table.should_not_duplicate =
+NEW.should_not_duplicate
+        )
+        THEN
+            RAISE EXCEPTION 'This value should not be duplicated between the
+two tables';
+        END IF;
+
+
+        RETURN NEW;
+    END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER check_not_duplicated_on_rls_table
+    BEFORE INSERT OR UPDATE ON no_rls_table
+    FOR EACH ROW
+EXECUTE PROCEDURE ensure_not_duplicated_on_rls_table();
+
+
+-- (1) One INSERT to demonstrate it works correctly with a local team
+BEGIN;
+SET ROLE app_user;
+SET LOCAL team.team_id = '6a43cea8-4a5c-4989-bae2-ef5a77d92620';
+INSERT INTO no_rls_table (should_not_duplicate) VALUES (
+gen_random_uuid());
+COMMIT;
+
+
+-- (2) Try and insert into no_rls_table and it fails if it has no
+team.team_id
+BEGIN;
+SET ROLE app_user;
+ -- This command will fail with an exception `[22P02] ERROR: invalid input
+syntax for type uuid: ""`
+INSERT INTO no_rls_table (should_not_duplicate) VALUES (
+gen_random_uuid());
+COMMIT;
+
+
+-- (3) Do a bunch of inserts into no_rls_table with team.team_id so these
+work correctly
+BEGIN;
+SET ROLE app_user;
+SET LOCAL team.team_id = '6a43cea8-4a5c-4989-bae2-ef5a77d92620';
+INSERT INTO no_rls_table (should_not_duplicate) VALUES (
+gen_random_uuid());
+INSERT INTO no_rls_table (should_not_duplicate) VALUES (
+gen_random_uuid());
+INSERT INTO no_rls_table (should_not_duplicate) VALUES (
+gen_random_uuid());
+INSERT INTO no_rls_table (should_not_duplicate) VALUES (
+gen_random_uuid());
+INSERT INTO no_rls_table (should_not_duplicate) VALUES (
+gen_random_uuid());
+INSERT INTO no_rls_table (should_not_duplicate) VALUES (
+gen_random_uuid());
+COMMIT;
+
+
+-- (4) Try and insert the no_rls_table without team.team_id again and this
+time no exception is thrown. THIS IS THE UNEXPECTED BEHAVIOUR
+BEGIN;
+SET ROLE app_user;
+INSERT INTO no_rls_table (should_not_duplicate) VALUES (
+gen_random_uuid());
+COMMIT;
+
+
+-- Cleanup Phase
+RESET ROLE;
+DROP TABLE rls_table;
+DROP TABLE no_rls_table;
+```
+
+
+

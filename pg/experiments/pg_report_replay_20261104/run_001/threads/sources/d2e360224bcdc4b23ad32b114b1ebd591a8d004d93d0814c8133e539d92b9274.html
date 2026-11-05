@@ -1,0 +1,1915 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18806: When enable_rartitionwise_join is set to ON, the database shuts down abnormally</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18806-d70b0c9fdf63dcbf%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-02-12T07:01:42" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18806: When enable_rartitionwise_join is set to ON, the database shuts down abnormally" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="1a887ee0d6a69cd740f81d651e6f4735">BUG #18806: When enable_rartitionwise_join is set to ON, the database shuts down abnormally</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202502120701">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18806-d70b0c9fdf63dcbf@postgresql.org"></a>
+<a name="1a887ee0d6a69cd740f81d651e6f4735"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>m_lingbin(at)126(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18806: When enable_rartitionwise_join is set to ON, the database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 07:01:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18806-d70b0c9fdf63dcbf%40postgresql.org">18806-d70b0c9fdf63dcbf@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18806-d70b0c9fdf63dcbf%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18806-d70b0c9fdf63dcbf%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18806-d70b0c9fdf63dcbf%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18806-d70b0c9fdf63dcbf%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18806<br>Logged by:          lingbin meng<br>Email address:      m_lingbin(at)126(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   CentOS Linux release 7.9.2009 (Core)<br>Description:        </p>
+
+<p>After upgrading PG17.2, testing found that when enable_rartitionwise_join is<br>set to ON, when executing a query, if the main query and subquery have the<br>same table, the query will report an error.</p>
+
+<p>The database log shows the following error:<br>LOG:  server process (PID 24796) was terminated by signal 6: Aborted<br>DETAIL:  Failed process was running: select * from test t join orders o on<br>t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>LOG:  terminating any other active server processes</p>
+
+<p>The table structure is as follows, all of which are empty tables:<br>demo=# \d+ test<br>Table &quot;bookings.test&quot;<br>Column  |       Type        | Collation | Nullable | Default | Storage  |<br>Compression | Stats target | Description<br>----------+-------------------+-----------+----------+---------+----------+-------------+--------------+-------------<br>order_id | integer           |           |          |         | plain    |  <br>          |              |<br>name     | character varying |           |          |         | extended |  <br>          |              |<br>Access method: heap<br>demo=# \d+ orders<br>Partitioned table &quot;bookings.orders&quot;<br>Column  |         Type          | Collation | Nullable | Default | Storage <br>| Compression | Stats target | Description<br>----------+-----------------------+-----------+----------+---------+----------+-------------+--------------+-------------<br>order_id | integer               |           |          |         | plain   <br>|             |              |<br>name     | character varying(10) |           |          |         | extended<br>|             |              |<br>Partition key: HASH (order_id)<br>Partitions: orders_p1 FOR VALUES WITH (modulus 32, remainder 0),<br>orders_p10 FOR VALUES WITH (modulus 32, remainder 9),<br>orders_p11 FOR VALUES WITH (modulus 32, remainder 10),<br>orders_p12 FOR VALUES WITH (modulus 32, remainder 11),<br>orders_p13 FOR VALUES WITH (modulus 32, remainder 12),<br>orders_p14 FOR VALUES WITH (modulus 32, remainder 13),<br>orders_p15 FOR VALUES WITH (modulus 32, remainder 14),<br>orders_p16 FOR VALUES WITH (modulus 32, remainder 15),<br>orders_p17 FOR VALUES WITH (modulus 32, remainder 16),<br>orders_p18 FOR VALUES WITH (modulus 32, remainder 17),<br>orders_p19 FOR VALUES WITH (modulus 32, remainder 18),<br>orders_p2 FOR VALUES WITH (modulus 32, remainder 1),<br>orders_p20 FOR VALUES WITH (modulus 32, remainder 19),<br>orders_p21 FOR VALUES WITH (modulus 32, remainder 20),<br>orders_p22 FOR VALUES WITH (modulus 32, remainder 21),<br>orders_p23 FOR VALUES WITH (modulus 32, remainder 22),<br>orders_p24 FOR VALUES WITH (modulus 32, remainder 23),<br>orders_p25 FOR VALUES WITH (modulus 32, remainder 24),<br>orders_p26 FOR VALUES WITH (modulus 32, remainder 25),<br>orders_p28 FOR VALUES WITH (modulus 32, remainder 27),<br>orders_p29 FOR VALUES WITH (modulus 32, remainder 28),<br>orders_p3 FOR VALUES WITH (modulus 32, remainder 2),<br>orders_p30 FOR VALUES WITH (modulus 32, remainder 29),<br>orders_p31 FOR VALUES WITH (modulus 32, remainder 30),<br>orders_p32 FOR VALUES WITH (modulus 32, remainder 31),<br>orders_p4 FOR VALUES WITH (modulus 32, remainder 3),<br>orders_p5 FOR VALUES WITH (modulus 32, remainder 4),<br>orders_p6 FOR VALUES WITH (modulus 32, remainder 5),<br>orders_p7 FOR VALUES WITH (modulus 32, remainder 6),<br>orders_p8 FOR VALUES WITH (modulus 32, remainder 7),<br>orders_p9 FOR VALUES WITH (modulus 32, remainder 8)<br>demo=#</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel@cybertec.at"></a>
+<a name="a70daa3bd1b5df5c7e198e31dccafd3c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>m_lingbin(at)126(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 07:38:34</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel%40cybertec.at">8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel@cybertec.at</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel%40cybertec.at">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel%40cybertec.at" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel%40cybertec.at" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/8ed9ba8971e114c3d6325c50a5f9fb6984140a01.camel%40cybertec.at" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:<br>&gt; PostgreSQL version: 17.2<br>&gt; Operating system:   CentOS Linux release 7.9.2009 (Core)<br>&gt; Description:        <br>&gt; <br>&gt; After upgrading PG17.2, testing found that when enable_rartitionwise_join is<br>&gt; set to ON, when executing a query, if the main query and subquery have the<br>&gt; same table, the query will report an error.<br>&gt; <br>&gt; The database log shows the following error:<br>&gt; LOG:  server process (PID 24796) was terminated by signal 6: Aborted<br>&gt; DETAIL:  Failed process was running: select * from test t join orders o on<br>&gt; t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>&gt; LOG:  terminating any other active server processes</p>
+
+<p>That is a crash that may well indicate a PostgreSQL bug.</p>
+
+<p>However, without a way to reproduce the behavior, we won&#x27;t be able to fix<br>the problem.  Try to come up with a self-contained test case.  It would<br>also be interesting to know which PostgreSQL extensions are present.</p>
+
+<p>Yours,<br>Laurenz Albe</p>
+
+<p>-- </p>
+
+<p>*E-Mail Disclaimer*<br>Der Inhalt dieser E-Mail ist ausschliesslich fuer den <br>bezeichneten Adressaten bestimmt. Wenn Sie nicht der vorgesehene Adressat <br>dieser E-Mail oder dessen Vertreter sein sollten, so beachten Sie bitte, <br>dass jede Form der Kenntnisnahme, Veroeffentlichung, Vervielfaeltigung oder <br>Weitergabe des Inhalts dieser E-Mail unzulaessig ist. Wir bitten Sie, sich <br>in diesem Fall mit dem Absender der E-Mail in Verbindung zu setzen.</p>
+
+<p>*CONFIDENTIALITY NOTICE &amp; DISCLAIMER<br>*This message and any attachment are <br>confidential and may be privileged or otherwise protected from disclosure <br>and solely for the use of the person(s) or entity to whom it is intended. <br>If you have received this message in error and are not the intended <br>recipient, please notify the sender immediately and delete this message and <br>any attachment from your system. If you are not the intended recipient, be <br>advised that any use of this message is prohibited and may be unlawful, and <br>you must not copy this message or attachment or disclose the contents to <br>any other person.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2d3c6fe3.662a.194f95ee4f0.Coremail.m_lingbin@126.com"></a>
+<a name="099b303fb18fb92e28115dc24beebade"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>孟令彬 &lt;m_lingbin(at)126(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re:Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 08:55:33</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2d3c6fe3.662a.194f95ee4f0.Coremail.m_lingbin%40126.com">2d3c6fe3.662a.194f95ee4f0.Coremail.m_lingbin@126.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2d3c6fe3.662a.194f95ee4f0.Coremail.m_lingbin%40126.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2d3c6fe3.662a.194f95ee4f0.Coremail.m_lingbin%40126.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2d3c6fe3.662a.194f95ee4f0.Coremail.m_lingbin%40126.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2d3c6fe3.662a.194f95ee4f0.Coremail.m_lingbin%40126.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p></p>
+
+<p>The above email has provided the table structure. You can try creating the same table structure and executing &#x27;select * from test t join orders o on&#x27;</p>
+
+<p>t.order_id =o.order_id where t.order_id in (select order_id from orders);‘ sentence.</p>
+
+<p>I believe that you will soon see the occurrence of errors.</p>
+
+<p>demo=# \d+ test<br>Table &quot;bookings.test&quot;<br>Column | Type | Collation | Nullable | Default | Storage |<br>Compression | Stats target | Description<br>----------+-------------------+-----------+----------+---------+----------+-------------+--------------+-------------<br>order_id | integer | | | | plain |<br>| |<br>name | character varying | | | | extended |<br>| |<br>Access method: heap<br>demo=# \d+ orders<br>Partitioned table &quot;bookings.orders&quot;<br>Column | Type | Collation | Nullable | Default | Storage<br>| Compression | Stats target | Description<br>----------+-----------------------+-----------+----------+---------+----------+-------------+--------------+-------------<br>order_id | integer | | | | plain<br>| | |<br>name | character varying(10) | | | | extended<br>| | |<br>Partition key: HASH (order_id)<br>Partitions: orders_p1 FOR VALUES WITH (modulus 32, remainder 0),<br>orders_p10 FOR VALUES WITH (modulus 32, remainder 9),<br>orders_p11 FOR VALUES WITH (modulus 32, remainder 10),<br>orders_p12 FOR VALUES WITH (modulus 32, remainder 11),<br>orders_p13 FOR VALUES WITH (modulus 32, remainder 12),<br>orders_p14 FOR VALUES WITH (modulus 32, remainder 13),<br>orders_p15 FOR VALUES WITH (modulus 32, remainder 14),<br>orders_p16 FOR VALUES WITH (modulus 32, remainder 15),<br>orders_p17 FOR VALUES WITH (modulus 32, remainder 16),<br>orders_p18 FOR VALUES WITH (modulus 32, remainder 17),<br>orders_p19 FOR VALUES WITH (modulus 32, remainder 18),<br>orders_p2 FOR VALUES WITH (modulus 32, remainder 1),<br>orders_p20 FOR VALUES WITH (modulus 32, remainder 19),<br>orders_p21 FOR VALUES WITH (modulus 32, remainder 20),<br>orders_p22 FOR VALUES WITH (modulus 32, remainder 21),<br>orders_p23 FOR VALUES WITH (modulus 32, remainder 22),<br>orders_p24 FOR VALUES WITH (modulus 32, remainder 23),<br>orders_p25 FOR VALUES WITH (modulus 32, remainder 24),<br>orders_p26 FOR VALUES WITH (modulus 32, remainder 25),<br>orders_p28 FOR VALUES WITH (modulus 32, remainder 27),<br>orders_p29 FOR VALUES WITH (modulus 32, remainder 28),<br>orders_p3 FOR VALUES WITH (modulus 32, remainder 2),<br>orders_p30 FOR VALUES WITH (modulus 32, remainder 29),<br>orders_p31 FOR VALUES WITH (modulus 32, remainder 30),<br>orders_p32 FOR VALUES WITH (modulus 32, remainder 31),<br>orders_p4 FOR VALUES WITH (modulus 32, remainder 3),<br>orders_p5 FOR VALUES WITH (modulus 32, remainder 4),<br>orders_p6 FOR VALUES WITH (modulus 32, remainder 5),<br>orders_p7 FOR VALUES WITH (modulus 32, remainder 6),<br>orders_p8 FOR VALUES WITH (modulus 32, remainder 7),<br>orders_p9 FOR VALUES WITH (modulus 32, remainder 8)<br>demo=#</p>
+
+<p>good luck!</p>
+
+<p>At 2025-02-12 15:38:34, &quot;Laurenz Albe&quot; &lt;laurenz(dot)albe(at)cybertec(dot)at&gt; wrote:<br>&gt;On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:<br>&gt;&gt; PostgreSQL version: 17.2<br>&gt;&gt; Operating system:   CentOS Linux release 7.9.2009 (Core)<br>&gt;&gt; Description:        <br>&gt;&gt; <br>&gt;&gt; After upgrading PG17.2, testing found that when enable_rartitionwise_join is<br>&gt;&gt; set to ON, when executing a query, if the main query and subquery have the<br>&gt;&gt; same table, the query will report an error.<br>&gt;&gt; <br>&gt;&gt; The database log shows the following error:<br>&gt;&gt; LOG:  server process (PID 24796) was terminated by signal 6: Aborted<br>&gt;&gt; DETAIL:  Failed process was running: select * from test t join orders o on<br>&gt;&gt; t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>&gt;&gt; LOG:  terminating any other active server processes<br>&gt;<br>&gt;That is a crash that may well indicate a PostgreSQL bug.<br>&gt;<br>&gt;However, without a way to reproduce the behavior, we won&#x27;t be able to fix<br>&gt;the problem.  Try to come up with a self-contained test case.  It would<br>&gt;also be interesting to know which PostgreSQL extensions are present.<br>&gt;<br>&gt;Yours,<br>&gt;Laurenz Albe<br>&gt;<br>&gt;-- <br>&gt;<br>&gt;*E-Mail Disclaimer*<br>&gt;Der Inhalt dieser E-Mail ist ausschliesslich fuer den <br>&gt;bezeichneten Adressaten bestimmt. Wenn Sie nicht der vorgesehene Adressat <br>&gt;dieser E-Mail oder dessen Vertreter sein sollten, so beachten Sie bitte, <br>&gt;dass jede Form der Kenntnisnahme, Veroeffentlichung, Vervielfaeltigung oder <br>&gt;Weitergabe des Inhalts dieser E-Mail unzulaessig ist. Wir bitten Sie, sich <br>&gt;in diesem Fall mit dem Absender der E-Mail in Verbindung zu setzen.<br>&gt;<br>&gt;*CONFIDENTIALITY NOTICE &amp; DISCLAIMER<br>&gt;*This message and any attachment are <br>&gt;confidential and may be privileged or otherwise protected from disclosure <br>&gt;and solely for the use of the person(s) or entity to whom it is intended. <br>&gt;If you have received this message in error and are not the intended <br>&gt;recipient, please notify the sender immediately and delete this message and <br>&gt;any attachment from your system. If you are not the intended recipient, be <br>&gt;advised that any use of this message is prohibited and may be unlawful, and <br>&gt;you must not copy this message or attachment or disclose the contents to <br>&gt;any other person.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAHewXNmUpmoqacgq40_s5sEfxtHVN3rndOSwkAtr5=dMQYzQLA@mail.gmail.com"></a>
+<a name="10defd55833230d05cb04b16007fe862"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>m_lingbin(at)126(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 09:48:53</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAHewXNmUpmoqacgq40_s5sEfxtHVN3rndOSwkAtr5%3DdMQYzQLA%40mail.gmail.com">CAHewXNmUpmoqacgq40_s5sEfxtHVN3rndOSwkAtr5=dMQYzQLA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAHewXNmUpmoqacgq40_s5sEfxtHVN3rndOSwkAtr5%3DdMQYzQLA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAHewXNmUpmoqacgq40_s5sEfxtHVN3rndOSwkAtr5%3DdMQYzQLA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAHewXNmUpmoqacgq40_s5sEfxtHVN3rndOSwkAtr5%3DdMQYzQLA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAHewXNmUpmoqacgq40_s5sEfxtHVN3rndOSwkAtr5%3DdMQYzQLA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt; 于2025年2月12日周三 15:38写道：</p>
+
+<p>&gt; On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:<br>&gt; &gt; PostgreSQL version: 17.2<br>&gt; &gt; Operating system:   CentOS Linux release 7.9.2009 (Core)<br>&gt; &gt; Description:<br>&gt; &gt;<br>&gt; &gt; After upgrading PG17.2, testing found that when<br>&gt; enable_rartitionwise_join is<br>&gt; &gt; set to ON, when executing a query, if the main query and subquery have<br>&gt; the<br>&gt; &gt; same table, the query will report an error.<br>&gt; &gt;<br>&gt; &gt; The database log shows the following error:<br>&gt; &gt; LOG:  server process (PID 24796) was terminated by signal 6: Aborted<br>&gt; &gt; DETAIL:  Failed process was running: select * from test t join orders o<br>&gt; on<br>&gt; &gt; t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>&gt; &gt; LOG:  terminating any other active server processes<br>&gt;<br>&gt; That is a crash that may well indicate a PostgreSQL bug.<br>&gt;<br>&gt; However, without a way to reproduce the behavior, we won&#x27;t be able to fix<br>&gt; the problem.  Try to come up with a self-contained test case.  It would<br>&gt; also be interesting to know which PostgreSQL extensions are present.<br>&gt;<br>&gt;<br>I can reproduce this crash on HEAD.</p>
+
+<p>postgres=# create table test(order_id int, name varchar);<br>create table orders(order_id int, name char(10)) partition by hash<br>(order_id);<br>CREATE TABLE<br>CREATE TABLE<br>postgres=# set enable_partitionwise_join = on;<br>SET<br>postgres=# create table orders_p1 partition of orders for values with (<br>modulus 32, remainder 0);<br>CREATE TABLE<br>postgres=# explain select * from test t join orders o on<br>t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>server closed the connection unexpectedly<br>This probably means the server terminated abnormally<br>before or while processing the request.<br>The connection to the server was lost. Attempting reset: Succeeded.</p>
+
+<p>-- <br>Thanks,<br>Tender Wang<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAHewXNnK5imuT9UkWwzXUTZUnpgorDBMBq3c8UuwGh_=r1bR_Q@mail.gmail.com"></a>
+<a name="2e6b6378868f40329afeba564de54396"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;,  Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>m_lingbin(at)126(dot)com, Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 11:48:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAHewXNnK5imuT9UkWwzXUTZUnpgorDBMBq3c8UuwGh_%3Dr1bR_Q%40mail.gmail.com">CAHewXNnK5imuT9UkWwzXUTZUnpgorDBMBq3c8UuwGh_=r1bR_Q@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAHewXNnK5imuT9UkWwzXUTZUnpgorDBMBq3c8UuwGh_%3Dr1bR_Q%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAHewXNnK5imuT9UkWwzXUTZUnpgorDBMBq3c8UuwGh_%3Dr1bR_Q%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAHewXNnK5imuT9UkWwzXUTZUnpgorDBMBq3c8UuwGh_%3Dr1bR_Q%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAHewXNnK5imuT9UkWwzXUTZUnpgorDBMBq3c8UuwGh_%3Dr1bR_Q%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; 于2025年2月12日周三 17:48写道：</p>
+
+<p>&gt;<br>&gt;<br>&gt; Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt; 于2025年2月12日周三 15:38写道：<br>&gt;<br>&gt;&gt; On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:<br>&gt;&gt; &gt; PostgreSQL version: 17.2<br>&gt;&gt; &gt; Operating system:   CentOS Linux release 7.9.2009 (Core)<br>&gt;&gt; &gt; Description:<br>&gt;&gt; &gt;<br>&gt;&gt; &gt; After upgrading PG17.2, testing found that when<br>&gt;&gt; enable_rartitionwise_join is<br>&gt;&gt; &gt; set to ON, when executing a query, if the main query and subquery have<br>&gt;&gt; the<br>&gt;&gt; &gt; same table, the query will report an error.<br>&gt;&gt; &gt;<br>&gt;&gt; &gt; The database log shows the following error:<br>&gt;&gt; &gt; LOG:  server process (PID 24796) was terminated by signal 6: Aborted<br>&gt;&gt; &gt; DETAIL:  Failed process was running: select * from test t join orders o<br>&gt;&gt; on<br>&gt;&gt; &gt; t.order_id =o.order_id where t.order_id in (select order_id from<br>&gt;&gt; orders);<br>&gt;&gt; &gt; LOG:  terminating any other active server processes<br>&gt;&gt;<br>&gt;&gt; That is a crash that may well indicate a PostgreSQL bug.<br>&gt;&gt;<br>&gt;&gt; However, without a way to reproduce the behavior, we won&#x27;t be able to fix<br>&gt;&gt; the problem.  Try to come up with a self-contained test case.  It would<br>&gt;&gt; also be interesting to know which PostgreSQL extensions are present.<br>&gt;&gt;<br>&gt;&gt;<br>&gt; I can reproduce this crash on HEAD.<br>&gt;<br>&gt; postgres=# create table test(order_id int, name varchar);<br>&gt; create table orders(order_id int, name char(10)) partition by hash<br>&gt; (order_id);<br>&gt; CREATE TABLE<br>&gt; CREATE TABLE<br>&gt; postgres=# set enable_partitionwise_join = on;<br>&gt; SET<br>&gt; postgres=# create table orders_p1 partition of orders for values with (<br>&gt; modulus 32, remainder 0);<br>&gt; CREATE TABLE<br>&gt; postgres=# explain select * from test t join orders o on<br>&gt; t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>&gt; server closed the connection unexpectedly<br>&gt; This probably means the server terminated abnormally<br>&gt; before or while processing the request.<br>&gt; The connection to the server was lost. Attempting reset: Succeeded.<br>&gt;<br>&gt;<br>I debug this crash, I found this crash was related with below commit:<br>commit 5278d0a2e870c61f9374a7796b90e6f9f6a73638<br>Author: Amit Langote &lt;amitlan(at)postgresql(dot)org&gt;<br>Date:   Mon Mar 25 12:02:40 2024 +0900</p>
+
+<p>    Reduce memory used by partitionwise joins</p>
+
+<p>the joinlist in this query is 1,2,5<br>1 means table t<br>2 means table orders<br>5 also means table orders, which subquery is pulled up.<br>When we create join rel for (2,5), then wen enter try_partitionwise_join().<br>In this func,  we call  build_child_join_sjinfo() to build SpecialJoinInfo<br>for child.<br>In build_child_join_sjinfo(), we use memcpy(), I think we should use<br>copyObject().<br>Otherwise, the parent_sjinfo will be freed, for example, after<br>call free_child_join_sjinfo(),<br>the parent_sjinfo min_lefthand looks like as below:</p>
+
+<p>(gdb) p *parent_sjinfo-&gt;min_lefthand<br>$7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}</p>
+
+<p>The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));</p>
+
+<p>Attached patch is my fix. Any thoughts?</p>
+
+<p>-- <br>Thanks,<br>Tender Wang<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/171977/0001-Fix-parent_sjinfo-wrong-freed-issue.patch">0001-Fix-parent_sjinfo-wrong-freed-issue.patch</a>
+            
+          </th>
+          <td>text/plain</td>
+          <td>3.1 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAHewXNkLdNrDcp7+JkEZSc+qQUpFuyPM8f8nZg+N-dnDaf=1eg@mail.gmail.com"></a>
+<a name="272eab3bc0f02ad1d39491d2a6fcbdea"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;,  Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>m_lingbin(at)126(dot)com, Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 12:11:28</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAHewXNkLdNrDcp7%2BJkEZSc%2BqQUpFuyPM8f8nZg%2BN-dnDaf%3D1eg%40mail.gmail.com">CAHewXNkLdNrDcp7+JkEZSc+qQUpFuyPM8f8nZg+N-dnDaf=1eg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAHewXNkLdNrDcp7%2BJkEZSc%2BqQUpFuyPM8f8nZg%2BN-dnDaf%3D1eg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAHewXNkLdNrDcp7%2BJkEZSc%2BqQUpFuyPM8f8nZg%2BN-dnDaf%3D1eg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAHewXNkLdNrDcp7%2BJkEZSc%2BqQUpFuyPM8f8nZg%2BN-dnDaf%3D1eg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAHewXNkLdNrDcp7%2BJkEZSc%2BqQUpFuyPM8f8nZg%2BN-dnDaf%3D1eg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; 于2025年2月12日周三 19:48写道：</p>
+
+<p>&gt;<br>&gt;<br>&gt; Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; 于2025年2月12日周三 17:48写道：<br>&gt;<br>&gt;&gt;<br>&gt;&gt;<br>&gt;&gt; Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt; 于2025年2月12日周三 15:38写道：<br>&gt;&gt;<br>&gt;&gt;&gt; On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:<br>&gt;&gt;&gt; &gt; PostgreSQL version: 17.2<br>&gt;&gt;&gt; &gt; Operating system:   CentOS Linux release 7.9.2009 (Core)<br>&gt;&gt;&gt; &gt; Description:<br>&gt;&gt;&gt; &gt;<br>&gt;&gt;&gt; &gt; After upgrading PG17.2, testing found that when<br>&gt;&gt;&gt; enable_rartitionwise_join is<br>&gt;&gt;&gt; &gt; set to ON, when executing a query, if the main query and subquery have<br>&gt;&gt;&gt; the<br>&gt;&gt;&gt; &gt; same table, the query will report an error.<br>&gt;&gt;&gt; &gt;<br>&gt;&gt;&gt; &gt; The database log shows the following error:<br>&gt;&gt;&gt; &gt; LOG:  server process (PID 24796) was terminated by signal 6: Aborted<br>&gt;&gt;&gt; &gt; DETAIL:  Failed process was running: select * from test t join orders<br>&gt;&gt;&gt; o on<br>&gt;&gt;&gt; &gt; t.order_id =o.order_id where t.order_id in (select order_id from<br>&gt;&gt;&gt; orders);<br>&gt;&gt;&gt; &gt; LOG:  terminating any other active server processes<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; That is a crash that may well indicate a PostgreSQL bug.<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; However, without a way to reproduce the behavior, we won&#x27;t be able to fix<br>&gt;&gt;&gt; the problem.  Try to come up with a self-contained test case.  It would<br>&gt;&gt;&gt; also be interesting to know which PostgreSQL extensions are present.<br>&gt;&gt;&gt;<br>&gt;&gt;&gt;<br>&gt;&gt; I can reproduce this crash on HEAD.<br>&gt;&gt;<br>&gt;&gt; postgres=# create table test(order_id int, name varchar);<br>&gt;&gt; create table orders(order_id int, name char(10)) partition by hash<br>&gt;&gt; (order_id);<br>&gt;&gt; CREATE TABLE<br>&gt;&gt; CREATE TABLE<br>&gt;&gt; postgres=# set enable_partitionwise_join = on;<br>&gt;&gt; SET<br>&gt;&gt; postgres=# create table orders_p1 partition of orders for values with (<br>&gt;&gt; modulus 32, remainder 0);<br>&gt;&gt; CREATE TABLE<br>&gt;&gt; postgres=# explain select * from test t join orders o on<br>&gt;&gt; t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>&gt;&gt; server closed the connection unexpectedly<br>&gt;&gt; This probably means the server terminated abnormally<br>&gt;&gt; before or while processing the request.<br>&gt;&gt; The connection to the server was lost. Attempting reset: Succeeded.<br>&gt;&gt;<br>&gt;&gt;<br>&gt; I debug this crash, I found this crash was related with below commit:<br>&gt; commit 5278d0a2e870c61f9374a7796b90e6f9f6a73638<br>&gt; Author: Amit Langote &lt;amitlan(at)postgresql(dot)org&gt;<br>&gt; Date:   Mon Mar 25 12:02:40 2024 +0900<br>&gt;<br>&gt;     Reduce memory used by partitionwise joins<br>&gt;<br>&gt;<br>&gt; the joinlist in this query is 1,2,5<br>&gt; 1 means table t<br>&gt; 2 means table orders<br>&gt; 5 also means table orders, which subquery is pulled up.<br>&gt; When we create join rel for (2,5), then wen enter try_partitionwise_join().<br>&gt; In this func,  we call  build_child_join_sjinfo() to build SpecialJoinInfo<br>&gt; for child.<br>&gt; In build_child_join_sjinfo(), we use memcpy(), I think we should use<br>&gt; copyObject().<br>&gt; Otherwise, the parent_sjinfo will be freed, for example, after<br>&gt; call free_child_join_sjinfo(),<br>&gt; the parent_sjinfo min_lefthand looks like as below:<br>&gt;<br>&gt; (gdb) p *parent_sjinfo-&gt;min_lefthand<br>&gt; $7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}<br>&gt;<br>&gt; The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));<br>&gt;<br>&gt; Attached patch is my fix. Any thoughts?<br>&gt;</p>
+
+<p>I forgot sjinfo had called makeNode(),  in v1 patch, origin memory to<br>sjinfo will leak, so I do a little adjust in v2 patch.</p>
+
+<p>-- <br>Thanks,<br>Tender Wang<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/171979/v2-0001-Fix-parent_sjinfo-wrong-freed-issue.patch">v2-0001-Fix-parent_sjinfo-wrong-freed-issue.patch</a>
+            
+          </th>
+          <td>text/plain</td>
+          <td>3.7 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAExHW5unrwcyrV7K77OR36EqWDp33furQ_-MWeeev=G4Qwa6OA@mail.gmail.com"></a>
+<a name="ca12dc1b44f5a35d04afd3e2e43a3af8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;,  m_lingbin(at)126(dot)com, Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 12:20:41</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAExHW5unrwcyrV7K77OR36EqWDp33furQ_-MWeeev%3DG4Qwa6OA%40mail.gmail.com">CAExHW5unrwcyrV7K77OR36EqWDp33furQ_-MWeeev=G4Qwa6OA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAExHW5unrwcyrV7K77OR36EqWDp33furQ_-MWeeev%3DG4Qwa6OA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAExHW5unrwcyrV7K77OR36EqWDp33furQ_-MWeeev%3DG4Qwa6OA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAExHW5unrwcyrV7K77OR36EqWDp33furQ_-MWeeev%3DG4Qwa6OA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAExHW5unrwcyrV7K77OR36EqWDp33furQ_-MWeeev%3DG4Qwa6OA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Feb 12, 2025 at 5:41 PM Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt;<br>&gt;<br>&gt; Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; 于2025年2月12日周三 19:48写道：<br>&gt;&gt;<br>&gt;&gt;<br>&gt;&gt;<br>&gt;&gt; Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; 于2025年2月12日周三 17:48写道：<br>&gt;&gt;&gt;<br>&gt;&gt;&gt;<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt; 于2025年2月12日周三 15:38写道：<br>&gt;&gt;&gt;&gt;<br>&gt;&gt;&gt;&gt; On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:<br>&gt;&gt;&gt;&gt; &gt; PostgreSQL version: 17.2<br>&gt;&gt;&gt;&gt; &gt; Operating system:   CentOS Linux release 7.9.2009 (Core)<br>&gt;&gt;&gt;&gt; &gt; Description:<br>&gt;&gt;&gt;&gt; &gt;<br>&gt;&gt;&gt;&gt; &gt; After upgrading PG17.2, testing found that when enable_rartitionwise_join is<br>&gt;&gt;&gt;&gt; &gt; set to ON, when executing a query, if the main query and subquery have the<br>&gt;&gt;&gt;&gt; &gt; same table, the query will report an error.<br>&gt;&gt;&gt;&gt; &gt;<br>&gt;&gt;&gt;&gt; &gt; The database log shows the following error:<br>&gt;&gt;&gt;&gt; &gt; LOG:  server process (PID 24796) was terminated by signal 6: Aborted<br>&gt;&gt;&gt;&gt; &gt; DETAIL:  Failed process was running: select * from test t join orders o on<br>&gt;&gt;&gt;&gt; &gt; t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>&gt;&gt;&gt;&gt; &gt; LOG:  terminating any other active server processes<br>&gt;&gt;&gt;&gt;<br>&gt;&gt;&gt;&gt; That is a crash that may well indicate a PostgreSQL bug.<br>&gt;&gt;&gt;&gt;<br>&gt;&gt;&gt;&gt; However, without a way to reproduce the behavior, we won&#x27;t be able to fix<br>&gt;&gt;&gt;&gt; the problem.  Try to come up with a self-contained test case.  It would<br>&gt;&gt;&gt;&gt; also be interesting to know which PostgreSQL extensions are present.<br>&gt;&gt;&gt;&gt;<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; I can reproduce this crash on HEAD.<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; postgres=# create table test(order_id int, name varchar);<br>&gt;&gt;&gt; create table orders(order_id int, name char(10)) partition by hash (order_id);<br>&gt;&gt;&gt; CREATE TABLE<br>&gt;&gt;&gt; CREATE TABLE<br>&gt;&gt;&gt; postgres=# set enable_partitionwise_join = on;<br>&gt;&gt;&gt; SET<br>&gt;&gt;&gt; postgres=# create table orders_p1 partition of orders for values with ( modulus 32, remainder 0);<br>&gt;&gt;&gt; CREATE TABLE<br>&gt;&gt;&gt; postgres=# explain select * from test t join orders o on<br>&gt;&gt;&gt; t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>&gt;&gt;&gt; server closed the connection unexpectedly<br>&gt;&gt;&gt; This probably means the server terminated abnormally<br>&gt;&gt;&gt; before or while processing the request.<br>&gt;&gt;&gt; The connection to the server was lost. Attempting reset: Succeeded.<br>&gt;&gt;&gt;<br>&gt;&gt;<br>&gt;&gt; I debug this crash, I found this crash was related with below commit:<br>&gt;&gt; commit 5278d0a2e870c61f9374a7796b90e6f9f6a73638<br>&gt;&gt; Author: Amit Langote &lt;amitlan(at)postgresql(dot)org&gt;<br>&gt;&gt; Date:   Mon Mar 25 12:02:40 2024 +0900<br>&gt;&gt;<br>&gt;&gt;     Reduce memory used by partitionwise joins<br>&gt;&gt;<br>&gt;&gt;<br>&gt;&gt; the joinlist in this query is 1,2,5<br>&gt;&gt; 1 means table t<br>&gt;&gt; 2 means table orders<br>&gt;&gt; 5 also means table orders, which subquery is pulled up.<br>&gt;&gt; When we create join rel for (2,5), then wen enter try_partitionwise_join().<br>&gt;&gt; In this func,  we call  build_child_join_sjinfo() to build SpecialJoinInfo for child.<br>&gt;&gt; In build_child_join_sjinfo(), we use memcpy(), I think we should use copyObject().<br>&gt;&gt; Otherwise, the parent_sjinfo will be freed, for example, after call free_child_join_sjinfo(),<br>&gt;&gt; the parent_sjinfo min_lefthand looks like as below:<br>&gt;&gt;<br>&gt;&gt; (gdb) p *parent_sjinfo-&gt;min_lefthand<br>&gt;&gt; $7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}<br>&gt;&gt;<br>&gt;&gt; The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));<br>&gt;&gt;<br>&gt;&gt; Attached patch is my fix. Any thoughts?</p>
+
+<p>Thanks for the report and the fix. Ideally, following line should<br>allocate separate memory for the child&#x27;s bitmapset.<br>sjinfo-&gt;min_lefthand = adjust_child_relids(sjinfo-&gt;min_lefthand,<br>   left_nappinfos, left_appinfos);</p>
+
+<p>Unless no relid in sjinfo-&gt;min_lefthand was translated according to<br>the given appinfos, adjust_child_relids() should create a new<br>Bitmapset. Can you please check why no translation happened. I will<br>try your reproduction tomorrow.</p>
+
+<p>-- <br>Best Wishes,<br>Ashutosh Bapat</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAHewXNn5d9eK31k_hfc-NJV0OGivySvgS9+vHUKQ-j+8tt1jDQ@mail.gmail.com"></a>
+<a name="f01d536a9d3ced1ae6c1c9bb17a15b10"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;,  m_lingbin(at)126(dot)com, Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 12:33:30</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAHewXNn5d9eK31k_hfc-NJV0OGivySvgS9%2BvHUKQ-j%2B8tt1jDQ%40mail.gmail.com">CAHewXNn5d9eK31k_hfc-NJV0OGivySvgS9+vHUKQ-j+8tt1jDQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAHewXNn5d9eK31k_hfc-NJV0OGivySvgS9%2BvHUKQ-j%2B8tt1jDQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAHewXNn5d9eK31k_hfc-NJV0OGivySvgS9%2BvHUKQ-j%2B8tt1jDQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAHewXNn5d9eK31k_hfc-NJV0OGivySvgS9%2BvHUKQ-j%2B8tt1jDQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAHewXNn5d9eK31k_hfc-NJV0OGivySvgS9%2BvHUKQ-j%2B8tt1jDQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt; 于2025年2月12日周三 20:20写道：</p>
+
+<p>&gt; On Wed, Feb 12, 2025 at 5:41 PM Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; wrote:<br>&gt; &gt;<br>&gt; &gt;<br>&gt; &gt;<br>&gt; &gt; Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; 于2025年2月12日周三 19:48写道：<br>&gt; &gt;&gt;<br>&gt; &gt;&gt;<br>&gt; &gt;&gt;<br>&gt; &gt;&gt; Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; 于2025年2月12日周三 17:48写道：<br>&gt; &gt;&gt;&gt;<br>&gt; &gt;&gt;&gt;<br>&gt; &gt;&gt;&gt;<br>&gt; &gt;&gt;&gt; Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt; 于2025年2月12日周三 15:38写道：<br>&gt; &gt;&gt;&gt;&gt;<br>&gt; &gt;&gt;&gt;&gt; On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:<br>&gt; &gt;&gt;&gt;&gt; &gt; PostgreSQL version: 17.2<br>&gt; &gt;&gt;&gt;&gt; &gt; Operating system:   CentOS Linux release 7.9.2009 (Core)<br>&gt; &gt;&gt;&gt;&gt; &gt; Description:<br>&gt; &gt;&gt;&gt;&gt; &gt;<br>&gt; &gt;&gt;&gt;&gt; &gt; After upgrading PG17.2, testing found that when<br>&gt; enable_rartitionwise_join is<br>&gt; &gt;&gt;&gt;&gt; &gt; set to ON, when executing a query, if the main query and subquery<br>&gt; have the<br>&gt; &gt;&gt;&gt;&gt; &gt; same table, the query will report an error.<br>&gt; &gt;&gt;&gt;&gt; &gt;<br>&gt; &gt;&gt;&gt;&gt; &gt; The database log shows the following error:<br>&gt; &gt;&gt;&gt;&gt; &gt; LOG:  server process (PID 24796) was terminated by signal 6: Aborted<br>&gt; &gt;&gt;&gt;&gt; &gt; DETAIL:  Failed process was running: select * from test t join<br>&gt; orders o on<br>&gt; &gt;&gt;&gt;&gt; &gt; t.order_id =o.order_id where t.order_id in (select order_id from<br>&gt; orders);<br>&gt; &gt;&gt;&gt;&gt; &gt; LOG:  terminating any other active server processes<br>&gt; &gt;&gt;&gt;&gt;<br>&gt; &gt;&gt;&gt;&gt; That is a crash that may well indicate a PostgreSQL bug.<br>&gt; &gt;&gt;&gt;&gt;<br>&gt; &gt;&gt;&gt;&gt; However, without a way to reproduce the behavior, we won&#x27;t be able to<br>&gt; fix<br>&gt; &gt;&gt;&gt;&gt; the problem.  Try to come up with a self-contained test case.  It<br>&gt; would<br>&gt; &gt;&gt;&gt;&gt; also be interesting to know which PostgreSQL extensions are present.<br>&gt; &gt;&gt;&gt;&gt;<br>&gt; &gt;&gt;&gt;<br>&gt; &gt;&gt;&gt; I can reproduce this crash on HEAD.<br>&gt; &gt;&gt;&gt;<br>&gt; &gt;&gt;&gt; postgres=# create table test(order_id int, name varchar);<br>&gt; &gt;&gt;&gt; create table orders(order_id int, name char(10)) partition by hash<br>&gt; (order_id);<br>&gt; &gt;&gt;&gt; CREATE TABLE<br>&gt; &gt;&gt;&gt; CREATE TABLE<br>&gt; &gt;&gt;&gt; postgres=# set enable_partitionwise_join = on;<br>&gt; &gt;&gt;&gt; SET<br>&gt; &gt;&gt;&gt; postgres=# create table orders_p1 partition of orders for values with<br>&gt; ( modulus 32, remainder 0);<br>&gt; &gt;&gt;&gt; CREATE TABLE<br>&gt; &gt;&gt;&gt; postgres=# explain select * from test t join orders o on<br>&gt; &gt;&gt;&gt; t.order_id =o.order_id where t.order_id in (select order_id from<br>&gt; orders);<br>&gt; &gt;&gt;&gt; server closed the connection unexpectedly<br>&gt; &gt;&gt;&gt; This probably means the server terminated abnormally<br>&gt; &gt;&gt;&gt; before or while processing the request.<br>&gt; &gt;&gt;&gt; The connection to the server was lost. Attempting reset: Succeeded.<br>&gt; &gt;&gt;&gt;<br>&gt; &gt;&gt;<br>&gt; &gt;&gt; I debug this crash, I found this crash was related with below commit:<br>&gt; &gt;&gt; commit 5278d0a2e870c61f9374a7796b90e6f9f6a73638<br>&gt; &gt;&gt; Author: Amit Langote &lt;amitlan(at)postgresql(dot)org&gt;<br>&gt; &gt;&gt; Date:   Mon Mar 25 12:02:40 2024 +0900<br>&gt; &gt;&gt;<br>&gt; &gt;&gt;     Reduce memory used by partitionwise joins<br>&gt; &gt;&gt;<br>&gt; &gt;&gt;<br>&gt; &gt;&gt; the joinlist in this query is 1,2,5<br>&gt; &gt;&gt; 1 means table t<br>&gt; &gt;&gt; 2 means table orders<br>&gt; &gt;&gt; 5 also means table orders, which subquery is pulled up.<br>&gt; &gt;&gt; When we create join rel for (2,5), then wen enter<br>&gt; try_partitionwise_join().<br>&gt; &gt;&gt; In this func,  we call  build_child_join_sjinfo() to build<br>&gt; SpecialJoinInfo for child.<br>&gt; &gt;&gt; In build_child_join_sjinfo(), we use memcpy(), I think we should use<br>&gt; copyObject().<br>&gt; &gt;&gt; Otherwise, the parent_sjinfo will be freed, for example, after call<br>&gt; free_child_join_sjinfo(),<br>&gt; &gt;&gt; the parent_sjinfo min_lefthand looks like as below:<br>&gt; &gt;&gt;<br>&gt; &gt;&gt; (gdb) p *parent_sjinfo-&gt;min_lefthand<br>&gt; &gt;&gt; $7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}<br>&gt; &gt;&gt;<br>&gt; &gt;&gt; The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));<br>&gt; &gt;&gt;<br>&gt; &gt;&gt; Attached patch is my fix. Any thoughts?<br>&gt;<br>&gt; Thanks for the report and the fix. Ideally, following line should<br>&gt; allocate separate memory for the child&#x27;s bitmapset.<br>&gt; sjinfo-&gt;min_lefthand = adjust_child_relids(sjinfo-&gt;min_lefthand,<br>&gt;    left_nappinfos, left_appinfos);<br>&gt;<br>&gt; Unless no relid in sjinfo-&gt;min_lefthand was translated according to<br>&gt; the given appinfos, adjust_child_relids() should create a new<br>&gt; Bitmapset. Can you please check why no translation happened. I will<br>&gt; try your reproduction tomorrow.<br>&gt;</p>
+
+<p>I step into  adjust_child_relids(), see below:<br>nappinfos = 1;<br>p appinfo-&gt;parent_relid<br>2<br>call bmsToString(relids)<br>&quot;(b 1)&quot;</p>
+
+<p>So no translation you said happened, just return relids.</p>
+
+<p>-- <br>Thanks,<br>Tender Wang<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs4_BF-WB858BLn5yG72RQdibdi7=yGHYMRTGxJe5cDmW7w@mail.gmail.com"></a>
+<a name="cbfe4cd3a3e2a6dd091bf7911096b1bc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;,  Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 13:55:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs4_BF-WB858BLn5yG72RQdibdi7%3DyGHYMRTGxJe5cDmW7w%40mail.gmail.com">CAMbWs4_BF-WB858BLn5yG72RQdibdi7=yGHYMRTGxJe5cDmW7w@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs4_BF-WB858BLn5yG72RQdibdi7%3DyGHYMRTGxJe5cDmW7w%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs4_BF-WB858BLn5yG72RQdibdi7%3DyGHYMRTGxJe5cDmW7w%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs4_BF-WB858BLn5yG72RQdibdi7%3DyGHYMRTGxJe5cDmW7w%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs4_BF-WB858BLn5yG72RQdibdi7%3DyGHYMRTGxJe5cDmW7w%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Feb 12, 2025 at 7:48 PM Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; wrote:<br>&gt; Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; 于2025年2月12日周三 17:48写道：<br>&gt; When we create join rel for (2,5), then wen enter try_partitionwise_join().<br>&gt; In this func,  we call  build_child_join_sjinfo() to build SpecialJoinInfo for child.<br>&gt; In build_child_join_sjinfo(), we use memcpy(), I think we should use copyObject().<br>&gt; Otherwise, the parent_sjinfo will be freed, for example, after call free_child_join_sjinfo(),<br>&gt; the parent_sjinfo min_lefthand looks like as below:<br>&gt;<br>&gt; (gdb) p *parent_sjinfo-&gt;min_lefthand<br>&gt; $7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}<br>&gt;<br>&gt; The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));</p>
+
+<p>Nice catch!  We should avoid freeing the members of child_sjinfo<br>unless they are translated copies of their counterparts in<br>parent_sjinfo.</p>
+
+<p>Thanks<br>Richard</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAExHW5ty=yQtMdTCRFj0JXnfdns5jME_+-wVpmsTAH8T+4O6aQ@mail.gmail.com"></a>
+<a name="89a5e0e464e8cbf0a8fd70e5ddb8cb0c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org, Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;,  m_lingbin(at)126(dot)com, Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 14:04:07</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAExHW5ty%3DyQtMdTCRFj0JXnfdns5jME_%2B-wVpmsTAH8T%2B4O6aQ%40mail.gmail.com">CAExHW5ty=yQtMdTCRFj0JXnfdns5jME_+-wVpmsTAH8T+4O6aQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAExHW5ty%3DyQtMdTCRFj0JXnfdns5jME_%2B-wVpmsTAH8T%2B4O6aQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAExHW5ty%3DyQtMdTCRFj0JXnfdns5jME_%2B-wVpmsTAH8T%2B4O6aQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAExHW5ty%3DyQtMdTCRFj0JXnfdns5jME_%2B-wVpmsTAH8T%2B4O6aQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAExHW5ty%3DyQtMdTCRFj0JXnfdns5jME_%2B-wVpmsTAH8T%2B4O6aQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Feb 12, 2025 at 6:03 PM Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt;<br>&gt;<br>&gt; Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt; 于2025年2月12日周三 20:20写道：<br>&gt;&gt;<br>&gt;&gt; On Wed, Feb 12, 2025 at 5:41 PM Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; wrote:<br>&gt;&gt; &gt;<br>&gt;&gt; &gt;<br>&gt;&gt; &gt;<br>&gt;&gt; &gt; Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; 于2025年2月12日周三 19:48写道：<br>&gt;&gt; &gt;&gt;<br>&gt;&gt; &gt;&gt;<br>&gt;&gt; &gt;&gt;<br>&gt;&gt; &gt;&gt; Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; 于2025年2月12日周三 17:48写道：<br>&gt;&gt; &gt;&gt;&gt;<br>&gt;&gt; &gt;&gt;&gt;<br>&gt;&gt; &gt;&gt;&gt;<br>&gt;&gt; &gt;&gt;&gt; Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt; 于2025年2月12日周三 15:38写道：<br>&gt;&gt; &gt;&gt;&gt;&gt;<br>&gt;&gt; &gt;&gt;&gt;&gt; On Wed, 2025-02-12 at 07:01 +0000, PG Bug reporting form wrote:<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; PostgreSQL version: 17.2<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; Operating system:   CentOS Linux release 7.9.2009 (Core)<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; Description:<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt;<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; After upgrading PG17.2, testing found that when enable_rartitionwise_join is<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; set to ON, when executing a query, if the main query and subquery have the<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; same table, the query will report an error.<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt;<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; The database log shows the following error:<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; LOG:  server process (PID 24796) was terminated by signal 6: Aborted<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; DETAIL:  Failed process was running: select * from test t join orders o on<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>&gt;&gt; &gt;&gt;&gt;&gt; &gt; LOG:  terminating any other active server processes<br>&gt;&gt; &gt;&gt;&gt;&gt;<br>&gt;&gt; &gt;&gt;&gt;&gt; That is a crash that may well indicate a PostgreSQL bug.<br>&gt;&gt; &gt;&gt;&gt;&gt;<br>&gt;&gt; &gt;&gt;&gt;&gt; However, without a way to reproduce the behavior, we won&#x27;t be able to fix<br>&gt;&gt; &gt;&gt;&gt;&gt; the problem.  Try to come up with a self-contained test case.  It would<br>&gt;&gt; &gt;&gt;&gt;&gt; also be interesting to know which PostgreSQL extensions are present.<br>&gt;&gt; &gt;&gt;&gt;&gt;<br>&gt;&gt; &gt;&gt;&gt;<br>&gt;&gt; &gt;&gt;&gt; I can reproduce this crash on HEAD.<br>&gt;&gt; &gt;&gt;&gt;<br>&gt;&gt; &gt;&gt;&gt; postgres=# create table test(order_id int, name varchar);<br>&gt;&gt; &gt;&gt;&gt; create table orders(order_id int, name char(10)) partition by hash (order_id);<br>&gt;&gt; &gt;&gt;&gt; CREATE TABLE<br>&gt;&gt; &gt;&gt;&gt; CREATE TABLE<br>&gt;&gt; &gt;&gt;&gt; postgres=# set enable_partitionwise_join = on;<br>&gt;&gt; &gt;&gt;&gt; SET<br>&gt;&gt; &gt;&gt;&gt; postgres=# create table orders_p1 partition of orders for values with ( modulus 32, remainder 0);<br>&gt;&gt; &gt;&gt;&gt; CREATE TABLE<br>&gt;&gt; &gt;&gt;&gt; postgres=# explain select * from test t join orders o on<br>&gt;&gt; &gt;&gt;&gt; t.order_id =o.order_id where t.order_id in (select order_id from orders);<br>&gt;&gt; &gt;&gt;&gt; server closed the connection unexpectedly<br>&gt;&gt; &gt;&gt;&gt; This probably means the server terminated abnormally<br>&gt;&gt; &gt;&gt;&gt; before or while processing the request.<br>&gt;&gt; &gt;&gt;&gt; The connection to the server was lost. Attempting reset: Succeeded.<br>&gt;&gt; &gt;&gt;&gt;<br>&gt;&gt; &gt;&gt;<br>&gt;&gt; &gt;&gt; I debug this crash, I found this crash was related with below commit:<br>&gt;&gt; &gt;&gt; commit 5278d0a2e870c61f9374a7796b90e6f9f6a73638<br>&gt;&gt; &gt;&gt; Author: Amit Langote &lt;amitlan(at)postgresql(dot)org&gt;<br>&gt;&gt; &gt;&gt; Date:   Mon Mar 25 12:02:40 2024 +0900<br>&gt;&gt; &gt;&gt;<br>&gt;&gt; &gt;&gt;     Reduce memory used by partitionwise joins<br>&gt;&gt; &gt;&gt;<br>&gt;&gt; &gt;&gt;<br>&gt;&gt; &gt;&gt; the joinlist in this query is 1,2,5<br>&gt;&gt; &gt;&gt; 1 means table t<br>&gt;&gt; &gt;&gt; 2 means table orders<br>&gt;&gt; &gt;&gt; 5 also means table orders, which subquery is pulled up.<br>&gt;&gt; &gt;&gt; When we create join rel for (2,5), then wen enter try_partitionwise_join().<br>&gt;&gt; &gt;&gt; In this func,  we call  build_child_join_sjinfo() to build SpecialJoinInfo for child.<br>&gt;&gt; &gt;&gt; In build_child_join_sjinfo(), we use memcpy(), I think we should use copyObject().<br>&gt;&gt; &gt;&gt; Otherwise, the parent_sjinfo will be freed, for example, after call free_child_join_sjinfo(),<br>&gt;&gt; &gt;&gt; the parent_sjinfo min_lefthand looks like as below:<br>&gt;&gt; &gt;&gt;<br>&gt;&gt; &gt;&gt; (gdb) p *parent_sjinfo-&gt;min_lefthand<br>&gt;&gt; &gt;&gt; $7 = {type = 3951489872, nwords = 21994, words = 0x55eaeb8696b0}<br>&gt;&gt; &gt;&gt;<br>&gt;&gt; &gt;&gt; The above bitmap is invalid, so trigger the Assert(bms_is_valid_set(a));<br>&gt;&gt; &gt;&gt;<br>&gt;&gt; &gt;&gt; Attached patch is my fix. Any thoughts?<br>&gt;&gt;<br>&gt;&gt; Thanks for the report and the fix. Ideally, following line should<br>&gt;&gt; allocate separate memory for the child&#x27;s bitmapset.<br>&gt;&gt; sjinfo-&gt;min_lefthand = adjust_child_relids(sjinfo-&gt;min_lefthand,<br>&gt;&gt;    left_nappinfos, left_appinfos);<br>&gt;&gt;<br>&gt;&gt; Unless no relid in sjinfo-&gt;min_lefthand was translated according to<br>&gt;&gt; the given appinfos, adjust_child_relids() should create a new<br>&gt;&gt; Bitmapset. Can you please check why no translation happened. I will<br>&gt;&gt; try your reproduction tomorrow.<br>&gt;<br>&gt;<br>&gt; I step into  adjust_child_relids(), see below:<br>&gt; nappinfos = 1;<br>&gt; p appinfo-&gt;parent_relid<br>&gt; 2<br>&gt; call bmsToString(relids)<br>&gt; &quot;(b 1)&quot;<br>&gt;<br>&gt; So no translation you said happened, just return relids.<br>&gt;</p>
+
+<p>Hmm. The code there assumes that all the Relids will at least have one<br>parent each of the children involved. For some reason<br>sjinfo-&gt;min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are<br>actually the parent relids of the children passed in respectively. The<br>join is between 2 and 5, then why is 1 appearing in the min_lefthand.<br>It might be legitimate, but we need to find the reason. If it&#x27;s<br>legitimate, I think we need to copy the Relids which haven&#x27;t undergone<br>any translation so as to keep them isolated from the parent relids.</p>
+
+<p>-- <br>Best Wishes,<br>Ashutosh Bapat</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs4_-oUBh7_iybfeCNxFHZf8ADws_zMiSc70jWzoYpSeBYQ@mail.gmail.com"></a>
+<a name="e3531a85c33db5aea11d52f1362c1e81"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;, pgsql-bugs(at)lists(dot)postgresql(dot)org,  Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-12 14:30:15</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs4_-oUBh7_iybfeCNxFHZf8ADws_zMiSc70jWzoYpSeBYQ%40mail.gmail.com">CAMbWs4_-oUBh7_iybfeCNxFHZf8ADws_zMiSc70jWzoYpSeBYQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs4_-oUBh7_iybfeCNxFHZf8ADws_zMiSc70jWzoYpSeBYQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs4_-oUBh7_iybfeCNxFHZf8ADws_zMiSc70jWzoYpSeBYQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs4_-oUBh7_iybfeCNxFHZf8ADws_zMiSc70jWzoYpSeBYQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs4_-oUBh7_iybfeCNxFHZf8ADws_zMiSc70jWzoYpSeBYQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat<br>&lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt; wrote:<br>&gt; Hmm. The code there assumes that all the Relids will at least have one<br>&gt; parent each of the children involved. For some reason<br>&gt; sjinfo-&gt;min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are<br>&gt; actually the parent relids of the children passed in respectively. The<br>&gt; join is between 2 and 5, then why is 1 appearing in the min_lefthand.<br>&gt; It might be legitimate, but we need to find the reason. If it&#x27;s<br>&gt; legitimate, I think we need to copy the Relids which haven&#x27;t undergone<br>&gt; any translation so as to keep them isolated from the parent relids.</p>
+
+<p>Yes, it&#x27;s legitimate.  For the semijoin, its join clause only<br>references {1} and {5}, with no other ordering restrictions.<br>Therefore, the minimum LHS for this join consists only of {1}.</p>
+
+<p>Instead of copying the untranslated Relids and freeing them later, I<br>think it might be better to modify free_child_join_sjinfo() to avoid<br>freeing the untranslated members of child_sjinfo.</p>
+
+<p>Thanks<br>Richard</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CA+HiwqFfeX=rec0-Ohvd+qPJrE0gQj2j3B7HSN4Bv0Qd72Ri+g@mail.gmail.com"></a>
+<a name="31b3e4432c21fbd396413e661c72b339"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;, Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-13 02:39:08</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CA%2BHiwqFfeX%3Drec0-Ohvd%2BqPJrE0gQj2j3B7HSN4Bv0Qd72Ri%2Bg%40mail.gmail.com">CA+HiwqFfeX=rec0-Ohvd+qPJrE0gQj2j3B7HSN4Bv0Qd72Ri+g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CA%2BHiwqFfeX%3Drec0-Ohvd%2BqPJrE0gQj2j3B7HSN4Bv0Qd72Ri%2Bg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CA%2BHiwqFfeX%3Drec0-Ohvd%2BqPJrE0gQj2j3B7HSN4Bv0Qd72Ri%2Bg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CA%2BHiwqFfeX%3Drec0-Ohvd%2BqPJrE0gQj2j3B7HSN4Bv0Qd72Ri%2Bg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CA%2BHiwqFfeX%3Drec0-Ohvd%2BqPJrE0gQj2j3B7HSN4Bv0Qd72Ri%2Bg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hi Richard,</p>
+
+<p>On Wed, Feb 12, 2025 at 11:30 PM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt; On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat<br>&gt; &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; Hmm. The code there assumes that all the Relids will at least have one<br>&gt; &gt; parent each of the children involved. For some reason<br>&gt; &gt; sjinfo-&gt;min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are<br>&gt; &gt; actually the parent relids of the children passed in respectively. The<br>&gt; &gt; join is between 2 and 5, then why is 1 appearing in the min_lefthand.<br>&gt; &gt; It might be legitimate, but we need to find the reason. If it&#x27;s<br>&gt; &gt; legitimate, I think we need to copy the Relids which haven&#x27;t undergone<br>&gt; &gt; any translation so as to keep them isolated from the parent relids.<br>&gt;<br>&gt; Yes, it&#x27;s legitimate.  For the semijoin, its join clause only<br>&gt; references {1} and {5}, with no other ordering restrictions.<br>&gt; Therefore, the minimum LHS for this join consists only of {1}.<br>&gt;<br>&gt; Instead of copying the untranslated Relids and freeing them later, I<br>&gt; think it might be better to modify free_child_join_sjinfo() to avoid<br>&gt; freeing the untranslated members of child_sjinfo.</p>
+
+<p>free_child_join_sjinfo() frees min_lefthand and other fields<br>initialized by build_child_join_sjinfo(), assuming that<br>adjust_child_relids() creates a copy. However, this does not always<br>seem to be the case, as demonstrated in this report.</p>
+
+<p>I&#x27;m wondering if the following line in adjust_child_relids() should be<br>using bms_copy() instead:</p>
+
+<p>/* Otherwise, return the original set without modification. */<br>return relids;<br>}</p>
+
+<p>That is, should we copy relids not only when translation is needed but<br>also in the general case?  Would that be a bigger band-aid than<br>necessary?</p>
+
+<p>-- <br>Thanks, Amit Langote</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs48bPCDiuRDq+y9jCC3dm4vPGYx+VeqwSbrrX1SthFQh_A@mail.gmail.com"></a>
+<a name="f0404a9a04ce2a41bf167e3b445d6479"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;, Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-13 03:14:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs48bPCDiuRDq%2By9jCC3dm4vPGYx%2BVeqwSbrrX1SthFQh_A%40mail.gmail.com">CAMbWs48bPCDiuRDq+y9jCC3dm4vPGYx+VeqwSbrrX1SthFQh_A@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs48bPCDiuRDq%2By9jCC3dm4vPGYx%2BVeqwSbrrX1SthFQh_A%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs48bPCDiuRDq%2By9jCC3dm4vPGYx%2BVeqwSbrrX1SthFQh_A%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs48bPCDiuRDq%2By9jCC3dm4vPGYx%2BVeqwSbrrX1SthFQh_A%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs48bPCDiuRDq%2By9jCC3dm4vPGYx%2BVeqwSbrrX1SthFQh_A%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Feb 13, 2025 at 10:39 AM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt; On Wed, Feb 12, 2025 at 11:30 PM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat<br>&gt; &gt; &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; &gt; Hmm. The code there assumes that all the Relids will at least have one<br>&gt; &gt; &gt; parent each of the children involved. For some reason<br>&gt; &gt; &gt; sjinfo-&gt;min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are<br>&gt; &gt; &gt; actually the parent relids of the children passed in respectively. The<br>&gt; &gt; &gt; join is between 2 and 5, then why is 1 appearing in the min_lefthand.<br>&gt; &gt; &gt; It might be legitimate, but we need to find the reason. If it&#x27;s<br>&gt; &gt; &gt; legitimate, I think we need to copy the Relids which haven&#x27;t undergone<br>&gt; &gt; &gt; any translation so as to keep them isolated from the parent relids.<br>&gt; &gt;<br>&gt; &gt; Yes, it&#x27;s legitimate.  For the semijoin, its join clause only<br>&gt; &gt; references {1} and {5}, with no other ordering restrictions.<br>&gt; &gt; Therefore, the minimum LHS for this join consists only of {1}.<br>&gt; &gt;<br>&gt; &gt; Instead of copying the untranslated Relids and freeing them later, I<br>&gt; &gt; think it might be better to modify free_child_join_sjinfo() to avoid<br>&gt; &gt; freeing the untranslated members of child_sjinfo.<br>&gt;<br>&gt; free_child_join_sjinfo() frees min_lefthand and other fields<br>&gt; initialized by build_child_join_sjinfo(), assuming that<br>&gt; adjust_child_relids() creates a copy. However, this does not always<br>&gt; seem to be the case, as demonstrated in this report.<br>&gt;<br>&gt; I&#x27;m wondering if the following line in adjust_child_relids() should be<br>&gt; using bms_copy() instead:<br>&gt;<br>&gt; /* Otherwise, return the original set without modification. */<br>&gt; return relids;<br>&gt; }<br>&gt;<br>&gt; That is, should we copy relids not only when translation is needed but<br>&gt; also in the general case?  Would that be a bigger band-aid than<br>&gt; necessary?</p>
+
+<p>Hmm, I&#x27;m concerned this might lead to unnecessary memory usage in<br>other translation scenarios.  After all, the purpose of 5278d0a2e is<br>to reduce memory used by partitionwise joins.  Even in the<br>SpecialJoinInfo case, this approach means that we are copying<br>untranslated Relids and then freeing them later, which seems<br>unnecessary.</p>
+
+<p>I&#x27;m thinking that a better approach might be to check if each member<br>of the child_sjinfo is a translated copy and only free it if that&#x27;s<br>the case, something like attached.</p>
+
+<p>Thanks<br>Richard<br></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/172010/v3-0001-Fix-freeing-a-child-join-s-SpecialJoinInfo.patch">v3-0001-Fix-freeing-a-child-join-s-SpecialJoinInfo.patch</a>
+            
+          </th>
+          <td>application/octet-stream</td>
+          <td>5.4 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAExHW5ufD2uZExQKX9ap1TRwqMERKV6VsZ-YkWoa36cxBwNU4Q@mail.gmail.com"></a>
+<a name="5f03a41dc890d40136f0d50baf0eec42"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;, Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-13 04:55:19</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAExHW5ufD2uZExQKX9ap1TRwqMERKV6VsZ-YkWoa36cxBwNU4Q%40mail.gmail.com">CAExHW5ufD2uZExQKX9ap1TRwqMERKV6VsZ-YkWoa36cxBwNU4Q@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAExHW5ufD2uZExQKX9ap1TRwqMERKV6VsZ-YkWoa36cxBwNU4Q%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAExHW5ufD2uZExQKX9ap1TRwqMERKV6VsZ-YkWoa36cxBwNU4Q%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAExHW5ufD2uZExQKX9ap1TRwqMERKV6VsZ-YkWoa36cxBwNU4Q%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAExHW5ufD2uZExQKX9ap1TRwqMERKV6VsZ-YkWoa36cxBwNU4Q%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Feb 13, 2025 at 8:44 AM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; On Thu, Feb 13, 2025 at 10:39 AM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; On Wed, Feb 12, 2025 at 11:30 PM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; &gt; On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat<br>&gt; &gt; &gt; &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; &gt; &gt; Hmm. The code there assumes that all the Relids will at least have one<br>&gt; &gt; &gt; &gt; parent each of the children involved. For some reason<br>&gt; &gt; &gt; &gt; sjinfo-&gt;min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are<br>&gt; &gt; &gt; &gt; actually the parent relids of the children passed in respectively. The<br>&gt; &gt; &gt; &gt; join is between 2 and 5, then why is 1 appearing in the min_lefthand.<br>&gt; &gt; &gt; &gt; It might be legitimate, but we need to find the reason. If it&#x27;s<br>&gt; &gt; &gt; &gt; legitimate, I think we need to copy the Relids which haven&#x27;t undergone<br>&gt; &gt; &gt; &gt; any translation so as to keep them isolated from the parent relids.<br>&gt; &gt; &gt;<br>&gt; &gt; &gt; Yes, it&#x27;s legitimate.  For the semijoin, its join clause only<br>&gt; &gt; &gt; references {1} and {5}, with no other ordering restrictions.<br>&gt; &gt; &gt; Therefore, the minimum LHS for this join consists only of {1}.<br>&gt; &gt; &gt;<br>&gt; &gt; &gt; Instead of copying the untranslated Relids and freeing them later, I<br>&gt; &gt; &gt; think it might be better to modify free_child_join_sjinfo() to avoid<br>&gt; &gt; &gt; freeing the untranslated members of child_sjinfo.<br>&gt; &gt;<br>&gt; &gt; free_child_join_sjinfo() frees min_lefthand and other fields<br>&gt; &gt; initialized by build_child_join_sjinfo(), assuming that<br>&gt; &gt; adjust_child_relids() creates a copy. However, this does not always<br>&gt; &gt; seem to be the case, as demonstrated in this report.<br>&gt; &gt;<br>&gt; &gt; I&#x27;m wondering if the following line in adjust_child_relids() should be<br>&gt; &gt; using bms_copy() instead:<br>&gt; &gt;<br>&gt; &gt; /* Otherwise, return the original set without modification. */<br>&gt; &gt; return relids;<br>&gt; &gt; }<br>&gt; &gt;<br>&gt; &gt; That is, should we copy relids not only when translation is needed but<br>&gt; &gt; also in the general case?  Would that be a bigger band-aid than<br>&gt; &gt; necessary?<br>&gt;<br>&gt; Hmm, I&#x27;m concerned this might lead to unnecessary memory usage in<br>&gt; other translation scenarios.  After all, the purpose of 5278d0a2e is<br>&gt; to reduce memory used by partitionwise joins.  Even in the<br>&gt; SpecialJoinInfo case, this approach means that we are copying<br>&gt; untranslated Relids and then freeing them later, which seems<br>&gt; unnecessary.</p>
+
+<p>When the translations happen, we do allocate memory for child bitmaps<br>so allocating and freeing memory is expected in the approach. However,<br>we can&#x27;t blatantly copy the Relids returned by adjust_child_relids()<br>or we will leak the memory allocated if child Relids is a translation<br>of parent Relids. If the Relids output by adjust_child_relids() is not<br>the same as its input, we should copy bitmapset.</p>
+
+<p>&gt;<br>&gt; I&#x27;m thinking that a better approach might be to check if each member<br>&gt; of the child_sjinfo is a translated copy and only free it if that&#x27;s<br>&gt; the case, something like attached.</p>
+
+<p>This approach doesn&#x27;t allocate memory when translation is not required<br>but it requires parent SJinfo to be present when<br>free_child_join_sjinfo() is called. It&#x27;s true right now but future<br>changes to the code may not ensure that. So there is a potential<br>maintenance overhead here.</p>
+
+<p>We have to be always cautious of freeing or modifying the Relids<br>returned by adjust_child_relids() [1]. For example, we could free<br>intermediate Relids in adjust_child_relids_multilevel() but we need to<br>be cautious of them being same as the parent Relids. Amit&#x27;s approach<br>of bms_copy() in adjust_child_relids() frees us from that caution. May<br>be we could pass a flag to adjust_child_relids() asking it to create a<br>new bitmapset always. So even if it&#x27;s a larger bandaid, it may be<br>useful at multiple places.</p>
+
+<p>-- <br>Best Wishes,<br>Ashutosh Bapat</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAHewXNmg76kEy9hscMDeSxBOE5GrPTRVmoOab5h=LNA7ZjVqOQ@mail.gmail.com"></a>
+<a name="6ff76c949ed2270f1ba7690ef48d938d"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;, Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-13 07:25:43</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAHewXNmg76kEy9hscMDeSxBOE5GrPTRVmoOab5h%3DLNA7ZjVqOQ%40mail.gmail.com">CAHewXNmg76kEy9hscMDeSxBOE5GrPTRVmoOab5h=LNA7ZjVqOQ@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAHewXNmg76kEy9hscMDeSxBOE5GrPTRVmoOab5h%3DLNA7ZjVqOQ%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAHewXNmg76kEy9hscMDeSxBOE5GrPTRVmoOab5h%3DLNA7ZjVqOQ%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAHewXNmg76kEy9hscMDeSxBOE5GrPTRVmoOab5h%3DLNA7ZjVqOQ%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAHewXNmg76kEy9hscMDeSxBOE5GrPTRVmoOab5h%3DLNA7ZjVqOQ%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502130000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; 于2025年2月13日周四 10:39写道：</p>
+
+<p>&gt; Hi Richard,<br>&gt;<br>&gt; On Wed, Feb 12, 2025 at 11:30 PM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;<br>&gt; wrote:<br>&gt; &gt; On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat<br>&gt; &gt; &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; &gt; Hmm. The code there assumes that all the Relids will at least have one<br>&gt; &gt; &gt; parent each of the children involved. For some reason<br>&gt; &gt; &gt; sjinfo-&gt;min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are<br>&gt; &gt; &gt; actually the parent relids of the children passed in respectively. The<br>&gt; &gt; &gt; join is between 2 and 5, then why is 1 appearing in the min_lefthand.<br>&gt; &gt; &gt; It might be legitimate, but we need to find the reason. If it&#x27;s<br>&gt; &gt; &gt; legitimate, I think we need to copy the Relids which haven&#x27;t undergone<br>&gt; &gt; &gt; any translation so as to keep them isolated from the parent relids.<br>&gt; &gt;<br>&gt; &gt; Yes, it&#x27;s legitimate.  For the semijoin, its join clause only<br>&gt; &gt; references {1} and {5}, with no other ordering restrictions.<br>&gt; &gt; Therefore, the minimum LHS for this join consists only of {1}.<br>&gt; &gt;<br>&gt; &gt; Instead of copying the untranslated Relids and freeing them later, I<br>&gt; &gt; think it might be better to modify free_child_join_sjinfo() to avoid<br>&gt; &gt; freeing the untranslated members of child_sjinfo.<br>&gt;<br>&gt; free_child_join_sjinfo() frees min_lefthand and other fields<br>&gt; initialized by build_child_join_sjinfo(), assuming that<br>&gt; adjust_child_relids() creates a copy. However, this does not always<br>&gt; seem to be the case, as demonstrated in this report.<br>&gt;<br>&gt; I&#x27;m wondering if the following line in adjust_child_relids() should be<br>&gt; using bms_copy() instead:<br>&gt;<br>&gt; /* Otherwise, return the original set without modification. */<br>&gt; return relids;<br>&gt; }<br>&gt;</p>
+
+<p>This fix is ok for me.  Keeping the child&#x27;s info isolated from the parents<br>seems safer.</p>
+
+<p>-- <br>Thanks,<br>Tender Wang<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CA+HiwqF+jxS4DHPS7vu4BG-LsY9dyGXZ7DnQFfmCSkrikgg-yA@mail.gmail.com"></a>
+<a name="11d7386263ebd6cc7dc7a95df117ab69"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;, Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-18 02:53:20</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CA%2BHiwqF%2BjxS4DHPS7vu4BG-LsY9dyGXZ7DnQFfmCSkrikgg-yA%40mail.gmail.com">CA+HiwqF+jxS4DHPS7vu4BG-LsY9dyGXZ7DnQFfmCSkrikgg-yA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CA%2BHiwqF%2BjxS4DHPS7vu4BG-LsY9dyGXZ7DnQFfmCSkrikgg-yA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CA%2BHiwqF%2BjxS4DHPS7vu4BG-LsY9dyGXZ7DnQFfmCSkrikgg-yA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CA%2BHiwqF%2BjxS4DHPS7vu4BG-LsY9dyGXZ7DnQFfmCSkrikgg-yA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CA%2BHiwqF%2BjxS4DHPS7vu4BG-LsY9dyGXZ7DnQFfmCSkrikgg-yA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502180000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Feb 13, 2025 at 1:55 PM Ashutosh Bapat<br>&lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt; wrote:<br>&gt; On Thu, Feb 13, 2025 at 8:44 AM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; I&#x27;m thinking that a better approach might be to check if each member<br>&gt; &gt; of the child_sjinfo is a translated copy and only free it if that&#x27;s<br>&gt; &gt; the case, something like attached.<br>&gt;<br>&gt; This approach doesn&#x27;t allocate memory when translation is not required<br>&gt; but it requires parent SJinfo to be present when<br>&gt; free_child_join_sjinfo() is called. It&#x27;s true right now but future<br>&gt; changes to the code may not ensure that. So there is a potential<br>&gt; maintenance overhead here.</p>
+
+<p>Given the function&#x27;s name, I don&#x27;t see a problem with adding a new<br>parameter to pass parent_sjinfo. In fact, I&#x27;d be especially concerned<br>if any caller doesn’t have parent_sjinfo handy -- that could signal an<br>unexpected usage or future maintenance risk. Making it explicit helps<br>keep things correct and avoids silent errors.</p>
+
+<p>&gt; We have to be always cautious of freeing or modifying the Relids<br>&gt; returned by adjust_child_relids() [1]. For example, we could free<br>&gt; intermediate Relids in adjust_child_relids_multilevel() but we need to<br>&gt; be cautious of them being same as the parent Relids. Amit&#x27;s approach<br>&gt; of bms_copy() in adjust_child_relids() frees us from that caution. May<br>&gt; be we could pass a flag to adjust_child_relids() asking it to create a<br>&gt; new bitmapset always. So even if it&#x27;s a larger bandaid, it may be<br>&gt; useful at multiple places.</p>
+
+<p>We could do this separately, but for a bug fix, I&#x27;d prefer to keep the<br>changes focused on the issue at hand and avoid modifications unrelated<br>to the bug.</p>
+
+<p>--<br>Thanks, Amit Langote</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAExHW5utdzy8V9pwcXf3ogCh5EcucCzWc0F-2xQWK5mJHOaqCA@mail.gmail.com"></a>
+<a name="79303425a8fee06e7ddfe8c701012623"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;, Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-18 04:22:02</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAExHW5utdzy8V9pwcXf3ogCh5EcucCzWc0F-2xQWK5mJHOaqCA%40mail.gmail.com">CAExHW5utdzy8V9pwcXf3ogCh5EcucCzWc0F-2xQWK5mJHOaqCA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAExHW5utdzy8V9pwcXf3ogCh5EcucCzWc0F-2xQWK5mJHOaqCA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAExHW5utdzy8V9pwcXf3ogCh5EcucCzWc0F-2xQWK5mJHOaqCA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAExHW5utdzy8V9pwcXf3ogCh5EcucCzWc0F-2xQWK5mJHOaqCA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAExHW5utdzy8V9pwcXf3ogCh5EcucCzWc0F-2xQWK5mJHOaqCA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502180000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Feb 18, 2025 at 8:23 AM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; On Thu, Feb 13, 2025 at 1:55 PM Ashutosh Bapat<br>&gt; &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; On Thu, Feb 13, 2025 at 8:44 AM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; &gt; I&#x27;m thinking that a better approach might be to check if each member<br>&gt; &gt; &gt; of the child_sjinfo is a translated copy and only free it if that&#x27;s<br>&gt; &gt; &gt; the case, something like attached.<br>&gt; &gt;<br>&gt; &gt; This approach doesn&#x27;t allocate memory when translation is not required<br>&gt; &gt; but it requires parent SJinfo to be present when<br>&gt; &gt; free_child_join_sjinfo() is called. It&#x27;s true right now but future<br>&gt; &gt; changes to the code may not ensure that. So there is a potential<br>&gt; &gt; maintenance overhead here.<br>&gt;<br>&gt; Given the function&#x27;s name, I don&#x27;t see a problem with adding a new<br>&gt; parameter to pass parent_sjinfo. In fact, I&#x27;d be especially concerned<br>&gt; if any caller doesn’t have parent_sjinfo handy -- that could signal an<br>&gt; unexpected usage or future maintenance risk. Making it explicit helps<br>&gt; keep things correct and avoids silent errors.</p>
+
+<p>Normal SJInfos are created somewhere and put in a list while they are<br>passed around. In future, we may do something like that for child<br>SJInfos as well. That was my thinking behind this suggestion. But we<br>will see what happens when it comes to that.</p>
+
+<p>&gt;<br>&gt; &gt; We have to be always cautious of freeing or modifying the Relids<br>&gt; &gt; returned by adjust_child_relids() [1]. For example, we could free<br>&gt; &gt; intermediate Relids in adjust_child_relids_multilevel() but we need to<br>&gt; &gt; be cautious of them being same as the parent Relids. Amit&#x27;s approach<br>&gt; &gt; of bms_copy() in adjust_child_relids() frees us from that caution. May<br>&gt; &gt; be we could pass a flag to adjust_child_relids() asking it to create a<br>&gt; &gt; new bitmapset always. So even if it&#x27;s a larger bandaid, it may be<br>&gt; &gt; useful at multiple places.<br>&gt;<br>&gt; We could do this separately, but for a bug fix, I&#x27;d prefer to keep the<br>&gt; changes focused on the issue at hand and avoid modifications unrelated<br>&gt; to the bug.</p>
+
+<p>That&#x27;s a fair point.</p>
+
+<p>-- <br>Best Wishes,<br>Ashutosh Bapat</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CA+HiwqHxA4Ru28fEyY6arTh0vAU9knKGbBMJ_gdeckWuodWjUg@mail.gmail.com"></a>
+<a name="cfba82563f3b22f65721f56bfe3f087f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;, Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-18 05:03:16</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CA%2BHiwqHxA4Ru28fEyY6arTh0vAU9knKGbBMJ_gdeckWuodWjUg%40mail.gmail.com">CA+HiwqHxA4Ru28fEyY6arTh0vAU9knKGbBMJ_gdeckWuodWjUg@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CA%2BHiwqHxA4Ru28fEyY6arTh0vAU9knKGbBMJ_gdeckWuodWjUg%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CA%2BHiwqHxA4Ru28fEyY6arTh0vAU9knKGbBMJ_gdeckWuodWjUg%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CA%2BHiwqHxA4Ru28fEyY6arTh0vAU9knKGbBMJ_gdeckWuodWjUg%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CA%2BHiwqHxA4Ru28fEyY6arTh0vAU9knKGbBMJ_gdeckWuodWjUg%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502180000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Thu, Feb 13, 2025 at 4:25 PM Tender Wang &lt;tndrwang(at)gmail(dot)com&gt; wrote:<br>&gt; Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; 于2025年2月13日周四 10:39写道：<br>&gt;&gt; On Wed, Feb 12, 2025 at 11:30 PM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt;&gt; &gt; On Wed, Feb 12, 2025 at 10:04 PM Ashutosh Bapat<br>&gt;&gt; &gt; &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt; wrote:<br>&gt;&gt; &gt; &gt; Hmm. The code there assumes that all the Relids will at least have one<br>&gt;&gt; &gt; &gt; parent each of the children involved. For some reason<br>&gt;&gt; &gt; &gt; sjinfo-&gt;min_lefthand has only relid 1 but not 2 or 5. 2 and 5 are<br>&gt;&gt; &gt; &gt; actually the parent relids of the children passed in respectively. The<br>&gt;&gt; &gt; &gt; join is between 2 and 5, then why is 1 appearing in the min_lefthand.<br>&gt;&gt; &gt; &gt; It might be legitimate, but we need to find the reason. If it&#x27;s<br>&gt;&gt; &gt; &gt; legitimate, I think we need to copy the Relids which haven&#x27;t undergone<br>&gt;&gt; &gt; &gt; any translation so as to keep them isolated from the parent relids.<br>&gt;&gt; &gt;<br>&gt;&gt; &gt; Yes, it&#x27;s legitimate.  For the semijoin, its join clause only<br>&gt;&gt; &gt; references {1} and {5}, with no other ordering restrictions.<br>&gt;&gt; &gt; Therefore, the minimum LHS for this join consists only of {1}.<br>&gt;&gt; &gt;<br>&gt;&gt; &gt; Instead of copying the untranslated Relids and freeing them later, I<br>&gt;&gt; &gt; think it might be better to modify free_child_join_sjinfo() to avoid<br>&gt;&gt; &gt; freeing the untranslated members of child_sjinfo.<br>&gt;&gt;<br>&gt;&gt; free_child_join_sjinfo() frees min_lefthand and other fields<br>&gt;&gt; initialized by build_child_join_sjinfo(), assuming that<br>&gt;&gt; adjust_child_relids() creates a copy. However, this does not always<br>&gt;&gt; seem to be the case, as demonstrated in this report.<br>&gt;&gt;<br>&gt;&gt; I&#x27;m wondering if the following line in adjust_child_relids() should be<br>&gt;&gt; using bms_copy() instead:<br>&gt;&gt;<br>&gt;&gt; /* Otherwise, return the original set without modification. */<br>&gt;&gt; return relids;<br>&gt;&gt; }<br>&gt;<br>&gt; This fix is ok for me.  Keeping the child&#x27;s info isolated from the parents seems safer.</p>
+
+<p>I&#x27;m inclined to go with Richard&#x27;s proposal, mainly to avoid the<br>overhead of copying in a bug fix just to isolate child sjinfo from<br>parent_sjinfo.</p>
+
+<p>Richard, would you like to commit the patch you proposed (adding<br>parent_sjinfo as a parameter to free_child_join_sjinfo()), or would<br>you prefer that I do it?</p>
+
+<p>-- <br>Thanks, Amit Langote</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs4-j8CUc+4e4uUPBO6NoUQpE2kfVQCnjyjjGQEJZSWTP-w@mail.gmail.com"></a>
+<a name="69f707525e106f3856835d1d659bb3e0"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;, Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-18 06:52:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs4-j8CUc%2B4e4uUPBO6NoUQpE2kfVQCnjyjjGQEJZSWTP-w%40mail.gmail.com">CAMbWs4-j8CUc+4e4uUPBO6NoUQpE2kfVQCnjyjjGQEJZSWTP-w@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs4-j8CUc%2B4e4uUPBO6NoUQpE2kfVQCnjyjjGQEJZSWTP-w%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs4-j8CUc%2B4e4uUPBO6NoUQpE2kfVQCnjyjjGQEJZSWTP-w%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs4-j8CUc%2B4e4uUPBO6NoUQpE2kfVQCnjyjjGQEJZSWTP-w%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs4-j8CUc%2B4e4uUPBO6NoUQpE2kfVQCnjyjjGQEJZSWTP-w%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502180000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Feb 18, 2025 at 2:03 PM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt; I&#x27;m inclined to go with Richard&#x27;s proposal, mainly to avoid the<br>&gt; overhead of copying in a bug fix just to isolate child sjinfo from<br>&gt; parent_sjinfo.<br>&gt;<br>&gt; Richard, would you like to commit the patch you proposed (adding<br>&gt; parent_sjinfo as a parameter to free_child_join_sjinfo()), or would<br>&gt; you prefer that I do it?</p>
+
+<p>Thank you Amit for reviewing.  I&#x27;ll commit it and will do so shortly.</p>
+
+<p>Thanks<br>Richard</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAMbWs4-WyUZxcH1SdZs6hCdvrn0x_67BfeeYQAGaKk3qCCh2WA@mail.gmail.com"></a>
+<a name="b3f4ef180cd3d64ebd8fbe5b677d229f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;, Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-19 02:28:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAMbWs4-WyUZxcH1SdZs6hCdvrn0x_67BfeeYQAGaKk3qCCh2WA%40mail.gmail.com">CAMbWs4-WyUZxcH1SdZs6hCdvrn0x_67BfeeYQAGaKk3qCCh2WA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAMbWs4-WyUZxcH1SdZs6hCdvrn0x_67BfeeYQAGaKk3qCCh2WA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAMbWs4-WyUZxcH1SdZs6hCdvrn0x_67BfeeYQAGaKk3qCCh2WA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAMbWs4-WyUZxcH1SdZs6hCdvrn0x_67BfeeYQAGaKk3qCCh2WA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAMbWs4-WyUZxcH1SdZs6hCdvrn0x_67BfeeYQAGaKk3qCCh2WA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Tue, Feb 18, 2025 at 3:52 PM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt; On Tue, Feb 18, 2025 at 2:03 PM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; I&#x27;m inclined to go with Richard&#x27;s proposal, mainly to avoid the<br>&gt; &gt; overhead of copying in a bug fix just to isolate child sjinfo from<br>&gt; &gt; parent_sjinfo.<br>&gt; &gt;<br>&gt; &gt; Richard, would you like to commit the patch you proposed (adding<br>&gt; &gt; parent_sjinfo as a parameter to free_child_join_sjinfo()), or would<br>&gt; &gt; you prefer that I do it?<br>&gt;<br>&gt; Thank you Amit for reviewing.  I&#x27;ll commit it and will do so shortly.</p>
+
+<p>Pushed and back-patched to v17.  The fix will be included in the next<br>minor release (17.5).</p>
+
+<p>Thanks<br>Richard</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CA+HiwqFz-sWg6RFd6Y9PAPZe0ETO+P4cDpBfmq-zm7cNzV0dng@mail.gmail.com"></a>
+<a name="4d78e8a11e97936b87c5fbb5fbb19b91"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;, Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-19 02:42:44</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CA%2BHiwqFz-sWg6RFd6Y9PAPZe0ETO%2BP4cDpBfmq-zm7cNzV0dng%40mail.gmail.com">CA+HiwqFz-sWg6RFd6Y9PAPZe0ETO+P4cDpBfmq-zm7cNzV0dng@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CA%2BHiwqFz-sWg6RFd6Y9PAPZe0ETO%2BP4cDpBfmq-zm7cNzV0dng%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CA%2BHiwqFz-sWg6RFd6Y9PAPZe0ETO%2BP4cDpBfmq-zm7cNzV0dng%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CA%2BHiwqFz-sWg6RFd6Y9PAPZe0ETO%2BP4cDpBfmq-zm7cNzV0dng%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CA%2BHiwqFz-sWg6RFd6Y9PAPZe0ETO%2BP4cDpBfmq-zm7cNzV0dng%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Feb 19, 2025 at 11:28 AM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt; On Tue, Feb 18, 2025 at 3:52 PM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; On Tue, Feb 18, 2025 at 2:03 PM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; &gt; I&#x27;m inclined to go with Richard&#x27;s proposal, mainly to avoid the<br>&gt; &gt; &gt; overhead of copying in a bug fix just to isolate child sjinfo from<br>&gt; &gt; &gt; parent_sjinfo.<br>&gt; &gt; &gt;<br>&gt; &gt; &gt; Richard, would you like to commit the patch you proposed (adding<br>&gt; &gt; &gt; parent_sjinfo as a parameter to free_child_join_sjinfo()), or would<br>&gt; &gt; &gt; you prefer that I do it?<br>&gt; &gt;<br>&gt; &gt; Thank you Amit for reviewing.  I&#x27;ll commit it and will do so shortly.<br>&gt;<br>&gt; Pushed and back-patched to v17.  The fix will be included in the next<br>&gt; minor release (17.5).</p>
+
+<p>Thank you!</p>
+
+<p>-- <br>Thanks, Amit Langote</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAExHW5sjrsHd7+ciUJ861iA075NP7Br+A0v3x+MvuZmsMNewvA@mail.gmail.com"></a>
+<a name="24f26a1b8317967461d01bce0b9ddf21"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Ashutosh Bapat &lt;ashutosh(dot)bapat(dot)oss(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt;, Tender Wang &lt;tndrwang(at)gmail(dot)com&gt;,  pgsql-bugs(at)lists(dot)postgresql(dot)org, m_lingbin(at)126(dot)com,  Laurenz Albe &lt;laurenz(dot)albe(at)cybertec(dot)at&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18806: When enable_rartitionwise_join is set to ON, the
+ database shuts down abnormally</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-19 04:59:03</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAExHW5sjrsHd7%2BciUJ861iA075NP7Br%2BA0v3x%2BMvuZmsMNewvA%40mail.gmail.com">CAExHW5sjrsHd7+ciUJ861iA075NP7Br+A0v3x+MvuZmsMNewvA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAExHW5sjrsHd7%2BciUJ861iA075NP7Br%2BA0v3x%2BMvuZmsMNewvA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAExHW5sjrsHd7%2BciUJ861iA075NP7Br%2BA0v3x%2BMvuZmsMNewvA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAExHW5sjrsHd7%2BciUJ861iA075NP7Br%2BA0v3x%2BMvuZmsMNewvA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAExHW5sjrsHd7%2BciUJ861iA075NP7Br%2BA0v3x%2BMvuZmsMNewvA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Wed, Feb 19, 2025 at 7:58 AM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt;<br>&gt; On Tue, Feb 18, 2025 at 3:52 PM Richard Guo &lt;guofenglinux(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; On Tue, Feb 18, 2025 at 2:03 PM Amit Langote &lt;amitlangote09(at)gmail(dot)com&gt; wrote:<br>&gt; &gt; &gt; I&#x27;m inclined to go with Richard&#x27;s proposal, mainly to avoid the<br>&gt; &gt; &gt; overhead of copying in a bug fix just to isolate child sjinfo from<br>&gt; &gt; &gt; parent_sjinfo.<br>&gt; &gt; &gt;<br>&gt; &gt; &gt; Richard, would you like to commit the patch you proposed (adding<br>&gt; &gt; &gt; parent_sjinfo as a parameter to free_child_join_sjinfo()), or would<br>&gt; &gt; &gt; you prefer that I do it?<br>&gt; &gt;<br>&gt; &gt; Thank you Amit for reviewing.  I&#x27;ll commit it and will do so shortly.<br>&gt;<br>&gt; Pushed and back-patched to v17.  The fix will be included in the next<br>&gt; minor release (17.5).</p>
+
+<p>Thanks Richard.</p>
+
+<p>-- <br>Best Wishes,<br>Ashutosh Bapat</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

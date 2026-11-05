@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18722: Processing arrays with plpgsql raises errors</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18722-fd9e645448cc78b4%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2024-11-23T10:00:01" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18722: Processing arrays with plpgsql raises errors" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="589e01de4aafda7924c9fcd71880d74a">BUG #18722: Processing arrays with plpgsql raises errors</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202411231000">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18722-fd9e645448cc78b4@postgresql.org"></a>
+<a name="589e01de4aafda7924c9fcd71880d74a"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18722: Processing arrays with plpgsql raises errors</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-11-23 10:00:01</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18722-fd9e645448cc78b4%40postgresql.org">18722-fd9e645448cc78b4@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18722-fd9e645448cc78b4%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18722-fd9e645448cc78b4%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18722-fd9e645448cc78b4%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18722-fd9e645448cc78b4%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202411230000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18722<br>Logged by:          Alexander Lakhin<br>Email address:      exclusion(at)gmail(dot)com<br>PostgreSQL version: 17.2<br>Operating system:   Ubuntu 22.04<br>Description:        </p>
+
+<p>The following script:<br>CREATE FUNCTION make_ia() RETURNS int[] LANGUAGE plpgsql AS<br>  &#x27;declare x int[]; begin x := array[0]; return x; end&#x27;;<br>CREATE FUNCTION ia_eq(int[], int[]) RETURNS boolean LANGUAGE plpgsql AS<br>&#x27;begin return array_eq($1, $2); end&#x27;; <br>CREATE OPERATOR = (procedure = ia_eq, leftarg = int[], rightarg = int[]);<br>SELECT NULLIF(make_ia(), array[1]::int[]);</p>
+
+<p>fails with:<br>ERROR:  cache lookup failed for type 2139062143</p>
+
+<p>Also,<br>SELECT NULLIF(make_ia(), array[1]::int[]) = NULL;</p>
+
+<p>fails with:<br>ERROR:  invalid memory alloc request size 18446744073642179576</p>
+
+<p>The backtrace of the latter error is:<br>...<br>#6  0x000055b75ff0a96e in MemoryContextSizeFailure (context=0x55b760787d70,<br>size=18446744073642179576, flags=0) at mcxt.c:1170<br>#7  0x000055b75fefb4ec in MemoryContextCheckSize (context=0x55b760787d70,<br>size=18446744073642179576, flags=0) at<br>../../../../src/include/utils/memutils_internal.h:172<br>#8  0x000055b75fefc087 in AllocSetAllocLarge (context=0x55b760787d70,<br>size=18446744073642179576, flags=0) at aset.c:705<br>#9  0x000055b75fefc6c0 in AllocSetAlloc (context=0x55b760787d70,<br>size=18446744073642179576, flags=0) at aset.c:986<br>#10 0x000055b75ff0aa40 in MemoryContextAlloc (context=0x55b760787d70,<br>size=18446744073642179576) at mcxt.c:1200<br>#11 0x000055b75fd04a64 in copy_byval_expanded_array (eah=0x55b760787e70,<br>oldeah=0x55b760787e70) at array_expanded.c:197<br>#12 0x000055b75fd047d7 in expand_array (arraydatum=94246085885576,<br>parentcontext=0x55b7607b0cd0, metacache=0x7ffd548c2cc0) at<br>array_expanded.c:106<br>#13 0x00007f0094e5888f in plpgsql_exec_function (func=0x55b7606f2fb0,<br>fcinfo=0x55b7607992a8, simple_eval_estate=0x0, simple_eval_resowner=0x0,<br>procedure_resowner=0x0, atomic=true) at pl_exec.c:564<br>#14 0x00007f0094e75728 in plpgsql_call_handler (fcinfo=0x55b7607992a8) at<br>pl_handler.c:276<br>#15 0x000055b75f9dcd47 in ExecInterpExpr (state=0x55b760799150,<br>econtext=0x55b760798ef8, isnull=0x7ffd548c32df) at execExprInterp.c:746<br>...</p>
+
+<p>(gdb) f 12<br>#12 0x000055b75fd047d7 in expand_array (arraydatum=94246085885576,<br>parentcontext=0x55b7607b0cd0, metacache=0x7ffd548c2cc0) at<br>array_expanded.c:106<br>106                             copy_byval_expanded_array(eah, oldeah);<br>(gdb) p/x *oldeah<br>$1 = {hdr = {vl_len_ = 0xffffffff, eoh_methods = 0x55b7602d8f80, eoh_context<br>= 0x55b760787d70, eoh_rw_ptr = {0x1, 0x3, 0x70, 0x7e, 0x78, 0x60, 0xb7,<br>0x55, 0x0, 0x0}, eoh_ro_ptr = {0x1, 0x2, 0x70, 0x7e, 0x78, 0x60, 0xb7, 0x55,<br>0x0, <br>      0x0}}, ea_magic = 0x29170a59, ndims = 0x7f7f7f7f, dims =<br>0x7f7f7f7f7f7f7f7f, lbound = 0x7f7f7f7f7f7f7f7f, element_type = 0x7f7f7f7f,<br>typlen = 0x7f7f, typbyval = 0x7f, typalign = 0x7f, dvalues =<br>0x7f7f7f7f7f7f7f7f, <br>  dnulls = 0x7f7f7f7f7f7f7f7f, dvalueslen = 0x7f7f7f7f, nelems = 0x7f7f7f7f,<br>flat_size = 0x7f7f7f7f7f7f7f7f, fvalue = 0x7f7f7f7f7f7f7f7f, fstartptr =<br>0x7f7f7f7f7f7f7f7f, fendptr = 0x7f7f7f7f7f7f7f7f}</p>
+
+<p>I discovered this issue with SQLsmith.<br>Reproduced starting from 1dc5ebc90.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="940942.1732412520@sss.pgh.pa.us"></a>
+<a name="f5da0cd742a6dd9f8ae2f634a9e41d32"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18722: Processing arrays with plpgsql raises errors</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-11-24 01:42:00</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/940942.1732412520%40sss.pgh.pa.us">940942.1732412520@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/940942.1732412520%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/940942.1732412520%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/940942.1732412520%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/940942.1732412520%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202411240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; The following script:<br>&gt; CREATE FUNCTION make_ia() RETURNS int[] LANGUAGE plpgsql AS<br>&gt;   &#x27;declare x int[]; begin x := array[0]; return x; end&#x27;;<br>&gt; CREATE FUNCTION ia_eq(int[], int[]) RETURNS boolean LANGUAGE plpgsql AS<br>&gt; &#x27;begin return array_eq($1, $2); end&#x27;; <br>&gt; CREATE OPERATOR = (procedure = ia_eq, leftarg = int[], rightarg = int[]);<br>&gt; SELECT NULLIF(make_ia(), array[1]::int[]);</p>
+
+<p>&gt; fails with:<br>&gt; ERROR:  cache lookup failed for type 2139062143</p>
+
+<p>Nice catch!  What is happening here is that make_ia returns a<br>read/write pointer to an expanded array object.  The EEOP_NULLIF<br>code passes that pointer straight on to the equality function.<br>Which in this case is a plpgsql function that will suppose it<br>can take ownership of the expanded object, resulting in said<br>object being freed before return.  (Neither function has done<br>anything wrong.)  The problem is that EEOP_NULLIF then returns<br>the original Datum pointer, which is now pointing at garbage.<br>The different failures you get depending on what is done next<br>with the Datum are not too surprising.</p>
+
+<p>What EEOP_NULLIF needs to do is pass a read-only pointer to the<br>equality function, so that the object is not modified and remains<br>available to return if we want to do so.</p>
+
+<p>Attached is a quick WIP patch to handle that.  It is missing a test<br>case, but the real omission is that llvm_compile_expr()&#x27;s EEOP_NULLIF<br>handling also needs to be fixed, and I&#x27;m pretty unsure how to do that.</p>
+
+<p>I&#x27;m wondering now if any of our other conditional expressions have<br>similar bugs ...</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/168024/bug-18722-fix-wip.patch">bug-18722-fix-wip.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>2.6 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1211277.1732488552@sss.pgh.pa.us"></a>
+<a name="b1fee6f60fbfbb1aa5b90064254f1c41"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>exclusion(at)gmail(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18722: Processing arrays with plpgsql raises errors</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-11-24 22:49:12</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1211277.1732488552%40sss.pgh.pa.us">1211277.1732488552@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1211277.1732488552%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1211277.1732488552%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1211277.1732488552%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1211277.1732488552%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202411240000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I wrote:<br>&gt; What EEOP_NULLIF needs to do is pass a read-only pointer to the<br>&gt; equality function, so that the object is not modified and remains<br>&gt; available to return if we want to do so.</p>
+
+<p>&gt; Attached is a quick WIP patch to handle that.  It is missing a test<br>&gt; case, but the real omission is that llvm_compile_expr()&#x27;s EEOP_NULLIF<br>&gt; handling also needs to be fixed, and I&#x27;m pretty unsure how to do that.</p>
+
+<p>Here&#x27;s a fleshed-out patch with a test case and JIT support.  This<br>is about the first time I&#x27;ve messed with LLVM, so I wouldn&#x27;t mind<br>some review of what I did in llvmjit_expr.c.  In particular, do I<br>correctly understand that &quot;l_funcvalue(b, v_fcinfo, 0)&quot; produces<br>a reference to a copy of the initial value of args[0].value?<br>It seems to work in testing --- the original R/W pointer is returned<br>out of the expression --- but if we returned the R/O pointer instead<br>it&#x27;d be mighty difficult to detect the resulting inefficiency.</p>
+
+<p>&gt; I&#x27;m wondering now if any of our other conditional expressions have<br>&gt; similar bugs ...</p>
+
+<p>I was amused to discover that case.sql already had infrastructure<br>suitable for testing this, thanks to bug #14472.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/168028/bug-18722-fix-v1.patch">bug-18722-fix-v1.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>5.9 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAEZATCWKt=XKP12qZhqBX4JaVSatmFwYFnoGYEDDqCbpe-HrEA@mail.gmail.com"></a>
+<a name="9a6b58f048e9908fc1d1b2e08e4eae7d"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dean Rasheed &lt;dean(dot)a(dot)rasheed(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18722: Processing arrays with plpgsql raises errors</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-11-25 10:30:23</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAEZATCWKt%3DXKP12qZhqBX4JaVSatmFwYFnoGYEDDqCbpe-HrEA%40mail.gmail.com">CAEZATCWKt=XKP12qZhqBX4JaVSatmFwYFnoGYEDDqCbpe-HrEA@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAEZATCWKt%3DXKP12qZhqBX4JaVSatmFwYFnoGYEDDqCbpe-HrEA%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAEZATCWKt%3DXKP12qZhqBX4JaVSatmFwYFnoGYEDDqCbpe-HrEA%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAEZATCWKt%3DXKP12qZhqBX4JaVSatmFwYFnoGYEDDqCbpe-HrEA%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAEZATCWKt%3DXKP12qZhqBX4JaVSatmFwYFnoGYEDDqCbpe-HrEA%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202411250000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sun, 24 Nov 2024 at 22:49, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Here&#x27;s a fleshed-out patch with a test case and JIT support.  This<br>&gt; is about the first time I&#x27;ve messed with LLVM, so I wouldn&#x27;t mind<br>&gt; some review of what I did in llvmjit_expr.c.  In particular, do I<br>&gt; correctly understand that &quot;l_funcvalue(b, v_fcinfo, 0)&quot; produces<br>&gt; a reference to a copy of the initial value of args[0].value?<br>&gt;</p>
+
+<p>I don&#x27;t know about that, but I wonder if this bug could be fixed by<br>having ExecInitExprRec() insert a EEOP_MAKE_READONLY step. Then it<br>wouldn&#x27;t be necessary to make any changes to the expression evaluation<br>code.</p>
+
+<p>Regards,<br>Dean</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1341819.1732547251@sss.pgh.pa.us"></a>
+<a name="1b45f4d162035f85656f120e7d8c1c86"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dean Rasheed &lt;dean(dot)a(dot)rasheed(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18722: Processing arrays with plpgsql raises errors</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-11-25 15:07:31</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1341819.1732547251%40sss.pgh.pa.us">1341819.1732547251@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1341819.1732547251%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1341819.1732547251%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1341819.1732547251%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1341819.1732547251%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202411250000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Dean Rasheed &lt;dean(dot)a(dot)rasheed(at)gmail(dot)com&gt; writes:<br>&gt; On Sun, 24 Nov 2024 at 22:49, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;&gt; Here&#x27;s a fleshed-out patch with a test case and JIT support.  This<br>&gt;&gt; is about the first time I&#x27;ve messed with LLVM, so I wouldn&#x27;t mind<br>&gt;&gt; some review of what I did in llvmjit_expr.c.  In particular, do I<br>&gt;&gt; correctly understand that &quot;l_funcvalue(b, v_fcinfo, 0)&quot; produces<br>&gt;&gt; a reference to a copy of the initial value of args[0].value?</p>
+
+<p>&gt; I don&#x27;t know about that, but I wonder if this bug could be fixed by<br>&gt; having ExecInitExprRec() insert a EEOP_MAKE_READONLY step. Then it<br>&gt; wouldn&#x27;t be necessary to make any changes to the expression evaluation<br>&gt; code.</p>
+
+<p>That would entirely destroy one of the primary performance benefits of<br>the expanded-object infrastructure.  The idea is that if you have<br>    fconsumer(fproducer(...), ...)<br>and fproducer returns a read-write pointer to an object it&#x27;s built,<br>then fconsumer should be able to take ownership of the object and<br>use it as a local variable (possibly modifying it) without incurring<br>any object-copying overhead.</p>
+
+<p>This works in any context where an intermediate expression value<br>has a single consumer, which is most.  If there are multiple<br>consumers then we need to insert MAKE_READONLY steps for all<br>(or all but one) of them.  I overlooked EEOP_NULLIF as such<br>a case, but I don&#x27;t think there are so many more cases as to<br>justify throwing away the concept altogether.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAEZATCUvXyCVbXMN8Z3GXn_xooNL+=B4e9G0CADceCoHyu4t-g@mail.gmail.com"></a>
+<a name="4d475601029a10513d56e169d60383bc"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dean Rasheed &lt;dean(dot)a(dot)rasheed(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18722: Processing arrays with plpgsql raises errors</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-11-25 17:59:05</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAEZATCUvXyCVbXMN8Z3GXn_xooNL%2B%3DB4e9G0CADceCoHyu4t-g%40mail.gmail.com">CAEZATCUvXyCVbXMN8Z3GXn_xooNL+=B4e9G0CADceCoHyu4t-g@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAEZATCUvXyCVbXMN8Z3GXn_xooNL%2B%3DB4e9G0CADceCoHyu4t-g%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAEZATCUvXyCVbXMN8Z3GXn_xooNL%2B%3DB4e9G0CADceCoHyu4t-g%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAEZATCUvXyCVbXMN8Z3GXn_xooNL%2B%3DB4e9G0CADceCoHyu4t-g%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAEZATCUvXyCVbXMN8Z3GXn_xooNL%2B%3DB4e9G0CADceCoHyu4t-g%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202411250000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, 25 Nov 2024 at 15:07, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Dean Rasheed &lt;dean(dot)a(dot)rasheed(at)gmail(dot)com&gt; writes:<br>&gt; &gt; I don&#x27;t know about that, but I wonder if this bug could be fixed by<br>&gt; &gt; having ExecInitExprRec() insert a EEOP_MAKE_READONLY step. Then it<br>&gt; &gt; wouldn&#x27;t be necessary to make any changes to the expression evaluation<br>&gt; &gt; code.<br>&gt;<br>&gt; That would entirely destroy one of the primary performance benefits of<br>&gt; the expanded-object infrastructure.  The idea is that if you have<br>&gt;     fconsumer(fproducer(...), ...)<br>&gt; and fproducer returns a read-write pointer to an object it&#x27;s built,<br>&gt; then fconsumer should be able to take ownership of the object and<br>&gt; use it as a local variable (possibly modifying it) without incurring<br>&gt; any object-copying overhead.<br>&gt;<br>&gt; This works in any context where an intermediate expression value<br>&gt; has a single consumer, which is most.  If there are multiple<br>&gt; consumers then we need to insert MAKE_READONLY steps for all<br>&gt; (or all but one) of them.  I overlooked EEOP_NULLIF as such<br>&gt; a case, but I don&#x27;t think there are so many more cases as to<br>&gt; justify throwing away the concept altogether.<br>&gt;</p>
+
+<p>I didn&#x27;t mean do it in all cases, I just meant the NullIfExpr case<br>identified here. My point was that instead of modifying the evaluation<br>code for EEOP_NULLIF to make it call<br>MakeExpandedObjectReadOnlyInternal(), it would be easier to insert a<br>EEOP_MAKE_READONLY step for the first argument of the EEOP_NULLIF<br>step.</p>
+
+<p>Regards,<br>Dean</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="1440980.1732562171@sss.pgh.pa.us"></a>
+<a name="56d5436c54cd715b25a7dcf6d9499ac5"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Dean Rasheed &lt;dean(dot)a(dot)rasheed(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18722: Processing arrays with plpgsql raises errors</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-11-25 19:16:11</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/1440980.1732562171%40sss.pgh.pa.us">1440980.1732562171@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/1440980.1732562171%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/1440980.1732562171%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/1440980.1732562171%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/1440980.1732562171%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202411250000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Dean Rasheed &lt;dean(dot)a(dot)rasheed(at)gmail(dot)com&gt; writes:<br>&gt; I didn&#x27;t mean do it in all cases, I just meant the NullIfExpr case<br>&gt; identified here. My point was that instead of modifying the evaluation<br>&gt; code for EEOP_NULLIF to make it call<br>&gt; MakeExpandedObjectReadOnlyInternal(), it would be easier to insert a<br>&gt; EEOP_MAKE_READONLY step for the first argument of the EEOP_NULLIF<br>&gt; step.</p>
+
+<p>But then the NULLIF step would only have access to the R/O pointer,<br>no?  We do want to pass on a R/W pointer to the output, if we got<br>one, to handle cases like<br>	fconsumer(NULLIF(fproducer(...), ...), ...)<br>Admittedly that&#x27;s a pretty edgy edge-case, but still we&#x27;re leaving<br>money on the table if we don&#x27;t do it.  So I think we have to deal<br>with the issue within NULLIF.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAEZATCXZvn62enX=vYiosOFDT=ya4j-6vhaw7xw8Kb18d6+v5Q@mail.gmail.com"></a>
+<a name="5931a65765698400bcc3050e91267c6a"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Dean Rasheed &lt;dean(dot)a(dot)rasheed(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>exclusion(at)gmail(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18722: Processing arrays with plpgsql raises errors</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2024-11-25 20:42:37</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAEZATCXZvn62enX%3DvYiosOFDT%3Dya4j-6vhaw7xw8Kb18d6%2Bv5Q%40mail.gmail.com">CAEZATCXZvn62enX=vYiosOFDT=ya4j-6vhaw7xw8Kb18d6+v5Q@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAEZATCXZvn62enX%3DvYiosOFDT%3Dya4j-6vhaw7xw8Kb18d6%2Bv5Q%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAEZATCXZvn62enX%3DvYiosOFDT%3Dya4j-6vhaw7xw8Kb18d6%2Bv5Q%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAEZATCXZvn62enX%3DvYiosOFDT%3Dya4j-6vhaw7xw8Kb18d6%2Bv5Q%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAEZATCXZvn62enX%3DvYiosOFDT%3Dya4j-6vhaw7xw8Kb18d6%2Bv5Q%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202411250000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, 25 Nov 2024 at 19:16, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt;<br>&gt; Dean Rasheed &lt;dean(dot)a(dot)rasheed(at)gmail(dot)com&gt; writes:<br>&gt; &gt; I didn&#x27;t mean do it in all cases, I just meant the NullIfExpr case<br>&gt; &gt; identified here. My point was that instead of modifying the evaluation<br>&gt; &gt; code for EEOP_NULLIF to make it call<br>&gt; &gt; MakeExpandedObjectReadOnlyInternal(), it would be easier to insert a<br>&gt; &gt; EEOP_MAKE_READONLY step for the first argument of the EEOP_NULLIF<br>&gt; &gt; step.<br>&gt;<br>&gt; But then the NULLIF step would only have access to the R/O pointer,<br>&gt; no?  We do want to pass on a R/W pointer to the output, if we got<br>&gt; one, to handle cases like<br>&gt;         fconsumer(NULLIF(fproducer(...), ...), ...)<br>&gt; Admittedly that&#x27;s a pretty edgy edge-case, but still we&#x27;re leaving<br>&gt; money on the table if we don&#x27;t do it.  So I think we have to deal<br>&gt; with the issue within NULLIF.<br>&gt;</p>
+
+<p>OK, that makes sense.</p>
+
+<p>Regards,<br>Dean</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,93 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17538
+Logged by:          Parachute Parachute
+Email address:      teng_wang13(at)163(dot)com
+PostgreSQL version: 14.2
+Operating system:   Ubuntu 18.04
+Description:        
+
+
+As per the manual,
+log_hostname (boolean)
+By default, connection log messages only show the IP address of the
+connecting host. Turning this parameter on causes logging of the host name
+as well. 
+
+
+The parameter could be updated on the fly. However, dynamically updating
+log_hostname did not affect the disconnection log. I start up Postgres
+server with log_hostname set 'no', which means not logging of the host name
+in connection log. Then I connected to Postgres with root 'wang' using:
+
+
+> ./psql -U wang -h localhost -p 5432
+
+
+In the logfile, connection log messages only show the IP address (127.0.0.1)
+of the connecting host, rather than the host name (localhost).
+
+
+Then, I update log_hostname to 'yes' in postgresql.conf, and send SIGHUP
+signal to reload configuration files.
+
+
+I saw the logs showing the parameter was updated:
+2022-07-03 10:50:54.477 UTC [5955] LOG:  received SIGHUP, reloading
+configuration files
+2022-07-03 10:50:54.478 UTC [5955] LOG:  parameter "log_hostname" changed to
+"yes"
+
+
+After I disconnected to Postgres, connection log messages kept showing the
+IP address (127.0.0.1), which expected to show the host name (localhost).
+This means updating log_hostname did not take effect.
+
+
+The full logfile:
+
+
+2022-07-03 10:49:08.191 UTC [5955] LOG:  database system is ready to accept
+connections
+2022-07-03 10:50:08.905 UTC [5972] LOG:  connection received: host=127.0.0.1
+port=37828
+2022-07-03 10:50:08.905 UTC [5972] LOG:  connection authorized: user=wang
+database=wang application_name=psql
+2022-07-03 10:50:54.477 UTC [5955] LOG:  received SIGHUP, reloading
+configuration files
+2022-07-03 10:50:54.478 UTC [5955] LOG:  parameter "log_hostname" changed to
+"yes"
+2022-07-03 10:51:24.416 UTC [5972] LOG:  disconnection: session time:
+0:01:15.510 user=wang database=wang host=127.0.0.1 port=37828
+
+
+**Suggest to fix:
+in src/backend/tcop/postgres.c
+static void log_disconnections(int code, Datum arg),
+
+
+update 'port->remote_host' based on log_hostname as the method
+BackendInitialize(Port *port) does.
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> The parameter could be updated on the fly. However, dynamically updating
+> log_hostname did not affect the disconnection log.
+
+
+This is operating as designed: the host name is captured at connection
+time, and the log_disconnection message just repeats it.  What you
+propose would not be an improvement, because it'd make it impossible
+to match up log_disconnections messages with log_connections ones.
+
+
+			regards, tom lane
+
+
+

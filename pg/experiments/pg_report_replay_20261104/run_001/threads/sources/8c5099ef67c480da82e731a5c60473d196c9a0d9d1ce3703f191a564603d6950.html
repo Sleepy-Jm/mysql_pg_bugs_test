@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17382-9b238ae4286aef7d%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-01-26T08:25:20" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="15a153504809a2649c5c3b37ffe96e46">BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202201260825">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17382-9b238ae4286aef7d@postgresql.org"></a>
+<a name="15a153504809a2649c5c3b37ffe96e46"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>1726002692(at)qq(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-26 08:25:20</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17382-9b238ae4286aef7d%40postgresql.org">17382-9b238ae4286aef7d@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17382-9b238ae4286aef7d%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17382-9b238ae4286aef7d%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17382-9b238ae4286aef7d%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17382-9b238ae4286aef7d%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201260000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17382<br>Logged by:          强 魏<br>Email address:      1726002692(at)qq(dot)com<br>PostgreSQL version: 14.1<br>Operating system:   CentOS 7.6<br>Description:        </p>
+
+<p>When vacuum full or vacuumdb - F is executed, a large number of empty files<br>will be generated in the database. These files have never been deleted.<br>Each execution of vacuum full or vacuudb - F will produce a large number of<br>empty files.These empty files will not be deleted until the database is<br>restarted.<br>Is this a bug?</p>
+
+<p>The following is the verification：</p>
+
+<p>user:postgres(at)db:postgres[[local]:5432]#\c postgres<br>user:postgres(at)db:postgres[[local]:5432]#vacuum full;<br>[postgres(at)PG-3 99522]$cd $PGDATA<br>[postgres(at)PG-3 99522]$ll | less<br>总用量 13096<br>-rw------- 1 postgres postgres      0 1月  26 16:13 100705<br>-rw------- 1 postgres postgres      0 1月  26 16:13 100708<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100709<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100710<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100711<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100714<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100715<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100716<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100717<br>-rw------- 1 postgres postgres      0 1月  26 16:13 100720<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100721<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100722<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100723<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100724<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100727<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100728<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100729<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100730<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100731<br>-rw------- 1 postgres postgres      0 1月  26 16:13 100734<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100735<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100736<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100737<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100740<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100741<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100742<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100745<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100746<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100747<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100750<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100751<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100752<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100753<br>-rw------- 1 postgres postgres      0 1月  26 16:13 100756<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100757<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100758<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100759<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100767<br>-rw------- 1 postgres postgres      0 1月  26 16:13 100770<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100771<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100772<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100773<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100774<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100775<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100776<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100777<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100780<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100781<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100782<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100785<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100786<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100787<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100790<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100791<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100792<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100795<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100796<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100797<br>-rw------- 1 postgres postgres      0 1月  26 16:13 100800<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100801<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100802<br>-rw------- 1 postgres postgres      0 1月  26 16:17 100803</p>
+
+<p>[postgres(at)PG-3 99522]$ ll | wc -l<br>445<br>[postgres(at)PG-3 99522]$ pg_ctl restart<br>waiting for server to shut down.... done<br>server stopped<br>waiting for server to start....2022-01-26 16:18:54 CST[13684]:[1-1]user =<br>,db = ,app = ,client = LOG:  redirecting log output to logging collector<br>process<br>2022-01-26 16:18:54 CST[13684]:[2-1]user = ,db = ,app = ,client = HINT: <br>Future log output will appear in directory &quot;log&quot;.<br> done<br>server started<br>[postgres(at)PG-3 99522]$ ll | wc -l<br>229</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="tencent_51ED91C05DFAA4EB4B7972C983BE24625809@qq.com"></a>
+<a name="c4b7265eda1eb474e2b9062ad664de36"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>两个孩子的爹 &lt;1726002692(at)qq(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>1726002692 &lt;1726002692(at)qq(dot)com&gt;, pgsql-bugs &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>回复：BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-26 08:29:10</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/tencent_51ED91C05DFAA4EB4B7972C983BE24625809%40qq.com">tencent_51ED91C05DFAA4EB4B7972C983BE24625809@qq.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/tencent_51ED91C05DFAA4EB4B7972C983BE24625809%40qq.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/tencent_51ED91C05DFAA4EB4B7972C983BE24625809%40qq.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/tencent_51ED91C05DFAA4EB4B7972C983BE24625809%40qq.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/tencent_51ED91C05DFAA4EB4B7972C983BE24625809%40qq.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201260000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>When vacuum full or vacuumdb -f is executed, a large number of empty files<br>will be generated in the database. These files have never been deleted.<br>Each execution of vacuum full or vacuudb -f will produce a large number of<br>empty files.These empty files will not be deleted until the database is<br>restarted.<br>Is this a bug?</p>
+
+<p>The following is the verification：</p>
+
+<p>user:postgres(at)db:postgres[[local]:5432]#\c postgres<br>user:postgres(at)db:postgres[[local]:5432]#vacuum full;<br>[postgres(at)PG-3 99522]$cd $PGDATA<br>[postgres(at)PG-3 99522]$ll | less<br>总用量 13096<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100705<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100708<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100709<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100710<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100711<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100714<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100715<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100716<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100717<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100720<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100721<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100722<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100723<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100724<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100727<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100728<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100729<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100730<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100731<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100734<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100735<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100736<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100737<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100740<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100741<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100742<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100745<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100746<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100747<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100750<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100751<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100752<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100753<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100756<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100757<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100758<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100759<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100767<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100770<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100771<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100772<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100773<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100774<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100775<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100776<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100777<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100780<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100781<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100782<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100785<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100786<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100787<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100790<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100791<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100792<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100795<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100796<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100797<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100800<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100801<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100802<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100803</p>
+
+<p>[postgres(at)PG-3 99522]$ ll | wc -l<br>445<br>[postgres(at)PG-3 99522]$ pg_ctl restart<br>waiting for server to shut down.... done<br>server stopped<br>waiting for server to start....2022-01-26 16:18:54 CST[13684]:[1-1]user =<br>,db = ,app = ,client = LOG:&amp;nbsp; redirecting log output to logging collector<br>process<br>2022-01-26 16:18:54 CST[13684]:[2-1]user = ,db = ,app = ,client = HINT:<br>Future log output will appear in directory &quot;log&quot;.<br>&amp;nbsp;done<br>server started<br>[postgres(at)PG-3 99522]$ ll | wc -l<br>229</p>
+
+<p>------------------&amp;nbsp;原始邮件&amp;nbsp;------------------<br>发件人:                                                                                                                        &quot;1726002692&quot;                                                                                    &lt;noreply(at)postgresql(dot)org&amp;gt;;<br>发送时间:&amp;nbsp;2022年1月26日(星期三) 下午4:25<br>收件人:&amp;nbsp;&quot;pgsql-bugs&quot;&lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&amp;gt;;<br>抄送:&amp;nbsp;&quot;两个孩子的爹&quot;&lt;1726002692(at)qq(dot)com&amp;gt;;<br>主题:&amp;nbsp;BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the</p>
+
+<p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 17382<br>Logged by:&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 强 魏<br>Email address:&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 1726002692(at)qq(dot)com<br>PostgreSQL version: 14.1<br>Operating system:&amp;nbsp;&amp;nbsp; CentOS 7.6<br>Description:&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; </p>
+
+<p>When vacuum full or vacuumdb - F is executed, a large number of empty files<br>will be generated in the database. These files have never been deleted.<br>Each execution of vacuum full or vacuudb - F will produce a large number of<br>empty files.These empty files will not be deleted until the database is<br>restarted.<br>Is this a bug?</p>
+
+<p>The following is the verification：</p>
+
+<p>user:postgres(at)db:postgres[[local]:5432]#\c postgres<br>user:postgres(at)db:postgres[[local]:5432]#vacuum full;<br>[postgres(at)PG-3 99522]$cd $PGDATA<br>[postgres(at)PG-3 99522]$ll | less<br>总用量 13096<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100705<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100708<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100709<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100710<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100711<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100714<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100715<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100716<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100717<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100720<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100721<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100722<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100723<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100724<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100727<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100728<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100729<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100730<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100731<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100734<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100735<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100736<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100737<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100740<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100741<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100742<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100745<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100746<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100747<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100750<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100751<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100752<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100753<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100756<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100757<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100758<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100759<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100767<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100770<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100771<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100772<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100773<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100774<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100775<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100776<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100777<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100780<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100781<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100782<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100785<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100786<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100787<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100790<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100791<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100792<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100795<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100796<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100797<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:13 100800<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100801<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100802<br>-rw------- 1 postgres postgres&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; 0 1月&amp;nbsp; 26 16:17 100803</p>
+
+<p>[postgres(at)PG-3 99522]$ ll | wc -l<br>445<br>[postgres(at)PG-3 99522]$ pg_ctl restart<br>waiting for server to shut down.... done<br>server stopped<br>waiting for server to start....2022-01-26 16:18:54 CST[13684]:[1-1]user =<br>,db = ,app = ,client = LOG:&amp;nbsp; redirecting log output to logging collector<br>process<br>2022-01-26 16:18:54 CST[13684]:[2-1]user = ,db = ,app = ,client = HINT: <br>Future log output will appear in directory &quot;log&quot;.<br>&amp;nbsp;done<br>server started<br>[postgres(at)PG-3 99522]$ ll | wc -l<br>229</p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2441394.1643210985@sss.pgh.pa.us"></a>
+<a name="0d22c1f642d466ddaff84edc4258e3e6"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>1726002692(at)qq(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-26 15:29:45</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2441394.1643210985%40sss.pgh.pa.us">2441394.1643210985@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2441394.1643210985%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2441394.1643210985%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2441394.1643210985%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2441394.1643210985%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201260000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; writes:<br>&gt; When vacuum full or vacuumdb - F is executed, a large number of empty files<br>&gt; will be generated in the database. These files have never been deleted.<br>&gt; Each execution of vacuum full or vacuudb - F will produce a large number of<br>&gt; empty files.These empty files will not be deleted until the database is<br>&gt; restarted.<br>&gt; Is this a bug?</p>
+
+<p>It might be if you could tell us how to reproduce it --- I see no<br>such behavior here.</p>
+
+<p>In general, PG uses numerically-named files for table contents,<br>but they should always appear in subdirectories of $PGDATA, never<br>in the directory&#x27;s top level.  So I have no idea what those are<br>or what put them there.  Perhaps you are using some unusual<br>extension or custom C code that creates them?</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="tencent_455C88A54F4AFB73D3824A2558585F911209@qq.com"></a>
+<a name="4b90bb5b7ac918ada94eedb1a9154763"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>两个孩子的爹 &lt;1726002692(at)qq(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-28 13:42:47</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/tencent_455C88A54F4AFB73D3824A2558585F911209%40qq.com">tencent_455C88A54F4AFB73D3824A2558585F911209@qq.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/tencent_455C88A54F4AFB73D3824A2558585F911209%40qq.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/tencent_455C88A54F4AFB73D3824A2558585F911209%40qq.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/tencent_455C88A54F4AFB73D3824A2558585F911209%40qq.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/tencent_455C88A54F4AFB73D3824A2558585F911209%40qq.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Sorry, it&#x27;s my fault. The empty files generated by &quot;vacuumdb - f &quot; is located under the $pgdata / base / 99522 directory</p>
+
+<p>The following is the verification：</p>
+
+<p>[postgres(at)PG-3 ~]$ psql&amp;nbsp;<br>Timing is on.<br>Border style is 2.<br>Null display is &quot;NULL&quot;.<br>psql (14.1)<br>Type &quot;help&quot; for help.</p>
+
+<p>user:postgres(at)db:postgres[[local]:5432]#\l<br>&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;List of databases<br>+-----------+----------+----------+-------------+-------------+-----------------------+<br>|&amp;nbsp; &amp;nbsp;Name&amp;nbsp; &amp;nbsp; |&amp;nbsp; Owner&amp;nbsp; &amp;nbsp;| Encoding |&amp;nbsp; &amp;nbsp;Collate&amp;nbsp; &amp;nbsp;|&amp;nbsp; &amp;nbsp; Ctype&amp;nbsp; &amp;nbsp; |&amp;nbsp; &amp;nbsp;Access privileges&amp;nbsp; &amp;nbsp;|<br>+-----------+----------+----------+-------------+-------------+-----------------------+<br>| postgres&amp;nbsp; | postgres | UTF8&amp;nbsp; &amp;nbsp; &amp;nbsp;| zh_CN.UTF-8 | zh_CN.UTF-8 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;|<br>| template0 | postgres | UTF8&amp;nbsp; &amp;nbsp; &amp;nbsp;| zh_CN.UTF-8 | zh_CN.UTF-8 | =c/postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; +|<br>|&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;|&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;|&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;| postgres=CTc/postgres |<br>| template1 | postgres | UTF8&amp;nbsp; &amp;nbsp; &amp;nbsp;| zh_CN.UTF-8 | zh_CN.UTF-8 | =c/postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; +|<br>|&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;|&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;|&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;| postgres=CTc/postgres |<br>+-----------+----------+----------+-------------+-------------+-----------------------+<br>(3 rows)</p>
+
+<p>user:postgres(at)db:postgres[[local]:5432]#select * from pg_database;&amp;nbsp;<br>+-------+-----------+--------+----------+-------------+-------------+---------------+--------------+--------------+---------------+--------------+------------+---------------+-------------------------------------+<br>|&amp;nbsp; oid&amp;nbsp; |&amp;nbsp; datname&amp;nbsp; | datdba | encoding | datcollate&amp;nbsp; |&amp;nbsp; datctype&amp;nbsp; &amp;nbsp;| datistemplate | datallowconn | datconnlimit | datlastsysoid | datfrozenxid | datminmxid | dattablespace |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;datacl&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; |<br>+-------+-----------+--------+----------+-------------+-------------+---------------+--------------+--------------+---------------+--------------+------------+---------------+-------------------------------------+<br>|&amp;nbsp; &amp;nbsp; &amp;nbsp;1 | template1 |&amp;nbsp; &amp;nbsp; &amp;nbsp;10 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 6 | zh_CN.UTF-8 | zh_CN.UTF-8 | t&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;| t&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;-1 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;14407 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 727 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 1 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 1663 | {=c/postgres,postgres=CTc/postgres} |<br>| 14407 | template0 |&amp;nbsp; &amp;nbsp; &amp;nbsp;10 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 6 | zh_CN.UTF-8 | zh_CN.UTF-8 | t&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;| f&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;-1 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;14407 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 727 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 1 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 1663 | {=c/postgres,postgres=CTc/postgres} |<br>| 99522 | postgres&amp;nbsp; |&amp;nbsp; &amp;nbsp; &amp;nbsp;10 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 6 | zh_CN.UTF-8 | zh_CN.UTF-8 | f&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;| t&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;-1 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;14407 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;1529 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 4 |&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; 1663 | NULL&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; |<br>+-------+-----------+--------+----------+-------------+-------------+---------------+--------------+--------------+---------------+--------------+------------+---------------+-------------------------------------+<br>(3 rows)</p>
+
+<p>Time: 0.782 ms<br>user:postgres(at)db:postgres[[local]:5432]#\! ls -l $PGDATA/base/99522 | wc -l&amp;nbsp;<br>292<br>user:postgres(at)db:postgres[[local]:5432]#vacuum full;<br>VACUUM<br>Time: 604.148 ms<br>user:postgres(at)db:postgres[[local]:5432]#\! ls -l $PGDATA/base/99522 | wc -l<br>435<br>user:postgres(at)db:postgres[[local]:5432]#\q</p>
+
+<p>[postgres(at)PG-3 ~]$ cd $PGDATA/base/99522<br>[postgres(at)PG-3 99522]$ ll | less<br>总用量 13160<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101874<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 26 16:37 101877<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101878<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101879<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101880<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101881<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101884<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101885<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101886<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101887<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101888<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101891<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101892<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101893<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101894<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 26 16:37 101897<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101898<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101899<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101900<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101901<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 26 16:37 101904<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101905<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101906<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101907<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101908<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101909<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101910<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101911<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101914<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101915<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101916<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101919<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101920<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101921<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101924<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101925<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101926<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101929<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101930<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101931<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 26 16:37 101934<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101935<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101936<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101937<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101938<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 26 16:37 101941<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101942<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101943<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101944<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101947<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101948<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101949<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101952<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101953<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101954<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101985<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101988<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101989<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101990<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101993<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101994<br>-rw------- 1 postgres postgres&amp;nbsp; &amp;nbsp; &amp;nbsp; 0 1月&amp;nbsp; 28 21:39 101997<br>[postgres(at)PG-3 99522]$ pg_ctl restart<br>waiting for server to shut down.... done<br>server stopped<br>waiting for server to start....2022-01-28 21:41:49 CST[2289]:[1-1]user = ,db = ,app = ,client = LOG:&amp;nbsp; redirecting log output to logging collector process<br>2022-01-28 21:41:49 CST[2289]:[2-1]user = ,db = ,app = ,client = HINT:&amp;nbsp; Future log output will appear in directory &quot;log&quot;.<br>&amp;nbsp;done<br>server started<br>[postgres(at)PG-3 99522]$ ll | wc -l<br>229</p>
+
+<p>------------------&amp;nbsp;Original&amp;nbsp;------------------<br>From:                                                                                                                        &quot;Tom Lane&quot;                                                                                    &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&amp;gt;;<br>Date:&amp;nbsp;Wed, Jan 26, 2022 11:29 PM<br>To:&amp;nbsp;&quot;两个孩子的爹&quot;&lt;1726002692(at)qq(dot)com&amp;gt;;<br>Cc:&amp;nbsp;&quot;pgsql-bugs&quot;&lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&amp;gt;;<br>Subject:&amp;nbsp;Re: BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the</p>
+
+<p>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&amp;gt; writes:<br>&amp;gt; When vacuum full or vacuumdb - F is executed, a large number of empty files<br>&amp;gt; will be generated in the database. These files have never been deleted.<br>&amp;gt; Each execution of vacuum full or vacuudb - F will produce a large number of<br>&amp;gt; empty files.These empty files will not be deleted until the database is<br>&amp;gt; restarted.<br>&amp;gt; Is this a bug?</p>
+
+<p>It might be if you could tell us how to reproduce it --- I see no<br>such behavior here.</p>
+
+<p>In general, PG uses numerically-named files for table contents,<br>but they should always appear in subdirectories of $PGDATA, never<br>in the directory&#x27;s top level.&amp;nbsp; So I have no idea what those are<br>or what put them there.&amp;nbsp; Perhaps you are using some unusual<br>extension or custom C code that creates them?</p>
+
+<p>			regards, tom lane</p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="2772241.1643386532@sss.pgh.pa.us"></a>
+<a name="76035286a7e8bc97dc9cd3e85aac32d1"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>两个孩子的爹 &lt;1726002692(at)qq(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17382: When vacuum full or vacuumdb - F is executed, a large number of empty files will be generated in the</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-01-28 16:15:32</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/2772241.1643386532%40sss.pgh.pa.us">2772241.1643386532@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/2772241.1643386532%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/2772241.1643386532%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/2772241.1643386532%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/2772241.1643386532%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202201280000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&quot;=?gb18030?B?wb249rqi19O1xLX5?=&quot; &lt;1726002692(at)qq(dot)com&gt; writes:<br>&gt; Sorry, it&#x27;s my fault. The empty files generated by &quot;vacuumdb - f &quot; is located under the $pgdata / base / 99522 directory</p>
+
+<p>Oh, if they are under the database&#x27;s subdirectory then it&#x27;s not so<br>surprising.  VACUUM FULL (or, actually, any table deletion or rewrite)<br>leaves behind an empty &quot;tombstone&quot; file that is just there to prevent<br>re-use of that table number for the moment.  It&#x27;ll go away at the next<br>checkpoint.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

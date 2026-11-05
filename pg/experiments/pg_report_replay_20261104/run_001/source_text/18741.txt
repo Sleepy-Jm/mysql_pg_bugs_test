@@ -1,0 +1,34 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18741
+Logged by:          Alexander Lakhin
+Email address:      exclusion(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Ubuntu 22.04
+Description:        
+
+
+The following script:
+CREATE TABLE pt1 (a int PRIMARY KEY) PARTITION BY RANGE (a);
+CREATE TABLE p1 PARTITION OF pt1 FOR VALUES FROM (0) TO (1);
+
+
+CREATE TABLE pt2 (a int) PARTITION BY RANGE (a);
+CREATE TABLE p2 (a int, FOREIGN KEY (a) REFERENCES pt1);
+
+
+ALTER TABLE pt2 ATTACH PARTITION p2 FOR VALUES FROM (0) TO (1);
+ALTER TABLE pt2 DETACH PARTITION p2;
+
+
+fails with:
+ERROR:  XX000: could not find ON INSERT check triggers of foreign key
+constraint 16404
+LOCATION:  GetForeignKeyCheckTriggers, tablecmds.c:11355
+
+
+Reproduced on REL_15_STABLE (starting from f4566345c) .. master.
+
+
+

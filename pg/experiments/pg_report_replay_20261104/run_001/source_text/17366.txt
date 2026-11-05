@@ -1,0 +1,46 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17366
+Logged by:          Error result returned in timestamp2timestamptz, expected to be off by one
+hour
+Email address:      dafoer_x(at)163(dot)com
+PostgreSQL version: 14.1
+Operating system:   REL_14_STABLE
+Description:        
+
+
+For REL_14_STABLE
+git log ad5b6f248ab288c3252d8122d12a1eb410d4a0b6
+
+
+e.g.
+postgres=# set timezone to "PST8PDT";
+SET
+postgres=# select * from pg_timezone_names where name = 'PST8PDT';
+  name   | abbrev | utc_offset | is_dst 
+---------+--------+------------+--------
+ PST8PDT | PST    | -08:00:00  | f
+(1 row)
+
+
+postgres=# select (timestamp '2021-03-14 02:00:00')::timestamptz;
+      timestamptz       
+------------------------
+ 2021-03-14 03:00:00-07
+(1 row)
+
+
+postgres=# select (timestamp '2021-03-14 03:00:00')::timestamptz;
+      timestamptz       
+------------------------
+ 2021-03-14 03:00:00-07
+(1 row)
+
+
+expected:
+postgres=# select (timestamp '2021-03-14 02:00:00')::timestamptz;
+2021-03-14 02:00:00-07
+
+
+

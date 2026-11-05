@@ -1,0 +1,104 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18882
+Logged by:          Huicong Xu
+Email address:      2023103793(at)ruc(dot)edu(dot)cn
+PostgreSQL version: 17.2
+Operating system:   Ubuntu 22.04
+Description:        
+
+
+Hello.
+When I was using Python to connect to the PG database for large-scale
+testing, I noticed a problem.
+As the example below demonstrates, this example should report an error at
+the serializable isolation level because there is a cycle between the two
+transactions. However, when I executed this script it did not report an
+error, but when I used SQL it did.
+What do you think about this matter? Thank you very much for your help.
+
+
+--- Init Database
+CREATE TABLE tJ6mtoSl (ID INT, VAL INT, c0 REAL  UNIQUE PRIMARY KEY NOT
+NULL, c1 INT  NULL , c2 TEXT );
+CREATE TABLE tEJybmqs (ID INT, VAL INT, c0 BOOLEAN , c1 BOOLEAN , c2
+DECIMAL(50, 28) );
+INSERT INTO tJ6mtoSl (ID, VAL, c0, c1, c2) VALUES (14710, 16726, 3795.9601,
+9535, '-636554895');
+INSERT INTO tJ6mtoSl (ID, VAL, c0, c1, c2) VALUES (14691, 16705, 4091.6018,
+1351, '');
+INSERT INTO tJ6mtoSl (ID, VAL, c0, c1, c2) VALUES (14711, 16727, 9685.3172,
+2824, '<');
+INSERT INTO tEJybmqs (ID, VAL, c0, c1, c2) VALUES (14714, 16730, TRUE,
+FALSE, 4074.8459);
+INSERT INTO tEJybmqs (ID, VAL, c0, c1, c2) VALUES (14715, 16731, FALSE,
+FALSE, 7592.0412);
+
+
+---case
+conn1 = psycopg2.connect(**dbconfig)
+conn2 = psycopg2.connect(**dbconfig)
+cur1 = conn1.cursor()
+cur2 = conn2.cursor()
+try:
+    cur1.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL
+SERIALIZABLE;")
+    cur1.execute("START TRANSACTION;")
+
+
+    cur2.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL
+SERIALIZABLE;")
+    cur2.execute("START TRANSACTION;")
+
+
+    cur1.execute("SELECT * FROM tJ6mtoSl WHERE ( tJ6mtoSl.c1 < 1646 AND
+tJ6mtoSl.c1 >= 1061 ) AND (tJ6mtoSl.c0 >= 100) ORDER BY tJ6mtoSl.ID;")
+    print(cur1.fetchall())
+
+
+    cur2.execute("SELECT * FROM tEJybmqs WHERE ( tEJybmqs.c1 = FALSE ) ORDER
+BY tEJybmqs.ID;")
+    print(cur2.fetchall())
+    cur2.execute("UPDATE tJ6mtoSl SET VAL = 16732 WHERE ( tJ6mtoSl.c1 < 1646
+AND tJ6mtoSl.c1 >= 1061 ) AND (tJ6mtoSl.c0 >= 100);")
+    cur2.execute("COMMIT;")
+
+
+    cur1.execute("DELETE FROM tEJybmqs WHERE ( tEJybmqs.c1 = FALSE );")
+    cur1.execute("COMMIT;")
+except Exception as e:
+    print(e)
+cur1.close()
+cur2.close()
+
+
+--- I see
+[(14691, 16705, 4091.6018, 1351, '')]
+[(14714, 16730, True, False, Decimal('4074.8459000000000000000000000000')),
+(14715, 16731, False, False, Decimal('7592.0412000000000000000000000000'))]
+
+
+
+
+
+### MESSAGE 1
+On Tue, Apr 8, 2025 at 9:18 PM PG Bug reporting form
+<noreply(at)postgresql(dot)org> wrote:
+>     cur1.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL
+> SERIALIZABLE;")
+>     cur1.execute("START TRANSACTION;")
+
+
+I think it sends an implicit BEGIN, so you're already in a
+transaction, and then START TRANSACTION (= BEGIN) is ignored, and SET
+SESSION will affect the *next* transaction.  I bet your log says
+"WARNING:  there is already a transaction in progress".  I think there
+is a psycopg2 way to request SERIALIZABLE, something like
+conn1.set_isolation_level(extensions.ISOLATION_LEVEL_SERIALIZABLE), or
+you could probably use SET TRANSACTION ISOLATION LEVEL SERIALIZABLE
+instead of the SESSION version.
+
+
+

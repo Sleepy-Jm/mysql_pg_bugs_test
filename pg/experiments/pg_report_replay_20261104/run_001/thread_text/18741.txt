@@ -1,0 +1,220 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18741
+Logged by:          Alexander Lakhin
+Email address:      exclusion(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Ubuntu 22.04
+Description:        
+
+
+The following script:
+CREATE TABLE pt1 (a int PRIMARY KEY) PARTITION BY RANGE (a);
+CREATE TABLE p1 PARTITION OF pt1 FOR VALUES FROM (0) TO (1);
+
+
+CREATE TABLE pt2 (a int) PARTITION BY RANGE (a);
+CREATE TABLE p2 (a int, FOREIGN KEY (a) REFERENCES pt1);
+
+
+ALTER TABLE pt2 ATTACH PARTITION p2 FOR VALUES FROM (0) TO (1);
+ALTER TABLE pt2 DETACH PARTITION p2;
+
+
+fails with:
+ERROR:  XX000: could not find ON INSERT check triggers of foreign key
+constraint 16404
+LOCATION:  GetForeignKeyCheckTriggers, tablecmds.c:11355
+
+
+Reproduced on REL_15_STABLE (starting from f4566345c) .. master.
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> 于2024年12月8日周日 22:43写道：
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      18741
+> Logged by:          Alexander Lakhin
+> Email address:      exclusion(at)gmail(dot)com
+> PostgreSQL version: 17.2
+> Operating system:   Ubuntu 22.04
+> Description:
+>
+> The following script:
+> CREATE TABLE pt1 (a int PRIMARY KEY) PARTITION BY RANGE (a);
+> CREATE TABLE p1 PARTITION OF pt1 FOR VALUES FROM (0) TO (1);
+>
+> CREATE TABLE pt2 (a int) PARTITION BY RANGE (a);
+> CREATE TABLE p2 (a int, FOREIGN KEY (a) REFERENCES pt1);
+>
+> ALTER TABLE pt2 ATTACH PARTITION p2 FOR VALUES FROM (0) TO (1);
+> ALTER TABLE pt2 DETACH PARTITION p2;
+>
+> fails with:
+> ERROR:  XX000: could not find ON INSERT check triggers of foreign key
+> constraint 16404
+> LOCATION:  GetForeignKeyCheckTriggers, tablecmds.c:11355
+>
+> Reproduced on REL_15_STABLE (starting from f4566345c) .. master.
+>
+>
+Thanks for reporting. I can reproduce this on master.
+
+
+We currently can handle two cases:
+1. parent rel has foreign key, but attachrel doesn't have. So we just clone
+parent's fks to attachrel.
+2. parent rel and attachrel both have foreign keys, and these fks are
+consistent, so we can still use attachrel fk not doing expensive clone.
+
+
+If I understand correctly, we don't do well when parent rel no fks but
+attachrel has one.
+We can fix above case, but it seems not easy.
+
+
+Would it work to reject this attaching directly?  This may affect users who
+already do some attaching, like in this case.
+If we allow the above case, we can still attach another partition without a
+foreign key. However, maintaining consistent catalog data between parent
+and child will take much work.
+
+
+-- 
+Thanks,
+Tender Wang
+
+
+
+### MESSAGE 2
+On Mon, Dec 9, 2024 at 6:15 PM Tender Wang <tndrwang(at)gmail(dot)com> wrote:
+>
+>
+>
+> PG Bug reporting form <noreply(at)postgresql(dot)org> 于2024年12月8日周日 22:43写道：
+>>
+>> The following bug has been logged on the website:
+>>
+>> Bug reference:      18741
+>> Logged by:          Alexander Lakhin
+>> Email address:      exclusion(at)gmail(dot)com
+>> PostgreSQL version: 17.2
+>> Operating system:   Ubuntu 22.04
+>> Description:
+>>
+>> The following script:
+>> CREATE TABLE pt1 (a int PRIMARY KEY) PARTITION BY RANGE (a);
+>> CREATE TABLE p1 PARTITION OF pt1 FOR VALUES FROM (0) TO (1);
+>>
+>> CREATE TABLE pt2 (a int) PARTITION BY RANGE (a);
+>> CREATE TABLE p2 (a int, FOREIGN KEY (a) REFERENCES pt1);
+>>
+>> ALTER TABLE pt2 ATTACH PARTITION p2 FOR VALUES FROM (0) TO (1);
+>> ALTER TABLE pt2 DETACH PARTITION p2;
+>>
+>> fails with:
+>> ERROR:  XX000: could not find ON INSERT check triggers of foreign key
+>> constraint 16404
+>> LOCATION:  GetForeignKeyCheckTriggers, tablecmds.c:11355
+
+
+>
+> Would it work to reject this attaching directly?  This may affect users who already do some attaching, like in this case.
+> If we allow the above case, we can still attach another partition without a foreign key. However, maintaining consistent catalog data between parent and child will take much work.
+>
+In the above case, IMO, error out "ALTER TABLE pt2 ATTACH PARTITION p2
+FOR VALUES FROM (0) TO (1);"
+would be a good option to solve this problem.
+otherwise what kind of  trigger/constraint will add to pt2?
+currently it's none.
+
+
+To minimize the impact of the change (reducing regression differences),
+
+
+I think we don't need to error out for the following two cases:
+ALTER TABLE <nameX> ATTACH PARTITION <nameY>
+1. if the attachee (nameY) already referencing another non-partitioned
+table, that should be fine.
+2. if the attachee (nameY) referencing another partitioned table and
+that partitioned table root table is attacher (nameX)
+
+
+otherwise, if attachee (nameY) referencing another unrelated
+partitioned table, we can error out.
+
+
+
+### MESSAGE 3
+PG Bug reporting form <noreply(at)postgresql(dot)org> 于2024年12月8日周日 22:43写道：
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      18741
+> Logged by:          Alexander Lakhin
+> Email address:      exclusion(at)gmail(dot)com
+> PostgreSQL version: 17.2
+> Operating system:   Ubuntu 22.04
+> Description:
+>
+> The following script:
+> CREATE TABLE pt1 (a int PRIMARY KEY) PARTITION BY RANGE (a);
+> CREATE TABLE p1 PARTITION OF pt1 FOR VALUES FROM (0) TO (1);
+>
+> CREATE TABLE pt2 (a int) PARTITION BY RANGE (a);
+> CREATE TABLE p2 (a int, FOREIGN KEY (a) REFERENCES pt1);
+>
+> ALTER TABLE pt2 ATTACH PARTITION p2 FOR VALUES FROM (0) TO (1);
+> ALTER TABLE pt2 DETACH PARTITION p2;
+>
+> fails with:
+> ERROR:  XX000: could not find ON INSERT check triggers of foreign key
+> constraint 16404
+> LOCATION:  GetForeignKeyCheckTriggers, tablecmds.c:11355
+>
+> Reproduced on REL_15_STABLE (starting from f4566345c) .. master.
+>
+>
+Hi,
+
+
+This issue can't be reproduced on HEAD. I guess a commit happened to solve
+this problem.
+-- 
+Thanks,
+Tender Wang
+
+
+
+### MESSAGE 4
+Hello Tender Wang,
+
+
+03.05.2025 04:22, Tender Wang wrote:
+>
+> PG Bug reporting form <noreply(at)postgresql(dot)org> 于2024年12月8日周日 22:43写道：
+>
+>     The following bug has been logged on the website:
+>
+>     Bug reference:      18741
+>
+>
+> This issue can't be reproduced on HEAD. I guess a commit happened to solve this problem.
+
+
+Thank you for the testing this!
+Yes, according to `git bisect` it is fixed by 9b21f203d.
+
+
+Best regards,
+Alexander Lakhin
+Neon (https://neon.tech)

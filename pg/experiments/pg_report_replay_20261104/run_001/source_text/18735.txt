@@ -1,0 +1,70 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18735
+Logged by:          Koichi Suzuki
+Email address:      koichi(dot)dbms(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Windows 10, Japanese language version
+Description:        
+
+
+In psql for Windows 10, version 17.2, some multibyte character in the file
+path of psql command causes error such as:
+=======
+Server [localhost]:
+Database [postgres]:
+Port [5432]:
+Username [postgres]:
+Client Encoding [SJIS]:
+ユーザー postgres のパスワード:
+psql (17.2)
+"help"でヘルプを表示します。
+
+
+postgres=# \cd 'c:/work/09_環境構築'
+postgres=# \o 'c:/work/09_環境構築/work.out'
+postgres=# select * from pg_database;
+postgres=# \o
+postgres=# \! type c:\work\09_環境構築\work.out
+ oid |  datname  | datdba | encoding | datlocprovider | datistemplate |
+datallowconn | dathasloginevt | datconnlimit | datfrozenxid | datminmxid |
+dattablespace |     datcollate     |      datctype      | datlocale |
+daticurules | datcollversion |               datacl
+-----+-----------+--------+----------+----------------+---------------+--------------+----------------+--------------+--------------+------------+---------------+--------------------+--------------------+-----------+-------------+----------------+-------------------------------------
+   5 | postgres  |     10 |        6 | c              | f             | t   
+        | f              |           -1 |          731 |          1 |       
+  1663 | Japanese_Japan.932 | Japanese_Japan.932 |           |             |
+               |
+   1 | template1 |     10 |        6 | c              | t             | t   
+        | f              |           -1 |          731 |          1 |       
+  1663 | Japanese_Japan.932 | Japanese_Japan.932 |           |             |
+               | {=c/postgres,postgres=CTc/postgres}
+   4 | template0 |     10 |        6 | c              | t             | f   
+        | f              |           -1 |          731 |          1 |       
+  1663 | Japanese_Japan.932 | Japanese_Japan.932 |           |             |
+               | {=c/postgres,postgres=CTc/postgres}
+(3 行)
+
+
+postgres=#
+postgres=# \i 'c:/work/09_環境構築/sqmple.sql'
+c:/work/09_環境穀z/sqmple.sql: No such file or directory
+postgres=# copy pg_database to 'c:/work/09_環境構築/database.out'
+postgres-# \copy pg_database to 'c:/work/09_環境構築/database.csv' with (format
+csv, header)
+c:/work/09_環境・築/database.csv: No such file or directory
+=====
+
+
+Analysis:
+* Latter byte valueof the character in question is same as '\' (backslash). 
+  It looks that this byte value is handled as escape characters.   This
+happns SHIFT JIS client encoding.
+* The issue happens in \i, \ir and \copy but does not happen in \cd, \o and
+\! command.
+* The similar issue may happen if the latter byte value of a multibyte
+character is same as '/' (directory delimiter).
+
+
+

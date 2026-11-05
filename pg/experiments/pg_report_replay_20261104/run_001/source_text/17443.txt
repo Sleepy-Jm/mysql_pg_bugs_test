@@ -1,0 +1,33 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17443
+Logged by:          Ronivaldo Lopes
+Email address:      ronivaldolopes(at)hotmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   Linux Mint
+Description:        
+
+
+For the select command to use the brin index of the id2 field, I have to
+change enable_seqscan = off
+
+
+create temp table teste as
+  select s::int as id1, s::int as id2, quote_ident('Nome ' || to_char(s,
+'FM00000000'))::varchar(15) as nome
+    from generate_series(1,10000000) x(s);
+
+
+create index teste1 on teste (id1);
+create index teste2 on teste using brin (id2);
+
+
+EXPLAIN (analyze on, wal on, verbose on, format text)
+  select id1 from teste where id1 = 1000000;
+ 
+EXPLAIN (analyze on, wal on, verbose on, format text)
+  select id2 from teste where id2 = 1000000;
+
+
+

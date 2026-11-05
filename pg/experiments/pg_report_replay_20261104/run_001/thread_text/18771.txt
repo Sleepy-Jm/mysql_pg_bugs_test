@@ -1,0 +1,135 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18771
+Logged by:          Ruben Ruiz
+Email address:      ruben(dot)ruizcuadrado(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Debian Linux 12.2
+Description:        
+
+
+When using the 'rules' option of CREATE COLLATION to create a custom icu
+collation it seems that, if you include inside the rules a change to the
+comparison strength, it is ignored. You can reproduce this by creating two
+collations that should behave the same, regarding accents and case, but one
+has the strength option as part of the locale (ks-level) and the other has
+it inside the rules:
+
+
+-- Create two custom collations that should be case and accent insensitive
+postgres=# CREATE COLLATION custom_ci_ai (provider=icu,
+locale='und-u-ks-level1', deterministic=false);
+CREATE COLLATION
+postgres=# CREATE COLLATION custom_ci_ai_with_rules (provider=icu,
+locale='und', deterministic=false, rules = '[strength 1]');
+CREATE COLLATION
+
+
+-- Test: both comparisons should be true
+postgres=# SELECT 'a'='á' COLLATE custom_ci_ai as no_rules, 'a'='á' COLLATE
+custom_ci_ai_with_rules as with_rules;
+ no_rules | with_rules 
+----------+------------
+ t        | f
+(1 row)
+
+
+I think the problem might reside in the call to ucol_openRules inside the
+make_icu_collator function at pg_locale_icu.c
+(https://github.com/postgres/postgres/blob/master/src/backend/utils/adt/pg_locale_icu.c#L367)
+Apparently if you pass UCOL_DEFAULT_STRENGTH to the 'stregth' parameter, the
+resulting collator will use the default strength (which in my case was
+equivalent to level3), even if you specify a different value inside the
+rules. But if you pass UCOL_DEFAULT, it will use the strength option within
+the rules and, if not specified, will fall back to the default strength.
+
+
+I tested changing the parameter value to UCOL_DEFAULT, and it seems to work
+as expected.
+
+
+
+
+
+### MESSAGE 1
+On 11.01.25 18:27, PG Bug reporting form wrote:
+> When using the 'rules' option of CREATE COLLATION to create a custom icu
+> collation it seems that, if you include inside the rules a change to the
+> comparison strength, it is ignored.
+
+
+I think this is the same as this ICU bug:
+
+
+https://unicode-org.atlassian.net/browse/ICU-22456
+
+
+
+
+
+### MESSAGE 2
+I think in this case it's not really related, as I'm not trying to copy
+options from the base locale.
+
+
+It all seems to come from some missing information on the official icu4c
+docs. When describing the parameters of ucol_openRules() it says:
+
+
+"strength: The default collation strength; one of UCOL_PRIMARY,
+UCOL_SECONDARY, UCOL_TERTIARY, UCOL_IDENTICAL,UCOL_DEFAULT_STRENGTH - can
+be also set in the rules"
+
+
+And one could easily assume that if it "can also be set in the rules", you
+could pass UCOL_DEFAULT_STRENGTH and the rules would take precedence. In no
+place it does mention that UCOL_DEFAULT is a valid value for that
+parameter, although it is mentioned for the normalizationMode. But, if you
+look at icu4c sources (
+https://github.com/unicode-org/icu/blob/f8aa68b0c1c9584633e7a61157185f1a2c275f58/icu4c/source/i18n/collationbuilder.cpp#L182)
+you can find this:
+
+
+RuleBasedCollator::internalBuildTailoring(const UnicodeString &rules,
+                                          int32_t strength,
+                                          UColAttributeValue
+decompositionMode,
+                                          UParseError *outParseError,
+UnicodeString *outReason,
+                                          UErrorCode &errorCode) {
+
+
+...
+    // Set attributes after building the collator,
+    // to keep the default settings consistent with the rule string.
+    if(strength != UCOL_DEFAULT) {
+        setAttribute(UCOL_STRENGTH,
+static_cast<UColAttributeValue>(strength), errorCode);
+    }
+...
+}
+
+
+Which not only implies that UCOL_DEFAULT is a valid argument, but also that
+if you don't pass UCOL_DEFAULT any 'strength' options will be overridden.
+So it seems that the 'make_icu_collator' function inside postgres should
+use UCOL_DEFAULT, to allow the rules to set the desired strength level,
+instead of the current UCOL_DEFAULT_STRENGTH argument.
+
+
+On Mon, 13 Jan 2025 at 17:42, Peter Eisentraut <peter(at)eisentraut(dot)org> wrote:
+
+
+> On 11.01.25 18:27, PG Bug reporting form wrote:
+> > When using the 'rules' option of CREATE COLLATION to create a custom icu
+> > collation it seems that, if you include inside the rules a change to the
+> > comparison strength, it is ignored.
+>
+> I think this is the same as this ICU bug:
+>
+> https://unicode-org.atlassian.net/browse/ICU-22456
+>
+>
+

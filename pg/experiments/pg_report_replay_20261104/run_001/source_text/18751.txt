@@ -1,0 +1,84 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18751
+Logged by:          Dmytro Lysai
+Email address:      pingw33n(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Debian 12
+Description:        
+
+
+-- PostgreSQL 17.2 (Debian 17.2-1.pgdg120+1) on aarch64-unknown-linux-gnu,
+compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+select version();
+
+
+create table t1(t timestamptz primary key, v text);
+create table t2(t timestamptz primary key, v text);
+
+
+insert into t1(t, v)
+select to_timestamp(i * 3600), i::text
+from generate_series(0, 24 * 7 - 1) as t(i);
+
+
+insert into t2(t, v)
+select to_timestamp(i * 3600), i::text
+from generate_series(24 * 7, 100000) as t(i);
+
+
+explain analyze select * from (
+(select * from t1)
+union all
+(select * from t2)
+)
+order by t
+limit 10;
+/* Good:
+Limit  (cost=0.45..0.86 rows=10 width=13) (actual time=0.257..0.260 rows=10
+loops=1)
+  ->  Merge Append  (cost=0.45..4155.47 rows=100001 width=13) (actual
+time=0.256..0.258 rows=10 loops=1)
+        Sort Key: t1.t
+        ->  Index Scan using t1_pkey on t1  (cost=0.14..14.66 rows=168
+width=11) (actual time=0.142..0.143 rows=10 loops=1)
+        ->  Index Scan using t2_pkey on t2  (cost=0.29..3140.79 rows=99833
+width=13) (actual time=0.112..0.112 rows=1 loops=1)
+Planning Time: 0.132 ms
+Execution Time: 0.289 ms
+*/
+
+
+explain analyze select * from (
+(select * from t1)
+union all
+(select * from t2 where true) -- Not just `true`, any condition here
+)
+order by t
+limit 10;
+/* Bad:
+Limit  (cost=3649.09..3650.25 rows=10 width=13) (actual
+time=101.379..110.060 rows=10 loops=1)
+  ->  Gather Merge  (cost=3649.09..13372.06 rows=83334 width=13) (actual
+time=101.378..110.058 rows=10 loops=1)
+        Workers Planned: 2
+        Workers Launched: 2
+        ->  Sort  (cost=2649.06..2753.23 rows=41667 width=13) (actual
+time=17.794..17.795 rows=3 loops=3)
+              Sort Key: t2.t
+              Sort Method: top-N heapsort  Memory: 25kB
+              Worker 0:  Sort Method: quicksort  Memory: 25kB
+              Worker 1:  Sort Method: quicksort  Memory: 25kB
+              ->  Parallel Append  (cost=0.00..1748.65 rows=41667 width=13)
+(actual time=0.120..11.686 rows=33334 loops=3)
+                    ->  Seq Scan on t2  (cost=0.00..1538.33 rows=99833
+width=13) (actual time=0.136..29.043 rows=99833 loops=1)
+                    ->  Parallel Seq Scan on t1  (cost=0.00..1.99 rows=99
+width=11) (actual time=0.350..0.360 rows=168 loops=1)
+Planning Time: 0.866 ms
+Execution Time: 110.219 ms
+ */
+
+
+

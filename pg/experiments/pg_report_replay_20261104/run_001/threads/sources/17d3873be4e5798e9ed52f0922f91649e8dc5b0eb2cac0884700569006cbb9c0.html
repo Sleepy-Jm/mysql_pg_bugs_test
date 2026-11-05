@@ -1,0 +1,1535 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #17409: Unable to alter data type of clustered column which is referenced by foreign key</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/17409-52871dda8b5741cb%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2022-02-16T14:38:55" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #17409: Unable to alter data type of clustered column which is referenced by foreign key" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="433e6181ec70459024e332dc8ce7028f">BUG #17409: Unable to alter data type of clustered column which is referenced by foreign key</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202202161438">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="17409-52871dda8b5741cb@postgresql.org"></a>
+<a name="433e6181ec70459024e332dc8ce7028f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>holly(dot)roberts(at)starlingbank(dot)com</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #17409: Unable to alter data type of clustered column which is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-16 14:38:55</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/17409-52871dda8b5741cb%40postgresql.org">17409-52871dda8b5741cb@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/17409-52871dda8b5741cb%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/17409-52871dda8b5741cb%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/17409-52871dda8b5741cb%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/17409-52871dda8b5741cb%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202160000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      17409<br>Logged by:          Holly Roberts<br>Email address:      holly(dot)roberts(at)starlingbank(dot)com<br>PostgreSQL version: 14.2<br>Operating system:   Debian 10.2.1-6<br>Description:        </p>
+
+<p>When attempting to change the data type of a column that has previously been<br>clustered on, which is also referenced by a foreign key, then an exception<br>is thrown.</p>
+
+<p>Reproduction steps using a fresh database:<br>	CREATE TABLE parent (<br>		parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY<br>	);<br>	CREATE TABLE child (<br>		child_field INTEGER,<br>		CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent<br>(parent_field)<br>	);<br>	CLUSTER parent USING pk_parent;<br>	ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;</p>
+
+<p>This throws the following error:<br>	ERROR:  relation 16458 has multiple clustered indexes<br>	&#x27;SELECT 16458::regclass&#x27; returns &#x27;parent&#x27;;<br>This has previously worked on various versions of postgres 12 and 13 for me<br>(latest tried 13.6)</p>
+
+<p>I have reproduced the following on both 14.2 and 14.0, my postgres version<br>is as follows:<br>	SELECT version();<br>	PostgreSQL 14.2 (Debian 14.2-1.pgdg110+1) on x86_64-pc-linux-gnu, compiled<br>by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit</p>
+
+<p>Some minor observations:<br>- Removing the FK allows the data type to be changed<br>- Occurs for both primary key/unique index<br>- Occurs on other data types (eg. going from TEXT to BIGINT with &#x27;USING&#x27;)</p>
+
+<p>Looking through pg_catalog I can also see that only one index is clustered<br>as would be expected:<br>	SELECT<br>	  table_cls.relnamespace::regnamespace::text AS schema,<br>	  table_cls.relname AS table,<br>	  index_cls.relname AS index,<br>	  indisclustered<br>	FROM pg_index pi<br>	INNER JOIN pg_class index_cls ON (pi.indexrelid = index_cls.oid)<br>	INNER JOIN pg_class table_cls ON (pi.indrelid = table_cls.oid)<br>	WHERE (table_cls.relnamespace::regnamespace::text, table_cls.relname) =<br>(&#x27;public&#x27;, &#x27;parent&#x27;);</p>
+
+<p>	 schema | table  |   index   | indisclustered<br>	--------+--------+-----------+----------------<br>	 public | parent | pk_parent | t<br>	(1 row)</p>
+
+<p>Many Thanks,<br>Holly Roberts</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="MEYP282MB16691B29F4FEA0CC45CD5FFAB6369@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM"></a>
+<a name="7f1ceaca20d9bc61071e9ba54ae73eff"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>holly(dot)roberts(at)starlingbank(dot)com, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&lt;peter(at)eisentraut(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-17 16:38:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/MEYP282MB16691B29F4FEA0CC45CD5FFAB6369%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">MEYP282MB16691B29F4FEA0CC45CD5FFAB6369@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/MEYP282MB16691B29F4FEA0CC45CD5FFAB6369%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/MEYP282MB16691B29F4FEA0CC45CD5FFAB6369%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/MEYP282MB16691B29F4FEA0CC45CD5FFAB6369%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/MEYP282MB16691B29F4FEA0CC45CD5FFAB6369%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202170000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Wed, 16 Feb 2022 at 22:38, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      17409<br>&gt; Logged by:          Holly Roberts<br>&gt; Email address:      holly(dot)roberts(at)starlingbank(dot)com<br>&gt; PostgreSQL version: 14.2<br>&gt; Operating system:   Debian 10.2.1-6<br>&gt; Description:        <br>&gt;<br>&gt; When attempting to change the data type of a column that has previously been<br>&gt; clustered on, which is also referenced by a foreign key, then an exception<br>&gt; is thrown.<br>&gt;<br>&gt; Reproduction steps using a fresh database:<br>&gt; 	CREATE TABLE parent (<br>&gt; 		parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY<br>&gt; 	);<br>&gt; 	CREATE TABLE child (<br>&gt; 		child_field INTEGER,<br>&gt; 		CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent<br>&gt; (parent_field)<br>&gt; 	);<br>&gt; 	CLUSTER parent USING pk_parent;<br>&gt; 	ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;<br>&gt;<br>&gt; This throws the following error:<br>&gt; 	ERROR:  relation 16458 has multiple clustered indexes<br>&gt; 	&#x27;SELECT 16458::regclass&#x27; returns &#x27;parent&#x27;;<br>&gt; This has previously worked on various versions of postgres 12 and 13 for me<br>&gt; (latest tried 13.6)<br>&gt;</p>
+
+<p>It seems the following commit cause this problem.</p>
+
+<p>commit 8b069ef5dca97cd737a5fd64c420df3cd61ec1c9<br>Author: Peter Eisentraut &lt;peter(at)eisentraut(dot)org&gt;</p>
+
+<p>    Change get_constraint_index() to use pg_constraint.conindid</p>
+
+<p>    It was still using a scan of pg_depend instead of using the conindid<br>    column that has been added since.</p>
+
+<p>    Since it is now just a catalog lookup wrapper and not related to<br>    pg_depend, move from pg_depend.c to lsyscache.c.</p>
+
+<p>    Reviewed-by: Matthias van de Meent &lt;boekewurm+postgres(at)gmail(dot)com&gt;<br>    Reviewed-by: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;<br>    Reviewed-by: Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;<br>    Discussion: <a href="https://www.postgresql.org/message-id/flat/4688d55c-9a2e-9a5a-d166-5f24fe0bf8db@enterprisedb.com" rel="nofollow">https://www.postgresql.org/message-id/flat/4688d55c-9a2e-9a5a-d166-5f24fe0bf8db%40enterprisedb.com</a></p>
+
+<p>After some analyze, I found `ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT`<br>will split into `ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT` and<br>`ALTER TABLE public.child ADD CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent(parent_field)`<br>statements.</p>
+
+<p>When the second stement executed in RememberConstraintForRebuilding(), the<br>get_constraint_index() returns valid oid after 8b069ef5, however, before this<br>commit, it returns invalid oid.</p>
+
+<p>The different is that the get_constraint_index() uses pg_depend to find<br>constraint index oid before 8b069ef5, after this commit it uses lsyscache<br>to find index oid.</p>
+
+<p>I&#x27;m not sure this is a bug or not. Any thoughts?</p>
+
+<p>Also Cc to Peter Eisentraut who commits this.</p>
+
+<p>-- <br>Regrads,<br>Japin Li.<br>ChengDu WenWu Information Technology Co.,Ltd.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="ME3P282MB1667E2B286DA22A16FD8A8FFB6369@ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM"></a>
+<a name="471a91ef505067eaa9996205cacdc81c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>holly(dot)roberts(at)starlingbank(dot)com, peter(at)eisentraut(dot)org,
+ pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-17 17:28:07</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/ME3P282MB1667E2B286DA22A16FD8A8FFB6369%40ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM">ME3P282MB1667E2B286DA22A16FD8A8FFB6369@ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/ME3P282MB1667E2B286DA22A16FD8A8FFB6369%40ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/ME3P282MB1667E2B286DA22A16FD8A8FFB6369%40ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/ME3P282MB1667E2B286DA22A16FD8A8FFB6369%40ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/ME3P282MB1667E2B286DA22A16FD8A8FFB6369%40ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202170000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Fri, 18 Feb 2022 at 00:38, Japin Li &lt;japinli(at)hotmail(dot)com&gt; wrote:<br>&gt; On Wed, 16 Feb 2022 at 22:38, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;&gt; The following bug has been logged on the website:<br>&gt;&gt;<br>&gt;&gt; Bug reference:      17409<br>&gt;&gt; Logged by:          Holly Roberts<br>&gt;&gt; Email address:      holly(dot)roberts(at)starlingbank(dot)com<br>&gt;&gt; PostgreSQL version: 14.2<br>&gt;&gt; Operating system:   Debian 10.2.1-6<br>&gt;&gt; Description:        <br>&gt;&gt;<br>&gt;&gt; When attempting to change the data type of a column that has previously been<br>&gt;&gt; clustered on, which is also referenced by a foreign key, then an exception<br>&gt;&gt; is thrown.<br>&gt;&gt;<br>&gt;&gt; Reproduction steps using a fresh database:<br>&gt;&gt; 	CREATE TABLE parent (<br>&gt;&gt; 		parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY<br>&gt;&gt; 	);<br>&gt;&gt; 	CREATE TABLE child (<br>&gt;&gt; 		child_field INTEGER,<br>&gt;&gt; 		CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent<br>&gt;&gt; (parent_field)<br>&gt;&gt; 	);<br>&gt;&gt; 	CLUSTER parent USING pk_parent;<br>&gt;&gt; 	ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;<br>&gt;&gt;<br>&gt;&gt; This throws the following error:<br>&gt;&gt; 	ERROR:  relation 16458 has multiple clustered indexes<br>&gt;&gt; 	&#x27;SELECT 16458::regclass&#x27; returns &#x27;parent&#x27;;<br>&gt;&gt; This has previously worked on various versions of postgres 12 and 13 for me<br>&gt;&gt; (latest tried 13.6)<br>&gt;&gt;<br>&gt;<br>&gt; It seems the following commit cause this problem.<br>&gt;<br>&gt; commit 8b069ef5dca97cd737a5fd64c420df3cd61ec1c9<br>&gt; Author: Peter Eisentraut &lt;peter(at)eisentraut(dot)org&gt;<br>&gt;<br>&gt;     Change get_constraint_index() to use pg_constraint.conindid<br>&gt;<br>&gt;     It was still using a scan of pg_depend instead of using the conindid<br>&gt;     column that has been added since.<br>&gt;<br>&gt;     Since it is now just a catalog lookup wrapper and not related to<br>&gt;     pg_depend, move from pg_depend.c to lsyscache.c.<br>&gt;<br>&gt;     Reviewed-by: Matthias van de Meent &lt;boekewurm+postgres(at)gmail(dot)com&gt;<br>&gt;     Reviewed-by: Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;<br>&gt;     Reviewed-by: Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;<br>&gt;     Discussion: <a href="https://www.postgresql.org/message-id/flat/4688d55c-9a2e-9a5a-d166-5f24fe0bf8db@enterprisedb.com" rel="nofollow">https://www.postgresql.org/message-id/flat/4688d55c-9a2e-9a5a-d166-5f24fe0bf8db%40enterprisedb.com</a><br>&gt;<br>&gt;<br>&gt; After some analyze, I found `ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT`<br>&gt; will split into `ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT` and<br>&gt; `ALTER TABLE public.child ADD CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent(parent_field)`<br>&gt; statements.<br>&gt;<br>&gt; When the second stement executed in RememberConstraintForRebuilding(), the<br>&gt; get_constraint_index() returns valid oid after 8b069ef5, however, before this<br>&gt; commit, it returns invalid oid.<br>&gt;<br>&gt; The different is that the get_constraint_index() uses pg_depend to find<br>&gt; constraint index oid before 8b069ef5, after this commit it uses lsyscache<br>&gt; to find index oid.<br>&gt;<br>&gt; I&#x27;m not sure this is a bug or not. Any thoughts?<br>&gt;<br>&gt; Also Cc to Peter Eisentraut who commits this.</p>
+
+<p>The RememberClusterOnForRebuilding() use the tab-&gt;clusterOnIndex to check<br>the cluster index exist or not, however, the cluster index can occur more<br>than once, so I think we should check the clustered index by index name.<br>Here is a patch to fix it.  Any suggestions?</p>
+
+<p>-- <br>Regrads,<br>Japin Li.<br>ChengDu WenWu Information Technology Co.,Ltd.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="ME3P282MB1667F5A392BB4F26E6B0D82AB6369@ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM"></a>
+<a name="71692f12e3f232b652fc065ddc853c10"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>holly(dot)roberts(at)starlingbank(dot)com, peter(at)eisentraut(dot)org,
+ pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-17 17:30:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/ME3P282MB1667F5A392BB4F26E6B0D82AB6369%40ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM">ME3P282MB1667F5A392BB4F26E6B0D82AB6369@ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/ME3P282MB1667F5A392BB4F26E6B0D82AB6369%40ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/ME3P282MB1667F5A392BB4F26E6B0D82AB6369%40ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/ME3P282MB1667F5A392BB4F26E6B0D82AB6369%40ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/ME3P282MB1667F5A392BB4F26E6B0D82AB6369%40ME3P282MB1667.AUSP282.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202170000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Fri, 18 Feb 2022 at 01:28, Japin Li &lt;japinli(at)hotmail(dot)com&gt; wrote:<br>&gt; On Fri, 18 Feb 2022 at 00:38, Japin Li &lt;japinli(at)hotmail(dot)com&gt; wrote:<br>&gt;&gt; On Wed, 16 Feb 2022 at 22:38, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt; wrote:<br>&gt;&gt;&gt; The following bug has been logged on the website:<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; Bug reference:      17409<br>&gt;&gt;&gt; Logged by:          Holly Roberts<br>&gt;&gt;&gt; Email address:      holly(dot)roberts(at)starlingbank(dot)com<br>&gt;&gt;&gt; PostgreSQL version: 14.2<br>&gt;&gt;&gt; Operating system:   Debian 10.2.1-6<br>&gt;&gt;&gt; Description:        <br>&gt;&gt;&gt;<br>&gt;&gt;&gt; When attempting to change the data type of a column that has previously been<br>&gt;&gt;&gt; clustered on, which is also referenced by a foreign key, then an exception<br>&gt;&gt;&gt; is thrown.<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; Reproduction steps using a fresh database:<br>&gt;&gt;&gt; 	CREATE TABLE parent (<br>&gt;&gt;&gt; 		parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY<br>&gt;&gt;&gt; 	);<br>&gt;&gt;&gt; 	CREATE TABLE child (<br>&gt;&gt;&gt; 		child_field INTEGER,<br>&gt;&gt;&gt; 		CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent<br>&gt;&gt;&gt; (parent_field)<br>&gt;&gt;&gt; 	);<br>&gt;&gt;&gt; 	CLUSTER parent USING pk_parent;<br>&gt;&gt;&gt; 	ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;<br>&gt;&gt;&gt;<br>&gt;&gt;&gt; This throws the following error:<br>&gt;&gt;&gt; 	ERROR:  relation 16458 has multiple clustered indexes<br>&gt;&gt;&gt; 	&#x27;SELECT 16458::regclass&#x27; returns &#x27;parent&#x27;;<br>&gt;&gt;&gt; This has previously worked on various versions of postgres 12 and 13 for me<br>&gt;&gt;&gt; (latest tried 13.6)<br>&gt;&gt;&gt;<br>&gt;<br>&gt; The RememberClusterOnForRebuilding() use the tab-&gt;clusterOnIndex to check<br>&gt; the cluster index exist or not, however, the cluster index can occur more<br>&gt; than once, so I think we should check the clustered index by index name.<br>&gt; Here is a patch to fix it.  Any suggestions?</p>
+
+<p>Sorry for forgetting attach the patch.</p>
+
+<p>-- <br>Regrads,<br>Japin Li.<br>ChengDu WenWu Information Technology Co.,Ltd.</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/131051/fix-alter-data-type-of-clustered-column.patch">fix-alter-data-type-of-clustered-column.patch</a>
+            
+          </th>
+          <td>text/x-patch</td>
+          <td>743 bytes</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Yg8gGrJebITuPKu8@paquier.xyz"></a>
+<a name="7b4a32b839f8c9c9e54e2352275405e8"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>holly(dot)roberts(at)starlingbank(dot)com, peter(at)eisentraut(dot)org, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-18 04:27:06</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Yg8gGrJebITuPKu8%40paquier.xyz">Yg8gGrJebITuPKu8@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Yg8gGrJebITuPKu8%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Yg8gGrJebITuPKu8%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Yg8gGrJebITuPKu8%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Yg8gGrJebITuPKu8%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202180000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Feb 18, 2022 at 01:30:46AM +0800, Japin Li wrote:<br>&gt; On Fri, 18 Feb 2022 at 01:28, Japin Li &lt;japinli(at)hotmail(dot)com&gt; wrote:<br>&gt;&gt; The RememberClusterOnForRebuilding() use the tab-&gt;clusterOnIndex to check<br>&gt;&gt; the cluster index exist or not, however, the cluster index can occur more<br>&gt;&gt; than once, so I think we should check the clustered index by index name.<br>&gt;&gt; Here is a patch to fix it.  Any suggestions?<br>&gt; <br>&gt; Sorry for forgetting attach the patch.</p>
+
+<p>Reusing the test case at the top of the thread, this can also be<br>triggered for replica identities, as of the code just at the top of<br>what you have patched.  See for example:<br>CREATE TABLE parent (<br>  parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY);<br>ALTER TABLE parent REPLICA IDENTITY USING INDEX pk_parent;<br>CREATE TABLE child (<br>  child_field INTEGER,<br>  CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent (parent_field));<br>-- error here<br>ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;</p>
+
+<p>We surely should have test cases for all that.</p>
+
+<p>Anyway, I&#x27;d need to think more about your suggestion, but is that<br>actually the best thing we can do?  In this case, we&#x27;d attempt to<br>register twice an index to rebuild within<br>RememberIndexForRebuilding(), for the same relation, but there is no<br>need to do so.  Shouldn&#x27;t we try instead to do a better job at<br>scanning the pg_depend entries in ATExecAlterColumnType() and avoid<br>the risk to do the same job twice?  That would take care of the<br>replica identity case that I have just mentioned, and of the clustered<br>index case reported upthread.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="MEYP282MB1669E78FEECEFBB695F2065BB6379@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM"></a>
+<a name="f116eeddb57b478359250f30569a698f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>holly(dot)roberts(at)starlingbank(dot)com, peter(at)eisentraut(dot)org,
+ pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-18 06:10:17</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/MEYP282MB1669E78FEECEFBB695F2065BB6379%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">MEYP282MB1669E78FEECEFBB695F2065BB6379@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/MEYP282MB1669E78FEECEFBB695F2065BB6379%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/MEYP282MB1669E78FEECEFBB695F2065BB6379%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/MEYP282MB1669E78FEECEFBB695F2065BB6379%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/MEYP282MB1669E78FEECEFBB695F2065BB6379%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202180000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Fri, 18 Feb 2022 at 12:27, Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; wrote:<br>&gt; On Fri, Feb 18, 2022 at 01:30:46AM +0800, Japin Li wrote:<br>&gt;&gt; On Fri, 18 Feb 2022 at 01:28, Japin Li &lt;japinli(at)hotmail(dot)com&gt; wrote:<br>&gt;&gt;&gt; The RememberClusterOnForRebuilding() use the tab-&gt;clusterOnIndex to check<br>&gt;&gt;&gt; the cluster index exist or not, however, the cluster index can occur more<br>&gt;&gt;&gt; than once, so I think we should check the clustered index by index name.<br>&gt;&gt;&gt; Here is a patch to fix it.  Any suggestions?<br>&gt;&gt; <br>&gt;&gt; Sorry for forgetting attach the patch.<br>&gt;<br>&gt; Reusing the test case at the top of the thread, this can also be<br>&gt; triggered for replica identities, as of the code just at the top of<br>&gt; what you have patched.  See for example:<br>&gt; CREATE TABLE parent (<br>&gt;   parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY);<br>&gt; ALTER TABLE parent REPLICA IDENTITY USING INDEX pk_parent;<br>&gt; CREATE TABLE child (<br>&gt;   child_field INTEGER,<br>&gt;   CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent (parent_field));<br>&gt; -- error here<br>&gt; ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;<br>&gt;</p>
+
+<p>Thanks for pointing out this.</p>
+
+<p>&gt; We surely should have test cases for all that.<br>&gt;</p>
+
+<p>Agreed.</p>
+
+<p>&gt; Anyway, I&#x27;d need to think more about your suggestion, but is that<br>&gt; actually the best thing we can do?</p>
+
+<p>Thanks for your review, I&#x27;m also not sure this solution is best or not.<br>It is just one solution for this problem.</p>
+
+<p>&gt; In this case, we&#x27;d attempt to<br>&gt; register twice an index to rebuild within<br>&gt; RememberIndexForRebuilding(), for the same relation, but there is no<br>&gt; need to do so.</p>
+
+<p>Sorry, I don&#x27;t get your mind. In both cases, the RememberIndexForRebuilding()<br>didn&#x27;t called, why you say &quot;register twice an index to rebuild within<br>RememberIndexForRebuilding()&quot;.</p>
+
+<p>&gt; Shouldn&#x27;t we try instead to do a better job at<br>&gt; scanning the pg_depend entries in ATExecAlterColumnType() and avoid<br>&gt; the risk to do the same job twice?  That would take care of the<br>&gt; replica identity case that I have just mentioned, and of the clustered<br>&gt; index case reported upthread.</p>
+
+<p>Yeah, I forget the replica identity case.</p>
+
+<p>-- <br>Regrads,<br>Japin Li.<br>ChengDu WenWu Information Technology Co.,Ltd.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="MEYP282MB1669405BB9B46FBED34EB309B6379@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM"></a>
+<a name="01b2189ddb5cf09ed38316094680cc70"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>holly(dot)roberts(at)starlingbank(dot)com, peter(at)eisentraut(dot)org,
+ pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-02-18 08:53:56</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/MEYP282MB1669405BB9B46FBED34EB309B6379%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">MEYP282MB1669405BB9B46FBED34EB309B6379@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/MEYP282MB1669405BB9B46FBED34EB309B6379%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/MEYP282MB1669405BB9B46FBED34EB309B6379%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/MEYP282MB1669405BB9B46FBED34EB309B6379%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/MEYP282MB1669405BB9B46FBED34EB309B6379%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202202180000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Fri, 18 Feb 2022 at 12:27, Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; wrote:<br>&gt; On Fri, Feb 18, 2022 at 01:30:46AM +0800, Japin Li wrote:<br>&gt; Reusing the test case at the top of the thread, this can also be<br>&gt; triggered for replica identities, as of the code just at the top of<br>&gt; what you have patched.  See for example:<br>&gt; CREATE TABLE parent (<br>&gt;   parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY);<br>&gt; ALTER TABLE parent REPLICA IDENTITY USING INDEX pk_parent;<br>&gt; CREATE TABLE child (<br>&gt;   child_field INTEGER,<br>&gt;   CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent (parent_field));<br>&gt; -- error here<br>&gt; ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;<br>&gt;<br>&gt; We surely should have test cases for all that.<br>&gt;<br>&gt; Anyway, I&#x27;d need to think more about your suggestion, but is that<br>&gt; actually the best thing we can do?  In this case, we&#x27;d attempt to<br>&gt; register twice an index to rebuild within<br>&gt; RememberIndexForRebuilding(), for the same relation, but there is no<br>&gt; need to do so.  Shouldn&#x27;t we try instead to do a better job at<br>&gt; scanning the pg_depend entries in ATExecAlterColumnType() and avoid<br>&gt; the risk to do the same job twice?  That would take care of the<br>&gt; replica identity case that I have just mentioned, and of the clustered<br>&gt; index case reported upthread.</p>
+
+<p>Attach a new patch to fix the replica identify case, also add test cases.</p>
+
+<p>-- <br>Regrads,<br>Japin Li.<br>ChengDu WenWu Information Technology Co.,Ltd.</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/131071/v2-fix-alter-data-type-of-clustered-column.patch">v2-fix-alter-data-type-of-clustered-column.patch</a>
+            
+          </th>
+          <td>text/x-patch</td>
+          <td>3.4 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CANK_YChiq9gTpNxkqY8j-jsvgi3090bdmVo268CYGg27W-E64A@mail.gmail.com"></a>
+<a name="4c9dbf55b3798e36f331bf3b2a6e8a5f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Holly Roberts &lt;holly(dot)roberts(at)starlingbank(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: [External] Re: BUG #17409: Unable to alter data type of clustered
+ column which is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-10 14:35:34</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CANK_YChiq9gTpNxkqY8j-jsvgi3090bdmVo268CYGg27W-E64A%40mail.gmail.com">CANK_YChiq9gTpNxkqY8j-jsvgi3090bdmVo268CYGg27W-E64A@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CANK_YChiq9gTpNxkqY8j-jsvgi3090bdmVo268CYGg27W-E64A%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CANK_YChiq9gTpNxkqY8j-jsvgi3090bdmVo268CYGg27W-E64A%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CANK_YChiq9gTpNxkqY8j-jsvgi3090bdmVo268CYGg27W-E64A%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CANK_YChiq9gTpNxkqY8j-jsvgi3090bdmVo268CYGg27W-E64A%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Hello,</p>
+
+<p>Thanks for looking into this issue and coming up with a patch. Has any<br>further progress been made on getting this into 14 stable?<br>Apologies if I have missed anything.</p>
+
+<p>Many thanks,<br>Holly Roberts</p>
+
+<p>On Fri, 18 Feb 2022 at 09:54, Japin Li &lt;japinli(at)hotmail(dot)com&gt; wrote:</p>
+
+<p>&gt;<br>&gt; On Fri, 18 Feb 2022 at 12:27, Michael Paquier &lt;michael(at)paquier(dot)xyz&gt; wrote:<br>&gt; &gt; On Fri, Feb 18, 2022 at 01:30:46AM +0800, Japin Li wrote:<br>&gt; &gt; Reusing the test case at the top of the thread, this can also be<br>&gt; &gt; triggered for replica identities, as of the code just at the top of<br>&gt; &gt; what you have patched.  See for example:<br>&gt; &gt; CREATE TABLE parent (<br>&gt; &gt;   parent_field INTEGER CONSTRAINT pk_parent PRIMARY KEY);<br>&gt; &gt; ALTER TABLE parent REPLICA IDENTITY USING INDEX pk_parent;<br>&gt; &gt; CREATE TABLE child (<br>&gt; &gt;   child_field INTEGER,<br>&gt; &gt;   CONSTRAINT fk_child FOREIGN KEY (child_field) REFERENCES parent<br>&gt; (parent_field));<br>&gt; &gt; -- error here<br>&gt; &gt; ALTER TABLE parent ALTER COLUMN parent_field SET DATA TYPE BIGINT;<br>&gt; &gt;<br>&gt; &gt; We surely should have test cases for all that.<br>&gt; &gt;<br>&gt; &gt; Anyway, I&#x27;d need to think more about your suggestion, but is that<br>&gt; &gt; actually the best thing we can do?  In this case, we&#x27;d attempt to<br>&gt; &gt; register twice an index to rebuild within<br>&gt; &gt; RememberIndexForRebuilding(), for the same relation, but there is no<br>&gt; &gt; need to do so.  Shouldn&#x27;t we try instead to do a better job at<br>&gt; &gt; scanning the pg_depend entries in ATExecAlterColumnType() and avoid<br>&gt; &gt; the risk to do the same job twice?  That would take care of the<br>&gt; &gt; replica identity case that I have just mentioned, and of the clustered<br>&gt; &gt; index case reported upthread.<br>&gt;<br>&gt;<br>&gt; Attach a new patch to fix the replica identify case, also add test cases.<br>&gt;<br>&gt; --<br>&gt; Regrads,<br>&gt; Japin Li.<br>&gt; ChengDu WenWu Information Technology Co.,Ltd.<br>&gt;<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="755474.1646959065@sss.pgh.pa.us"></a>
+<a name="fde5f1115625a6119f913f1dcb7cad2b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, holly(dot)roberts(at)starlingbank(dot)com,
+        peter(at)eisentraut(dot)org, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-11 00:37:45</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/755474.1646959065%40sss.pgh.pa.us">755474.1646959065@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/755474.1646959065%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/755474.1646959065%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/755474.1646959065%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/755474.1646959065%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Japin Li &lt;japinli(at)hotmail(dot)com&gt; writes:<br>&gt; Attach a new patch to fix the replica identify case, also add test cases.</p>
+
+<p>Now that we realize we need to de-duplicate, it seems to me we should<br>postpone the get_rel_name() calls so that we don&#x27;t have to do that<br>work repeatedly; as attached.</p>
+
+<p>Also, while I&#x27;ve not done anything about it here, the proposed test<br>cases seem remarkably cavalier about their choices of test table<br>names.  If you want to use names as generic as &quot;parent&quot; and &quot;child&quot;,<br>they&#x27;d better be temp tables to avoid risk of conflict against other<br>concurrent regression tests.  But most of alter_table.sql prefers<br>to use names starting with &quot;at&quot;.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/131794/v3-fix-alter-data-type-of-clustered-column.patch">v3-fix-alter-data-type-of-clustered-column.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>4.9 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="MEYP282MB1669CD6C93FD1DCA85CAB2C1B60C9@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM"></a>
+<a name="45fe21291332a0b24864ad6dc5a2715f"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, holly(dot)roberts(at)starlingbank(dot)com,
+ peter(at)eisentraut(dot)org, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-11 13:18:14</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/MEYP282MB1669CD6C93FD1DCA85CAB2C1B60C9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">MEYP282MB1669CD6C93FD1DCA85CAB2C1B60C9@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/MEYP282MB1669CD6C93FD1DCA85CAB2C1B60C9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/MEYP282MB1669CD6C93FD1DCA85CAB2C1B60C9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/MEYP282MB1669CD6C93FD1DCA85CAB2C1B60C9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/MEYP282MB1669CD6C93FD1DCA85CAB2C1B60C9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Fri, 11 Mar 2022 at 08:37, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; Japin Li &lt;japinli(at)hotmail(dot)com&gt; writes:<br>&gt;&gt; Attach a new patch to fix the replica identify case, also add test cases.<br>&gt;<br>&gt; Now that we realize we need to de-duplicate, it seems to me we should<br>&gt; postpone the get_rel_name() calls so that we don&#x27;t have to do that<br>&gt; work repeatedly; as attached.<br>&gt;</p>
+
+<p>Thanks for your review.  Agreed.</p>
+
+<p>&gt; Also, while I&#x27;ve not done anything about it here, the proposed test<br>&gt; cases seem remarkably cavalier about their choices of test table<br>&gt; names.  If you want to use names as generic as &quot;parent&quot; and &quot;child&quot;,<br>&gt; they&#x27;d better be temp tables to avoid risk of conflict against other<br>&gt; concurrent regression tests.  But most of alter_table.sql prefers<br>&gt; to use names starting with &quot;at&quot;.</p>
+
+<p>My apologies!  How about s/parent/atref/g and s/child/attmp/g ?</p>
+
+<p>Attached v4 patch, please consider this for futher review.</p>
+
+<p>--<br>Regrads,<br>Japin Li.<br>ChengDu WenWu Information Technology Co.,Ltd.</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/131814/v4-fix-alter-data-type-of-clustered-column.patch">v4-fix-alter-data-type-of-clustered-column.patch</a>
+            
+          </th>
+          <td>text/x-patch</td>
+          <td>4.8 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="933033.1647019404@sss.pgh.pa.us"></a>
+<a name="882f144c2e87d64d1081c5af80a53462"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, holly(dot)roberts(at)starlingbank(dot)com,
+        peter(at)eisentraut(dot)org, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-11 17:23:24</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/933033.1647019404%40sss.pgh.pa.us">933033.1647019404@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/933033.1647019404%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/933033.1647019404%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/933033.1647019404%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/933033.1647019404%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Japin Li &lt;japinli(at)hotmail(dot)com&gt; writes:<br>&gt; Attached v4 patch, please consider this for futher review.</p>
+
+<p>I was about ready to push this, when I started to wonder why the<br>problem was introduced by 8b069ef5d, which on its face is merely<br>a small performance improvement.  After digging into it, I find<br>that in fact, that changed the semantics of get_constraint_index(),<br>and not trivially so.  In the cases at hand, ATExecAlterColumnType&#x27;s<br>scan of pg_depend finds two entries for constraints that need to<br>be rebuilt: there is the pk_atref primary key constraint, and there<br>is the fk_atref foreign key constraint.  The new implementation<br>of get_constraint_index() returns the pk_atref index as the<br>associated index of both constraints, whereas the old code returned<br>it only for the pk_atref constraint.  The old behavior is what<br>ATExecAlterColumnType wants, I judge.  As this stands, we will<br>rebuild indexes that don&#x27;t need to be rebuilt, and indeed might<br>be on other tables altogether from the one that is being modified<br>(which opens all sorts of potential locking problems).  So I think<br>what we actually want to do is not this, but to revert that<br>behavioral change.  As far as I can see, the other sites that<br>call get_constraint_index() only do so on constraint types that<br>really own indexes; but there might be external code that expects<br>get_constraint_index() to have its old behavior.</p>
+
+<p>The fundamental problem is that get_constraint_index() is no<br>longer satisfying its API spec:</p>
+
+<p> *        Given the OID of a unique, primary-key, or exclusion constraint,<br> *        return the OID of the underlying index.</p>
+
+<p>as now it will also return a nonzero OID for FK constraints (and<br>maybe other kinds?).</p>
+
+<p>One way to fix this is to add a check of contype to<br>get_constraint_index(); the other way is to do so at the<br>call sites.  I&#x27;m kind of leaning to the former for v14,<br>but since it makes get_constraint_index() less generally<br>useful, maybe we should change its API spec in HEAD?<br>Not sure.  Checking contype separately would require an<br>additional syscache lookup, so it&#x27;s not *that* attractive.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="934540.1647020237@sss.pgh.pa.us"></a>
+<a name="ce880fa7e1d056f53a51cf9a2337661c"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, holly(dot)roberts(at)starlingbank(dot)com,
+        peter(at)eisentraut(dot)org, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-11 17:37:17</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/934540.1647020237%40sss.pgh.pa.us">934540.1647020237@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/934540.1647020237%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/934540.1647020237%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/934540.1647020237%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/934540.1647020237%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I wrote:<br>&gt; ... The old behavior is what<br>&gt; ATExecAlterColumnType wants, I judge.  As this stands, we will<br>&gt; rebuild indexes that don&#x27;t need to be rebuilt, and indeed might<br>&gt; be on other tables altogether from the one that is being modified<br>&gt; (which opens all sorts of potential locking problems).</p>
+
+<p>Oh, well, not so much:</p>
+
+<p>regression=# create table atref (p1 int constraint pk_atref primary key);<br>CREATE TABLE<br>regression=# create table attbl (c1 int, constraint fk_atref foreign key (c1) references atref(p1));<br>CREATE TABLE<br>regression=# cluster atref using pk_atref;<br>CLUSTER<br>regression=# alter table attbl alter column c1 set data type bigint;<br>ERROR:  &quot;pk_atref&quot; is not an index for table &quot;attbl&quot;</p>
+
+<p>Still, that&#x27;s just as unpleasant as the originally-reported case.<br>(I&#x27;ve not figured out yet why the &quot;cluster&quot; step is required to<br>make this repro work.)</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="972551.1647023345@sss.pgh.pa.us"></a>
+<a name="fde09532b091157deb0e493098d7da60"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, holly(dot)roberts(at)starlingbank(dot)com,
+        peter(at)eisentraut(dot)org, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-11 18:29:05</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/972551.1647023345%40sss.pgh.pa.us">972551.1647023345@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/972551.1647023345%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/972551.1647023345%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/972551.1647023345%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/972551.1647023345%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203110000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>I wrote:<br>&gt; (I&#x27;ve not figured out yet why the &quot;cluster&quot; step is required to<br>&gt; make this repro work.)</p>
+
+<p>Oh, of course: the failure only occurs if we think the index is clustered<br>or a replica-identity index; else we don&#x27;t store a request to rebuild it.</p>
+
+<p>The attached seems to do the trick.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+  <table class="table table-sm table-responsive message-attachments">
+    <thead>
+      <tr>
+        <th scope="col">Attachment</th>
+        <th scope="col">Content-Type</th>
+        <th scope="col">Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <th scope="row">
+            
+              <a href="/message-id/attachment/131823/v5-fix-alter-data-type-of-clustered-column.patch">v5-fix-alter-data-type-of-clustered-column.patch</a>
+            
+          </th>
+          <td>text/x-diff</td>
+          <td>3.6 KB</td>
+        </tr>
+      
+    </tbody>
+  </table>
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="MEYP282MB1669F464FB5DC1EEF5EC80BBB60D9@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM"></a>
+<a name="a8e59e99f968d6b1729c36f8144dd0ad"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;, holly(dot)roberts(at)starlingbank(dot)com,
+ peter(at)eisentraut(dot)org, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-12 00:31:21</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/MEYP282MB1669F464FB5DC1EEF5EC80BBB60D9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">MEYP282MB1669F464FB5DC1EEF5EC80BBB60D9@MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/MEYP282MB1669F464FB5DC1EEF5EC80BBB60D9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/MEYP282MB1669F464FB5DC1EEF5EC80BBB60D9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/MEYP282MB1669F464FB5DC1EEF5EC80BBB60D9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/MEYP282MB1669F464FB5DC1EEF5EC80BBB60D9%40MEYP282MB1669.AUSP282.PROD.OUTLOOK.COM" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203120000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p><br>On Sat, 12 Mar 2022 at 02:29, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:<br>&gt; I wrote:<br>&gt;&gt; (I&#x27;ve not figured out yet why the &quot;cluster&quot; step is required to<br>&gt;&gt; make this repro work.)<br>&gt;<br>&gt; Oh, of course: the failure only occurs if we think the index is clustered<br>&gt; or a replica-identity index; else we don&#x27;t store a request to rebuild it.<br>&gt;<br>&gt; The attached seems to do the trick.<br>&gt;</p>
+
+<p>Fantastic!  Thanks for your detail dig.</p>
+
+<p>--<br>Regrads,<br>Japin Li.<br>ChengDu WenWu Information Technology Co.,Ltd.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Yi7z7v5vY6ArWBok@paquier.xyz"></a>
+<a name="f4740d8c68cd8231accae28a566aca6a"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;, holly(dot)roberts(at)starlingbank(dot)com, peter(at)eisentraut(dot)org, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-14 07:51:10</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Yi7z7v5vY6ArWBok%40paquier.xyz">Yi7z7v5vY6ArWBok@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Yi7z7v5vY6ArWBok%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Yi7z7v5vY6ArWBok%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Yi7z7v5vY6ArWBok%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Yi7z7v5vY6ArWBok%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Fri, Mar 11, 2022 at 01:29:05PM -0500, Tom Lane wrote:<br>&gt; Oh, of course:</p>
+
+<p>Thanks for dropping by the thread.  I was planning to bisect that <br>but with the CF things have gone out of hand.</p>
+
+<p>&gt; the failure only occurs if we think the index is clustered<br>&gt; or a replica-identity index; else we don&#x27;t store a request to rebuild it.</p>
+
+<p>Yes, I think that what you did in 369398e to tweak<br>get_constraint_name() is the right fix, or we&#x27;d finish by creating<br>more index rebuild requests than necessary when going through the<br>inheritance tree of these tables.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="Yi74G+BsJoJDDiYQ@paquier.xyz"></a>
+<a name="48d0a695dc5d97730b4e4028462e504b"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Michael Paquier &lt;michael(at)paquier(dot)xyz&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>Japin Li &lt;japinli(at)hotmail(dot)com&gt;, holly(dot)roberts(at)starlingbank(dot)com, peter(at)eisentraut(dot)org, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #17409: Unable to alter data type of clustered column which
+ is referenced by foreign key</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2022-03-14 08:08:59</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/Yi74G%2BBsJoJDDiYQ%40paquier.xyz">Yi74G+BsJoJDDiYQ@paquier.xyz</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/Yi74G%2BBsJoJDDiYQ%40paquier.xyz">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/Yi74G%2BBsJoJDDiYQ%40paquier.xyz" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/Yi74G%2BBsJoJDDiYQ%40paquier.xyz" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/Yi74G%2BBsJoJDDiYQ%40paquier.xyz" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202203140000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Mon, Mar 14, 2022 at 04:51:10PM +0900, Michael Paquier wrote:<br>&gt; Yes, I think that what you did in 369398e to tweak<br>&gt; get_constraint_name() is the right fix, or we&#x27;d finish by creating<br>&gt; more index rebuild requests than necessary when going through the<br>&gt; inheritance tree of these tables.</p>
+
+<p>Ditto, 641f3df.<br>--<br>Michael<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

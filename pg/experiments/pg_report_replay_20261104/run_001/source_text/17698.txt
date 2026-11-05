@@ -1,0 +1,28 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17698
+Logged by:          Dmitry Astapov
+Email address:      dastapov(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   CentOS 7
+Description:        
+
+
+Reproduction: start psql, launch a query that will take a while (I used
+'select pg_sleep(1234)'), then from another terminal do "kill -TERM <pid of
+psql>".
+Psql would be terminated, but query would not be, and will keep running
+until TCP timeout kicks in and kills the stale connection.
+
+
+SIGINT, on the other hand, will cause psql will terminate the current
+statement.
+
+
+Perhaps psql could have a SIGTERM handler that does roughly what SIGINT
+handler does before terminating the whole process, and would cancel the
+current statement (if any)?
+
+
+

@@ -1,0 +1,147 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18753
+Logged by:          Scott Taylor
+Email address:      relationaldbforbeginners(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Windows 11 Home Version
+Description:        
+
+
+Created database randomdata with one table for test purposes of point in
+time recovery.
+However, the database did not fully restore.
+This consistently does not work.
+I am using postgres version: PostgreSQL 17.2 on x86_64-windows
+
+
+Steps:
+1) Updated postgresql.conf:
+    archive_mode = on
+    archive_command = 'copy "%p" "C:\\PostgresArchive\\Wal-Archive\\%f"'
+    log_statement = mod
+    summarize_wal = on
+
+
+2) Re-started postgres server
+
+
+3) Created a database "randomdata" and table "somedata", inserted data:
+    2024-12-02 13:57:24.049 EST [31268] LOG:  statement: insert into
+somedata (serialnumber, firstname, lastname)
+
+
+4) Ran pg_basebackup
+
+
+5) Dropped database:
+    2024-12-02 14:01:27.243 EST [19148] LOG:  statement: DROP DATABASE
+randomdata;
+
+
+6) Stopped postgres server
+
+
+7) Removed contents of data folder: C:\Program Files\PostgreSQL\17\data
+
+
+8) Extracted base.tar.gz (from pg_basebackup) into C:\Program
+Files\PostgreSQL\17\data
+
+
+9) Removed contents of pg_wal folder: C:\Program
+Files\PostgreSQL\17\data\pg_wal
+
+
+10) Added to postgresql.conf:
+    restore_command = 'copy "C:\\PostgresArchive\\Wal-Archive\\%f" "%p"'
+    recovery_target_time = '2024-12-02 13:57:24' (time from log file when
+insert occurred, see step 2)
+    recovery_target_action = promote
+
+
+11) Created recovery.signal file in postgres data folder
+
+
+12) Started postgres server
+
+
+13) Attempted to connect to database using psql:
+    postgres=# \c randomdata;
+    connection to server at "localhost" (::1), port 5432 failed: FATAL: 
+cannot connect to invalid    database "randomdata"
+    HINT:  Use DROP DATABASE to drop invalid databases.
+    Previous connection kept
+
+
+14) Noticed recovery.signal file was removed
+
+
+Log file contents:
+2024-12-02 13:57:23.852 EST [32352] LOG:  statement: create database
+randomdata;
+2024-12-02 13:57:24.043 EST [31268] LOG:  statement: create table somedata
+(id serial primary key, serialnumber integer, firstname text, lastname
+text);
+2024-12-02 13:57:24.049 EST [31268] LOG:  statement: insert into somedata
+(serialnumber, firstname, lastname)
+
+
+- Ran pg_basebackup
+
+
+- Dropped database
+2024-12-02 14:01:27.243 EST [19148] LOG:  statement: DROP DATABASE
+randomdata;
+
+
+- Stopped server
+- Deleted Data folder
+- Restored from backup file
+- Added restore_command, recovery_target_time, recovery_target_action to
+postgresql.conf
+- Created reovery.signal file
+- Restarted server
+
+
+2024-12-02 14:04:21.630 EST [20156] LOG:  database system was interrupted;
+last known up at 2024-12-02 14:00:22 EST
+2024-12-02 14:04:21.630 EST [20156] LOG:  creating missing WAL directory
+"pg_wal/archive_status"
+2024-12-02 14:04:21.630 EST [20156] LOG:  creating missing WAL directory
+"pg_wal/summaries"
+2024-12-02 14:04:22.792 EST [20156] LOG:  starting backup recovery with redo
+LSN 0/3000028, checkpoint LSN 0/3000080, on timeline ID 1
+2024-12-02 14:04:22.805 EST [20156] LOG:  restored log file
+"000000010000000000000003" from archive
+2024-12-02 14:04:22.818 EST [20156] LOG:  starting point-in-time recovery to
+2024-12-02 13:57:24-05
+2024-12-02 14:04:22.825 EST [20156] LOG:  redo starts at 0/3000028
+2024-12-02 14:04:22.826 EST [20156] LOG:  completed backup recovery with
+redo LSN 0/3000028 and end LSN 0/3000120
+2024-12-02 14:04:22.826 EST [20156] LOG:  consistent recovery state reached
+at 0/3000120
+2024-12-02 14:04:22.843 EST [20156] LOG:  restored log file
+"000000010000000000000004" from archive
+2024-12-02 14:04:22.871 EST [20156] LOG:  recovery stopping before commit of
+transaction 969, time 2024-12-02 14:01:27.281164-05
+2024-12-02 14:04:22.871 EST [20156] LOG:  redo done at 0/40006F8 system
+usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.04 s
+2024-12-02 14:04:22.879 EST [20156] LOG:  selected new timeline ID: 2
+2024-12-02 14:04:22.940 EST [20156] LOG:  archive recovery complete
+2024-12-02 14:04:22.941 EST [30656] LOG:  checkpoint starting:
+end-of-recovery immediate wait
+2024-12-02 14:04:22.952 EST [30656] LOG:  checkpoint complete: wrote 4
+buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.001 s,
+sync=0.003 s, total=0.012 s; sync files=3, longest=0.001 s, average=0.001 s;
+distance=16385 kB, estimate=16385 kB; lsn=0/40006F8, redo lsn=0/40006F8
+
+
+2024-12-02 14:05:38.142 EST [15876] FATAL:  cannot connect to invalid
+database "randomdata"
+2024-12-02 14:05:38.142 EST [15876] HINT:  Use DROP DATABASE to drop invalid
+databases.
+
+
+

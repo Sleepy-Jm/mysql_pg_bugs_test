@@ -1,0 +1,76 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18802
+Logged by:          roseduan
+Email address:      roseduan7(at)163(dot)com
+PostgreSQL version: 17.2
+Operating system:   CentOS
+Description:        
+
+
+set log_statement to "all";
+
+
+create user some_user password '123456';
+
+
+And then I found that the password will show in the log file, is this an
+expected behavior?
+
+
+
+
+
+### MESSAGE 1
+On 2025-02-11 09:14, PG Bug reporting form wrote:
+> The following bug has been logged on the website:
+> 
+> Bug reference:      18802
+> Logged by:          roseduan
+> Email address:      roseduan7(at)163(dot)com
+> PostgreSQL version: 17.2
+> Operating system:   CentOS
+> Description:
+> 
+> set log_statement to "all";
+> 
+> create user some_user password '123456';
+> 
+> And then I found that the password will show in the log file, is this an
+> expected behavior?
+> 
+
+
+Yes, this is the expected behavior; there are several threads about this 
+on the various mailing lists, here's the first I fond:
+https://www.postgresql.org/message-id/CAHJZqBDe1-oiYtdh5pcWLAhr3jsDMFQg4miv3PYADH3YWKqZ2w%40mail.gmail.com
+
+
+A solution is to override the log statement while setting the password:
+
+
+BEGIN;
+SET LOCAL log_statement = 'none';
+ALTER USER ... SET PASSWORD ...;
+COMMIT;
+
+
+Another would be to prepare the digest client-side instead, and use 
+\password in psql.
+
+
+Best regards,
+Robert Sjöblom
+
+
+-- 
+Innehållet i detta e-postmeddelande är konfidentiellt och avsett endast för 
+adressaten.Varje spridning, kopiering eller utnyttjande av innehållet är 
+förbjuden utan tillåtelse av avsändaren. Om detta meddelande av misstag 
+gått till fel adressat vänligen radera det ursprungliga meddelandet och 
+underrätta avsändaren via e-post
+
+
+

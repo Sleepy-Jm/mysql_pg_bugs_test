@@ -1,0 +1,141 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17452
+Logged by:          Andreas Karlsson
+Email address:      andreas(at)proxel(dot)se
+PostgreSQL version: 14.2
+Operating system:   Linux and Mac at least
+Description:        
+
+
+Hi,
+
+
+I noticed that the optimization (in transformAExprIn()) for the case where
+there is an IN (...) with only one item breaks certain queries. Of course it
+is also possible that it is the single-item case which is correct and the
+multiple-item case which is broken. The case where I found this behavior was
+caused by the casting rules around the reg* types but there could be other
+similar issues.
+
+
+Here is a simplified example based on a real query:
+
+
+# SELECT version();
+                                                        version             
+                                           
+------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 14.2 (Debian 14.2-1.pgdg120+1+b2) on x86_64-pc-linux-gnu,
+compiled by gcc (Debian 11.2.0-18) 11.2.0, 64-bit
+(1 row)
+
+
+# SELECT 'version'::regproc IN ('version');
+ERROR:  invalid input syntax for type oid: "version"
+LINE 1: SELECT 'version'::regproc IN ('version');
+                                      ^
+# SELECT 'version'::regproc IN ('version', 'version');
+ ?column? 
+----------
+ t
+(1 row)
+
+
+Best regards,
+Andreas
+
+
+
+
+
+### MESSAGE 1
+On Thu, Mar 31, 2022 at 6:54 AM PG Bug reporting form <
+noreply(at)postgresql(dot)org> wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17452
+> Logged by:          Andreas Karlsson
+> Email address:      andreas(at)proxel(dot)se
+> PostgreSQL version: 14.2
+> Operating system:   Linux and Mac at least
+> Description:
+>
+> Hi,
+>
+> I noticed that the optimization (in transformAExprIn()) for the case where
+> there is an IN (...) with only one item breaks certain queries. Of course
+> it
+> is also possible that it is the single-item case which is correct and the
+> multiple-item case which is broken.
+
+
+This isn't a bug in transformAExprIn but rather an apparent inconsistency
+in the underlying type resolution system.
+
+
+postgres=# select 'version'::regproc = 'version';
+ERROR:  invalid input syntax for type oid: "version"
+LINE 1: select 'version'::regproc = 'version';
+
+
+I would not expect the single entry IN clause expression to work while the
+straight equality operator fails.  And it seems like the equality version
+should work here.
+
+
+This ends up working when the type resolution logic is handled by
+select_common_type since regproc is a base type and lacking any other
+comparison types no preferred type is needed.
+
+
+https://www.postgresql.org/docs/current/typeconv-union-case.html
+
+
+So the optimization case in transformAExprIn basically first creates a:
+ARRAY[...]::{select_common_type()} which fixes the type of unknowns to the
+base type regproc before looking for an operator: =(regproc,regproc), which
+doesn't exist, but then uses Preferred Type to find =(oid,oid) and uses
+that, casting the regproc values to oid.
+
+
+IIUC, the make_op case is given three inputs: "=", "OID: regproc", "OID:
+UNKNOWNOID".  This too eventually resolves to: =(oid,oid).  Apparently the
+logic is that since the eventual type is going to be OID that the unknown
+type might as well just be directly process via oid's input function
+instead of first going through regproc's input function.  But oid has no
+clue what to do with 'version' and chokes.  I presume because it believes
+that any input for a specific type should also be valid input for that
+specific type's preferred type.
+
+
+The fact that we rely upon the absence or presence of an operator to
+resolve an unknown type is a feature that we are not going to toss.
+
+
+The fact that the multi-item IN clause version works isn't something we
+would change either - its logic is sound.
+
+
+I suppose we could force, in the IN case specifically, the non-operator
+dependent behavior to be used instead.  So while the simple select would
+still not succeed the IN variant would no longer fail.  That seems hackish
+and I'd rather just say the proper solution to avoid the error is to add an
+explicit type cast.  Not give a different syntax so the uncasted literal
+input works.
+
+
+Thus, while I agree that this is confusing, I disagree that it is a bug, or
+at least one worth fixing (as none of the three possible changes I can
+imagine are acceptable to me).  Though, of the three, defining a way to
+make the equals operator error go away with minimal to no side-effects
+would be worth exploring.  I'm curious whether special-casing the "reg*"
+types would be a solution worth considering.
+
+
+David J.
+

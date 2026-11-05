@@ -1,0 +1,255 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17428
+Logged by:          Glen Edmonds
+Email address:      glen(dot)edmonds(at)gmail(dot)com
+PostgreSQL version: 14.2
+Operating system:   MacOS Monterey 12.2.1
+Description:        
+
+
+For a freshly defined sequence, the following:
+
+
+select last_value from mytable_id_seq
+
+
+should return 0, but returns 1.
+
+
+Reasoning: In every case except the uninitialised case, last_value is the
+same as the current value of the sequence, which is the same as the number
+of rows in the table (assuming no deletions). Logically, if there are no
+rows in the table, last_value should return 0 to be consistent.
+
+
+To reproduce:
+
+
+create table mytable (
+    id serial,
+    other int
+);
+select (select count(*) from mytable), last_value from mytable_id_seq; -- 0,
+1
+insert into mytable (other) values (0);
+select (select count(*) from mytable), last_value from mytable_id_seq; -- 1,
+1
+insert into mytable (other) values (0);
+select (select count(*) from mytable), last_value from mytable_id_seq; -- 2,
+2
+insert into mytable (other) values (0);
+select (select count(*) from mytable), last_value from mytable_id_seq; -- 3,
+3
+-- etc
+
+
+As you can see, only the first row returns different results for the same
+expression.
+
+
+This isn't just theoretical. I was writing some DB units tests and this
+caused my code to break, but was also a surprise.
+IMHO this is a bug.
+
+
+
+
+
+### MESSAGE 1
+On Mon, Mar 7, 2022 at 12:15 AM PG Bug reporting form <
+noreply(at)postgresql(dot)org> wrote:
+
+
+> The following bug has been logged on the website:
+>
+> Bug reference:      17428
+> Logged by:          Glen Edmonds
+> Email address:      glen(dot)edmonds(at)gmail(dot)com
+> PostgreSQL version: 14.2
+> Operating system:   MacOS Monterey 12.2.1
+> Description:
+>
+> For a freshly defined sequence, the following:
+>
+> select last_value from mytable_id_seq
+>
+> should return 0, but returns 1.
+>
+
+
+One seems as good a choice as zero if a non-null value is to be returned.
+
+
+"Also, last_value will reflect the latest value reserved by any session,
+whether or not it has yet been returned by nextval."
+
+
+I don't understand how last_value can return anything if nextval hasn't
+been called at least one.  So if there is a bug here it's that the value
+one is returned instead of null.
+
+
+Zero is a valid value for the sequence, just change the start value for a
+newly created sequence to zero.
+
+
+>
+> Reasoning: In every case except the uninitialised case, last_value is the
+> same as the current value of the sequence,
+
+
+which is the same as the number
+> of rows in the table (assuming no deletions).
+
+
+This point doesn't seem relevant.  That isn't what the value represents so
+basing the premise of a bug report on it is wrong.
+
+
+David J.
+
+
+
+### MESSAGE 2
+"David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> On Mon, Mar 7, 2022 at 12:15 AM PG Bug reporting form <
+> noreply(at)postgresql(dot)org> wrote:
+>> For a freshly defined sequence, the following:
+>> select last_value from mytable_id_seq
+>> should return 0, but returns 1.
+
+
+> One seems as good a choice as zero if a non-null value is to be returned.
+
+
+The larger point here is that any change is much more likely to
+break applications expecting the historical behavior than it is
+to make anyone's life better.  In a green field I'd tend to
+agree that returning NULL (and dispensing with is_called) would
+be a better design, but that opportunity was missed decades ago.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 3
+David, Tom,
+
+
+The problem really is that the two states of not initialized and post first
+usage are indistinguishable (both return 1), but the sequence next value is
+different. ie it’s a reasonable expectation that the next value is
+last_value + 1. IMHO violating this makes it a bug. Further, this situation
+means there’s no query that can be run on the sequence that can determine
+if the next value is 1 or 2.
+
+
+As for existing code relying of current behaviour, given that current
+behaviour can’t be relied upon to predict the next value, I don’t think
+it’s possible for any usage to rely on 1 being returned when uninitialized.
+
+
+I agree though that returning null is a better choice for uninitialized
+sequences than returning 0.
+
+
+This whole line of enquiry came about because currval('mytable_id_seq')
+explodes when called on an uninitialized sequence (another surprise - I was
+expecting null); how about fixing that too? If that was fixed is would
+provide a work around for the lack of distinction between the two states of
+next value being 1 and next value being 2.
+
+
+Regards,
+Glen
+
+
+On Tue, 8 Mar 2022 at 1:48 am, Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> "David G. Johnston" <david(dot)g(dot)johnston(at)gmail(dot)com> writes:
+> > On Mon, Mar 7, 2022 at 12:15 AM PG Bug reporting form <
+> > noreply(at)postgresql(dot)org> wrote:
+> >> For a freshly defined sequence, the following:
+> >> select last_value from mytable_id_seq
+> >> should return 0, but returns 1.
+>
+> > One seems as good a choice as zero if a non-null value is to be returned.
+>
+> The larger point here is that any change is much more likely to
+> break applications expecting the historical behavior than it is
+> to make anyone's life better.  In a green field I'd tend to
+> agree that returning NULL (and dispensing with is_called) would
+> be a better design, but that opportunity was missed decades ago.
+>
+>                         regards, tom lane
+>
+
+
+
+### MESSAGE 4
+Glen Edmonds <glen(dot)edmonds(at)gmail(dot)com> writes:
+> The problem really is that the two states of not initialized and post first
+> usage are indistinguishable (both return 1), but the sequence next value is
+> different.
+
+
+They're not indistinguishable: if you look at the is_called flag
+you'll see that it changes.
+
+
+> ie it’s a reasonable expectation that the next value is
+> last_value + 1. IMHO violating this makes it a bug.
+
+
+You can call it that if you like, but it's operating as designed
+and documented.  I fear it's about twenty years too late to propose
+a redesign.
+
+
+			regards, tom lane
+
+
+
+
+
+### MESSAGE 5
+On Mon, Mar 7, 2022 at 8:23 AM Tom Lane <tgl(at)sss(dot)pgh(dot)pa(dot)us> wrote:
+
+
+> Glen Edmonds <glen(dot)edmonds(at)gmail(dot)com> writes:
+> > The problem really is that the two states of not initialized and post
+> first
+> > usage are indistinguishable (both return 1), but the sequence next value
+> is
+> > different.
+>
+> They're not indistinguishable: if you look at the is_called flag
+> you'll see that it changes.
+>
+> Correct, the boolean is a superior solution to defining null to mean
+something.  A bit more verbose but equally functional and easier to read.
+
+
+> > ie it’s a reasonable expectation that the next value is
+> > last_value + 1. IMHO violating this makes it a bug.
+
+
+> You can call it that if you like, but it's operating as designed
+> and documented.  I fear it's about twenty years too late to propose
+> a redesign.
+>
+>
+And next_value isn't last_value + 1 in any case since we have a block
+caching feature.  One cannot predict (i.e., without consuming) the
+next_value from current state.
+
+
+David J.
+

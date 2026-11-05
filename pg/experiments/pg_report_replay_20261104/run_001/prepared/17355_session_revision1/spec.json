@@ -1,0 +1,70 @@
+{
+  "report_id": "17355",
+  "scenario_id": "17355_session_revision1",
+  "target_version": "14.1",
+  "source_url": "https://www.postgresql.org/message-id/17355-de8e362eb7001a96%40postgresql.org",
+  "parts": [
+    {
+      "text": "CREATE EXTENSION postgres_fdw;\n\n\nCREATE SERVER testserver1 FOREIGN DATA WRAPPER postgres_fdw;\nDO $d$\n    BEGIN\n        EXECUTE $$CREATE SERVER loopback FOREIGN DATA WRAPPER postgres_fdw\n            OPTIONS (dbname '$$||current_database()||$$',\n                     port '$$||current_setting('port')||$$'\n            )$$;\n    END;\n$d$;\n\n\nCREATE USER MAPPING FOR CURRENT_USER SERVER loopback;\nCREATE TABLE async_pt (a int, b int) PARTITION BY RANGE (a);\nCREATE TABLE base_tbl2 (a int, b int);\nCREATE FOREIGN TABLE async_p2 PARTITION OF async_pt FOR VALUES FROM (2000)\nTO (3000)\n  SERVER loopback OPTIONS (table_name 'base_tbl2');\nCREATE TABLE async_p3 PARTITION OF async_pt FOR VALUES FROM (3000) TO\n(4000);",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17355.txt",
+      "start_offset": 357,
+      "end_offset": 1062,
+      "start_line": 15,
+      "end_line": 36,
+      "excerpt_sha256": "00763610884c226c69574109a00bbf557c8b029eed168878dd24afff993840c1",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    },
+    {
+      "text": "INSERT INTO async_pt SELECT i FROM generate_series(3000, 3100) i;\nDELETE FROM async_pt;\nUPDATE async_pt SET a = a;",
+      "source": "experiments\\pg_report_replay_20261104\\run_001\\source_text\\17355.txt",
+      "start_offset": 1135,
+      "end_offset": 1249,
+      "start_line": 42,
+      "end_line": 44,
+      "excerpt_sha256": "273bbf19a1355531eb5b6b7e575d697c9baa9847f78131f4562ebd3bafe44bd0",
+      "transformations": [
+        "trim outer whitespace"
+      ]
+    }
+  ],
+  "mode": "concurrent",
+  "oracle": {
+    "kind": "crash",
+    "pattern": "terminated by signal 11",
+    "reported_phenomenon": "20 并发会话 INSERT/DELETE/UPDATE 外部分区导致 SIGSEGV",
+    "author_expected_behavior": "不发生服务进程崩溃"
+  },
+  "config": {
+    "max_connections": "100"
+  },
+  "notes": "",
+  "timeout": 45,
+  "preparation_status": "ready",
+  "workers": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "supersedes_spec_sha256": "9b1ab977c37c807567ca010359c550910099d724c99f6c931f9a2c2873c80889",
+  "revision_reason": "Runner originally used psql -c for a multi-statement worker, implicitly grouping statements into one transaction. Use -f to preserve source piped-stdin statement/autocommit boundaries. SQL and oracle unchanged.",
+  "spec_sha256": "a4b6750b9e10b56b98ec310f9a4c6afb6e0c8a52e581624524a377b611817f66"
+}

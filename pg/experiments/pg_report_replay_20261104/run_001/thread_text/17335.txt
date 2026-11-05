@@ -1,0 +1,1154 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      17335
+Logged by:          Yura Sokolov
+Email address:      y(dot)sokolov(at)postgrespro(dot)ru
+PostgreSQL version: 14.1
+Operating system:   any
+Description:        
+
+
+Our customer faced a query that returns duplicate rows if parallel execution
+is enabled
+(max_parallel_workers_per_gather > 0) after 11->12 upgrade.
+
+
+Investigation shows bug were introduced in
+8edd0e79460b414b1d971895312e549e95e12e4f
+"Suppress Append and MergeAppend plan nodes that have a single child." .
+Bug is present in all versions since 12 beta, and it is reproduced in master
+branch as well.
+
+
+Reproduction.
+https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75
+
+
+Dump contains definition of two tables (with 3 and 2 fields), index and data
+dump
+large enough to trigger parallel plan execution.
+Also `analyze public.testi3, public.testi4` line is added.
+
+
+https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75/raw/06a55e57bc6c460ea8800600b1b597c1ed216259/repro_dump.sql.zst
+
+
+Query:
+
+
+    SELECT count(1)
+    FROM (
+      SELECT fk, id
+      FROM testi3
+      WHERE flagged
+      UNION ALL
+      SELECT fk, id
+      from testi3
+      WHERE false
+    ) as t
+    LEFT OUTER JOIN testi4
+    USING (fk);
+
+
+When `set max_parallel_workers_per_gather = 0;` then it returns 44 which is
+correct.
+When `set max_parallel_workers_per_gather = 2;` then it returns 88 which is
+wrong.
+
+
+Sometimes (for example, when you try to debug it) it returns 44 even
+with max_parallel_workers_per_gather = 2.
+It seems that it happens when worker returns first row fast enough so
+"Gather" node doesn't start to execute plan by itself.
+
+
+It is confirmed by `set parallel_leader_participation = false`, which forces
+correct result.
+`set enable_parallel_append = false` also forces correct result.
+
+
+Original plan included Gather Merge node and max_parallel_workers_per_gather
+= 1 .
+Reproduction code uses Gather instead and max_parallel_workers_per_gather =
+2 just because it were easier to get bad plan.
+
+
+Plan before change 8edd0e79460b414b1d971895312e549e95e12e4f (returns correct
+result)
+
+
+ Finalize Aggregate  (cost=25003.16..25003.17 rows=1 width=8) (actual
+time=435.473..435.473 rows=1 loops=1)                                       
+    
+   ->  Gather  (cost=25003.05..25003.16 rows=1 width=8) (actual
+time=434.646..456.889 rows=2 loops=1)                                       
+          
+         Workers Planned: 1                                               
+
+
+         Workers Launched: 1                                              
+
+
+         ->  Partial Aggregate  (cost=24003.05..24003.06 rows=1 width=8)
+(actual time=433.000..433.000 rows=1 loops=2)
+               ->  Parallel Hash Left Join  (cost=21701.47..24002.86 rows=74
+width=0) (actual time=312.576..432.981 rows=22 loops=2)
+                     Hash Cond: ("*SELECT* 1".fk = testi4.fk)             
+
+
+                     ->  Parallel Append  (cost=0.42..9.18 rows=24 width=4)
+(actual time=0.021..0.112 rows=16 loops=2)
+                           ->  Subquery Scan on "*SELECT* 1" 
+(cost=0.42..9.11 rows=24 width=4) (actual time=0.041..0.216 rows=33 loops=1)
+            
+                                 ->  Index Scan using testi3_ix on testi3 
+(cost=0.42..8.87 rows=24 width=8) (actual time=0.039..0.207 rows=33
+loops=1)
+                                       Index Cond: (flagged = true)         
+                                                                          
+                     ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091
+width=4) (actual time=305.473..305.473 rows=703309 loops=2)               
+                           Buckets: 131072  Batches: 32  Memory Usage:
+2784kB                                                                      
+   
+                           ->  Parallel Seq Scan on testi4 
+(cost=0.00..12084.91 rows=586091 width=4) (actual time=0.032..138.958
+rows=703309 loops=2)
+
+
+Plan after that change (returns wrong result)
+
+
+ Finalize Aggregate  (cost=25003.87..25003.88 rows=1 width=8) (actual
+time=652.062..652.062 rows=1 loops=1)                                       
+                                                                            
+       
+   ->  Gather  (cost=25003.75..25003.86 rows=1 width=8) (actual
+time=651.482..668.718 rows=2 loops=1)                                       
+                                                                            
+             
+         Workers Planned: 1                              
+         Workers Launched: 1                                                
+                                      
+         ->  Partial Aggregate  (cost=24003.75..24003.76 rows=1 width=8)
+(actual time=649.150..649.150 rows=1 loops=2)                               
+                                                                            
+    
+               ->  Parallel Hash Left Join  (cost=21701.47..24003.49
+rows=106 width=0) (actual time=461.751..649.111 rows=44 loops=2)            
+                                                                            
+        
+                     Hash Cond: ("*SELECT* 1".fk = testi4.fk)               
+                                      
+                     ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..9.51
+rows=36 width=4) (actual time=0.050..0.229 rows=33 loops=2)                 
+                                                                            
+    
+                           ->  Index Scan using testi3_ix on testi3 
+(cost=0.42..9.15 rows=36 width=8) (actual time=0.048..0.214 rows=33 loops=2)
+                                                                            
+        
+                                 Index Cond: (flagged = true)               
+                                      
+                     ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091
+width=4) (actual time=444.931..444.931 rows=703309 loops=2)                 
+                                                                            
+
+
+                           Buckets: 131072  Batches: 32  Memory Usage:
+2784kB                                                                      
+                                                                            
+      
+                           ->  Parallel Seq Scan on testi4 
+(cost=0.00..12084.91 rows=586091 width=4) (actual time=0.045..202.913
+rows=703309 loops=2)
+
+
+------
+
+
+regards,
+Yura
+
+
+
+
+
+### MESSAGE 1
+В Пн, 13/12/2021 в 14:45 +0000, PG Bug reporting form пишет:
+> The following bug has been logged on the website:
+>
+> Bug reference:      17335
+> Logged by:          Yura Sokolov
+> Email address:      y(dot)sokolov(at)postgrespro(dot)ru
+> PostgreSQL version: 14.1
+> Operating system:   any
+> Description:
+>
+> Our customer faced a query that returns duplicate rows if parallel execution
+> is enabled
+> (max_parallel_workers_per_gather > 0) after 11->12 upgrade.
+>
+> Investigation shows bug were introduced in
+> 8edd0e79460b414b1d971895312e549e95e12e4f
+> "Suppress Append and MergeAppend plan nodes that have a single child." .
+> Bug is present in all versions since 12 beta, and it is reproduced in master
+> branch as well.
+>
+> Reproduction.
+> https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75
+>
+> Dump contains definition of two tables (with 3 and 2 fields), index and data
+> dump
+> large enough to trigger parallel plan execution.
+> Also `analyze public.testi3, public.testi4` line is added.
+>
+> https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75/raw/06a55e57bc6c460ea8800600b1b597c1ed216259/repro_dump.sql.zst
+>
+> Query:
+>
+>     SELECT count(1)
+>     FROM (
+>       SELECT fk, id
+>       FROM testi3
+>       WHERE flagged
+>       UNION ALL
+>       SELECT fk, id
+>       from testi3
+>       WHERE false
+>     ) as t
+>     LEFT OUTER JOIN testi4
+>     USING (fk);
+>
+> When `set max_parallel_workers_per_gather = 0;` then it returns 44 which is
+> correct.
+> When `set max_parallel_workers_per_gather = 2;` then it returns 88 which is
+> wrong.
+>
+> Sometimes (for example, when you try to debug it) it returns 44 even
+> with max_parallel_workers_per_gather = 2.
+> It seems that it happens when worker returns first row fast enough so
+> "Gather" node doesn't start to execute plan by itself.
+>
+> It is confirmed by `set parallel_leader_participation = false`, which forces
+> correct result.
+> `set enable_parallel_append = false` also forces correct result.
+>
+> Original plan included Gather Merge node and max_parallel_workers_per_gather
+> = 1 .
+> Reproduction code uses Gather instead and max_parallel_workers_per_gather =
+> 2 just because it were easier to get bad plan.
+>
+> Plan before change 8edd0e79460b414b1d971895312e549e95e12e4f (returns correct
+> result)
+В Пн, 13/12/2021 в 14:45 +0000, PG Bug reporting form пишет:
+> The following bug has been logged on the website:
+> 
+> Bug reference:      17335
+> Logged by:          Yura Sokolov
+> Email address:      y(dot)sokolov(at)postgrespro(dot)ru
+> PostgreSQL version: 14.1
+> Operating system:   any
+> Description:        
+> 
+> Our customer faced a query that returns duplicate rows if parallel execution
+> is enabled
+> (max_parallel_workers_per_gather > 0) after 11->12 upgrade.
+> 
+> Investigation shows bug were introduced in
+> 8edd0e79460b414b1d971895312e549e95e12e4f
+> "Suppress Append and MergeAppend plan nodes that have a single child." .
+> Bug is present in all versions since 12 beta, and it is reproduced in master
+> branch as well.
+> 
+> Reproduction.
+> https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75
+> 
+> Dump contains definition of two tables (with 3 and 2 fields), index and data
+> dump
+> large enough to trigger parallel plan execution.
+> Also `analyze public.testi3, public.testi4` line is added.
+> 
+> https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75/raw/06a55e57bc6c460ea8800600b1b597c1ed216259/repro_dump.sql.zst
+> 
+> Query:
+> 
+>     SELECT count(1)
+>     FROM (
+>       SELECT fk, id
+>       FROM testi3
+>       WHERE flagged
+>       UNION ALL
+>       SELECT fk, id
+>       from testi3
+>       WHERE false
+>     ) as t
+>     LEFT OUTER JOIN testi4
+>     USING (fk);
+> 
+> When `set max_parallel_workers_per_gather = 0;` then it returns 44 which is
+> correct.
+> When `set max_parallel_workers_per_gather = 2;` then it returns 88 which is
+> wrong.
+> 
+> Sometimes (for example, when you try to debug it) it returns 44 even
+> with max_parallel_workers_per_gather = 2.
+> It seems that it happens when worker returns first row fast enough so
+> "Gather" node doesn't start to execute plan by itself.
+> 
+> It is confirmed by `set parallel_leader_participation = false`, which forces
+> correct result.
+> `set enable_parallel_append = false` also forces correct result.
+> 
+> Original plan included Gather Merge node and max_parallel_workers_per_gather
+> = 1 .
+> Reproduction code uses Gather instead and max_parallel_workers_per_gather =
+> 2 just because it were easier to get bad plan.
+> 
+> Plan before change 8edd0e79460b414b1d971895312e549e95e12e4f (returns correct
+> result)
+> 
+>  Finalize Aggregate  (cost=25003.16..25003.17 rows=1 width=8) (actual
+> time=435.473..435.473 rows=1 loops=1)
+>    ->  Gather  (cost=25003.05..25003.16 rows=1 width=8) (actual time=434.646..456.889 rows=2 loops=1)
+>          Workers Planned: 1
+>         Workers Launched: 1
+>          ->  Partial Aggregate  (cost=24003.05..24003.06 rows=1 width=8)
+> (actual time=433.000..433.000 rows=1 loops=2)
+>                ->  Parallel Hash Left Join  (cost=21701.47..24002.86 rows=74
+> width=0) (actual time=312.576..432.981 rows=22 loops=2)
+>                      Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+>                      ->  Parallel Append  (cost=0.42..9.18 rows=24 width=4)
+> (actual time=0.021..0.112 rows=16 loops=2)
+>                            ->  Subquery Scan on "*SELECT* 1"
+> (cost=0.42..9.11 rows=24 width=4) (actual time=0.041..0.216 rows=33 loops=1)
+>                                  ->  Index Scan using testi3_ix on testi3
+> (cost=0.42..8.87 rows=24 width=8) (actual time=0.039..0.207 rows=33
+> loops=1)
+>                                        Index Cond: (flagged = true)
+>                      ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091
+> width=4) (actual time=305.473..305.473 rows=703309 loops=2)
+>                            Buckets: 131072  Batches: 32  Memory Usage:
+> 2784kB
+>                            ->  Parallel Seq Scan on testi4
+> (cost=0.00..12084.91 rows=586091 width=4) (actual time=0.032..138.958
+> rows=703309 loops=2)
+>
+> Plan after that change (returns wrong result)
+>
+>  Finalize Aggregate  (cost=25003.87..25003.88 rows=1 width=8) (actual
+> time=652.062..652.062 rows=1 loops=1)
+>    ->  Gather  (cost=25003.75..25003.86 rows=1 width=8) (actual
+> time=651.482..668.718 rows=2 loops=1)
+>          Workers Planned: 1
+>          Workers Launched: 1
+>          ->  Partial Aggregate  (cost=24003.75..24003.76 rows=1 width=8)
+> (actual time=649.150..649.150 rows=1 loops=2)
+>                ->  Parallel Hash Left Join  (cost=21701.47..24003.49
+> rows=106 width=0) (actual time=461.751..649.111 rows=44 loops=2)
+>                      Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+>                      ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..9.51
+> rows=36 width=4) (actual time=0.050..0.229 rows=33 loops=2)
+>                            ->  Index Scan using testi3_ix on testi3
+> (cost=0.42..9.15 rows=36 width=8) (actual time=0.048..0.214 rows=33 loops=2)
+>                                  Index Cond: (flagged = true)
+>                      ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091
+> width=4) (actual time=444.931..444.931 rows=703309 loops=2)
+>                            Buckets: 131072  Batches: 32  Memory Usage:
+> 2784kB
+>                            ->  Parallel Seq Scan on testi4
+> (cost=0.00..12084.91 rows=586091 width=4) (actual time=0.045..202.913
+> rows=703309 loops=2)]
+
+
+I found simple fix:
+
+
+--- a/src/backend/optimizer/util/pathnode.c
++++ b/src/backend/optimizer/util/pathnode.c
+@@ -1284,14 +1284,17 @@ create_append_path(PlannerInfo *root,
+        if
+(list_length(pathnode->subpaths) == 1)
+        {
+                Path       *child = (Path *) linitial(pathnode->subpaths);
+ 
+                pathnode->path.rows =
+child->rows;
+                pathnode->path.startup_cost = child->startup_cost;
+                pathnode->path.total_cost = child->total_cost;
+                pathn
+ode->path.pathkeys = child->pathkeys;
++               pathnode->path.parallel_aware = child->parallel_aware;
++               pathnode->path.parallel_safe = child-
+>parallel_safe;
++               pathnode->path.parallel_workers = child->parallel_workers;
+        }
+        else
+        {
+                pathnode->path.pathkeys =
+NIL;  /* unsorted if more than 1 subpath */
+                cost_append(pathnode);
+        }
+
+
+With this fix Gather node deduce `Single Copy: true`, and leader doesn't
+participate in query execution.
+
+
+It seems to be correct change:
+- if append node will be removed, then it should take parallel
+  awareness/safety from its single child.
+
+
+With this change plan Gather Merge node fails on assert in
+cost_gather_merge
+
+
+        /*                                                                                                         
+         * Add one to the number of workers to account for the leader.  This might
+         * be overgenerous since the leader will do less work than other workers
+         * in typical cases, but we'll go with it for now.
+         */                                                                                                        
+        Assert(path->num_workers > 0);
+        N = (double) path->num_workers + 1;
+        logN = LOG2(N);
+
+
+Commenting this assert doesn't seem to break anything and doesn't seem to mess
+cost calculation (ie it remains logically correct).
+
+
+To preserve assert I've changed it to `Assert(path->num_workers >= 0);`.
+
+
+With this changes queries from reproduction code returns correct 44 rows.
+
+
+# explain analyze SELECT id, val
+FROM (
+  SELECT fk, id
+  FROM testi3
+  WHERE flagged
+  UNION ALL
+  SELECT fk, id
+  from testi3
+  WHERE false
+) as t
+LEFT OUTER JOIN testi4
+USING (fk);
+                                                                 QUERY PLAN                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Gather  (cost=22701.47..25015.79 rows=130 width=8) (actual time=1268.071..1686.918 rows=44 loops=1)
+   Workers Planned: 1
+   Workers Launched: 1
+   Single Copy: true
+   ->  Parallel Hash Left Join  (cost=21701.47..24002.79 rows=130 width=8) (actual time=1242.936..1634.421 rows=44 loops=1)
+         Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+         ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..9.09 rows=24 width=8) (actual time=0.049..0.166 rows=33 loops=1)
+               ->  Index Scan using testi3_ix on testi3  (cost=0.42..8.85 rows=24 width=8) (actual time=0.047..0.151 rows=33 loops=1)
+                     Index Cond: (flagged = true)
+         ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091 width=8) (actual time=1238.029..1238.029 rows=1406618 loops=1)
+               Buckets: 131072  Batches: 32  Memory Usage: 2784kB
+               ->  Parallel Seq Scan on testi4  (cost=0.00..12084.91 rows=586091 width=8) (actual time=0.070..540.652 rows=1406618 loops=1)
+
+
+Interestingly, Gather Merge node doesn't run workers:
+
+
+# explain analyze SELECT id, val
+FROM (
+  SELECT fk, id
+  FROM testi3
+  WHERE flagged
+  UNION ALL
+  SELECT fk, id
+  from testi3
+  WHERE false
+) as t
+LEFT OUTER JOIN testi4
+USING (fk) ORDER BY val;
+                                                                    QUERY PLAN                                                                    
+--------------------------------------------------------------------------------------------------------------------------------------------------
+ Gather Merge  (cost=25007.36..25007.68 rows=0 width=8) (actual time=909.975..909.984 rows=44 loops=1)
+   Workers Planned: 0
+   Workers Launched: 0
+   ->  Sort  (cost=24007.36..24007.68 rows=130 width=8) (actual time=909.948..909.952 rows=44 loops=1)
+         Sort Key: testi4.val
+         Sort Method: quicksort  Memory: 27kB
+         ->  Parallel Hash Left Join  (cost=21701.47..24002.79 rows=130 width=8) (actual time=757.099..909.779 rows=44 loops=1)
+               Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+               ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..9.09 rows=24 width=8) (actual time=0.224..0.576 rows=33 loops=1)
+                     ->  Index Scan using testi3_ix on testi3  (cost=0.42..8.85 rows=24 width=8) (actual time=0.202..0.543 rows=33 loops=1)
+                           Index Cond: (flagged = true)
+               ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091 width=8) (actual time=755.983..755.983 rows=1406618 loops=1)
+                     Buckets: 131072  Batches: 32  Memory Usage: 2730kB
+                     ->  Parallel Seq Scan on testi4  (cost=0.00..12084.91 rows=586091 width=8) (actual time=0.052..330.983 rows=1406618 loops=1)
+
+
+So this changes could be taken as quick valid fix.
+
+
+Futher improvement is to remove Append node earlier to detect there is
+no need in parallelism when single Append child doesn't support it.
+
+
+--------
+
+
+regards,
+Sokolov Yura
+Postgres Professional
+y(dot)sokolov(at)postgrespro(dot)ru
+funny(dot)falcon(at)gmail(dot)com
+
+
+
+
+
+### MESSAGE 2
+В Пт, 17/12/2021 в 09:00 +0300, Yura Sokolov пишет:
+> В Пн, 13/12/2021 в 14:45 +0000, PG Bug reporting form пишет:
+> > The following bug has been logged on the website:
+> > 
+> > Bug reference:      17335
+> > Logged by:          Yura Sokolov
+> > Email address:      y(dot)sokolov(at)postgrespro(dot)ru
+> > PostgreSQL version: 14.1
+> > Operating system:   any
+> > Description:
+> > 
+> > Our customer faced a query that returns duplicate rows if parallel execution
+> > is enabled
+> > (max_parallel_workers_per_gather > 0) after 11->12 upgrade.
+> > 
+> > Investigation shows bug were introduced in
+> > 8edd0e79460b414b1d971895312e549e95e12e4f
+> > "Suppress Append and MergeAppend plan nodes that have a single child." .
+> > Bug is present in all versions since 12 beta, and it is reproduced in master
+> > branch as well.
+> > 
+> > Reproduction.
+> > https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75
+> > 
+> > Dump contains definition of two tables (with 3 and 2 fields), index and data
+> > dump
+> > large enough to trigger parallel plan execution.
+> > Also `analyze public.testi3, public.testi4` line is added.
+> > 
+> > https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75/raw/06a55e57bc6c460ea8800600b1b597c1ed216259/repro_dump.sql.zst
+> > 
+> > Query:
+> > 
+> >     SELECT count(1)
+> >     FROM (
+> >       SELECT fk, id
+> >       FROM testi3
+> >       WHERE flagged
+> >       UNION ALL
+> >       SELECT fk, id
+> >       from testi3
+> >       WHERE false
+> >     ) as t
+> >     LEFT OUTER JOIN testi4
+> >     USING (fk);
+> > 
+> > When `set max_parallel_workers_per_gather = 0;` then it returns 44 which is
+> > correct.
+> > When `set max_parallel_workers_per_gather = 2;` then it returns 88 which is
+> > wrong.
+> > 
+> > Sometimes (for example, when you try to debug it) it returns 44 even
+> > with max_parallel_workers_per_gather = 2.
+> > It seems that it happens when worker returns first row fast enough so
+> > "Gather" node doesn't start to execute plan by itself.
+> > 
+> > It is confirmed by `set parallel_leader_participation = false`, which forces
+> > correct result.
+> > `set enable_parallel_append = false` also forces correct result.
+> > 
+> > Original plan included Gather Merge node and max_parallel_workers_per_gather
+> > = 1 .
+> > Reproduction code uses Gather instead and max_parallel_workers_per_gather =
+> > 2 just because it were easier to get bad plan.
+> > 
+> > Plan before change 8edd0e79460b414b1d971895312e549e95e12e4f (returns correct
+> > result)
+> В Пн, 13/12/2021 в 14:45 +0000, PG Bug reporting form пишет:
+> > The following bug has been logged on the website:
+> > 
+> > Bug reference:      17335
+> > Logged by:          Yura Sokolov
+> > Email address:      y(dot)sokolov(at)postgrespro(dot)ru
+> > PostgreSQL version: 14.1
+> > Operating system:   any
+> > Description:        
+> > 
+> > Our customer faced a query that returns duplicate rows if parallel execution
+> > is enabled
+> > (max_parallel_workers_per_gather > 0) after 11->12 upgrade.
+> > 
+> > Investigation shows bug were introduced in
+> > 8edd0e79460b414b1d971895312e549e95e12e4f
+> > "Suppress Append and MergeAppend plan nodes that have a single child." .
+> > Bug is present in all versions since 12 beta, and it is reproduced in master
+> > branch as well.
+> > 
+> > Reproduction.
+> > https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75
+> > 
+> > Dump contains definition of two tables (with 3 and 2 fields), index and data
+> > dump
+> > large enough to trigger parallel plan execution.
+> > Also `analyze public.testi3, public.testi4` line is added.
+> > 
+> > https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75/raw/06a55e57bc6c460ea8800600b1b597c1ed216259/repro_dump.sql.zst
+> > 
+> > Query:
+> > 
+> >     SELECT count(1)
+> >     FROM (
+> >       SELECT fk, id
+> >       FROM testi3
+> >       WHERE flagged
+> >       UNION ALL
+> >       SELECT fk, id
+> >       from testi3
+> >       WHERE false
+> >     ) as t
+> >     LEFT OUTER JOIN testi4
+> >     USING (fk);
+> > 
+> > When `set max_parallel_workers_per_gather = 0;` then it returns 44 which is
+> > correct.
+> > When `set max_parallel_workers_per_gather = 2;` then it returns 88 which is
+> > wrong.
+> > 
+> > Sometimes (for example, when you try to debug it) it returns 44 even
+> > with max_parallel_workers_per_gather = 2.
+> > It seems that it happens when worker returns first row fast enough so
+> > "Gather" node doesn't start to execute plan by itself.
+> > 
+> > It is confirmed by `set parallel_leader_participation = false`, which forces
+> > correct result.
+> > `set enable_parallel_append = false` also forces correct result.
+> > 
+> > Original plan included Gather Merge node and max_parallel_workers_per_gather
+> > = 1 .
+> > Reproduction code uses Gather instead and max_parallel_workers_per_gather =
+> > 2 just because it were easier to get bad plan.
+> > 
+> > Plan before change 8edd0e79460b414b1d971895312e549e95e12e4f (returns correct
+> > result)
+> > 
+> >  Finalize Aggregate  (cost=25003.16..25003.17 rows=1 width=8) (actual
+> > time=435.473..435.473 rows=1 loops=1)
+> >    ->  Gather  (cost=25003.05..25003.16 rows=1 width=8) (actual time=434.646..456.889 rows=2 loops=1)
+> >          Workers Planned: 1
+> >         Workers Launched: 1
+> >          ->  Partial Aggregate  (cost=24003.05..24003.06 rows=1 width=8)
+> > (actual time=433.000..433.000 rows=1 loops=2)
+> >                ->  Parallel Hash Left Join  (cost=21701.47..24002.86 rows=74
+> > width=0) (actual time=312.576..432.981 rows=22 loops=2)
+> >                      Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+> >                      ->  Parallel Append  (cost=0.42..9.18 rows=24 width=4)
+> > (actual time=0.021..0.112 rows=16 loops=2)
+> >                            ->  Subquery Scan on "*SELECT* 1"
+> > (cost=0.42..9.11 rows=24 width=4) (actual time=0.041..0.216 rows=33 loops=1)
+> >                                  ->  Index Scan using testi3_ix on testi3
+> > (cost=0.42..8.87 rows=24 width=8) (actual time=0.039..0.207 rows=33
+> > loops=1)
+> >                                        Index Cond: (flagged = true)
+> >                      ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091
+> > width=4) (actual time=305.473..305.473 rows=703309 loops=2)
+> >                            Buckets: 131072  Batches: 32  Memory Usage:
+> > 2784kB
+> >                            ->  Parallel Seq Scan on testi4
+> > (cost=0.00..12084.91 rows=586091 width=4) (actual time=0.032..138.958
+> > rows=703309 loops=2)
+> > 
+> > Plan after that change (returns wrong result)
+> > 
+> >  Finalize Aggregate  (cost=25003.87..25003.88 rows=1 width=8) (actual
+> > time=652.062..652.062 rows=1 loops=1)
+> >    ->  Gather  (cost=25003.75..25003.86 rows=1 width=8) (actual
+> > time=651.482..668.718 rows=2 loops=1)
+> >          Workers Planned: 1
+> >          Workers Launched: 1
+> >          ->  Partial Aggregate  (cost=24003.75..24003.76 rows=1 width=8)
+> > (actual time=649.150..649.150 rows=1 loops=2)
+> >                ->  Parallel Hash Left Join  (cost=21701.47..24003.49
+> > rows=106 width=0) (actual time=461.751..649.111 rows=44 loops=2)
+> >                      Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+> >                      ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..9.51
+> > rows=36 width=4) (actual time=0.050..0.229 rows=33 loops=2)
+> >                            ->  Index Scan using testi3_ix on testi3
+> > (cost=0.42..9.15 rows=36 width=8) (actual time=0.048..0.214 rows=33 loops=2)
+> >                                  Index Cond: (flagged = true)
+> >                      ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091
+> > width=4) (actual time=444.931..444.931 rows=703309 loops=2)
+> >                            Buckets: 131072  Batches: 32  Memory Usage:
+> > 2784kB
+> >                            ->  Parallel Seq Scan on testi4
+> > (cost=0.00..12084.91 rows=586091 width=4) (actual time=0.045..202.913
+> > rows=703309 loops=2)]
+> 
+> I found simple fix:
+> 
+> --- a/src/backend/optimizer/util/pathnode.c
+> +++ b/src/backend/optimizer/util/pathnode.c
+> @@ -1284,14 +1284,17 @@ create_append_path(PlannerInfo *root,
+>         if
+> (list_length(pathnode->subpaths) == 1)
+>         {
+>                 Path       *child = (Path *) linitial(pathnode->subpaths);
+>  
+>                 pathnode->path.rows =
+> child->rows;
+>                 pathnode->path.startup_cost = child->startup_cost;
+>                 pathnode->path.total_cost = child->total_cost;
+>                 pathn
+> ode->path.pathkeys = child->pathkeys;
+> +               pathnode->path.parallel_aware = child->parallel_aware;
+> +               pathnode->path.parallel_safe = child-
+> > parallel_safe;
+> +               pathnode->path.parallel_workers = child->parallel_workers;
+>         }
+>         else
+>         {
+>                 pathnode->path.pathkeys =
+> NIL;  /* unsorted if more than 1 subpath */
+>                 cost_append(pathnode);
+>         }
+> 
+> With this fix Gather node deduce `Single Copy: true`, and leader doesn't
+> participate in query execution.
+> 
+> It seems to be correct change:
+> - if append node will be removed, then it should take parallel
+>   awareness/safety from its single child.
+> 
+> With this change plan Gather Merge node fails on assert in
+> cost_gather_merge
+> 
+>         /*                                                                                                         
+>          * Add one to the number of workers to account for the leader.  This might
+>          * be overgenerous since the leader will do less work than other workers
+>          * in typical cases, but we'll go with it for now.
+>          */                                                                                                        
+>         Assert(path->num_workers > 0);
+>         N = (double) path->num_workers + 1;
+>         logN = LOG2(N);
+> 
+> Commenting this assert doesn't seem to break anything and doesn't seem to mess
+> cost calculation (ie it remains logically correct).
+> 
+> To preserve assert I've changed it to `Assert(path->num_workers >= 0);`.
+> 
+> With this changes queries from reproduction code returns correct 44 rows.
+> 
+> # explain analyze SELECT id, val
+> FROM (
+>   SELECT fk, id
+>   FROM testi3
+>   WHERE flagged
+>   UNION ALL
+>   SELECT fk, id
+>   from testi3
+>   WHERE false
+> ) as t
+> LEFT OUTER JOIN testi4
+> USING (fk);
+>                                                                  QUERY PLAN                                                                 
+> --------------------------------------------------------------------------------------------------------------------------------------------
+>  Gather  (cost=22701.47..25015.79 rows=130 width=8) (actual time=1268.071..1686.918 rows=44 loops=1)
+>    Workers Planned: 1
+>    Workers Launched: 1
+>    Single Copy: true
+>    ->  Parallel Hash Left Join  (cost=21701.47..24002.79 rows=130 width=8) (actual time=1242.936..1634.421 rows=44 loops=1)
+>          Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+>          ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..9.09 rows=24 width=8) (actual time=0.049..0.166 rows=33 loops=1)
+>                ->  Index Scan using testi3_ix on testi3  (cost=0.42..8.85 rows=24 width=8) (actual time=0.047..0.151 rows=33 loops=1)
+>                      Index Cond: (flagged = true)
+>          ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091 width=8) (actual time=1238.029..1238.029 rows=1406618 loops=1)
+>                Buckets: 131072  Batches: 32  Memory Usage: 2784kB
+>                ->  Parallel Seq Scan on testi4  (cost=0.00..12084.91 rows=586091 width=8) (actual time=0.070..540.652 rows=1406618 loops=1)
+> 
+> Interestingly, Gather Merge node doesn't run workers:
+> 
+> # explain analyze SELECT id, val
+> FROM (
+>   SELECT fk, id
+>   FROM testi3
+>   WHERE flagged
+>   UNION ALL
+>   SELECT fk, id
+>   from testi3
+>   WHERE false
+> ) as t
+> LEFT OUTER JOIN testi4
+> USING (fk) ORDER BY val;
+>                                                                     QUERY PLAN                                                                    
+> --------------------------------------------------------------------------------------------------------------------------------------------------
+>  Gather Merge  (cost=25007.36..25007.68 rows=0 width=8) (actual time=909.975..909.984 rows=44 loops=1)
+>    Workers Planned: 0
+>    Workers Launched: 0
+>    ->  Sort  (cost=24007.36..24007.68 rows=130 width=8) (actual time=909.948..909.952 rows=44 loops=1)
+>          Sort Key: testi4.val
+>          Sort Method: quicksort  Memory: 27kB
+>          ->  Parallel Hash Left Join  (cost=21701.47..24002.79 rows=130 width=8) (actual time=757.099..909.779 rows=44 loops=1)
+>                Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+>                ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..9.09 rows=24 width=8) (actual time=0.224..0.576 rows=33 loops=1)
+>                      ->  Index Scan using testi3_ix on testi3  (cost=0.42..8.85 rows=24 width=8) (actual time=0.202..0.543 rows=33 loops=1)
+>                            Index Cond: (flagged = true)
+>                ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091 width=8) (actual time=755.983..755.983 rows=1406618 loops=1)
+>                      Buckets: 131072  Batches: 32  Memory Usage: 2730kB
+>                      ->  Parallel Seq Scan on testi4  (cost=0.00..12084.91 rows=586091 width=8) (actual time=0.052..330.983 rows=1406618 loops=1)
+> 
+> So this changes could be taken as quick valid fix.
+> 
+> Futher improvement is to remove Append node earlier to detect there is
+> no need in parallelism when single Append child doesn't support it.
+> 
+
+
+I've attached this changes as a patch.
+
+
+--------
+regards,
+Sokolov Yura
+Postgres Professional
+y(dot)sokolov(at)postgrespro(dot)ru
+funny(dot)falcon(at)gmail(dot)com
+
+
+
+
+
+### MESSAGE 3
+Sent to hackers with better reproduction code
+https://postgr.es/m/flat/b59605fecb20ba9ea94e70ab60098c237c870628(dot)camel(at)postgrespro(dot)ru
+
+
+Published to commitfest: https://commitfest.postgresql.org/36/3486/
+
+
+В Пн, 20/12/2021 в 12:07 +0300, Yura Sokolov пишет:
+> В Пт, 17/12/2021 в 09:00 +0300, Yura Sokolov пишет:
+> > В Пн, 13/12/2021 в 14:45 +0000, PG Bug reporting form пишет:
+> > > The following bug has been logged on the website:
+> > > 
+> > > Bug reference:      17335
+> > > Logged by:          Yura Sokolov
+> > > Email address:      y(dot)sokolov(at)postgrespro(dot)ru
+> > > PostgreSQL version: 14.1
+> > > Operating system:   any
+> > > Description:
+> > > 
+> > > Our customer faced a query that returns duplicate rows if parallel execution
+> > > is enabled
+> > > (max_parallel_workers_per_gather > 0) after 11->12 upgrade.
+> > > 
+> > > Investigation shows bug were introduced in
+> > > 8edd0e79460b414b1d971895312e549e95e12e4f
+> > > "Suppress Append and MergeAppend plan nodes that have a single child." .
+> > > Bug is present in all versions since 12 beta, and it is reproduced in master
+> > > branch as well.
+> > > 
+> > > Reproduction.
+> > > https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75
+> > > 
+> > > Dump contains definition of two tables (with 3 and 2 fields), index and data
+> > > dump
+> > > large enough to trigger parallel plan execution.
+> > > Also `analyze public.testi3, public.testi4` line is added.
+> > > 
+> > > https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75/raw/06a55e57bc6c460ea8800600b1b597c1ed216259/repro_dump.sql.zst
+> > > 
+> > > Query:
+> > > 
+> > >     SELECT count(1)
+> > >     FROM (
+> > >       SELECT fk, id
+> > >       FROM testi3
+> > >       WHERE flagged
+> > >       UNION ALL
+> > >       SELECT fk, id
+> > >       from testi3
+> > >       WHERE false
+> > >     ) as t
+> > >     LEFT OUTER JOIN testi4
+> > >     USING (fk);
+> > > 
+> > > When `set max_parallel_workers_per_gather = 0;` then it returns 44 which is
+> > > correct.
+> > > When `set max_parallel_workers_per_gather = 2;` then it returns 88 which is
+> > > wrong.
+> > > 
+> > > Sometimes (for example, when you try to debug it) it returns 44 even
+> > > with max_parallel_workers_per_gather = 2.
+> > > It seems that it happens when worker returns first row fast enough so
+> > > "Gather" node doesn't start to execute plan by itself.
+> > > 
+> > > It is confirmed by `set parallel_leader_participation = false`, which forces
+> > > correct result.
+> > > `set enable_parallel_append = false` also forces correct result.
+> > > 
+> > > Original plan included Gather Merge node and max_parallel_workers_per_gather
+> > > = 1 .
+> > > Reproduction code uses Gather instead and max_parallel_workers_per_gather =
+> > > 2 just because it were easier to get bad plan.
+> > > 
+> > > Plan before change 8edd0e79460b414b1d971895312e549e95e12e4f (returns correct
+> > > result)
+> > В Пн, 13/12/2021 в 14:45 +0000, PG Bug reporting form пишет:
+> > > The following bug has been logged on the website:
+> > > 
+> > > Bug reference:      17335
+> > > Logged by:          Yura Sokolov
+> > > Email address:      y(dot)sokolov(at)postgrespro(dot)ru
+> > > PostgreSQL version: 14.1
+> > > Operating system:   any
+> > > Description:        
+> > > 
+> > > Our customer faced a query that returns duplicate rows if parallel execution
+> > > is enabled
+> > > (max_parallel_workers_per_gather > 0) after 11->12 upgrade.
+> > > 
+> > > Investigation shows bug were introduced in
+> > > 8edd0e79460b414b1d971895312e549e95e12e4f
+> > > "Suppress Append and MergeAppend plan nodes that have a single child." .
+> > > Bug is present in all versions since 12 beta, and it is reproduced in master
+> > > branch as well.
+> > > 
+> > > Reproduction.
+> > > https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75
+> > > 
+> > > Dump contains definition of two tables (with 3 and 2 fields), index and data
+> > > dump
+> > > large enough to trigger parallel plan execution.
+> > > Also `analyze public.testi3, public.testi4` line is added.
+> > > 
+> > > https://gist.github.com/funny-falcon/45fa9460507c015390db99a7efd18a75/raw/06a55e57bc6c460ea8800600b1b597c1ed216259/repro_dump.sql.zst
+> > > 
+> > > Query:
+> > > 
+> > >     SELECT count(1)
+> > >     FROM (
+> > >       SELECT fk, id
+> > >       FROM testi3
+> > >       WHERE flagged
+> > >       UNION ALL
+> > >       SELECT fk, id
+> > >       from testi3
+> > >       WHERE false
+> > >     ) as t
+> > >     LEFT OUTER JOIN testi4
+> > >     USING (fk);
+> > > 
+> > > When `set max_parallel_workers_per_gather = 0;` then it returns 44 which is
+> > > correct.
+> > > When `set max_parallel_workers_per_gather = 2;` then it returns 88 which is
+> > > wrong.
+> > > 
+> > > Sometimes (for example, when you try to debug it) it returns 44 even
+> > > with max_parallel_workers_per_gather = 2.
+> > > It seems that it happens when worker returns first row fast enough so
+> > > "Gather" node doesn't start to execute plan by itself.
+> > > 
+> > > It is confirmed by `set parallel_leader_participation = false`, which forces
+> > > correct result.
+> > > `set enable_parallel_append = false` also forces correct result.
+> > > 
+> > > Original plan included Gather Merge node and max_parallel_workers_per_gather
+> > > = 1 .
+> > > Reproduction code uses Gather instead and max_parallel_workers_per_gather =
+> > > 2 just because it were easier to get bad plan.
+> > > 
+> > > Plan before change 8edd0e79460b414b1d971895312e549e95e12e4f (returns correct
+> > > result)
+> > > 
+> > >  Finalize Aggregate  (cost=25003.16..25003.17 rows=1 width=8) (actual
+> > > time=435.473..435.473 rows=1 loops=1)
+> > >    ->  Gather  (cost=25003.05..25003.16 rows=1 width=8) (actual time=434.646..456.889 rows=2 loops=1)
+> > >          Workers Planned: 1
+> > >         Workers Launched: 1
+> > >          ->  Partial Aggregate  (cost=24003.05..24003.06 rows=1 width=8)
+> > > (actual time=433.000..433.000 rows=1 loops=2)
+> > >                ->  Parallel Hash Left Join  (cost=21701.47..24002.86 rows=74
+> > > width=0) (actual time=312.576..432.981 rows=22 loops=2)
+> > >                      Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+> > >                      ->  Parallel Append  (cost=0.42..9.18 rows=24 width=4)
+> > > (actual time=0.021..0.112 rows=16 loops=2)
+> > >                            ->  Subquery Scan on "*SELECT* 1"
+> > > (cost=0.42..9.11 rows=24 width=4) (actual time=0.041..0.216 rows=33 loops=1)
+> > >                                  ->  Index Scan using testi3_ix on testi3
+> > > (cost=0.42..8.87 rows=24 width=8) (actual time=0.039..0.207 rows=33
+> > > loops=1)
+> > >                                        Index Cond: (flagged = true)
+> > >                      ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091
+> > > width=4) (actual time=305.473..305.473 rows=703309 loops=2)
+> > >                            Buckets: 131072  Batches: 32  Memory Usage:
+> > > 2784kB
+> > >                            ->  Parallel Seq Scan on testi4
+> > > (cost=0.00..12084.91 rows=586091 width=4) (actual time=0.032..138.958
+> > > rows=703309 loops=2)
+> > > 
+> > > Plan after that change (returns wrong result)
+> > > 
+> > >  Finalize Aggregate  (cost=25003.87..25003.88 rows=1 width=8) (actual
+> > > time=652.062..652.062 rows=1 loops=1)
+> > >    ->  Gather  (cost=25003.75..25003.86 rows=1 width=8) (actual
+> > > time=651.482..668.718 rows=2 loops=1)
+> > >          Workers Planned: 1
+> > >          Workers Launched: 1
+> > >          ->  Partial Aggregate  (cost=24003.75..24003.76 rows=1 width=8)
+> > > (actual time=649.150..649.150 rows=1 loops=2)
+> > >                ->  Parallel Hash Left Join  (cost=21701.47..24003.49
+> > > rows=106 width=0) (actual time=461.751..649.111 rows=44 loops=2)
+> > >                      Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+> > >                      ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..9.51
+> > > rows=36 width=4) (actual time=0.050..0.229 rows=33 loops=2)
+> > >                            ->  Index Scan using testi3_ix on testi3
+> > > (cost=0.42..9.15 rows=36 width=8) (actual time=0.048..0.214 rows=33 loops=2)
+> > >                                  Index Cond: (flagged = true)
+> > >                      ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091
+> > > width=4) (actual time=444.931..444.931 rows=703309 loops=2)
+> > >                            Buckets: 131072  Batches: 32  Memory Usage:
+> > > 2784kB
+> > >                            ->  Parallel Seq Scan on testi4
+> > > (cost=0.00..12084.91 rows=586091 width=4) (actual time=0.045..202.913
+> > > rows=703309 loops=2)]
+> > 
+> > I found simple fix:
+> > 
+> > --- a/src/backend/optimizer/util/pathnode.c
+> > +++ b/src/backend/optimizer/util/pathnode.c
+> > @@ -1284,14 +1284,17 @@ create_append_path(PlannerInfo *root,
+> >         if
+> > (list_length(pathnode->subpaths) == 1)
+> >         {
+> >                 Path       *child = (Path *) linitial(pathnode->subpaths);
+> >  
+> >                 pathnode->path.rows =
+> > child->rows;
+> >                 pathnode->path.startup_cost = child->startup_cost;
+> >                 pathnode->path.total_cost = child->total_cost;
+> >                 pathn
+> > ode->path.pathkeys = child->pathkeys;
+> > +               pathnode->path.parallel_aware = child->parallel_aware;
+> > +               pathnode->path.parallel_safe = child-
+> > > parallel_safe;
+> > +               pathnode->path.parallel_workers = child->parallel_workers;
+> >         }
+> >         else
+> >         {
+> >                 pathnode->path.pathkeys =
+> > NIL;  /* unsorted if more than 1 subpath */
+> >                 cost_append(pathnode);
+> >         }
+> > 
+> > With this fix Gather node deduce `Single Copy: true`, and leader doesn't
+> > participate in query execution.
+> > 
+> > It seems to be correct change:
+> > - if append node will be removed, then it should take parallel
+> >   awareness/safety from its single child.
+> > 
+> > With this change plan Gather Merge node fails on assert in
+> > cost_gather_merge
+> > 
+> >         /*                                                                                                         
+> >          * Add one to the number of workers to account for the leader.  This might
+> >          * be overgenerous since the leader will do less work than other workers
+> >          * in typical cases, but we'll go with it for now.
+> >          */                                                                                                        
+> >         Assert(path->num_workers > 0);
+> >         N = (double) path->num_workers + 1;
+> >         logN = LOG2(N);
+> > 
+> > Commenting this assert doesn't seem to break anything and doesn't seem to mess
+> > cost calculation (ie it remains logically correct).
+> > 
+> > To preserve assert I've changed it to `Assert(path->num_workers >= 0);`.
+> > 
+> > With this changes queries from reproduction code returns correct 44 rows.
+> > 
+> > # explain analyze SELECT id, val
+> > FROM (
+> >   SELECT fk, id
+> >   FROM testi3
+> >   WHERE flagged
+> >   UNION ALL
+> >   SELECT fk, id
+> >   from testi3
+> >   WHERE false
+> > ) as t
+> > LEFT OUTER JOIN testi4
+> > USING (fk);
+> >                                                                  QUERY PLAN                                                                 
+> > --------------------------------------------------------------------------------------------------------------------------------------------
+> >  Gather  (cost=22701.47..25015.79 rows=130 width=8) (actual time=1268.071..1686.918 rows=44 loops=1)
+> >    Workers Planned: 1
+> >    Workers Launched: 1
+> >    Single Copy: true
+> >    ->  Parallel Hash Left Join  (cost=21701.47..24002.79 rows=130 width=8) (actual time=1242.936..1634.421 rows=44 loops=1)
+> >          Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+> >          ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..9.09 rows=24 width=8) (actual time=0.049..0.166 rows=33 loops=1)
+> >                ->  Index Scan using testi3_ix on testi3  (cost=0.42..8.85 rows=24 width=8) (actual time=0.047..0.151 rows=33 loops=1)
+> >                      Index Cond: (flagged = true)
+> >          ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091 width=8) (actual time=1238.029..1238.029 rows=1406618 loops=1)
+> >                Buckets: 131072  Batches: 32  Memory Usage: 2784kB
+> >                ->  Parallel Seq Scan on testi4  (cost=0.00..12084.91 rows=586091 width=8) (actual time=0.070..540.652 rows=1406618 loops=1)
+> > 
+> > Interestingly, Gather Merge node doesn't run workers:
+> > 
+> > # explain analyze SELECT id, val
+> > FROM (
+> >   SELECT fk, id
+> >   FROM testi3
+> >   WHERE flagged
+> >   UNION ALL
+> >   SELECT fk, id
+> >   from testi3
+> >   WHERE false
+> > ) as t
+> > LEFT OUTER JOIN testi4
+> > USING (fk) ORDER BY val;
+> >                                                                     QUERY PLAN                                                                    
+> > --------------------------------------------------------------------------------------------------------------------------------------------------
+> >  Gather Merge  (cost=25007.36..25007.68 rows=0 width=8) (actual time=909.975..909.984 rows=44 loops=1)
+> >    Workers Planned: 0
+> >    Workers Launched: 0
+> >    ->  Sort  (cost=24007.36..24007.68 rows=130 width=8) (actual time=909.948..909.952 rows=44 loops=1)
+> >          Sort Key: testi4.val
+> >          Sort Method: quicksort  Memory: 27kB
+> >          ->  Parallel Hash Left Join  (cost=21701.47..24002.79 rows=130 width=8) (actual time=757.099..909.779 rows=44 loops=1)
+> >                Hash Cond: ("*SELECT* 1".fk = testi4.fk)
+> >                ->  Subquery Scan on "*SELECT* 1"  (cost=0.42..9.09 rows=24 width=8) (actual time=0.224..0.576 rows=33 loops=1)
+> >                      ->  Index Scan using testi3_ix on testi3  (cost=0.42..8.85 rows=24 width=8) (actual time=0.202..0.543 rows=33 loops=1)
+> >                            Index Cond: (flagged = true)
+> >                ->  Parallel Hash  (cost=12084.91..12084.91 rows=586091 width=8) (actual time=755.983..755.983 rows=1406618 loops=1)
+> >                      Buckets: 131072  Batches: 32  Memory Usage: 2730kB
+> >                      ->  Parallel Seq Scan on testi4  (cost=0.00..12084.91 rows=586091 width=8) (actual time=0.052..330.983 rows=1406618 loops=1)
+> > 
+> > So this changes could be taken as quick valid fix.
+> > 
+> > Futher improvement is to remove Append node earlier to detect there is
+> > no need in parallelism when single Append child doesn't support it.
+> > 
+> 
+> I've attached this changes as a patch.
+> 
+> --------
+> regards,
+> Sokolov Yura
+> Postgres Professional
+> y(dot)sokolov(at)postgrespro(dot)ru
+> funny(dot)falcon(at)gmail(dot)com
+> 
+
+
+

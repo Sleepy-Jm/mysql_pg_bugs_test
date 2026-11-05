@@ -1,0 +1,40 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17340
+Logged by:          Magnus Falch
+Email address:      magnus(dot)falch(at)gmail(dot)com
+PostgreSQL version: 14.1
+Operating system:   Ubuntu 20.04
+Description:        
+
+
+No part of the documentation covers this behaviour and it feels incorrect.
+
+
+A function called in the select part of a query discarding other data does
+not make sense and feels like it breaks with expectations without being
+documented.
+
+
+select name,unnest(test_values.int_array) as array_item from
+(select 'test_a' as name,null :: int[] as int_array union all
+select 'test_b' as name ,array[1,2,3] as int_array ) test_values
+
+
+Actual result set:
+name |    array_item
+test_b |    1
+test_b |    2
+test_b |    3 
+
+
+Expected result set:
+name |    array_item
+test_a |    null
+test_b |    1
+test_b |    2
+test_b |    3
+
+
+

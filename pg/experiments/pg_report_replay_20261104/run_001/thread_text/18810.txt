@@ -1,0 +1,84 @@
+### MESSAGE 0
+The following bug has been logged on the website:
+
+
+Bug reference:      18810
+Logged by:          weijie JL
+Email address:      weijie1006jl(at)gmail(dot)com
+PostgreSQL version: 17.2
+Operating system:   Rocky Linux release 9.4 (Blue Onyx)
+Description:        
+
+
+log detail:
+2025-02-13 11:45:28.563 CST    [4015389]LOG:  00000: received SIGHUP,
+reloading configuration files
+2025-02-13 11:45:28.563 CST    [4015389]LOCATION: 
+process_pm_reload_request, postmaster.c:2104
+2025-02-13 11:45:28.564 CST    [4015389]LOG:  22023: invalid value for
+parameter "synchronized_standby_slots": "slave"
+2025-02-13 11:45:28.564 CST    [4015389]DETAIL:  replication slot "slave"
+does not exist
+2025-02-13 11:45:28.564 CST    [4015389]LOCATION:  call_string_check_hook,
+guc.c:6927
+2025-02-13 11:45:28.564 CST    [4015389]LOG:  F0000: configuration file
+"/data/pgdata/pg5433/data/postgresql.conf" contains errors; unaffected
+changes were applied
+2025-02-13 11:45:28.564 CST    [4015389]LOCATION: 
+ProcessConfigFileInternal, guc.c:616
+2025-02-13 11:45:28.687 CST    [4015389]LOG:  00000: system logger process
+(PID 1511029) was terminated by signal 11: Segmentation fault
+2025-02-13 11:45:28.687 CST    [4015389]LOCATION:  LogChildExit,
+postmaster.c:3097
+
+
+The Segmentation fault error here does not seem to affect the master
+process. Is this error as expected?
+
+
+
+
+
+### MESSAGE 1
+PG Bug reporting form <noreply(at)postgresql(dot)org> writes:
+> log detail:
+> 2025-02-13 11:45:28.563 CST    [4015389]LOG:  00000: received SIGHUP,
+> reloading configuration files
+> 2025-02-13 11:45:28.563 CST    [4015389]LOCATION: 
+> process_pm_reload_request, postmaster.c:2104
+> 2025-02-13 11:45:28.564 CST    [4015389]LOG:  22023: invalid value for
+> parameter "synchronized_standby_slots": "slave"
+> 2025-02-13 11:45:28.564 CST    [4015389]DETAIL:  replication slot "slave"
+> does not exist
+> 2025-02-13 11:45:28.564 CST    [4015389]LOCATION:  call_string_check_hook,
+> guc.c:6927
+> 2025-02-13 11:45:28.564 CST    [4015389]LOG:  F0000: configuration file
+> "/data/pgdata/pg5433/data/postgresql.conf" contains errors; unaffected
+> changes were applied
+> 2025-02-13 11:45:28.564 CST    [4015389]LOCATION: 
+> ProcessConfigFileInternal, guc.c:616
+> 2025-02-13 11:45:28.687 CST    [4015389]LOG:  00000: system logger process
+> (PID 1511029) was terminated by signal 11: Segmentation fault
+
+
+I believe this is one of the bugs fixed in the just-released 17.3:
+
+
+    <listitem>
+<!--
+Author: Álvaro Herrera <alvherre(at)alvh(dot)no-ip(dot)org>
+Branch: master [3c5f9f12c] 2024-12-03 17:50:57 +0100
+Branch: REL_17_STABLE [9abdc1841] 2024-12-03 17:50:57 +0100
+-->
+     <para>
+      Avoid crash when a background process tries to check a new value
+      of <varname>synchronized_standby_slots</varname> (Álvaro Herrera)
+      <ulink url="&commit_baseurl;9abdc1841">&sect;</ulink>
+     </para>
+    </listitem>
+
+
+			regards, tom lane
+
+
+

@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18780: Bindings types are lost for complex queries</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18780-bae540b8dbfe4cdc%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-01-19T22:25:42" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18780: Bindings types are lost for complex queries" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="4a908a4661840efd1ad219c56f87df70">BUG #18780: Bindings types are lost for complex queries</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202501192225">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18780-bae540b8dbfe4cdc@postgresql.org"></a>
+<a name="4a908a4661840efd1ad219c56f87df70"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>vik(at)notexi(dot)st</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18780: Bindings types are lost for complex queries</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-19 22:25:42</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18780-bae540b8dbfe4cdc%40postgresql.org">18780-bae540b8dbfe4cdc@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18780-bae540b8dbfe4cdc%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18780-bae540b8dbfe4cdc%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18780-bae540b8dbfe4cdc%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18780-bae540b8dbfe4cdc%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501190000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18780<br>Logged by:          Viktr<br>Email address:      vik(at)notexi(dot)st<br>PostgreSQL version: 17.2<br>Operating system:   Linux d2c635331de7 6.10.14-linuxkit #1 SMP PREEMPT<br>Description:        </p>
+
+<p>Hi there,</p>
+
+<p>Actual discussion is here: <a href="https://github.com/pgjdbc/pgjdbc/issues/3482" rel="nofollow">https://github.com/pgjdbc/pgjdbc/issues/3482</a><br>In brief: I do understand that &quot;select 1 as one, 2 as two, 3 as three&quot; might<br>have lack of type info. But I suppose, in case these values are used in the<br>assignment, the type could be taken from the corresponding column type. Like<br>for &quot;insert into sometable(one, two, three) select 1 as one, 2 as two, 3 as<br>three&quot; it is obvious that types should match.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="CAKFQuwauor0qYsPaB1CEu5atYu6H1y1ibcVA0VtgxkLKVyDXig@mail.gmail.com"></a>
+<a name="2d9a2b528d515a36f661897d3202dc22"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;vik(at)notexi(dot)st&quot; &lt;vik(at)notexi(dot)st&gt;,  &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18780: Bindings types are lost for complex queries</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-20 15:18:08</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/CAKFQuwauor0qYsPaB1CEu5atYu6H1y1ibcVA0VtgxkLKVyDXig%40mail.gmail.com">CAKFQuwauor0qYsPaB1CEu5atYu6H1y1ibcVA0VtgxkLKVyDXig@mail.gmail.com</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/CAKFQuwauor0qYsPaB1CEu5atYu6H1y1ibcVA0VtgxkLKVyDXig%40mail.gmail.com">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/CAKFQuwauor0qYsPaB1CEu5atYu6H1y1ibcVA0VtgxkLKVyDXig%40mail.gmail.com" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/CAKFQuwauor0qYsPaB1CEu5atYu6H1y1ibcVA0VtgxkLKVyDXig%40mail.gmail.com" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/CAKFQuwauor0qYsPaB1CEu5atYu6H1y1ibcVA0VtgxkLKVyDXig%40mail.gmail.com" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>On Sunday, January 19, 2025, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;<br>wrote:</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt;<br>&gt; Bug reference:      18780<br>&gt; Logged by:          Viktr<br>&gt; Email address:      vik(at)notexi(dot)st<br>&gt; PostgreSQL version: 17.2<br>&gt; Operating system:   Linux d2c635331de7 6.10.14-linuxkit #1 SMP PREEMPT<br>&gt; Description:<br>&gt;<br>&gt; Hi there,<br>&gt;<br>&gt; Actual discussion is here: <a href="https://github.com/pgjdbc/pgjdbc/issues/3482" rel="nofollow">https://github.com/pgjdbc/pgjdbc/issues/3482</a><br>&gt; In brief: I do understand that &quot;select 1 as one, 2 as two, 3 as three&quot;<br>&gt; might<br>&gt; have lack of type info. But I suppose, in case these values are used in the<br>&gt; assignment, the type could be taken from the corresponding column type.<br>&gt; Like<br>&gt; for &quot;insert into sometable(one, two, three) select 1 as one, 2 as two, 3 as<br>&gt; three&quot; it is obvious that types should match.<br>&gt;<br>&gt;<br>A bug report should be self-contained.  Only pointing to a 40 message long<br>thread isn’t helping get the bug (well, feature) fixed.</p>
+
+<p>The crux of that thread is your driver is sending along a text data typed<br>value because it cannot decide whether timestamp or timestamptz is needed.<br>Implicitly casting text to something else isn’t going to happen.</p>
+
+<p>This falls into a feature request, one that comes up from time-to-time, and<br>doesn’t ever seem to meet anyone’s benefit/cost threshold for working on;<br>or at least get pushed over the edge.</p>
+
+<p>The underlying feature, I think, is you want the parse to be able to say<br>“let the server decide the type” and the server reply with type info for<br>unspecified parameters.  Or maybe accept the pseudo-type “unknown” at the<br>API level.  In any case a thread to discuss a patch for such a change and<br>how JDBC would leverage it to solve this problem would be the next step.<br>Searching the mailing lists for existing discussions may yield fruit too<br>though I don;t know for certain.</p>
+
+<p>David J.<br></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3001659.1737387466@sss.pgh.pa.us"></a>
+<a name="b77613df3455e0ad4007fb8f136db637"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;David G(dot) Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;vik(at)notexi(dot)st&quot; &lt;vik(at)notexi(dot)st&gt;,
+        &quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18780: Bindings types are lost for complex queries</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-20 15:37:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3001659.1737387466%40sss.pgh.pa.us">3001659.1737387466@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3001659.1737387466%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3001659.1737387466%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3001659.1737387466%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3001659.1737387466%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>&quot;David G. Johnston&quot; &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; writes:<br>&gt; On Sunday, January 19, 2025, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;<br>&gt; wrote:<br>&gt;&gt; Actual discussion is here: <a href="https://github.com/pgjdbc/pgjdbc/issues/3482" rel="nofollow">https://github.com/pgjdbc/pgjdbc/issues/3482</a><br>&gt;&gt; In brief: I do understand that &quot;select 1 as one, 2 as two, 3 as three&quot;<br>&gt;&gt; might<br>&gt;&gt; have lack of type info. But I suppose, in case these values are used in the<br>&gt;&gt; assignment, the type could be taken from the corresponding column type.<br>&gt;&gt; Like<br>&gt;&gt; for &quot;insert into sometable(one, two, three) select 1 as one, 2 as two, 3 as<br>&gt;&gt; three&quot; it is obvious that types should match.</p>
+
+<p>&gt; A bug report should be self-contained.  Only pointing to a 40 message long<br>&gt; thread isn’t helping get the bug (well, feature) fixed.</p>
+
+<p>Indeed.  It&#x27;s pretty discourteous to expect us to go read a discussion<br>somewhere else and try to infer what you&#x27;re on about.</p>
+
+<p>&gt; The underlying feature, I think, is you want the parse to be able to say<br>&gt; “let the server decide the type” and the server reply with type info for<br>&gt; unspecified parameters.</p>
+
+<p>It will do that, to some extent.  For example (using PREPARE as a<br>convenient proxy for what would happen in extended query mode):</p>
+
+<p>regression=# create table foo (f1 timestamptz);<br>CREATE TABLE<br>regression=# prepare foo as insert into foo select $1;<br>PREPARE<br>regression=# table pg_prepared_statements;<br> name |                 statement                 |         prepare_time          |       parameter_types        | result_types | from_sql | generic_plans | custom_plans <br>------+-------------------------------------------+-------------------------------+------------------------------+--------------+----------+---------------+--------------<br> foo  | prepare foo as insert into foo select $1; | 2025-01-20 10:21:30.777687-05 | {&quot;timestamp with time zone&quot;} |              | t        |             0 |            0<br>(1 row)</p>
+
+<p>From the bug title I suspect that the complaint is that this doesn&#x27;t<br>happen every time.  But it doesn&#x27;t, and we&#x27;re unlikely to try to make<br>it do so, not least because doing so would change the behavior of a<br>lot of cases that people are depending on.</p>
+
+<p>The case that works as the submitter desires is where we still haven&#x27;t<br>resolved a type for the parameter symbol (or untyped literal string)<br>at completion of parsing of the SELECT part.  But sometimes we have<br>to choose a type sooner.  For instance consider</p>
+
+<p>regression=# prepare foo2 as insert into foo select $1 group by 1;<br>ERROR:  column &quot;f1&quot; is of type timestamp with time zone but expression is of type text<br>HINT:  You will need to rewrite or cast the expression.</p>
+
+<p>What&#x27;s happened here is that in order to ascribe semantics to the<br>GROUP BY clause, we have to know the type of the column being<br>grouped by.  In the information vacuum we have here, we default to<br>deciding that $1 has type &quot;text&quot;.  (IIRC, we used to just throw an<br>error, but that made even fewer people happy.)  When we&#x27;re done<br>parsing the SELECT, we try to coerce the output columns to foo&#x27;s<br>column types, and now we fail because text-&gt;timestamptz isn&#x27;t<br>permitted as an implicit cast.</p>
+
+<p>You could imagine trying to pass foo&#x27;s column types down into<br>parsing of the SELECT, but that feels very action-at-a-distance-y<br>and would probably break as many cases that work today as fix<br>cases that don&#x27;t.  I doubt we&#x27;d ever accept a patch for that.</p>
+
+<p>&gt; Searching the mailing lists for existing discussions may yield fruit too<br>&gt; though I don;t know for certain.</p>
+
+<p>Yeah, we&#x27;ve been around on this (many times) before.</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="761091B0-E053-4C4E-A112-1F7D8E700EEE@notexi.st"></a>
+<a name="7f102ca60e5bdd0df16f7090502fce3d"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Viktor Remennik &lt;vik(at)etogo(dot)net&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18780: Bindings types are lost for complex queries</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-20 18:30:46</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/761091B0-E053-4C4E-A112-1F7D8E700EEE%40notexi.st">761091B0-E053-4C4E-A112-1F7D8E700EEE@notexi.st</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/761091B0-E053-4C4E-A112-1F7D8E700EEE%40notexi.st">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/761091B0-E053-4C4E-A112-1F7D8E700EEE%40notexi.st" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/761091B0-E053-4C4E-A112-1F7D8E700EEE%40notexi.st" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/761091B0-E053-4C4E-A112-1F7D8E700EEE%40notexi.st" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Sorry, I thought that it would be easier to read the thread on the pg-jdbc github than copypasting it in the report.</p>
+
+<p>Well, I run a query through jdbc:</p>
+
+<p>Table:</p>
+
+<p>create table test<br>(<br>    id     bigint primary key,<br>    ts     timestamp with time zone,<br>    amount integer<br>);</p>
+
+<p>Query:</p>
+
+<p>    private static final String MERGE_QUERY = &quot;&quot;&quot;<br>                        merge into test as dst<br>            using (select ? as id,<br>                          ? as ts,<br>                          ? as amount) src<br>            on dst.id=?<br>            when matched then<br>                update<br>                set ts=src.ts,<br>                    amount=src.amount<br>            when not matched then<br>                insert (&quot;id&quot;, &quot;ts&quot;, &quot;amount&quot;)<br>                values (src.id, src.ts, src.amount)<br>            &quot;&quot;&quot;;</p>
+
+<p>    @Test<br>    public void test()<br>    {<br>        try (Connection conn = dataSource.getConnection())<br>        {<br>            log.info(&quot;Driver version {}&quot;, conn.getMetaData().getDriverVersion());<br>            PreparedStatement ps = conn.prepareStatement(MERGE_QUERY);</p>
+
+<p>            Integer id = 2;<br>            Timestamp ts = Timestamp.valueOf(LocalDateTime.now());<br>            Integer amount = 123;</p>
+
+<p>            ps.setObject(1, id);<br>            ps.setObject(2, ts);<br>            ps.setObject(3, amount);<br>            ps.setObject(4, id);</p>
+
+<p>            ps.executeUpdate();<br>        } catch (Exception e)<br>        {<br>            log.error(e.getMessage(), e);<br>        }<br>    }</p>
+
+<p>And I am getting the error:</p>
+
+<p>2025-01-17T17:58:32.798+02:00 ERROR 4696 --- [           main] st.notexi.springtest.DbTest              : ERROR: column &quot;ts&quot; is of type timestamp with time zone but expression is of type text<br>  Hint: You will need to rewrite or cast the expression.<br>  Position: 169</p>
+
+<p>I do not expect server to DECIDE what type. There IS the same type information as, for example, in the &quot;insert into test(id, ts, amount) values(?, ?, ?)&quot;. So, I expect server just takes it and executes query.<br>I filed a bug to the jdbc driver and got a response that it is server&#x27;s problem and that I have to report it here.<br>So, I&#x27;d like to understand, where the problem actually is. As for me it looks like a bug.</p>
+
+<p>Thank you</p>
+
+<p>Kind regards,<br>Viktor</p>
+
+<p>On 20 Jan 2025, at 17:18, David G. Johnston &lt;david(dot)g(dot)johnston(at)gmail(dot)com&gt; wrote:</p>
+
+<p>On Sunday, January 19, 2025, PG Bug reporting form &lt;noreply(at)postgresql(dot)org&lt;mailto:noreply(at)postgresql(dot)org&gt;&gt; wrote:<br>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18780<br>Logged by:          Viktr<br>Email address:      vik(at)notexi(dot)st&lt;mailto:vik(at)notexi(dot)st&gt;<br>PostgreSQL version: 17.2<br>Operating system:   Linux d2c635331de7 6.10.14-linuxkit #1 SMP PREEMPT<br>Description:</p>
+
+<p>Hi there,</p>
+
+<p>Actual discussion is here: <a href="https://github.com/pgjdbc/pgjdbc/issues/3482" rel="nofollow">https://github.com/pgjdbc/pgjdbc/issues/3482</a><br>In brief: I do understand that &quot;select 1 as one, 2 as two, 3 as three&quot; might<br>have lack of type info. But I suppose, in case these values are used in the<br>assignment, the type could be taken from the corresponding column type. Like<br>for &quot;insert into sometable(one, two, three) select 1 as one, 2 as two, 3 as<br>three&quot; it is obvious that types should match.</p>
+
+<p>A bug report should be self-contained.  Only pointing to a 40 message long thread isn’t helping get the bug (well, feature) fixed.</p>
+
+<p>The crux of that thread is your driver is sending along a text data typed value because it cannot decide whether timestamp or timestamptz is needed.  Implicitly casting text to something else isn’t going to happen.</p>
+
+<p>This falls into a feature request, one that comes up from time-to-time, and doesn’t ever seem to meet anyone’s benefit/cost threshold for working on; or at least get pushed over the edge.</p>
+
+<p>The underlying feature, I think, is you want the parse to be able to say “let the server decide the type” and the server reply with type info for unspecified parameters.  Or maybe accept the pseudo-type “unknown” at the API level.  In any case a thread to discuss a patch for such a change and how JDBC would leverage it to solve this problem would be the next step.  Searching the mailing lists for existing discussions may yield fruit too though I don;t know for certain.</p>
+
+<p>David J.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="3077202.1737401189@sss.pgh.pa.us"></a>
+<a name="8902d3a9e34b65becb34fa3fdbfb2d09"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Viktor Remennik &lt;vik(at)etogo(dot)net&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18780: Bindings types are lost for complex queries</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-20 19:26:29</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/3077202.1737401189%40sss.pgh.pa.us">3077202.1737401189@sss.pgh.pa.us</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/3077202.1737401189%40sss.pgh.pa.us">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/3077202.1737401189%40sss.pgh.pa.us" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/3077202.1737401189%40sss.pgh.pa.us" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/3077202.1737401189%40sss.pgh.pa.us" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Viktor Remennik &lt;vik(at)etogo(dot)net&gt; writes:<br>&gt;     private static final String MERGE_QUERY = &quot;&quot;&quot;<br>&gt;                         merge into test as dst<br>&gt;             using (select ? as id,<br>&gt;                           ? as ts,<br>&gt;                           ? as amount) src<br>&gt;             on dst.id=?<br>&gt;             when matched then<br>&gt;                 update<br>&gt;                 set ts=src.ts,<br>&gt;                     amount=src.amount<br>&gt;             when not matched then<br>&gt;                 insert (&quot;id&quot;, &quot;ts&quot;, &quot;amount&quot;)<br>&gt;                 values (src.id, src.ts, src.amount)<br>&gt;             &quot;&quot;&quot;;</p>
+
+<p>That is never going to work, and you can complain all you want<br>but we&#x27;re not going to accept it as a bug.  The sub-select has<br>to decide on its output column types before parsing can proceed.<br>There is way too much semantic distance between there and where<br>it might be possible to discover that the output columns are<br>going to be assigned to particular target columns; furthermore,<br>the outer query might have other references to the sub-select&#x27;s<br>columns that do not provide usable context for resolving their<br>types, or that provide conflicting hints.</p>
+
+<p>The only cases like this that we support are</p>
+
+<p>insert into sometable values (?)<br>insert into sometable select ?<br>update sometable set somecolumn = ?</p>
+
+<p>where there is basically not anything between the unlabeled<br>parameter and its single use as an assignment source.  (Even<br>these are undesirably messy internally.)</p>
+
+<p>			regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="B213C684-E94A-4A58-957E-072238F3E8D2@notexi.st"></a>
+<a name="34fc3c41039c2866754e0044a1a515b4"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Viktor Remennik &lt;vik(at)etogo(dot)net&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>&quot;pgsql-bugs(at)lists(dot)postgresql(dot)org&quot; &lt;pgsql-bugs(at)lists(dot)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18780: Bindings types are lost for complex queries</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-01-20 21:29:44</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/B213C684-E94A-4A58-957E-072238F3E8D2%40notexi.st">B213C684-E94A-4A58-957E-072238F3E8D2@notexi.st</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/B213C684-E94A-4A58-957E-072238F3E8D2%40notexi.st">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/B213C684-E94A-4A58-957E-072238F3E8D2%40notexi.st" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/B213C684-E94A-4A58-957E-072238F3E8D2%40notexi.st" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/B213C684-E94A-4A58-957E-072238F3E8D2%40notexi.st" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202501200000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>Ok, I understand, pg is just a simple opensource db, not a kinda &quot;free oracle&quot;, and types processing after parsing is too much. Good.<br>But is it at least possible to throw an error then? Because currently such a queries are processed as they&#x27;re &quot;good&quot;. It&#x27;s a bit inconsistent - either DB should process them or reject them. Now it is processing them sometimes with unpredictable results. Like, sometime it is working fine according to the standards, and sometimes it throws the exception I mentioned before. Like, &quot;src.id&lt;<a href="http://src.id" rel="nofollow">http://src.id</a>&gt;, src.ts, src.amount are unknown&quot; or something of that sort.</p>
+
+<p>Kind regards,<br>Viktor</p>
+
+<p>On 20 Jan 2025, at 21:26, Tom Lane &lt;tgl(at)sss(dot)pgh(dot)pa(dot)us&gt; wrote:</p>
+
+<p>Viktor Remennik &lt;vik(at)etogo(dot)net&gt; writes:<br>   private static final String MERGE_QUERY = &quot;&quot;&quot;<br>                       merge into test as dst<br>           using (select ? as id,<br>                         ? as ts,<br>                         ? as amount) src<br>           on dst.id=?<br>           when matched then<br>               update<br>               set ts=src.ts,<br>                   amount=src.amount<br>           when not matched then<br>               insert (&quot;id&quot;, &quot;ts&quot;, &quot;amount&quot;)<br>               values (src.id, src.ts, src.amount)<br>           &quot;&quot;&quot;;</p>
+
+<p>That is never going to work, and you can complain all you want<br>but we&#x27;re not going to accept it as a bug.  The sub-select has<br>to decide on its output column types before parsing can proceed.<br>There is way too much semantic distance between there and where<br>it might be possible to discover that the output columns are<br>going to be assigned to particular target columns; furthermore,<br>the outer query might have other references to the sub-select&#x27;s<br>columns that do not provide usable context for resolving their<br>types, or that provide conflicting hints.</p>
+
+<p>The only cases like this that we support are</p>
+
+<p>insert into sometable values (?)<br>insert into sometable select ?<br>update sometable set somecolumn = ?</p>
+
+<p>where there is basically not anything between the unlabeled<br>parameter and its single use as an assignment source.  (Even<br>these are undesirably messy internally.)</p>
+
+<p>regards, tom lane</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>

@@ -1,0 +1,60 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      18728
+Logged by:          Christophe Courtois
+Email address:      christophe(dot)courtois(at)dalibo(dot)com
+PostgreSQL version: 17.2
+Operating system:   Linux (Debian 12)
+Description:        
+
+
+Hi,
+When joining pg_stat_activity and pg_wait_events, I've found discrepancies
+with wait_event names.
+
+
+I have launched a pgbench and run this repeatedly:
+
+
+SELECT distinct wait_event, wait_event_type, w.name, w.description
+FROM pg_stat_activity LEFT JOIN pg_wait_events w ON (name=wait_event and
+w.type=wait_event_type) order by 1,2 ;
+
+
+And I got these lines without description, among correct ones with a
+description.
+
+
+     wait_event      | wait_event_type |        name         |              
+          description                          
+---------------------+-----------------+---------------------+--------------------------------------------------------------
+...
+ WALWriteLock        | LWLock          | ø                   | ø
+ SerializableXactHashLock | LWLock          | ø                   | ø
+ SerializableFinishedListLock | LWLock          | ø                    | ø
+ ProcArrayLock       | LWLock          | ø                   | ø
+
+
+pg_wait_events.name does contain WALWrite, SerializableXactHash,
+SerializableFinishedList or
+ ProcArray, but not WALWriteLock, SerializableXactHashLock,
+SerializableFinishedListLock, ProcArrayLock.
+
+
+If I understand correctly, the names of LWLocks are defined in
+src/include/storage/lwlocklist.h, and the PG_LWLOCK macro adds 'Lock'
+(lwlock.c) ; while the doc and pg_wait_events are generated from the content
+of src/backend/utils/activity/wait_event_names.txt, that does not contain
+the 'Lock' suffix.
+
+
+If it cannot be improved, I suggest that the query at the end of
+https://www.postgresql.org/docs/17/monitoring-stats.html#WAIT-EVENT-ACTIVITY-TABLE
+should use "LEFT OUTER JOIN pg_waits_events", to avoid removing lines.
+
+
+Thanks,
+
+
+

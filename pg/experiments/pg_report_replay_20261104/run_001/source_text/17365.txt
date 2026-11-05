@@ -1,0 +1,84 @@
+The following bug has been logged on the website:
+
+
+Bug reference:      17365
+Logged by:          Mario Emmenlauer
+Email address:      mario(at)emmenlauer(dot)de
+PostgreSQL version: 14.1
+Operating system:   Windows 10 with Clang-Cl 13.0.0 over MSVC 19.5
+Description:        
+
+
+I'm compiling postgres with Microsoft Visual Studio 19.5. This generally
+works well, thanks!
+
+
+Then I build a wrapper library that uses `postgres.h` in my code. My code is
+built using the LLVM Clang-Cl compiler frontend version 13.0.0 over
+Microsoft Visual Studio 19.5. Generally, the Clang-Cl compiler frontend
+works very well. But since updating PostgreSQL from 13.x to the 14.1
+release, I get an error:
+```
+FAILED: CMakeFiles/DatabaseHandler.dir/src/BDAPGResult.cc.obj 
+C:\BDA\ci\LLVM-13.0.0\bin\clang-cl.exe   -TP -DDATABASEHANDLER_DEBUG -DEBUG
+-DFMT_LOCALE -DHasZLIB -DNOMINMAX -DWIN32 -DWIN64 -D_DEBUG -D_DEBUG_
+-D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64
+-IC:\data\ci-tmp\Debug\DatabaseHandler
+-IC:\BDA\bld\XTJyb_7r\0\DatabaseHandler\include
+-IC:\BDA\bld\XTJyb_7r\0\DatabaseHandler\src
+-IC:\data\ci-dst\Debug\include\server\port\win32 -imsvc
+C:\data\ci-dst\Debug\include -imsvc C:\data\ci-dst\Debug\include\server
+-imsvc C:\data\ci-dst\Tools\ipp\include -imsvc
+C:\data\ci-dst\Tools\daal\include -imsvc C:\data\ci-dst\Tools\include -imsvc
+C:\data\ci-dst\Debug\include\QtCore -imsvc
+C:\data\ci-dst\Debug\mkspecs\win32-msvc -imsvc
+C:\data\ci-dst\Debug\include\eigen3 -imsvc
+C:\data\ci-dst\Debug\include\ITK-5.2 -imsvc
+C:\data\ci-dst\Debug\include\QtGui /std:c++20 /MDd /Z7 -march=haswell 
+-Werror=pessimizing-move -Werror=redundant-move -Werror=range-loop-construct
+ -Werror=range-loop-construct       /D_ITERATOR_DEBUG_LEVEL=0    
+/DWINVER=0x0A00 /D_WIN32_WINNT=0x0A00 /DDEBUG     /D_CRT_SECURE_NO_DEPRECATE
+/D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS  -Wextra -Werror=return-type
+-Werror=uninitialized -Werror=unknown-pragmas -Werror=shadow -Werror=undef
+-Werror=pointer-arith -DQT_DISABLE_DEPRECATED_BEFORE=0x050F00
+-Werror=shift-count-overflow -Werror=string-plus-int
+-Werror=nonportable-include-path -Werror=inconsistent-missing-override
+-Werror=self-assign -Werror=self-assign-field -Werror=self-move
+-Werror=braced-scalar-init -Werror=many-braces-around-scalar-init
+-Werror=return-stack-address -Werror=delete-non-abstract-non-virtual-dtor
+/W4  -Werror=return-stack-address
+-Werror=delete-non-abstract-non-virtual-dtor    /DWIN32 /D_WINDOWS /GR /EHsc
+/Zi /Ob0 /Od /RTC1 -MDd /Zc:__cplusplus -Zc:__cplusplus -permissive- -utf-8
+-std:c++20 /showIncludes
+/FoCMakeFiles\DatabaseHandler.dir\src\BDAPGResult.cc.obj
+/FdDatabaseHandler.pdb -c --
+C:\BDA\bld\XTJyb_7r\0\DatabaseHandler\src\BDAPGResult.cc
+In file included from
+C:\BDA\bld\XTJyb_7r\0\DatabaseHandler\src\BDAPGResult.cc:31:
+In file included from C:\data\ci-dst\Debug\include\server\postgres.h:46:
+In file included from C:\data\ci-dst\Debug\include\server/c.h:1362:
+In file included from C:\data\ci-dst\Debug\include\server/port.h:26:
+C:\data\ci-dst\Debug\include\server/port/win32_port.h(256,8): error:
+redefinition of 'stat'
+struct stat                                             /* This should match
+struct __stat64 */
+       ^
+C:\Program Files (x86)\Windows
+Kits\10\include\10.0.19041.0\ucrt\sys/stat.h(87,12): note: previous
+definition is here
+    struct stat
+           ^
+1 error generated.
+```
+
+
+I've recently also changed from c++17 to c++20, so maybe this can be
+related? I keep the full compile command in above log in case there is
+anything else dubious?
+Any help would be greatly appreciated!
+
+
+    Mario
+
+
+

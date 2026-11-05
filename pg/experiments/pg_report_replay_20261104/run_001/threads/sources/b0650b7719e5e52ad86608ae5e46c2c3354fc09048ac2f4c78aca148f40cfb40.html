@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: BUG #18801: JIT recompiles function for each row if custom aggregation function is used</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+  <meta property="og:url" content="https://www.postgresql.org/message-id/flat/18801-8657563d6f52110b%40postgresql.org" />
+  <meta property="og:type" content="article" />
+  <meta property="article:author" content="PG Bug reporting form" />
+  <meta property="article:published_time" content="2025-02-09T17:46:55" />
+  <meta property="og:image" content="https://www.postgresql.org/media-archives/img/about/press/elephant.png" />
+  <meta property="og:title" content="BUG #18801: JIT recompiles function for each row if custom aggregation function is used" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Mailing List Archives" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <link href="/media-archives/css/fontawesome.css?1f02c594" rel="stylesheet">
+  <link rel="stylesheet" href="/media-archives/css/bootstrap.min.css?1f02c594">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?1f02c594">
+  
+<meta name="robots" content="noindex" />
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media-archives/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#pgNavbar" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+             <form role="search" method="get" action="https://www.postgresql.org/search/">
+               <div class="input-group">
+                 <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                 <span class="input-group-btn">
+                   <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                 </span>
+               </div><!-- /input-group -->
+             </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+    </div>
+    
+<div class="container-fluid margin archive">
+  <div class="row">
+    <div class="col-lg-2">
+      <div id="pgSideWrap">
+       <div id="pgSideNav">
+         <h2>Quick Links</h2>
+         <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="/community/contributors/">Contributors</a></li>
+            <li><a href="/list/">Mailing Lists</a></li>
+            <li><a href="/community/irc/">IRC</a></li>
+            
+            <li><a href="/community/user-groups/">Local User Groups</a></li>
+            <li><a href="/about/events/">Events</a></li>
+            <li class="last-child"><a href="/community/international/">International Sites</a></li>
+         </ul>
+       </div>
+      </div> <!-- pgSideWrap -->
+    </div>
+    <div class="col-lg-10">
+      <div id="pgContentWrap">
+        
+
+<h1 id="flatMsgSubject" class="subject" data-isfirst="True" data-msgid="779eb2205604d81e252ef242ba698c84">BUG #18801: JIT recompiles function for each row if custom aggregation function is used</h1>
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">Lists:</th>
+  <td><span class="listname"><a href="/list/pgsql-bugs/since/202502091746">pgsql-bugs</a></span></td>
+</table>
+
+
+
+<a name="18801-8657563d6f52110b@postgresql.org"></a>
+<a name="779eb2205604d81e252ef242ba698c84"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>foxido(at)foxido(dot)dev</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>BUG #18801: JIT recompiles function for each row if custom aggregation function is used</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-09 17:46:55</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/18801-8657563d6f52110b%40postgresql.org">18801-8657563d6f52110b@postgresql.org</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/18801-8657563d6f52110b%40postgresql.org">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/18801-8657563d6f52110b%40postgresql.org" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/18801-8657563d6f52110b%40postgresql.org" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/18801-8657563d6f52110b%40postgresql.org" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502090000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>The following bug has been logged on the website:</p>
+
+<p>Bug reference:      18801<br>Logged by:          Ilya Gladyshev<br>Email address:      foxido(at)foxido(dot)dev<br>PostgreSQL version: 17.2<br>Operating system:   arch linux<br>Description:        </p>
+
+<p>Hi! I&#x27;ve noticed that for custom aggregation function jit (re)compiles same<br>code for every row.</p>
+
+<p>Consider this code sample:<br>```<br>create table test(a float, b float);<br>insert into test select a, a % 10 from generate_series(1, 10000) a;</p>
+
+<p>create function custom_max(float8, float8) returns float8 as<br>$$<br>  select case when $1 &gt; $2 then $1 else $2 end<br>$$<br>language sql;</p>
+
+<p>create aggregate custom_agg_max(float8)<br>(<br>    sfunc = custom_max,<br>    stype = float8,<br>    initcond = 0<br>);</p>
+
+<p>set jit = on;<br>set jit_above_cost = 0;<br>set jit_dump_bitcode = on;<br>explain analyze select custom_agg_max(a)  from<br>test;<br>```</p>
+
+<p>This query runs ~8 seconds ([1]) and generates 10001 llvm bytecode files in<br>data directory. For comparison, built-in `select max(a) from test` runs<br>~50ms and generates 2 bytecode files.</p>
+
+<p>And all bytecode files are same, with only difference between them is<br>function names [2].</p>
+
+<p>What i tested so far:<br>— bug disappears if sfunc in aggregate is built-in (for example if<br>custom_agg is [3])<br>— bug still present if function is marked as pure as possible (parallel<br>safe, leakproof, immutable, etc), but even for inpure functions jit <br>shouldn&#x27;t recompile for each row</p>
+
+<p>Also notice that JIT runtime counters are incorrect, actually ~90% time is<br>spent inside llvm (FPPass), according to perf.</p>
+
+<p>Bug is present on 17.2 and master (9926f85)</p>
+
+<p>[1]<br>```<br>                                                          QUERY PLAN        <br>                                                 <br>------------------------------------------------------------------------------------------------------------------------------<br> Aggregate  (cost=2655.00..2655.01 rows=1 width=8) (actual<br>time=8154.805..8154.806 rows=1 loops=1)<br>   Buffers: shared hit=69<br>   -&gt;  Seq Scan on test  (cost=0.00..155.00 rows=10000 width=8) (actual<br>time=0.033..3.371 rows=10000 loops=1)<br>         Buffers: shared hit=55<br> Planning:<br>   Buffers: shared hit=23<br> Planning Time: 0.240 ms<br> JIT:<br>   Functions: 3<br>   Options: Inlining false, Optimization false, Expressions true, Deforming<br>true<br>   Timing: Generation 0.193 ms (Deform 0.056 ms), Inlining 0.000 ms,<br>Optimization 0.175 ms, Emission 3.290 ms, Total 3.658 ms<br> Execution Time: 8172.018 ms<br>(12 rows)<br>```</p>
+
+<p>[2]<br>```<br>&lt; ; ModuleID = &#x27;397491.986.bc&#x27;<br>---<br>&gt; ; ModuleID = &#x27;397491.611.bc&#x27;<br>15c15<br>&lt; define noundef i64 @evalexpr_986_0(ptr nocapture noundef writeonly %0, ptr<br>%1, ptr %2) #0 {<br>---<br>&gt; define noundef i64 @evalexpr_611_0(ptr nocapture noundef writeonly %0, ptr<br>%1, ptr %2) #0 {<br>```</p>
+
+<p>[3]<br>```<br>CREATE AGGREGATE custom_agg_avg (float8)<br>(<br>    sfunc = float8_accum,<br>    stype = float8[],<br>    finalfunc = float8_avg,<br>    initcond = &#x27;{0,0,0}&#x27;<br>);<br>```</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="412edff1cf1d62399e49f5ab94e88913@postgrespro.ru"></a>
+<a name="06e19d8fea1ca39130d4d1d352a22d2e"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Vladlen Popolitov &lt;v(dot)popolitov(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>foxido(at)foxido(dot)dev, pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18801: JIT recompiles function for each row if custom
+ aggregation function is used</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-02-10 08:25:31</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/412edff1cf1d62399e49f5ab94e88913%40postgrespro.ru">412edff1cf1d62399e49f5ab94e88913@postgrespro.ru</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/412edff1cf1d62399e49f5ab94e88913%40postgrespro.ru">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/412edff1cf1d62399e49f5ab94e88913%40postgrespro.ru" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/412edff1cf1d62399e49f5ab94e88913%40postgrespro.ru" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/412edff1cf1d62399e49f5ab94e88913%40postgrespro.ru" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202502100000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>PG Bug reporting form писал(а) 2025-02-10 00:46:<br>Hi,</p>
+
+<p>  From my point of view, it works as it was asked: you wrote query, that <br>call function<br>for every row of the table, this function has 1 select statement, you <br>set GUCs<br>to compile every SELECT to jit and store compile result to the file. As <br>result<br>you have 10000 files for tables with 10000 rows.</p>
+
+<p>  If you write the same function without SELECT statement (change to IF <br>ELSE ENDIF),<br>you would not have 10000 files: no query, no jit. If you include 2 <br>SELECTs into the function, you<br>would have 20000 files.</p>
+
+<p>  What is wrong in this behaviour? If you expect to have only 1 <br>compilation for<br>exactly the same (or similar) queries, it does not exist in the moment. <br>I am<br>working with jit cache now, it would help, if SELECT query is stored in <br>plan<br>cache (it is used for queries in plpgsql, not SQL language functions).</p>
+
+<p>&gt; The following bug has been logged on the website:<br>&gt; <br>&gt; Bug reference:      18801<br>&gt; Logged by:          Ilya Gladyshev<br>&gt; Email address:      foxido(at)foxido(dot)dev<br>&gt; PostgreSQL version: 17.2<br>&gt; Operating system:   arch linux<br>&gt; Description:<br>&gt; <br>&gt; Hi! I&#x27;ve noticed that for custom aggregation function jit (re)compiles <br>&gt; same<br>&gt; code for every row.<br>&gt; <br>&gt; Consider this code sample:<br>&gt; ```<br>&gt; create table test(a float, b float);<br>&gt; insert into test select a, a % 10 from generate_series(1, 10000) a;<br>&gt; <br>&gt; create function custom_max(float8, float8) returns float8 as<br>&gt; $$<br>&gt;   select case when $1 &gt; $2 then $1 else $2 end<br>&gt; $$<br>&gt; language sql;<br>&gt; <br>&gt; create aggregate custom_agg_max(float8)<br>&gt; (<br>&gt;     sfunc = custom_max,<br>&gt;     stype = float8,<br>&gt;     initcond = 0<br>&gt; );<br>&gt; <br>&gt; set jit = on;<br>&gt; set jit_above_cost = 0;<br>&gt; set jit_dump_bitcode = on;<br>&gt; explain analyze select custom_agg_max(a)  from<br>&gt; test;<br>&gt; ```<br>&gt; <br>&gt; This query runs ~8 seconds ([1]) and generates 10001 llvm bytecode <br>&gt; files in<br>&gt; data directory. For comparison, built-in `select max(a) from test` runs<br>&gt; ~50ms and generates 2 bytecode files.<br>&gt; <br>&gt; And all bytecode files are same, with only difference between them is<br>&gt; function names [2].<br>&gt; <br>&gt; What i tested so far:<br>&gt; — bug disappears if sfunc in aggregate is built-in (for example if<br>&gt; custom_agg is [3])<br>&gt; — bug still present if function is marked as pure as possible (parallel<br>&gt; safe, leakproof, immutable, etc), but even for inpure functions jit<br>&gt; shouldn&#x27;t recompile for each row<br>&gt; <br>&gt; Also notice that JIT runtime counters are incorrect, actually ~90% time <br>&gt; is<br>&gt; spent inside llvm (FPPass), according to perf.<br>&gt; <br>&gt; Bug is present on 17.2 and master (9926f85)<br>&gt; <br>&gt; [1]<br>&gt; ```<br>&gt;                                                           QUERY PLAN<br>&gt; <br>&gt; ------------------------------------------------------------------------------------------------------------------------------<br>&gt;  Aggregate  (cost=2655.00..2655.01 rows=1 width=8) (actual<br>&gt; time=8154.805..8154.806 rows=1 loops=1)<br>&gt;    Buffers: shared hit=69<br>&gt;    -&gt;  Seq Scan on test  (cost=0.00..155.00 rows=10000 width=8) (actual<br>&gt; time=0.033..3.371 rows=10000 loops=1)<br>&gt;          Buffers: shared hit=55<br>&gt;  Planning:<br>&gt;    Buffers: shared hit=23<br>&gt;  Planning Time: 0.240 ms<br>&gt;  JIT:<br>&gt;    Functions: 3<br>&gt;    Options: Inlining false, Optimization false, Expressions true, <br>&gt; Deforming<br>&gt; true<br>&gt;    Timing: Generation 0.193 ms (Deform 0.056 ms), Inlining 0.000 ms,<br>&gt; Optimization 0.175 ms, Emission 3.290 ms, Total 3.658 ms<br>&gt;  Execution Time: 8172.018 ms<br>&gt; (12 rows)<br>&gt; ```<br>&gt; <br>&gt; [2]<br>&gt; ```<br>&gt; &lt; ; ModuleID = &#x27;397491.986.bc&#x27;<br>&gt; ---<br>&gt;&gt; ; ModuleID = &#x27;397491.611.bc&#x27;<br>&gt; 15c15<br>&gt; &lt; define noundef i64 @evalexpr_986_0(ptr nocapture noundef writeonly <br>&gt; %0, ptr<br>&gt; %1, ptr %2) #0 {<br>&gt; ---<br>&gt;&gt; define noundef i64 @evalexpr_611_0(ptr nocapture noundef writeonly %0, <br>&gt;&gt; ptr<br>&gt; %1, ptr %2) #0 {<br>&gt; ```<br>&gt; <br>&gt; [3]<br>&gt; ```<br>&gt; CREATE AGGREGATE custom_agg_avg (float8)<br>&gt; (<br>&gt;     sfunc = float8_accum,<br>&gt;     stype = float8[],<br>&gt;     finalfunc = float8_avg,<br>&gt;     initcond = &#x27;{0,0,0}&#x27;<br>&gt; );<br>&gt; ```</p>
+
+<p>-- <br>Best regards,</p>
+
+<p>Vladlen Popolitov.</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+  <hr style="margin-bottom: 0.5rem;" />
+
+
+<a name="6b351415-c756-47f1-9997-872f02903b95@postgrespro.ru"></a>
+<a name="c749f1fb302673b0fe1d2228f9b3f300"></a>
+
+
+<table class="table-sm table-responsive message-header" style="border-bottom: 0.05em solid #E7EAE8; margin-bottom: 1em;">
+ <tr>
+  <th scope="row" style="width: 10%">From:</th>
+  <td>Yura Sokolov &lt;y(dot)sokolov(at)postgrespro(dot)ru&gt;</td>
+ </tr>
+ <tr>
+  <th scope="row">To:</th>
+  <td>Vladlen Popolitov &lt;v(dot)popolitov(at)postgrespro(dot)ru&gt;, foxido(at)foxido(dot)dev,
+ pgsql-bugs(at)lists(dot)postgresql(dot)org</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Cc:</th>
+  <td>PG Bug reporting form &lt;noreply(at)postgresql(dot)org&gt;</td>
+ </tr>
+
+ <tr>
+  <th scope="row">Subject:</th>
+  <td>Re: BUG #18801: JIT recompiles function for each row if custom
+ aggregation function is used</td>
+ </tr>
+ <tr>
+  <th scope="row">Date:</th>
+  <td>2025-07-07 10:02:45</td>
+ </tr>
+ <tr>
+  <th scope="row">Message-ID:</th>
+  <td><a href="/message-id/6b351415-c756-47f1-9997-872f02903b95%40postgrespro.ru">6b351415-c756-47f1-9997-872f02903b95@postgrespro.ru</a></td>
+ </tr>
+ <tr>
+   <th class="align-middle" scope="row">Views:</th>
+   <td>
+     <a href="/message-id/flat/6b351415-c756-47f1-9997-872f02903b95%40postgrespro.ru">Whole Thread</a> |
+     <a href="#" data-ref="/message-id/raw/6b351415-c756-47f1-9997-872f02903b95%40postgrespro.ru" class="post-link">Raw Message</a> |
+     <a href="#" data-ref="/message-id/mbox/6b351415-c756-47f1-9997-872f02903b95%40postgrespro.ru" class="post-link">Download mbox</a>
+ | <a href="#" data-ref="/message-id/resend/6b351415-c756-47f1-9997-872f02903b95%40postgrespro.ru" class="post-link">Resend email</a>
+   </td>
+ </tr>
+ 
+  
+    <tr>
+      <th scope="row">Lists:</th>
+      <td>
+        
+          <span class="listname"><a href="/list/pgsql-bugs/since/202507070000">pgsql-bugs</a></span>
+        
+      </td>
+    </tr>
+  
+</table>
+
+<div class="message-content"><p>10.02.2025 11:25, Vladlen Popolitov wrote:<br>&gt; PG Bug reporting form писал(а) 2025-02-10 00:46:<br>&gt; Hi,<br>&gt; <br>&gt;   From my point of view, it works as it was asked: you wrote query, that <br>&gt; call function<br>&gt; for every row of the table, this function has 1 select statement, you <br>&gt; set GUCs<br>&gt; to compile every SELECT to jit and store compile result to the file. As <br>&gt; result<br>&gt; you have 10000 files for tables with 10000 rows.<br>&gt; <br>&gt;   If you write the same function without SELECT statement (change to IF <br>&gt; ELSE ENDIF),<br>&gt; you would not have 10000 files: no query, no jit.</p>
+
+<p>&#x27;sql&#x27; function can not have raw IF ELSE ENDIF.<br>&#x27;plpgsql&#x27; can.</p>
+
+<p>&gt; If you include 2 <br>&gt; SELECTs into the function, you<br>&gt; would have 20000 files.</p>
+
+<p>&#x27;sql&#x27; function can not have 2 SELECTs.<br>&#x27;plpgsql&#x27; fujnction have.</p>
+
+<p>&gt;   What is wrong in this behaviour? If you expect to have only 1 <br>&gt; compilation for<br>&gt; exactly the same (or similar) queries, it does not exist in the moment. <br>&gt; I am<br>&gt; working with jit cache now, it would help, if SELECT query is stored in <br>&gt; plan<br>&gt; cache (it is used for queries in plpgsql, not SQL language functions).</p>
+
+<p>&#x27;sql&#x27; functions are typically inlined into query, so they are jit compiled<br>as part of query.</p>
+
+<p>But looks like it is not a case for functions called as aggregate.<br>It is strictly not expected.</p>
+
+<p>Recompilling aggregate function for every call is dumb and very slow (since<br>JIT compilation is very slow).</p>
+
+<p>Either JIT compilation should be disabled for aggregate &#x27;sql&#x27; functions, or<br>they should be prepared to not recompile on every row.</p>
+
+<p>I believe, they are not only JIT compilled on every row, but also analyzed<br>and planned, aren&#x27;t they? If so, then preparing is single right option here.</p>
+
+<p>&gt;&gt; The following bug has been logged on the website:<br>&gt;&gt;<br>&gt;&gt; Bug reference:      18801<br>&gt;&gt; Logged by:          Ilya Gladyshev<br>&gt;&gt; Email address:      foxido(at)foxido(dot)dev<br>&gt;&gt; PostgreSQL version: 17.2<br>&gt;&gt; Operating system:   arch linux<br>&gt;&gt; Description:<br>&gt;&gt;<br>&gt;&gt; Hi! I&#x27;ve noticed that for custom aggregation function jit (re)compiles <br>&gt;&gt; same<br>&gt;&gt; code for every row.<br>&gt;&gt;<br>&gt;&gt; Consider this code sample:<br>&gt;&gt; ```<br>&gt;&gt; create table test(a float, b float);<br>&gt;&gt; insert into test select a, a % 10 from generate_series(1, 10000) a;<br>&gt;&gt;<br>&gt;&gt; create function custom_max(float8, float8) returns float8 as<br>&gt;&gt; $$<br>&gt;&gt;   select case when $1 &gt; $2 then $1 else $2 end<br>&gt;&gt; $$<br>&gt;&gt; language sql;<br>&gt;&gt;<br>&gt;&gt; create aggregate custom_agg_max(float8)<br>&gt;&gt; (<br>&gt;&gt;     sfunc = custom_max,<br>&gt;&gt;     stype = float8,<br>&gt;&gt;     initcond = 0<br>&gt;&gt; );<br>&gt;&gt;<br>&gt;&gt; set jit = on;<br>&gt;&gt; set jit_above_cost = 0;<br>&gt;&gt; set jit_dump_bitcode = on;<br>&gt;&gt; explain analyze select custom_agg_max(a)  from<br>&gt;&gt; test;<br>&gt;&gt; ```<br>&gt;&gt;<br>&gt;&gt; This query runs ~8 seconds ([1]) and generates 10001 llvm bytecode <br>&gt;&gt; files in<br>&gt;&gt; data directory. For comparison, built-in `select max(a) from test` runs<br>&gt;&gt; ~50ms and generates 2 bytecode files.<br>&gt;&gt;<br>&gt;&gt; And all bytecode files are same, with only difference between them is<br>&gt;&gt; function names [2].<br>&gt;&gt;<br>&gt;&gt; What i tested so far:<br>&gt;&gt; — bug disappears if sfunc in aggregate is built-in (for example if<br>&gt;&gt; custom_agg is [3])<br>&gt;&gt; — bug still present if function is marked as pure as possible (parallel<br>&gt;&gt; safe, leakproof, immutable, etc), but even for inpure functions jit<br>&gt;&gt; shouldn&#x27;t recompile for each row<br>&gt;&gt;<br>&gt;&gt; Also notice that JIT runtime counters are incorrect, actually ~90% time <br>&gt;&gt; is<br>&gt;&gt; spent inside llvm (FPPass), according to perf.<br>&gt;&gt;<br>&gt;&gt; Bug is present on 17.2 and master (9926f85)<br>&gt;&gt;<br>&gt;&gt; [1]<br>&gt;&gt; ```<br>&gt;&gt;                                                           QUERY PLAN<br>&gt;&gt;<br>&gt;&gt; ------------------------------------------------------------------------------------------------------------------------------<br>&gt;&gt;  Aggregate  (cost=2655.00..2655.01 rows=1 width=8) (actual<br>&gt;&gt; time=8154.805..8154.806 rows=1 loops=1)<br>&gt;&gt;    Buffers: shared hit=69<br>&gt;&gt;    -&gt;  Seq Scan on test  (cost=0.00..155.00 rows=10000 width=8) (actual<br>&gt;&gt; time=0.033..3.371 rows=10000 loops=1)<br>&gt;&gt;          Buffers: shared hit=55<br>&gt;&gt;  Planning:<br>&gt;&gt;    Buffers: shared hit=23<br>&gt;&gt;  Planning Time: 0.240 ms<br>&gt;&gt;  JIT:<br>&gt;&gt;    Functions: 3<br>&gt;&gt;    Options: Inlining false, Optimization false, Expressions true, <br>&gt;&gt; Deforming<br>&gt;&gt; true<br>&gt;&gt;    Timing: Generation 0.193 ms (Deform 0.056 ms), Inlining 0.000 ms,<br>&gt;&gt; Optimization 0.175 ms, Emission 3.290 ms, Total 3.658 ms<br>&gt;&gt;  Execution Time: 8172.018 ms<br>&gt;&gt; (12 rows)<br>&gt;&gt; ```<br>&gt;&gt;<br>&gt;&gt; [2]<br>&gt;&gt; ```<br>&gt;&gt; &lt; ; ModuleID = &#x27;397491.986.bc&#x27;<br>&gt;&gt; ---<br>&gt;&gt;&gt; ; ModuleID = &#x27;397491.611.bc&#x27;<br>&gt;&gt; 15c15<br>&gt;&gt; &lt; define noundef i64 @evalexpr_986_0(ptr nocapture noundef writeonly <br>&gt;&gt; %0, ptr<br>&gt;&gt; %1, ptr %2) #0 {<br>&gt;&gt; ---<br>&gt;&gt;&gt; define noundef i64 @evalexpr_611_0(ptr nocapture noundef writeonly %0, <br>&gt;&gt;&gt; ptr<br>&gt;&gt; %1, ptr %2) #0 {<br>&gt;&gt; ```<br>&gt;&gt;<br>&gt;&gt; [3]<br>&gt;&gt; ```<br>&gt;&gt; CREATE AGGREGATE custom_agg_avg (float8)<br>&gt;&gt; (<br>&gt;&gt;     sfunc = float8_accum,<br>&gt;&gt;     stype = float8[],<br>&gt;&gt;     finalfunc = float8_avg,<br>&gt;&gt;     initcond = &#x27;{0,0,0}&#x27;<br>&gt;&gt; );<br>&gt;&gt; ```<br>&gt; </p>
+
+<p>-- <br>regards<br>Yura Sokolov aka funny-falcon</p>
+
+<p></p></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<form id="mail_other_options_form" method="post" action="/"></form>
+
+      </div> <!-- pgContentWrap -->
+    </div>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <ul>
+              <li><a href="https://twitter.com/postgresql"><img src="/media-archives/img/atpostgresql.png" alt="@postgresql"></a></li>
+              <li><a href="https://git.postgresql.org/gitweb/?p=postgresql.git"><img src="/media-archives/img/git.png" alt="Git"></a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/privacypolicy">Privacy Policy</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media-archives/js/jquery-3.2.1.slim.min.js?1f02c594"></script>
+    <script src="/media-archives/js/popper.min.js?1f02c594"></script>
+    <script src="/media-archives/js/bootstrap.min.js?1f02c594"></script>
+    <script src="/media-archives/js/main.js?1f02c594"></script>
+  </body>
+</html>
