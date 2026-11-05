@@ -4,13 +4,11 @@ production diff and before/after/helper excerpts. Do not retrieve known tests,
 reproducers, later fixes or earlier experiment answers. A selected fix commit is
 allowed when explicitly recorded; it is not blind discovery.
 
-Set the top-level commit_status to introduce (introduces the target defect or
-abnormal behavior), fix (repairs it), or unknown. Explain the basis in
-commit_status_reason, identifying relevant supplied evidence or missing information.
-Adding code or a feature alone does not establish defect introduction. If the
-evidence is insufficient, conflicting, or mixes introduction and repair without
-a clear target-level classification, use unknown. Keep the supplied commit_role
-as input provenance; this output classification does not establish a confirmed bug.
+The supplied commit_role is an external annotation, assigned by the human running
+the experiment. Use it as given; do not classify or reclassify the commit as
+introduce/fix/other/unknown. Do not output commit_status or commit_status_reason.
+Analyze the semantic changes, SQL conditions and missing material independently of
+this role annotation. The annotation does not establish execution or a confirmed bug.
 
 Return JSON following output_shape. Split independent semantic changes. Record
 material_status as sufficient (enough to construct a useful candidate), partial
@@ -34,7 +32,28 @@ unknowns for ambiguous lexical matches. An added file is not proof of a bug-intr
 
 Record
 change_type, module, locations and functions; use "unknown" when unsupported.
-Facts need exact source_id, inclusive line numbers and quote. A commit message
+Citations are verified byte-for-byte against the supplied sources. Each source
+has a `start_line` and a `content` string whose lines are each prefixed with the
+absolute line number and the separator " | ": the number before " | " is the
+absolute line number, and the text after " | " is the raw source line. For a
+fact, set evidence `source_id` to a source whose `kind` is production_diff,
+before, or after — never the commit message (whose kind is "message") —
+`start_line`/`end_line` to the exact inclusive absolute line numbers shown
+before " | ", and `quote` to the verbatim text after " | " of exactly those
+lines joined by newlines, with no edits: keep every leading diff marker (+ - @@),
+space and newline exactly as shown, and do not include the line-number prefix in
+the quote. Prefer quoting one line and copy it byte-for-byte; if you cannot copy
+the exact text, do not invent a quote — record the point as a hypothesis or
+unknown with empty evidence instead.
+Example: a source whose `content` lines are:
+  1 | diff --git a/sql/x.cc b/sql/x.cc
+  2 | --- a/sql/x.cc
+  3 | +++ b/sql/x.cc
+  4 | @@ -10 +10 @@ int f() {
+  5 | -  return n > 1;
+  6 | +  return n >= 1;
+To cite the removed comparison, use start_line 5, end_line 5 and quote
+"-  return n > 1;" (the text after "5 | "). A commit message
 alone cannot establish an implementation fact. Separate facts, hypotheses and
 missing caller/helper/environment evidence. Conditions have unique condition_id,
 kind (schema/data/query/session/config), status (source_supported/hypothesis/unknown),

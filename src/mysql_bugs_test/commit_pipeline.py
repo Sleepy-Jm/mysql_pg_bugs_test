@@ -27,8 +27,6 @@ ROUNDS = BATCH_SIZE = 10
 ANALYSIS_SHAPE = {
     "version": "copy material.version", "target_revision": "copy material.target_revision",
     "parent_revision": "copy material.parent_revision",
-    "commit_status": "introduce|fix|unknown",
-    "commit_status_reason": "classification basis in supplied material, or why unknown",
     "material_status": "sufficient|partial|insufficient",
     "missing_materials": [{"request_id": "context_1", "kind": "definition|callers|source_range|unknown",
         "revision": "before|after|both", "path": None, "symbol": "needed_function_or_null",
@@ -191,9 +189,6 @@ def validate_citations(evidence, material, required=False):
 def validate_analysis(value, material):
     require(isinstance(value, dict) and isinstance(value.get("changes"), list), "changes array required")
     require(isinstance(value.get("unknowns"), list), "unknowns array required")
-    require(value.get("commit_status") in {"introduce", "fix", "unknown"},
-            "commit_status must be introduce, fix, or unknown")
-    require(nonempty(value.get("commit_status_reason")), "commit_status_reason required")
     commit_context.validate_requests(value)
     for field in ("version", "target_revision", "parent_revision"):
         require(value.get(field) == material[field], f"Analysis identity mismatch: {field}")
@@ -379,12 +374,27 @@ def feedback_examples(run, number):
 
 
 def requirements_view(analysis):
-    """Keep facts, conditions and source locators; do not forward quoted code."""
+    """Keep analysis evidence; omit quoted code and legacy model role judgments."""
     view = json.loads(canonical(analysis))
+    view.pop("commit_status", None)
+    view.pop("commit_status_reason", None)
     for change in view["changes"]:
         for item in change["facts"] + change["conditions"]:
             for anchor in item["evidence"]:
                 anchor.pop("quote", None)
+    return view
+
+
+def numbered_material(material):
+    """Model-facing material view: prefix every source line with its absolute line
+    number ("ABS | raw line") so citations do not require the model to count lines.
+    Only the payload is numbered; the on-disk material and citation validation keep
+    the raw content, and the model quotes the text after " | " (the raw line)."""
+    view = json.loads(canonical(material))
+    for source in view["sources"]:
+        start = source["start_line"]
+        source["content"] = "\n".join(
+            f"{start + i} | {line}" for i, line in enumerate(source["content"].splitlines()))
     return view
 
 
@@ -393,7 +403,7 @@ def step(run, execute=False, client=None):
     stage1 = run / "analysis"
     if not (stage1 / "result.json").exists():
         folder, filename, number = stage1, "analysis.json", None
-        payload = {"material": material, "output_shape": ANALYSIS_SHAPE}
+        payload = {"material": numbered_material(material), "output_shape": ANALYSIS_SHAPE}
         system = (run / "stage1.txt").read_text(encoding="utf-8")
         selection = {"reason": "stage1_commit_analysis", "example_ids": []}
     else:
@@ -421,7 +431,9 @@ def step(run, execute=False, client=None):
         examples, reason = feedback_examples(run, number)
         selection = {"reason": reason, "source_round": number - 1 if number > 1 else None,
                      "example_ids": [s["candidate_id"] for s in examples], "example_hashes": [digest(s) for s in examples]}
-        payload = {"analysis": requirements_view(analysis), "version": material["version"], "round": number, "requested_candidates": BATCH_SIZE,
+        payload = {"analysis": requirements_view(analysis), "version": material["version"],
+                   "commit_role": material["commit_role"], "commit_role_source": "input_annotation",
+                   "round": number, "requested_candidates": BATCH_SIZE,
                    "verified_target_examples": examples, "output_shape": CANDIDATE_SHAPE}
         system = (run / "stage2.txt").read_text(encoding="utf-8")
     request = dict(model=manifest["model"], messages=[{"role": "system", "content": system},

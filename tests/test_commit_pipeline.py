@@ -22,7 +22,6 @@ def fixture_material():
 
 def fixture_analysis():
     return dict(version="unknown", target_revision="a" * 40, parent_revision="b" * 40,
-        commit_status="unknown", commit_status_reason="Synthetic comparison change does not establish defect introduction or repair",
         material_status="sufficient", missing_materials=[],
         changes=[dict(change_id="comparison", change_type="comparison_boundary", module="synthetic",
         locations=[dict(path="sql/synthetic.cc", functions=["synthetic"])], applicability="sql",
@@ -127,21 +126,39 @@ class PipelineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "citation"):
             cp.validate_analysis(value, fixture_material())
 
-    def test_commit_status_requires_one_of_three_states_and_a_reason(self):
-        for status in ("introduce", "fix", "unknown"):
-            value = fixture_analysis()
-            value["commit_status"] = status
-            cp.validate_analysis(value, fixture_material())
-            self.assertEqual(cp.requirements_view(value)["commit_status"], status)
-        for status in (None, "other", "reproduced"):
-            value = fixture_analysis()
-            value["commit_status"] = status
-            with self.assertRaisesRegex(ValueError, "commit_status"):
-                cp.validate_analysis(value, fixture_material())
+    def test_analysis_needs_no_model_role_classification(self):
+        cp.validate_analysis(fixture_analysis(), fixture_material())
         value = fixture_analysis()
-        value["commit_status_reason"] = " "
-        with self.assertRaisesRegex(ValueError, "commit_status_reason"):
-            cp.validate_analysis(value, fixture_material())
+        value.update(commit_status="fix", commit_status_reason="Legacy model judgment")
+        original = deepcopy(value)
+        cp.validate_analysis(value, fixture_material())
+        view = cp.requirements_view(value)
+        self.assertNotIn("commit_status", view)
+        self.assertNotIn("commit_status_reason", view)
+        self.assertEqual(value, original)
+
+    def test_input_role_reaches_stage2_despite_legacy_model_judgment(self):
+        material = fixture_material()
+        material["commit_role"] = "introduce"
+        cp.write(self.base / "manual_material.json", material)
+        run = self.base / "manual_role_run"
+        with mock.patch.object(cp, "git", return_value=""):
+            cp.initialize(self.base / "manual_material.json", run, "manual_role")
+        first = cp.read(run / "analysis/request.json")
+        shape = json.loads(first["messages"][1]["content"])["output_shape"]
+        self.assertNotIn("commit_status", shape)
+        self.assertNotIn("commit_status_reason", shape)
+        legacy = fixture_analysis()
+        legacy.update(commit_status="fix", commit_status_reason="Legacy model judgment")
+        self.assertEqual(cp.step(run, True, FakeClient(legacy))["status"], "accepted")
+        cp.step(run)
+        second = cp.read(run / "rounds/01/request.json")
+        payload = json.loads(second["messages"][1]["content"])
+        self.assertEqual(payload["commit_role"], "introduce")
+        self.assertEqual(payload["commit_role_source"], "input_annotation")
+        self.assertNotIn("commit_status", payload["analysis"])
+        self.assertNotIn("commit_status_reason", payload["analysis"])
+        self.assertEqual(cp.read(run / "analysis/analysis.json")["commit_status"], "fix")
 
     def test_stage2_receives_analysis_not_raw_sources(self):
         self.analyze()

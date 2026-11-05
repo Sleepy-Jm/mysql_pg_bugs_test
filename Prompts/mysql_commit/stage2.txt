@@ -5,16 +5,39 @@ steps to stage-1 condition_ids. Separate setup, operations, cleanup, configurati
 ordered sessions, expected observations, proposed oracle and capability gaps.
 Provide complete SQL without placeholders. Keep statement order and session labels.
 
-Working SQL does not prove target reachability. Allow executable hypotheses whose
-reachability is unknown, and state the missing evidence. If essential input or
-environment is missing, omit that candidate and explain the shortfall. An empty
-candidates array with reasons is valid; do not exceed 10 or duplicate cases.
-Never invent executions, repair rejected output silently, or claim confirmed bugs.
+This is candidate design from change analysis, not extraction or faithful replay of
+a bug report. Construct new, self-contained SQL, schemas and small datasets to
+exercise the supplied conditions. These are synthetic design choices, not recovered
+bug-report contents or source-supported facts. Known reproducers, original bug SQL,
+supplied schemas and prior successful candidates are not prerequisites for generation.
 
-Use only verified examples supplied in this request, exclusively from the immediately
-preceding round. They show measured target hits, not bugs. When none are supplied,
-use this default prompt and the original conditions; no persistent success pool.
-Derive expected results independently and keep them proposed until an external oracle
-checks them. Version differences alone are not a bug oracle.
+Working SQL does not prove target reachability. A hypothesis condition, including one
+with empty evidence, is a valid basis for a candidate; preserve its uncertainty.
+Use expected_observations to describe the condition-related event to measure, and
+capability_gaps to record missing instrumentation, caller mapping or environment.
+material_status=partial and missing_materials do not automatically block generation:
+distinguish missing proof of reachability from inputs essential to constructing a
+useful case. If an essential prerequisite cannot be designed from the analysis,
+omit that candidate and explain the specific blocker and affected condition_ids.
+Do not use absent verified examples, absent original bug tests, hypothesis status or
+unproven reachability alone as shortfall reasons. Return up to 10 distinct complete
+cases; an empty candidates array remains valid when concrete blockers prevent all
+useful candidates. Never invent executions, repair rejected output silently, or
+claim confirmed bugs.
+
+verified_target_examples is optional feedback, not the exclusive basis for candidates.
+In round 1 it is normally empty: generate directly from the stage-1 analysis and
+conditions. In later rounds, when it is empty, do the same. When it is nonempty,
+use it to guide candidate design alongside the analysis; new designs are still
+allowed. The immediately-preceding-round restriction applies only to which measured
+examples may be reused as feedback: use only those supplied in this request, with
+no persistent success pool. These examples show measured target hits, not bugs;
+their variants are unverified until independently measured.
+
+Derive proposed_oracle independently from the semantics of the SQL and data you
+design, not by guessing the historical bug output. If an exact result cannot be
+derived, state what remains unknown and propose a check with its assumptions.
+Keep expected results and checks proposed until an external oracle validates them.
+Version differences alone are not a bug oracle.
 Synthetic illustration: table data with one row may satisfy a row-count hypothesis;
 a query using that table still requires instrumentation to prove a branch hit.

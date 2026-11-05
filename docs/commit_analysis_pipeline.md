@@ -32,15 +32,19 @@ commit_metadata 会自动提供四类信息：
 源码时，prepare 明确报无生产源码，不生成虚构的 SQL 材料。
 
 configs/commit_pipeline_sources.example.json 是待填写的输入示例。版本和提交角色
-由筛选材料提供，不从文件日期推测，证据不足时填 unknown。函数名同样可填 unknown。
-所有源码片段保存其 revision、路径、起始行和内容哈希。所选 commit 如果是修复提交，
-必须标 fix，不能将该运行解释为仅凭引入提交的盲生成。
+由人工填写并保留标注来源，不由 LLM 判断；未标明时填 unknown。函数名同样可填 unknown。
+所有源码片段保存其 revision、路径、起始行和内容哈希。
 
-第一阶段输出增加顶层 commit_status，限定三类：introduce（引入）、fix（修复）、
-unknown（未知），并以 commit_status_reason 保存判断依据或未知原因。这里的引入/修复
-针对目标缺陷或异常行为，不能仅凭增加代码或功能判为引入。证据不足、冲突，或同一
-提交混合引入与修复而无法给出明确目标级判断时，标 unknown。输入 commit_role 保留为
-筛选来源记录；输出状态是分析判断，不代表缺陷已经实测确认。该标识随分析交给第二阶段。
+2026-11-05 起，第一阶段不再要求或校验 LLM 的 commit_status/commit_status_reason，
+只分析语义变化、条件与材料缺口。第二阶段直接接收冻结 material 中的 commit_role，
+并注明 commit_role_source=input_annotation。复用旧分析时，仅在交接视图中去掉旧的
+commit_status/commit_status_reason，原始分析及历史运行结果保持原样。
+人工角色标注不代表已经执行或确认缺陷。
+
+用户本次明确将 `4d2da251cb53`、`248c7f7c227e`、`c296cddb93ff` 均标为 introduce。
+完整 SHA、版本和确认来源保存在
+[人工角色记录](../configs/commit_pipeline_manual_roles_20261105.json)；三例现有 material
+中的 commit_role 已与此一致。后续按人工标注开展实验，不要求模型重新判定角色。
 
 第一阶段 JSON 的 changes 按不同语义变化拆分，保存版本、父/目标 SHA、改动类型、
 模块、位置/函数、facts、affected_features、conditions 和 unknowns。
@@ -101,11 +105,22 @@ expected_observations 描述要观测什么；proposed_oracle 是尚待独立校
 请求数、返回数、接受数、执行数分别记录；超量、重复用例或结构错误的原响应仍保留，
 整个批次不接受，不能暗中挑出好结果计为成功。
 
-第 1 轮使用默认提示；第 r+1 轮仅使用第 r 轮被独立检测器证据判定为 hit 的样例。
+第 1 轮直接依据第一阶段分析和条件设计新候选，无需已验证样例或原始 bug SQL。
+允许为 hypothesis 条件设计合成 schema、数据和完整 SQL，但不能将设计选择写成
+原报告内容或源码事实。partial、缺少调用链或未证明可达性本身不阻止生成；将这些
+未知项保留在观测目标和 capability_gaps 中。只有确实阻止构造有用候选的必要前提
+缺失才作为 shortfall，说明受影响的 condition_ids 与具体原因。
+proposed_oracle 从所设计 SQL/数据的语义独立推导，不能猜测历史 bug 输出；无法确定
+精确结果时说明未知项并提出带前提的检查，后续仍需独立验证。
+
+已验证样例仅是可选反馈，不是候选的唯一来源。第 r+1 轮的反馈样例仅使用第 r 轮
+被独立检测器证据判定为 hit 的样例，仍可结合原分析设计新候选。
 按原候选顺序全部选入（最多 10 个），记录 ID、候选哈希、来源轮和选择原因。
-第 r 轮无合格命中时回退默认提示，即使更早轮次存在命中也不回收使用。
+第 r 轮无合格命中时回退默认提示，直接依据原分析和条件生成；即使更早轮次存在
+命中也不回收使用。反馈样例的变体须重新测量，不能继承已验证状态。
 oracle 异常候选不能代替目标 hit。没有观测的候选不会进入反馈。
 生成不自动执行数据库；每轮需显式登记反馈（可以登记尚未执行），才可继续。
+不加入失败反馈自动修复；下一轮仍只使用紧邻上一轮经独立验证命中目标的样例。
 
 API、格式或引用校验失败会保存 attempt/request/raw response（若取得）和失败阶段。
 不自动换模型、重试或覆盖。修订另建 run，旧失败保留；未进行的后续轮次仍显示 not_run。
