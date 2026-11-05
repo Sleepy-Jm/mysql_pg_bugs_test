@@ -260,8 +260,8 @@ def validate_contracts(contracts):
         require(nonempty(c.get("contract_id")) and c["contract_id"] not in ids, "Unique contract ID required")
         ids.add(c["contract_id"])
         require(c.get("kind") in {"target", "oracle"}, "Invalid contract kind")
-        methods = {"source_instrumentation", "branch_coverage", "semantic_event"} if c["kind"] == "target" else {"independent_expected", "metamorphic", "sanitizer", "assertion"}
-        require(c.get("method") in methods, "Model judgment / version difference is not a supported detector")
+        methods = {"source_instrumentation", "branch_coverage", "semantic_event", "version_differential"} if c["kind"] == "target" else {"independent_expected", "metamorphic", "sanitizer", "assertion"}
+        require(c.get("method") in methods, "Model judgment is not a supported detector; use an independent measurement method")
         require(sha_value(c.get("producer_sha256")), "Freeze independent producer code hash")
         require(nonempty(c.get("description")) and nonempty(c.get("evidence_basis")), "Describe detector and independent evidence basis")
         require(c.get("pointer", "").startswith("/measurements/"), "Detector pointer must address measurements")
@@ -270,12 +270,13 @@ def validate_contracts(contracts):
             require(type(c["expected"]) in (int, float), "gt requires numeric threshold")
 
 
-def initialize(material_path, run, run_id, contracts_path=None, model="deepseek-v4-pro", max_tokens=16384, thinking="disabled", temperature=0.7):
+def initialize(material_path, run, run_id, contracts_path=None, model="deepseek-v4-pro", max_tokens=16384, thinking="disabled", temperature=0.7, rounds=ROUNDS):
     material = read(material_path)
     validate_material(material)
     contracts = read(contracts_path) if contracts_path else []
     validate_contracts(contracts)
     require(nonempty(run_id) and nonempty(model), "run_id/model required")
+    require(type(rounds) is int and 1 <= rounds <= ROUNDS, "rounds must be between 1 and the maximum budget")
     require(thinking in {"enabled", "disabled"} and type(max_tokens) is int and max_tokens > 0, "Invalid model parameters")
     require(type(temperature) in (int, float) and 0 <= temperature <= 2, "Invalid temperature")
     run = Path(run)
@@ -292,11 +293,13 @@ def initialize(material_path, run, run_id, contracts_path=None, model="deepseek-
     except (OSError, subprocess.SubprocessError):
         code_commit, code_dirty = "unknown", None
     write(run / "manifest.json", dict(workflow="commit_analysis_v1", run_id=run_id, created_at=now(),
-        rounds=ROUNDS, batch_size=BATCH_SIZE, model=model, base_url="https://api.deepseek.com",
+        rounds=rounds, batch_size=BATCH_SIZE, model=model, base_url="https://api.deepseek.com",
         parameters={"max_tokens": max_tokens, "thinking": {"type": thinking}, "temperature": temperature,
                     "response_format": {"type": "json_object"}},
         code_commit=code_commit, code_dirty=code_dirty, python=sys.version, platform=platform.platform(), command=sys.argv,
-        feedback_policy="immediately_previous_round_verified_hits_else_default",
+        feedback_policy=("immediately_previous_round_differences_else_default"
+                         if any(c["kind"] == "target" and c["method"] == "version_differential" for c in contracts)
+                         else "immediately_previous_round_verified_hits_else_default"),
         files={p: file_hash(run / p) for p in ("material.json", "contracts.json", "stage1.txt", "stage2.txt", "pipeline_source.py", "context_source.py")},
         database_execution="external_only", mutator_status="not_assessed"))
     return step(run)
@@ -305,7 +308,8 @@ def initialize(material_path, run, run_id, contracts_path=None, model="deepseek-
 def load_run(run):
     run = Path(run)
     manifest = read(run / "manifest.json")
-    require(manifest.get("workflow") == "commit_analysis_v1" and manifest.get("rounds") == ROUNDS and manifest.get("batch_size") == BATCH_SIZE,
+    require(manifest.get("workflow") == "commit_analysis_v1" and type(manifest.get("rounds")) is int
+            and 1 <= manifest["rounds"] <= ROUNDS and manifest.get("batch_size") == BATCH_SIZE,
             "Unexpected workflow/budget")
     for path, expected in manifest["files"].items():
         require(file_hash(run / path) == expected, f"Frozen input changed: {path}")
@@ -369,6 +373,12 @@ def feedback_examples(run, number):
     checked = classify_feedback(run, number - 1, value, read(folder / "observations.json"), folder / "evidence")
     require(checked == read(folder / "feedback.json"), "Feedback or evidence changed")
     by_id = {s["candidate_id"]: s for s in value["candidates"]}
+    _, _, _, contracts = load_run(run)
+    differential = any(c["kind"] == "target" and c["method"] == "version_differential" for c in contracts)
+    if differential:
+        examples = [by_id[r["candidate_id"]] for r in checked["records"]
+                    if r["differential_status"] == "difference"]
+        return examples, "previous_round_verified_differences" if examples else "previous_round_no_verified_difference_default"
     examples = [by_id[r["candidate_id"]] for r in checked["records"] if r["target_status"] == "hit"]
     return examples, "previous_round_verified_hits" if examples else "previous_round_no_verified_hit_default"
 
@@ -399,7 +409,7 @@ def numbered_material(material):
 
 
 def step(run, execute=False, client=None):
-    run, manifest, material, _ = load_run(run)
+    run, manifest, material, contracts = load_run(run)
     stage1 = run / "analysis"
     if not (stage1 / "result.json").exists():
         folder, filename, number = stage1, "analysis.json", None
@@ -418,11 +428,12 @@ def step(run, execute=False, client=None):
             if not (run / "generation_not_run.json").exists():
                 write(run / "generation_not_run.json", skipped)
             return skipped
-        number = next((i for i in range(1, ROUNDS + 1) if not (run / "rounds" / f"{i:02d}" / "result.json").exists()), None)
+        round_budget = manifest["rounds"]
+        number = next((i for i in range(1, round_budget + 1) if not (run / "rounds" / f"{i:02d}" / "result.json").exists()), None)
         if number is None:
-            for i in range(1, ROUNDS + 1):
+            for i in range(1, round_budget + 1):
                 checked_artifact(run / "rounds" / f"{i:02d}", "candidates.json")
-            if not (run / "rounds" / "10" / "feedback.json").exists():
+            if not (run / "rounds" / f"{round_budget:02d}" / "feedback.json").exists():
                 return {"status": "awaiting_final_feedback", "report": report(run)}
             return {"status": "generation_budget_exhausted", "report": report(run)}
         for i in range(1, number):
@@ -434,7 +445,9 @@ def step(run, execute=False, client=None):
         payload = {"analysis": requirements_view(analysis), "version": material["version"],
                    "commit_role": material["commit_role"], "commit_role_source": "input_annotation",
                    "round": number, "requested_candidates": BATCH_SIZE,
-                   "verified_target_examples": examples, "output_shape": CANDIDATE_SHAPE}
+                   ("verified_difference_examples" if any(c["kind"] == "target" and c["method"] == "version_differential" for c in contracts)
+                    else "verified_target_examples"): examples,
+                   "output_shape": CANDIDATE_SHAPE}
         system = (run / "stage2.txt").read_text(encoding="utf-8")
     request = dict(model=manifest["model"], messages=[{"role": "system", "content": system},
                    {"role": "user", "content": canonical(payload).decode()}], **manifest["parameters"])
@@ -528,6 +541,8 @@ def reference_file(base, reference):
 def measure(base, reference, contract, binding):
     artifact = read(reference_file(base, reference))
     for key, expected in binding.items():
+        if key in {"expected_parent_revision", "expected_target_revision"}:
+            continue
         require(artifact.get(key) == expected, f"Measurement binding mismatch: {key}")
     require(artifact.get("producer_sha256") == contract["producer_sha256"], "Measurement producer differs from frozen contract")
     require(artifact.get("method") == contract["method"], "Measurement method mismatch")
@@ -535,6 +550,12 @@ def measure(base, reference, contract, binding):
     require(isinstance(artifact.get("raw_evidence"), list) and artifact["raw_evidence"], "Raw evidence required")
     for ref in artifact["raw_evidence"]:
         reference_file(base, ref)
+    if contract["method"] == "version_differential":
+        measured = artifact.get("measurements", {})
+        require(measured.get("parent_revision") == binding.get("expected_parent_revision"),
+                "Differential evidence parent revision mismatch")
+        require(measured.get("target_revision") == binding.get("expected_target_revision"),
+                "Differential evidence target revision mismatch")
     value = artifact
     for token in contract["pointer"].split("/")[1:]:
         key = token.replace("~1", "/").replace("~0", "~")
@@ -545,6 +566,14 @@ def measure(base, reference, contract, binding):
         return value == contract["expected"]
     require(type(value) in (int, float), "Measured value must be numeric")
     return value > contract["expected"]
+
+
+def next_round_examples(records, contracts):
+    differential = any(c["kind"] == "target" and c["method"] == "version_differential"
+                       for c in contracts)
+    status = "differential_status" if differential else "target_status"
+    selected = "difference" if differential else "hit"
+    return [r["candidate_id"] for r in records if r[status] == selected]
 
 
 def classify_feedback(run, number, candidates, observations, evidence_base):
@@ -562,6 +591,7 @@ def classify_feedback(run, number, candidates, observations, evidence_base):
         obs = indexed.get(cid)
         row = dict(candidate_id=cid, candidate_sha256=fingerprint, execution_status="not_run", validity="unknown",
                    target_observable=False, target_status="not_run", oracle_status="not_run", bug_status="not_adjudicated",
+                   differential_status="not_run",
                    reason="No execution evidence supplied")
         if obs is not None:
             require(obs.get("candidate_sha256") == fingerprint, "Observed candidate hash mismatch")
@@ -577,7 +607,9 @@ def classify_feedback(run, number, candidates, observations, evidence_base):
                 require(sha_value(execution.get("runner_sha256")), "Actual runner hash required")
                 reference_file(evidence_base, execution["evidence"])
                 require(obs.get("validity") in {"valid", "invalid", "unknown"}, "Validity state required")
-                row.update(validity=obs["validity"], target_status="unobservable", oracle_status="unknown")
+                differential_run = any(c["kind"] == "target" and c["method"] == "version_differential" for c in contracts)
+                row.update(validity=obs["validity"], target_status="not_measured" if differential_run else "unobservable",
+                           oracle_status="unknown", differential_status="inconclusive" if differential_run else "not_run")
             for kind in ("target", "oracle"):
                 measurement = obs.get(kind)
                 if not measurement:
@@ -587,20 +619,29 @@ def classify_feedback(run, number, candidates, observations, evidence_base):
                 require(c is not None and c["kind"] == kind, "Measurement needs predeclared contract of same kind")
                 binding = dict(run_id=manifest["run_id"], round=number, candidate_id=cid,
                                candidate_sha256=fingerprint, actual_revision=material["target_revision"], contract_id=c["contract_id"])
+                if c["method"] == "version_differential":
+                    binding.update(expected_parent_revision=material["parent_revision"],
+                                   expected_target_revision=material["target_revision"])
                 positive = measure(evidence_base, measurement["evidence"], c, binding)
-                row[kind + "_status"] = ("hit" if positive else "miss") if kind == "target" else ("anomaly_candidate" if positive else "no_anomaly")
-                row[kind + "_contract_id"] = c["contract_id"]
-                if kind == "target":
-                    row["target_observable"] = True
+                if kind == "target" and c["method"] == "version_differential":
+                    row["differential_status"] = (
+                        "inconclusive" if obs["validity"] != "valid" or status != "completed"
+                        else "difference" if positive else "no_difference")
+                    row["differential_contract_id"] = c["contract_id"]
+                else:
+                    row[kind + "_status"] = ("hit" if positive else "miss") if kind == "target" else ("anomaly_candidate" if positive else "no_anomaly")
+                    row[kind + "_contract_id"] = c["contract_id"]
+                    if kind == "target":
+                        row["target_observable"] = True
         records.append(row)
     return dict(run_id=manifest["run_id"], round=number, generated_count=len(seeds), records=records,
-                counts={key: dict(Counter(r[key] for r in records)) for key in ("execution_status", "validity", "target_status", "oracle_status")},
-                selected_for_next_round=[r["candidate_id"] for r in records if r["target_status"] == "hit"])
+                counts={key: dict(Counter(r[key] for r in records)) for key in ("execution_status", "validity", "target_status", "oracle_status", "differential_status")},
+                selected_for_next_round=next_round_examples(records, contracts))
 
 
 def record_feedback(run, number, input_path=None):
     run, manifest, _, _ = load_run(run)
-    require(1 <= number <= ROUNDS, "Round outside budget")
+    require(1 <= number <= manifest["rounds"], "Round outside budget")
     folder = run / "rounds" / f"{number:02d}"
     require(not (folder / "feedback.json").exists(), "Feedback already frozen")
     require(not (run / "rounds" / f"{number + 1:02d}" / "request.json").exists(), "Next round already prepared")
@@ -634,7 +675,7 @@ def record_feedback(run, number, input_path=None):
 def report(run):
     run, manifest, material, _ = load_run(run)
     rounds = []
-    for i in range(1, ROUNDS + 1):
+    for i in range(1, manifest["rounds"] + 1):
         folder = run / "rounds" / f"{i:02d}"
         result = read(folder / "result.json") if (folder / "result.json").exists() else {
             "status": "interrupted_unknown" if (folder / "attempt.json").exists() else "not_run",
@@ -653,7 +694,7 @@ def report(run):
     return dict(run_id=manifest["run_id"], target_revision=material["target_revision"], model_requested=manifest["model"],
                 stage1=read(run / "analysis" / "result.json") if (run / "analysis" / "result.json").exists() else {
                     "status": "interrupted_unknown" if (run / "analysis" / "attempt.json").exists() else "not_run"},
-                planned_total=ROUNDS * BATCH_SIZE,
+                planned_total=manifest["rounds"] * BATCH_SIZE,
                 requested_total=None if any(r["requested_count"] is None for r in rounds) else sum(r["requested_count"] for r in rounds),
                 accepted_total=sum(r["accepted_count"] for r in rounds), rounds=rounds,
                 generation_not_run=read(run / "generation_not_run.json") if (run / "generation_not_run.json").exists() else None,
@@ -673,6 +714,7 @@ def main(argv=None):
     p.add_argument("--material", required=True, type=Path)
     p.add_argument("--run", required=True, type=Path)
     p.add_argument("--run-id", required=True)
+    p.add_argument("--rounds", type=int, default=ROUNDS)
     p.add_argument("--contracts", type=Path)
     p.add_argument("--model", default="deepseek-v4-pro")
     p.add_argument("--max-tokens", type=int, default=16384)
@@ -699,7 +741,7 @@ def main(argv=None):
         prepare(args.repository, args.commit, args.spec, args.output, args.parent)
         result = {"status": "material_prepared", "output": str(args.output), "model_called": False}
     elif args.action == "init":
-        result = initialize(args.material, args.run, args.run_id, args.contracts, args.model, args.max_tokens, args.thinking, args.temperature)
+        result = initialize(args.material, args.run, args.run_id, args.contracts, args.model, args.max_tokens, args.thinking, args.temperature, args.rounds)
     elif args.action == "models":
         result = probe_models(args.output, args.model)
     elif args.action == "step":

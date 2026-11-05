@@ -5,14 +5,18 @@ steps to stage-1 condition_ids. Separate setup, operations, cleanup, configurati
 ordered sessions, expected observations, proposed oracle and capability gaps.
 Provide complete SQL without placeholders. Keep statement order and session labels.
 
-This is candidate design from change analysis, not extraction or faithful replay of
-a bug report. Construct new, self-contained SQL, schemas and small datasets to
-exercise the supplied conditions. These are synthetic design choices, not recovered
-bug-report contents or source-supported facts. Known reproducers, original bug SQL,
-supplied schemas and prior successful candidates are not prerequisites for generation.
+Design complete SQL cases that may expose observable behavioral differences between
+the parent commit and the target commit: a candidate is selected when the same SQL
+yields different results, a different success/error outcome, or a different crash
+behavior across the two revisions. This is candidate design from change analysis,
+not extraction or faithful replay of a bug report. Construct new, self-contained
+SQL, schemas and small datasets to exercise the supplied conditions. These are
+synthetic design choices, not recovered bug-report contents or source-supported
+facts. Known reproducers, original bug SQL, supplied schemas and prior selected
+candidates are not prerequisites for generation.
 
-Working SQL does not prove target reachability. A hypothesis condition, including one
-with empty evidence, is a valid basis for a candidate; preserve its uncertainty.
+Working SQL does not prove a version difference. A hypothesis condition, including
+one with empty evidence, is a valid basis for a candidate; preserve its uncertainty.
 Use expected_observations to describe the condition-related event to measure, and
 capability_gaps to record missing instrumentation, caller mapping or environment.
 material_status=partial and missing_materials do not automatically block generation:
@@ -25,19 +29,26 @@ cases; an empty candidates array remains valid when concrete blockers prevent al
 useful candidates. Never invent executions, repair rejected output silently, or
 claim confirmed bugs.
 
-verified_target_examples is optional feedback, not the exclusive basis for candidates.
+verified_difference_examples is optional feedback, not the exclusive basis for candidates.
 In round 1 it is normally empty: generate directly from the stage-1 analysis and
 conditions. In later rounds, when it is empty, do the same. When it is nonempty,
 use it to guide candidate design alongside the analysis; new designs are still
 allowed. The immediately-preceding-round restriction applies only to which measured
 examples may be reused as feedback: use only those supplied in this request, with
-no persistent success pool. These examples show measured target hits, not bugs;
-their variants are unverified until independently measured.
+no persistent success pool. These examples were observed to differ across the two
+revisions; that difference is not yet confirmed to be a defect, and it may come
+from an intended fix or feature change. Explore related conditions and boundaries
+around these examples, and do not claim to have hit the target source code or
+confirmed a bug. No target-code coverage or hit status is required for selection.
+Variants of these examples are unverified until independently measured.
+Do not use failures, startup or connection problems, timeouts, no-difference cases,
+or inconclusive runs as feedback, and do not repair candidates based on such outcomes.
 
 Derive proposed_oracle independently from the semantics of the SQL and data you
 design, not by guessing the historical bug output. If an exact result cannot be
 derived, state what remains unknown and propose a check with its assumptions.
 Keep expected results and checks proposed until an external oracle validates them.
-Version differences alone are not a bug oracle.
+A version difference selects a candidate for study; it is not by itself a bug.
 Synthetic illustration: table data with one row may satisfy a row-count hypothesis;
-a query using that table still requires instrumentation to prove a branch hit.
+a query using that table still requires two-revision execution to show whether
+behavior actually differs.

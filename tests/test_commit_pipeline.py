@@ -378,11 +378,66 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(len(result["report"]["rounds"]), 10)
         self.assertFalse((self.run / "rounds" / "11").exists())
 
-    def test_version_difference_contract_rejected(self):
+    def test_version_difference_contract_accepted(self):
         contract = fixture_contract("oracle")
         contract["method"] = "version_difference"
-        with self.assertRaisesRegex(ValueError, "not a supported detector"):
-            cp.validate_contracts([contract])
+        contract["kind"] = "target"
+        contract["method"] = "version_differential"
+        cp.validate_contracts([contract])
+
+    def test_differential_status_selects_only_verified_differences(self):
+        contracts = [fixture_contract(), fixture_contract("oracle")]
+        contracts[0].update(method="version_differential", pointer="/measurements/version_diff_observed")
+        self.assertEqual(cp.next_round_examples([
+            dict(candidate_id="oracle_hit", differential_status="no_difference", target_status="hit"),
+            dict(candidate_id="version_difference", differential_status="difference", target_status="not_measured"),
+        ], contracts), ["version_difference"])
+        contracts_path = self.base / "differential_contracts.json"
+        cp.write(contracts_path, contracts)
+        run = self.base / "differential_run"
+        with mock.patch.object(cp, "git", return_value=""):
+            cp.initialize(self.base / "material.json", run, "synthetic_diff", contracts_path, rounds=5)
+        cp.step(run, True, FakeClient(fixture_analysis()))
+        cp.step(run, True, FakeClient(fixture_candidates(3)))
+        candidates = cp.read(run / "rounds" / "01" / "candidates.json")["candidates"]
+        external = self.base / "differential_observations"
+        external.mkdir()
+        observations = []
+        for seed, (difference, valid) in zip(candidates, ((True, True), (False, True), (False, False))):
+            folder = external / seed["candidate_id"]
+            folder.mkdir()
+            cp.write(folder / "raw.json", {"synthetic_only": True, "stdout": "both revisions"})
+            raw = {"path": f"{seed['candidate_id']}/raw.json", "sha256": cp.file_hash(folder / "raw.json")}
+            binding = dict(run_id="synthetic_diff", round=1, candidate_id=seed["candidate_id"],
+                           candidate_sha256=cp.digest(seed), actual_revision="a" * 40,
+                           contract_id="target")
+            artifact = dict(**binding, method="version_differential", producer_sha256="c" * 64,
+                observed_at=cp.now(), raw_evidence=[raw], measurements={
+                    "version_diff_observed": difference, "parent_revision": "b" * 40,
+                    "target_revision": "a" * 40})
+            cp.write(folder / "measurement.json", artifact)
+            obs = dict(candidate_id=seed["candidate_id"], candidate_sha256=cp.digest(seed),
+                reason="synthetic paired execution", validity="valid" if valid else "unknown",
+                execution=dict(status="completed", actual_revision="a" * 40,
+                    environment={"parent_revision": "b" * 40, "target_revision": "a" * 40},
+                    command=["synthetic paired runner"], runner_sha256="d" * 64,
+                    observed_at=cp.now(), evidence=raw),
+                target=dict(contract_id="target", evidence={
+                    "path": f"{seed['candidate_id']}/measurement.json",
+                    "sha256": cp.file_hash(folder / "measurement.json")}))
+            observations.append(obs)
+        input_path = external / "observations.json"
+        cp.write(input_path, dict(run_id="synthetic_diff", round=1, observations=observations))
+        feedback = cp.record_feedback(run, 1, input_path)
+        self.assertEqual([r["differential_status"] for r in feedback["records"]],
+                         ["difference", "no_difference", "inconclusive"])
+        self.assertEqual(feedback["records"][0]["target_status"], "not_measured")
+        self.assertEqual(feedback["selected_for_next_round"], ["seed_0"])
+        cp.step(run)
+        selection = cp.read(run / "rounds" / "02" / "selection.json")
+        self.assertEqual(selection["reason"], "previous_round_verified_differences")
+        self.assertEqual(selection["example_ids"], ["seed_0"])
+        self.assertEqual(cp.report(run)["planned_total"], 50)
 
 
 class PreparationTests(unittest.TestCase):
