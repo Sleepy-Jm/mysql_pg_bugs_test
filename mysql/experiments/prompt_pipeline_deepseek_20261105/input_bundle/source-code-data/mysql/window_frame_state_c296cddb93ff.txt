@@ -1,0 +1,344 @@
+Target: window_frame_state_c296cddb93ff
+Target observation: Buffered window-frame row-position state during optimized ROWS-frame evaluation and its consumption by AVG
+Revision: c296cddb93ffc631f9b43d3b1ff769604e7469d7
+Parent revision: 74c7ccfa27f482576412300e5f92fd3dbeb54cfa
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/window.h
+Blob: 6e596de81b2696471b703f0c63ea034b060ed558
+Source: https://github.com/mysql/mysql-server/blob/c296cddb93ffc631f9b43d3b1ff769604e7469d7/sql/window.h
+```cpp
+477:   /**
+478:     Execution state: The number of the row being visited for its contribution
+479:     to a window function, relative to the start of the partition. Note that
+480:     this will often be different from the current row for which we are
+481:     processing the window function, reading it for output. That is given by
+482:     m_rowno_in_partition, q.v.
+483:   */
+484:   int64 m_rowno_being_visited;
+485: 
+486:   /**
+487:     Execution state: the row number of the current row within a frame, cf.
+488:     m_is_last_row_in_frame, relative to start of the frame. 1-based.
+489:   */
+490:   int64 m_rowno_in_frame;
+```
+```cpp
+1299:   /**
+1300:     See #m_rowno_in_frame
+1301:   */
+1302:   int64 rowno_in_frame() const { return m_rowno_in_frame; }
+1303: 
+1304:   /**
+1305:     See #m_rowno_in_frame
+1306:   */
+1307:   Window &set_rowno_in_frame(int64 rowno) {
+1308:     m_rowno_in_frame = rowno;
+1309:     return *this;
+1310:   }
+1311: 
+```
+
+# Code: sql/item_sum.cc
+Blob: d90a92a5a47d9ac79d556d9aa52858c3c744eb77
+Source: https://github.com/mysql/mysql-server/blob/c296cddb93ffc631f9b43d3b1ff769604e7469d7/sql/item_sum.cc
+```cpp
+410: bool Item_sum::check_wf_semantics1(THD *, Query_block *,
+411:                                    Window_evaluation_requirements *r) {
+412:   const PT_frame *frame = m_window->frame();
+413: 
+414:   /*
+415:     If we have ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW, we can just
+416:     accumulate as we see rows, never need to invert old rows or to look at
+417:     future rows, so don't need a frame buffer.
+418:   */
+419:   r->needs_buffer = !(frame->m_query_expression == WFU_ROWS &&
+420:                       frame->m_from->m_border_type == WBT_UNBOUNDED_PRECEDING &&
+421:                       frame->m_to->m_border_type == WBT_CURRENT_ROW);
+422: 
+423:   if (with_distinct) {
+424:     my_error(ER_NOT_SUPPORTED_YET, MYF(0), "<window function>(DISTINCT ..)");
+425:     return true;
+426:   }
+```
+```cpp
+1913: bool Item_sum_sum::check_wf_semantics1(THD *thd, Query_block *select,
+1914:                                        Window_evaluation_requirements *r) {
+1915:   bool result = Item_sum::check_wf_semantics1(thd, select, r);
+1916:   if (hybrid_type == REAL_RESULT) {
+1917:     /*
+1918:       If the frame's start moves we will consider inversion, to remove the
+1919:       start rows. But, as we're using REAL_RESULT, and floating point
+1920:       arithmetic isn't mathematically exact, inversion may give different
+1921:       results from that of the non-optimized path. So, we use it only if the
+1922:       user allowed it:
+1923:     */
+1924:     const PT_frame *f = m_window->frame();
+1925:     if (f->m_from->m_border_type == WBT_VALUE_PRECEDING ||
+1926:         f->m_from->m_border_type == WBT_VALUE_FOLLOWING ||
+1927:         f->m_from->m_border_type == WBT_CURRENT_ROW) {
+1928:       r->row_optimizable &= !thd->variables.windowing_use_high_precision;
+1929:       r->range_optimizable &= !thd->variables.windowing_use_high_precision;
+1930:     }
+1931:   }
+1932:   return result;
+1933: }
+```
+```cpp
+2279: double Item_sum_avg::val_real() {
+2280:   assert(fixed == 1);
+2281:   if (m_is_window_function) {
+2282:     if (wf_common_init()) return 0.0;
+2283: 
+2284:     double sum = Item_sum_sum::val_real();
+2285: 
+2286:     if (m_window->is_last_row_in_frame()) {
+2287:       int64 divisor = (m_window->needs_buffering()
+2288:                            ? m_window->rowno_in_frame() - m_frame_null_count
+2289:                            : m_count - m_frame_null_count);
+2290:       if (divisor > 0) sum = sum / ulonglong2double(divisor);
+2291:     }
+2292:     m_avg = sum;  // save
+2293:     return sum;
+2294:   } else {
+2295:     if (aggr) aggr->endup();
+2296:     if (!m_count) {
+2297:       null_value = true;
+2298:       return 0.0;
+2299:     }
+2300:     return Item_sum_sum::val_real() / ulonglong2double(m_count);
+2301:   }
+2302: }
+2303: 
+2304: my_decimal *Item_sum_avg::val_decimal(my_decimal *val) {
+2305:   DBUG_TRACE;
+2306:   my_decimal sum_buff, cnt;
+2307:   const my_decimal *sum_dec;
+2308:   assert(fixed == 1);
+2309: 
+2310:   if (m_is_window_function) {
+2311:     if (hybrid_type != DECIMAL_RESULT) {
+2312:       my_decimal *result = val_decimal_from_real(val);
+2313:       return result;
+2314:     }
+2315: 
+2316:     if (wf_common_init()) {
+2317:       return error_decimal(val);
+2318:     }
+2319: 
+2320:     /*
+2321:       dec_buff[0]:   the current value
+2322:       dec_buff[1]:   holds sum so far
+2323:     */
+2324:     my_decimal *argd = args[0]->val_decimal(&dec_buffs[0]);
+2325: 
+2326:     if (!args[0]->null_value) {
+2327:       my_decimal tmp;
+2328:       if (m_window->do_inverse()) {
+2329:         assert(m_count > 0 && m_count > m_frame_null_count);
+2330:         my_decimal_sub(E_DEC_FATAL_ERROR, &tmp, &dec_buffs[1], argd);
+2331:         tmp.swap(dec_buffs[1]);
+2332:         m_count--;
+2333:       } else {
+2334:         my_decimal_add(E_DEC_FATAL_ERROR, &tmp, &dec_buffs[1], argd);
+2335:         tmp.swap(dec_buffs[1]);
+2336:         m_count++;
+2337:       }
+2338:     } else {
+2339:       if (m_window->do_inverse()) {
+2340:         assert(m_count >= m_frame_null_count && m_frame_null_count > 0);
+2341:         m_frame_null_count--;
+2342:         m_count--;
+2343:         // else no need to inverse if we only saw nulls
+2344:       } else {
+2345:         m_frame_null_count++;
+2346:         m_count++;
+2347:       }
+2348:     }
+2349: 
+2350:     int64 divisor = (m_window->needs_buffering()
+2351:                          ? m_window->rowno_in_frame() - m_frame_null_count
+2352:                          : m_count - m_frame_null_count);
+2353: 
+2354:     if (m_window->is_last_row_in_frame() && divisor > 0) {
+2355:       int2my_decimal(E_DEC_FATAL_ERROR, divisor, false, &cnt);
+2356:       my_decimal_div(E_DEC_FATAL_ERROR, &dec_buffs[0], &dec_buffs[1], &cnt,
+2357:                      prec_increment);
+2358:       val->swap(dec_buffs[0]);
+2359:     } else
+2360:       my_decimal2decimal(&dec_buffs[1], val);
+2361: 
+2362:     null_value = (m_count == m_frame_null_count);
+2363:     my_decimal tmp(*val);
+2364:     m_avg_dec.swap(tmp);  // save result
+2365:     return val;
+```
+
+# Code: sql/iterators/window_iterators.cc
+Blob: 51280850597891900190341a47516b6752377243
+Source: https://github.com/mysql/mysql-server/blob/c296cddb93ffc631f9b43d3b1ff769604e7469d7/sql/iterators/window_iterators.cc
+```cpp
+683:   /**
+684:     If true, use code path for static aggregates
+685:   */
+686:   const bool static_aggregate = w.static_aggregates();
+687: 
+688:   /**
+689:     If true, use code path for ROW bounds with optimized strategy
+690:   */
+691:   const bool row_optimizable = w.optimizable_row_aggregates();
+692: 
+693:   /**
+694:     If true, use code path for RANGE bounds with optimized strategy
+695:   */
+696:   const bool range_optimizable = w.optimizable_range_aggregates();
+697: 
+698:   // These three strategies are mutually exclusive:
+699:   assert((static_aggregate + row_optimizable + range_optimizable) <= 1);
+```
+```cpp
+789:     switch (f->m_from->m_border_type) {
+790:       case WBT_CURRENT_ROW:
+791:         lower_limit = current_row;
+792:         break;
+793:       case WBT_VALUE_PRECEDING:
+794:         /*
+795:           Example: 1 PRECEDING and current row== 2 => 1
+796:                                    current row== 1 => 1
+797:                                    current row== 3 => 2
+798:         */
+799:         lower_limit = std::max<int64>(current_row - border, 1);
+800:         break;
+801:       case WBT_VALUE_FOLLOWING:
+802:         /*
+803:           Example: 1 FOLLOWING and current row== 2 => 3
+804:                                    current row== 1 => 2
+805:                                    current row== 3 => 4
+806:         */
+807:         if (border <= (std::numeric_limits<int64>::max() - current_row))
+808:           lower_limit = current_row + border;
+809:         else {
+810:           lower_within_limits = false;
+811:           lower_limit = INT64_MAX;
+812:         }
+813:         break;
+814:       case WBT_UNBOUNDED_PRECEDING:
+815:         lower_limit = 1;
+816:         break;
+817:       case WBT_UNBOUNDED_FOLLOWING:
+818:         assert(false);
+819:         break;
+820:     }
+```
+```cpp
+1084:   if (static_aggregate && current_row != 1) {
+1085:     /* Set up the correct non-wf fields for copying to the output row */
+1086:     if (bring_back_frame_row(thd, &w, current_row,
+1087:                              Window_retrieve_cached_row_reason::CURRENT))
+1088:       return true;
+1089: 
+1090:     /* E.g. ROW_NUMBER, RANK, DENSE_RANK */
+1091:     if (copy_funcs(param, thd, CFT_WF_NON_FRAMING)) return true;
+1092:   } else if (row_optimizable && w.aggregates_primed()) {
+1093:     /*
+1094:       Rows 2..N in partition: we still have state from previous current row's
+1095:       frame computation, now adjust by subtracting row 1 in frame (lower_limit)
+1096:       and adding new, if any, final frame row
+1097:     */
+1098:     const bool remove_previous_first_row =
+1099:         (lower_limit > 1 && lower_limit - 1 <= last_rowno_in_cache);
+1100:     const bool new_last_row =
+1101:         (upper_limit <= upper &&
+1102:          !unbounded_following /* all added when primed */);
+1103:     const int64 rows_in_frame = upper - lower_limit + 1;
+1104:     w.set_first_rowno_in_rows_frame(lower_limit);
+1105: 
+1106:     /* possibly subtract: early in partition there may not be any */
+1107:     if (remove_previous_first_row) {
+```
+```cpp
+1145:       if (bring_back_frame_row(
+1146:               thd, &w, lower_limit - 1,
+1147:               Window_retrieve_cached_row_reason::FIRST_IN_FRAME))
+1148:         return true;
+1149: 
+1150:       w.set_inverse(true);
+1151:       if (!new_last_row) {
+1152:         w.set_rowno_in_frame(current_row - lower_limit + 1);
+1153:         if (rows_in_frame > 0)
+1154:           w.set_is_last_row_in_frame(true);  // do final comp., e.g. div in AVG
+1155: 
+1156:         if (copy_funcs(param, thd, CFT_WF_FRAMING)) return true;
+1157: 
+1158:         w.set_is_last_row_in_frame(false);  // undo temporary states
+1159:       } else {
+1160:         if (copy_funcs(param, thd, CFT_WF_FRAMING)) return true;
+1161:       }
+1162: 
+1163:       w.set_is_last_row_in_peerset_within_frame(false);
+1164:       w.set_inverse(false);
+1165:     }
+1166: 
+1167:     if (have_first_value && (lower_limit <= last_rowno_in_cache)) {
+1168:       // We have seen first row of frame, FIRST_VALUE can be computed:
+1169:       if (bring_back_frame_row(
+1170:               thd, &w, lower_limit,
+1171:               Window_retrieve_cached_row_reason::FIRST_IN_FRAME))
+1172:         return true;
+1173: 
+1174:       w.set_rowno_in_frame(1);
+1175: 
+1176:       /*
+1177:         Framing WFs which accumulate (SUM, COUNT, AVG) shouldn't accumulate
+1178:         this row again as they have done so already. Evaluate only
+1179:         X_VALUE/MIN/MAX.
+1180:       */
+1181:       if (copy_funcs(param, thd, CFT_WF_USES_ONLY_ONE_ROW)) return true;
+1182:     }
+1183: 
+1184:     if (have_last_value && !new_last_row) {
+1185:       // We have seen last row of frame, LAST_VALUE can be computed:
+1186:       if (bring_back_frame_row(
+1187:               thd, &w, upper, Window_retrieve_cached_row_reason::LAST_IN_FRAME))
+1188:         return true;
+1189: 
+1190:       w.set_rowno_in_frame(current_row - lower_limit + 1);
+1191:       if (rows_in_frame > 0) w.set_is_last_row_in_frame(true);
+1192: 
+1193:       if (copy_funcs(param, thd, CFT_WF_USES_ONLY_ONE_ROW)) return true;
+1194: 
+1195:       w.set_is_last_row_in_frame(false);
+1196:     }
+1197: 
+1198:     if (!have_nth_value.m_offsets.empty()) {
+1199:       int fno = 0;
+1200:       for (Window::st_offset nth : have_nth_value.m_offsets) {
+1201:         if (lower_limit + nth.m_rowno - 1 <= upper) {
+1202:           if (bring_back_frame_row(
+1203:                   thd, &w, lower_limit + nth.m_rowno - 1,
+1204:                   Window_retrieve_cached_row_reason::MISC_POSITIONS, fno++))
+1205:             return true;
+1206: 
+1207:           w.set_rowno_in_frame(nth.m_rowno);
+1208: 
+1209:           if (copy_funcs(param, thd, CFT_WF_USES_ONLY_ONE_ROW)) return true;
+1210:         }
+1211:       }
+1212:     }
+1213: 
+1214:     if (new_last_row)  // Add new last row to framing WF's value
+1215:     {
+1216:       if (bring_back_frame_row(
+1217:               thd, &w, upper, Window_retrieve_cached_row_reason::LAST_IN_FRAME))
+1218:         return true;
+1219: 
+1220:       w.set_rowno_in_frame(upper - lower_limit + 1)
+1221:           .set_is_last_row_in_frame(true);  // temporary states for next copy
+1222: 
+1223:       if (copy_funcs(param, thd, CFT_WF_FRAMING)) return true;
+1224: 
+1225:       w.set_is_last_row_in_frame(false);  // undo temporary states
+1226:     }
+```

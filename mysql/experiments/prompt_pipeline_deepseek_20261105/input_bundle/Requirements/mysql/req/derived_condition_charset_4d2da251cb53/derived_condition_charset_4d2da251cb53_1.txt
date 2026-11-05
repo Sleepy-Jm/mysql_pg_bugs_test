@@ -1,0 +1,28 @@
+Target
+derived_condition_charset_4d2da251cb53
+Revision: 4d2da251cb536340d19438cc0039bb2846f9a634
+Parent revision: e248166db3c95b4fc998ca14cff914f1fdafbe7b
+Exercise expression cloning for a materialized derived table, including string serialization with QT_TO_ARGUMENT_CHARSET and reparsing. Check that this optimization preserves SQL results and valid character data.
+
+Source-required conditions
+- At this revision, sql/sql_derived.cc:550-575 constructs a default StringBuffer<1024>, prints an Item with QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET, and initializes a parser from those bytes; lines 617-635 parse the result. Query_block::clone_expression invokes this path at lines 734-745.
+- include/sql_string.h:629-639 shows the default StringBuffer charset and the explicit-charset constructor. sql/item.cc:3426-3479 distinguishes literals with and without introducers; in the QT_TO_ARGUMENT_CHARSET branch, the latter use the destination buffer's charset.
+- sql/item.cc:1042-1056 shows that replacement of a derived-table field can clone its projected expression. Put relevant string literals inside that expression, not only in an unrelated outer WHERE clause.
+- sql/sql_derived.cc:976-985 requires pushdown to be enabled, no LIMIT in the derived query expression, no inner side of an outer join, no recursive or multiply referenced CTE, and no SET_VAR hint assignments for this eligibility check. These are local gates, not a complete proof of SQL reachability.
+
+Candidate construction
+- Use a disposable schema and small UTF-8 tables with explicitly chosen utf8mb4 character sets and collations. Record the server version and session character_set_client, character_set_connection, character_set_results, collation_connection, sql_mode and optimizer_switch. Save changed session settings and restore them.
+- Start with SET NAMES utf8mb4 and ASCII-only identifiers. Build a UNION ALL derived table whose branches project a string expression such as CONCAT(a text column, a non-ASCII literal), then filter the projected alias in the outer query. Include positive matches, negative matches and duplicate rows so the expected multiset is nontrivial. Avoid LIMIT and other listed eligibility blockers.
+- Use multibyte input such as '山', '河' and 'é', with no charset introducer in the primary candidate. Generate a separate equivalent explicit _utf8mb4 literal variant, and an ASCII-only control. Keep collation and coercion rules explicit; do not assume visually similar strings compare byte-for-byte.
+- Compare derived_condition_pushdown=on and off with all other settings and data identical. Save and restore the original optimizer_switch. A second candidate may use GROUP BY to preserve a derived-table boundary if the UNION candidate does not reach cloning; report this as a separate construction.
+- Add quoted non-ASCII aliases only as a separate variation so identifier handling does not obscure the literal-conversion candidate. Do not assume every Unicode-related report is reproduced by one SQL statement.
+- Prefer temporary tables where compatible; avoid referencing the same temporary table multiple times in a statement if the server rejects that construction. Distinct temporary tables or uniquely named ordinary tables are acceptable.
+
+Correctness oracle
+Derive the exact ordered result rows and duplicate multiplicities by applying the string expression and outer predicate to the inserted rows under the specified collation. The optimization on/off comparison is supplementary, not the sole oracle. A valid query should not gain a syntax or character-conversion error through internal expression cloning. Record unexpected errors and warnings separately from wrong rows. Do not treat an anticipated error message as an established outcome.
+
+Coverage observation
+Use a debug build or temporary instrumentation at sql/sql_derived.cc:550, 564-572 and 617, with the caller stack, original Item, destination charset, literal charset, print flags and serialized bytes recorded. Observe the matching Item_string::print branch at sql/item.cc:3464-3472. Optimizer trace and EXPLAIN can suggest materialization/pushdown but cannot establish that this particular literal was serialized by the target branch.
+
+Uncertainty
+These excerpts do not include every pushdown eligibility check, expression replacement walker, conversion helper or parser charset decision. Confirm the candidate's caller chain and actual encoded bytes before claiming coverage. Requirements are authored source-guided seeds, not a model run or an executed reproducer. Generate complete SQL and independently derived expected results; leave execution and branch coverage explicitly unmeasured.

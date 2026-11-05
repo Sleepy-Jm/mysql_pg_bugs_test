@@ -1,0 +1,73 @@
+Prerequisites
+Use a disposable, already selected schema on a MySQL build at revision 248c7f7c227e76f3422378ca3b9e10d141dcfc86 (or a build whose sql/item_func.cc, sql/item.h, sql/item_cmpfunc.cc, sql/item_subselect.cc, and sql/sql_select.cc match the cited line ranges). The build must support window functions (MySQL 8.0+) and INTERSECT ALL is not required. Use a fresh session with no existing objects named wf_prop_src, wf_prop_sub, or wf_prop_fn. Because the coverage target is a source-level property-recalculation observation, the SQL alone cannot prove branch coverage; the coverage plan below describes the instrumentation needed. If the build does not expose CREATE FUNCTION or window functions, stop and record the precondition as unresolved rather than claiming coverage.
+
+SQL
+```sql
+CREATE TEMPORARY TABLE wf_prop_src (k INT NOT NULL, v INT NOT NULL);
+CREATE TEMPORARY TABLE wf_prop_sub (k INT NOT NULL);
+INSERT INTO wf_prop_src VALUES (1,10),(1,20),(2,30),(2,40),(3,50);
+INSERT INTO wf_prop_sub VALUES (1),(3);
+
+-- Buffering window function (RANGE frame, not the ROWS UNBOUNDED PRECEDING..CURRENT ROW
+-- default) whose argument tree contains an IN-subquery. This forces
+-- Item_in_optimizer / Item_in_subselect / Item_ref accumulation inside a
+-- window function argument, and forces window output materialization through
+-- CreateFramebufferTable.
+SELECT
+  s.k,
+  s.v,
+  SUM(CASE WHEN s.k IN (SELECT k FROM wf_prop_sub) THEN s.v ELSE 0 END)
+    OVER (PARTITION BY s.k ORDER BY s.v RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+    AS win_sum
+FROM wf_prop_src AS s
+ORDER BY s.k, s.v;
+
+-- Buffering window function whose argument is a stored function call, to
+-- exercise Item_func_sp::update_used_tables() re-adding PROP_STORED_PROGRAM
+-- after the reset in Item_func::update_used_tables().
+DROP FUNCTION IF EXISTS wf_prop_fn;
+CREATE FUNCTION wf_prop_fn(x INT) RETURNS INT DETERMINISTIC NO SQL RETURN x * 2;
+
+SELECT
+  s.k,
+  s.v,
+  SUM(wf_prop_fn(s.v))
+    OVER (PARTITION BY s.k ORDER BY s.v RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+    AS win_fn_sum
+FROM wf_prop_src AS s
+ORDER BY s.k, s.v;
+
+DROP FUNCTION wf_prop_fn;
+DROP TEMPORARY TABLE wf_prop_sub;
+DROP TEMPORARY TABLE wf_prop_src;
+```
+
+Expected results and oracle
+First SELECT (IN-subquery inside a buffering window argument). Derive from the inserted data:
+- wf_prop_src rows: (1,10),(1,20),(2,30),(2,40),(3,50). wf_prop_sub = {1,3}.
+- CASE yields s.v when s.k ∈ {1,3}, else 0. Per row: (1,10)→10, (1,20)→20, (2,30)→0, (2,40)→0, (3,50)→50.
+- RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING over PARTITION BY k ORDER BY v sums the whole partition. Partitions: k=1 → 10+20=30; k=2 → 0+0=0; k=3 → 50.
+- Expected rows in ORDER BY k, v:
+  (1,10,30), (1,20,30), (2,30,0), (2,40,0), (3,50,50).
+
+Second SELECT (stored-function call inside a buffering window argument). wf_prop_fn(v)=2v.
+- Per-row doubled values: (1,10)→20, (1,20)→40, (2,30)→60, (2,40)→80, (3,50)→100.
+- Whole-partition sums: k=1 → 60; k=2 → 140; k=3 → 100.
+- Expected rows in ORDER BY k, v:
+  (1,10,60), (1,20,60), (2,30,140), (2,40,140), (3,50,100).
+
+The query-output oracle checks window semantics only. It does not by itself demonstrate that m_accum_properties was reset and re-accumulated, nor that has_wf() was true for the source item filtered at sql/sql_select.cc:4117. Those are the separate coverage observations below. If either SELECT fails, retain the failure separately; close the session to release remaining temporary tables and drop wf_prop_fn if the session is reused.
+
+Coverage observation
+At revision 248c7f7c227e76f3422378ca3b9e10d141dcfc86, instrument or break at:
+- sql/item_func.cc:708 (Item_func::update_used_tables), lines 711 (m_accum_properties reset) and 714–717 (per-argument update and add_accum_properties);
+- sql/item_func.cc:8410 (Item_func_sp::update_used_tables), confirming line 8411 delegates to Item_func::update_used_tables and line 8414 re-adds PROP_STORED_PROGRAM;
+- sql/item.h:5747 (Item_ref::update_used_tables), confirming line 5753 preserves only PROP_ROLLUP_EXPR and line 5754 re-adds ref_item() properties;
+- sql/item_cmpfunc.cc:2410 (Item_in_optimizer::update_used_tables), confirming line 2411 delegates and lines 2415–2418 re-apply the not_null_tables_cache intersection;
+- sql/item_subselect.cc:2537 (Item_in_subselect::update_used_tables), confirming line 2538 delegates and lines 2539–2540 update and OR in left_expr used_tables;
+- sql/sql_select.cc:4106 (CreateFramebufferTable), line 4117 has_wf() check and line 4118 nulling of the framebuffer field, and the call site at sql/sql_select.cc:4681–4685 guarded by needs_buffering().
+
+For each SELECT, identify the window-function Item whose argument contains the IN-subquery (first query) or the stored-function call (second query). After fix_fields() and update_used_tables(), record m_accum_properties on that Item and its ancestors; confirm has_wf() is true on the window-function source item and that has_subquery() (first query) or has_stored_program() (second query) is also true after the reset. Confirm the framebuffer table built at CreateFramebufferTable omits the column whose source item has_wf() is true, and that the buffering window path (needs_buffering() true at line 4681) is the one taken. EXPLAIN alone is only a plan clue and does not confirm property recalculation or framebuffer filtering.
+
+Execution status
+Authored one-shot demonstration. SQL and branch coverage have not been executed or measured. The mapping from these SQL queries to the exact update_used_tables() call sites and to CreateFramebufferTable depends on planner and window-materialization callers not shown in the supplied excerpts; if instrumentation shows the candidate does not reach those sites, revise the query (e.g., add a second buffering window, change the frame, or wrap the subquery/stored function deeper in the argument tree) before claiming coverage.

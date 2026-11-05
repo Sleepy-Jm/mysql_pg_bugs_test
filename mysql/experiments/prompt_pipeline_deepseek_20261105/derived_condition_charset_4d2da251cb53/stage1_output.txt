@@ -1,0 +1,33 @@
+Target: derived_condition_charset_4d2da251cb53
+
+Target observation: Expression serialization and reparsing while cloning a derived-table expression during condition pushdown
+
+Revision: 4d2da251cb536340d19438cc0039bb2846f9a634
+Parent revision: e248166db3c95b4fc998ca14cff914f1fdafbe7b
+Source repository: https://github.com/mysql/mysql-server
+
+Source-required conditions
+
+The target branch is in `parse_expression()` at sql/sql_derived.cc:571-572, where `item->print()` is called with `QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET`. The printed expression is then reparsed at line 618 via `parse_sql()`, and the resulting `Item` is returned through `clone_expression()` at sql/sql_derived.cc:734-744.
+
+For the charset-specific behavior to be exercised, the expression being cloned must contain at least one `Item_string` whose character set is not the same as the `StringBuffer`'s charset. At sql/sql_derived.cc:564 the `StringBuffer` is constructed with the default constructor, which uses `&my_charset_bin` (include/sql_string.h:633). Therefore, when `Item_string::print()` reaches the `QT_TO_ARGUMENT_CHARSET` branch at sql/item.cc:3464-3472, the `print_introducer` decision at lines 3433-3435 depends on whether the string's collation has `is_cs_specified()` true.
+
+The pushdown path itself requires `TABLE_LIST::can_push_condition_to_derived()` to return true (sql/sql_derived.cc:976-985): the derived table must not have a LIMIT, must not be an inner table of an outer join, must not be a multi-reference or recursive CTE, must have no `SET` variables in the statement, and must be enabled by both the optimizer switch `derived_condition_pushdown` and any applicable hint.
+
+Candidate construction
+
+Create a derived table whose SELECT list contains a string literal with an explicitly specified character set introducer, such as `_utf8mb4'some text'` or `_latin1'value'`, and whose query has no LIMIT. Join this derived table to an outer table, and place a WHERE condition on the outer query that references the derived table's string column in a way that the optimizer can push down into the derived table. A simple equality comparison between the derived string column and a constant, or between the derived string column and an outer table column, is a candidate for pushdown. The derived table must be materialized or merged in a manner that allows condition pushdown to invoke `replace_with_derived_expr()` (sql/item.cc:1042-1055), which calls `clone_expression()` on the derived expression.
+
+To specifically exercise the `QT_TO_ARGUMENT_CHARSET` path, the string literal's introducer charset must differ from `my_charset_bin`; this is the case for any normal character set introducer. The `StringBuffer` at sql/sql_derived.cc:564 uses the default constructor, so its charset is `my_charset_bin`. With `QT_TO_ARGUMENT_CHARSET` set, `Item_string::print()` will take the branch at sql/item.cc:3464-3472. If the string has an introducer (`is_cs_specified()` true), it will print the introducer and convert the value to the string's own collation (line 3465-3466); otherwise it will convert to the `StringBuffer`'s charset, which is binary.
+
+Correctness oracle
+
+After condition pushdown, the result of the query must be identical to the result of the same query with condition pushdown disabled. The pushed-down condition must compare equal strings correctly according to the original comparison semantics, including any character set conversion or collation rules implied by the introducer. For a concrete test, insert data into the outer table and ensure that rows are filtered exactly as they would be if the condition were evaluated in the outer query block. The string literal's character set introducer must survive the print-parse round trip; if it is lost or altered, the comparison may fail or return incorrect rows. The oracle must be derived from the inserted data and the original SQL semantics, not from the output of another server version.
+
+Coverage observation
+
+On the specified revision, set a breakpoint or add instrumentation at sql/sql_derived.cc:571-572 to observe the call to `item->print()` with `QT_TO_ARGUMENT_CHARSET`. Confirm that the item being printed is an `Item_string` with a non-binary character set introducer, and inspect the generated string in `str` before it is reparsed. Then observe the reparsed item at sql/sql_derived.cc:635 and verify that its character set and collation match the original item. The target line is reached only if condition pushdown is actually attempted; if the breakpoint is not hit, EXPLAIN may show whether the condition was pushed down, but it does not directly confirm execution of `clone_expression()`.
+
+Uncertainty
+
+The local excerpt does not establish the full SQL-to-`clone_expression()` mapping. The call chain from a user query to `replace_with_derived_expr()` and then to `clone_expression()` involves condition pushdown logic whose entry points and eligibility checks are not included in the supplied code. The candidate query may not reach the target if the optimizer chooses not to push the condition, or if the derived table is merged rather than materialized. The specific `enum_query_type` flags used in `parse_expression()` are fixed in the source, but whether the printed string actually differs from the original depends on the `Item_string`'s internal state, which is not fully visible from the excerpt. If the target is not reached, inspect the condition pushdown decision path and the derived table materialization plan before revising the candidate.

@@ -1,0 +1,28 @@
+{
+  "id": "01350528-d084-4e0b-ac90-c5271d7b06b8",
+  "object": "chat.completion",
+  "created": 1793890042,
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Prerequisites\nUse a disposable, already selected schema on a MySQL build at revision c296cddb93ffc631f9b43d3b1ff769604e7469d7 (or a build where the window-iterator and Item_sum_avg paths match the cited source lines). Use a fresh session with no existing objects named wf_avg_p, wf_avg_v, or wf_avg_out. The test relies on window functions being available and on the optimizer selecting the row-optimizable ROWS-frame path; this selection is not guaranteed by the SQL alone (see Coverage observation). Do not run on a version whose window-frame internals differ from the cited revision if source-line coverage is required.\n\nSQL\n```sql\nCREATE TEMPORARY TABLE wf_avg_p (p INT NOT NULL, ord INT NOT NULL, v INT NULL);\nINSERT INTO wf_avg_p VALUES\n  (1, 1, 1),\n  (1, 2, NULL),\n  (1, 3, 3),\n  (1, 4, 5),\n  (2, 1, 10),\n  (2, 2, NULL),\n  (2, 3, NULL),\n  (2, 4, 8);\n\nSELECT\n  p,\n  ord,\n  v,\n  AVG(v) OVER (\n    PARTITION BY p\n    ORDER BY ord\n    ROWS BETWEEN 1 PRECEDING AND CURRENT ROW\n  ) AS avg_v\nFROM wf_avg_p\nORDER BY p, ord;\n\nDROP TEMPORARY TABLE wf_avg_p;\n```\n\nExpected results and oracle\nFor each row, the frame is the current row plus the immediately preceding row within the partition (or just the current row for the first row of a partition). AVG is the sum of non-null values in the frame divided by the count of non-null values in the frame; the divisor is rowno_in_frame() minus m_frame_null_count when buffering is active (sql/item_sum.cc:2288, 2351). Expected rows, derived from the inserted data and the frame definition:\n\nPartition 1, values (1, NULL, 3, 5) at ord 1..4:\n- ord=1, v=1: frame {1}; sum=1, non-null count=1; avg=1.0000\n- ord=2, v=NULL: frame {1, NULL}; sum=1, non-null count=1; avg=1.0000\n- ord=3, v=3: frame {NULL, 3}; sum=3, non-null count=1; avg=3.0000\n- ord=4, v=5: frame {3, 5}; sum=8, non-null count=2; avg=4.0000\n\nPartition 2, values (10, NULL, NULL, 8) at ord 1..4:\n- ord=1, v=10: frame {10}; sum=10, non-null count=1; avg=10.0000\n- ord=2, v=NULL: frame {10, NULL}; sum=10, non-null count=1; avg=10.0000\n- ord=3, v=NULL: frame {NULL, NULL}; sum=NULL, non-null count=0; avg=NULL\n- ord=4, v=8: frame {NULL, 8}; sum=8, non-null count=1; avg=8.0000\n\nSo the SELECT must return exactly 8 rows in the order (p, ord) = (1,1),(1,2),(1,3),(1,4),(2,1),(2,2),(2,3),(2,4) with avg_v = 1.0000, 1.0000, 3.0000, 4.0000, 10.0000, 10.0000, NULL, 8.0000. Note that the ord=2 case in each partition specifically exercises the null-count adjustment: the frame size is 2 but the divisor must be 1, not 2. Compare values and row ordering; do not accept distinct-only or row-count-only matches. If the SELECT fails or the row set differs, record that separately; close the session to release remaining temporary tables.\n\nCoverage observation\nSeparately from the result check, attach a breakpoint or instrumentation at sql/item_sum.cc:2286-2291 (val_real) and/or sql/item_sum.cc:2350-2358 (val_decimal), and at sql/iterators/window_iterators.cc:1152, 1174, 1190, 1207, or 1220. For each current row in partition 1 (ord 1..4) and partition 2 (ord 1..4), record rowno_in_frame(), m_frame_null_count, and the computed divisor (rowno_in_frame() - m_frame_null_count) at the moment Item_sum_avg consumes the state. Confirm that set_rowno_in_frame() was called before the AVG consumption for rows 2..N in each partition. Expected observations consistent with the oracle: for partition 1 ord=2, rowno_in_frame()=2, m_frame_null_count=1, divisor=1; for partition 1 ord=3, rowno_in_frame()=2, m_frame_null_count=1, divisor=1; for partition 2 ord=3, rowno_in_frame()=2, m_frame_null_count=2, divisor=0 (AVG returns NULL). Also confirm the query actually reaches the optimized ROWS-frame branch (sql/iterators/window_iterators.cc:691, 1092) rather than static_aggregate or range_optimizable; if it does not, inspect Window::optimizable_row_aggregates() and the window iterator initialization before revising the candidate. EXPLAIN alone does not confirm these internal values, and a correct result does not by itself prove the target lines were reached.\n\nExecution status\nAuthored one-shot demonstration. The SQL, expected results, and source-line coverage have not been executed or measured. Branch selection into the optimized ROWS-frame path is not guaranteed by the SQL alone and must be confirmed via the coverage observation."
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 2124,
+    "completion_tokens": 1333,
+    "total_tokens": 3457,
+    "prompt_tokens_details": {
+      "cached_tokens": 896
+    },
+    "prompt_cache_hit_tokens": 896,
+    "prompt_cache_miss_tokens": 1228
+  },
+  "system_fingerprint": "bc19ba97cbe016479903222bb1578db6"
+}

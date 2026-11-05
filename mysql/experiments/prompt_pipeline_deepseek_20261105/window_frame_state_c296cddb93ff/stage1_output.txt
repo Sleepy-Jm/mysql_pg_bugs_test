@@ -1,0 +1,33 @@
+Target: window_frame_state_c296cddb93ff
+
+Target observation: Buffered window-frame row-position state during optimized ROWS-frame evaluation and its consumption by AVG
+
+Revision: c296cddb93ffc631f9b43d3b1ff769604e7469d7
+
+Parent revision: 74c7ccfa27f482576412300e5f92fd3dbeb54cfa
+
+Source repository: https://github.com/mysql/mysql-server
+
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+
+Line numbers below refer to the upstream file at this revision.
+
+Source-required conditions
+
+The window function is an AVG (Item_sum_avg) over a window frame that requires buffering (sql/item_sum.cc:2287-2289, 2350-2352). The frame uses ROWS bounds with an optimized strategy (sql/iterators/window_iterators.cc:691, 1092). During evaluation of rows 2..N in a partition, the optimizer adjusts the frame by removing the previous first row and/or adding a new last row (sql/iterators/window_iterators.cc:1092-1103). The execution state m_rowno_in_frame is set before evaluating framing functions, either when removing the previous first row (sql/iterators/window_iterators.cc:1152), when evaluating first/last value (sql/iterators/window_iterators.cc:1174, 1190), when evaluating NTH_VALUE (sql/iterators/window_iterators.cc:1207), or when adding a new last row (sql/iterators/window_iterators.cc:1220). AVG consumes this state in val_real() or val_decimal() to compute the divisor as rowno_in_frame() minus null count (sql/item_sum.cc:2288, 2351).
+
+Candidate construction
+
+Create a table with a partition key and an integer value column. Insert multiple rows per partition to ensure at least three rows in a partition, so the optimized ROWS-frame path executes for current rows 2..N (sql/iterators/window_iterators.cc:1092). Use a window specification with ROWS BETWEEN 1 PRECEDING AND CURRENT ROW or similar ROWS bounds that trigger row_optimizable evaluation (sql/iterators/window_iterators.cc:691). Apply AVG over the integer column. Include null values in some frame rows to exercise the null-count adjustment in the divisor (sql/item_sum.cc:2288, 2351). For example, a partition with values (1, NULL, 3) and a frame of ROWS BETWEEN 1 PRECEDING AND CURRENT ROW produces frames of size 1 or 2 as the current row advances, with varying rowno_in_frame and null counts.
+
+Correctness oracle
+
+For each current row, the AVG result is the sum of non-null values in the frame divided by the number of non-null rows in the frame. The divisor is rowno_in_frame() minus m_frame_null_count when buffering is used (sql/item_sum.cc:2288, 2351). For a frame with ROWS BETWEEN 1 PRECEDING AND CURRENT ROW, the frame includes the current row and the immediately preceding row (if any). With values (1, NULL, 3) in a partition, the expected results are: row 1 → 1/1 = 1, row 2 → 1/1 = 1 (NULL excluded from divisor), row 3 → 3/2 = 1.5. Derive expected values from the inserted data and the frame definition, not from another server version's output.
+
+Coverage observation
+
+On the specified revision, use a breakpoint or instrumentation at sql/item_sum.cc:2286-2291 or sql/item_sum.cc:2350-2358, and at sql/iterators/window_iterators.cc:1152, 1174, 1190, 1207, or 1220, to observe the values of rowno_in_frame(), m_frame_null_count, and the computed divisor for each current row in the optimized ROWS-frame path. Confirm that set_rowno_in_frame() is called before Item_sum_avg::val_real() or val_decimal() consumes it. EXPLAIN alone does not confirm the internal frame-state values.
+
+Uncertainty
+
+The local excerpts do not establish the complete path from SQL window specification to the selection of row_optimizable versus static_aggregate or range_optimizable. The conditions under which w.optimizable_row_aggregates() returns true are not shown, and the helper functions that prime aggregates and manage the frame cache are omitted. If the candidate query does not reach the optimized ROWS-frame branch, inspect Window::optimizable_row_aggregates() and the window iterator initialization to confirm the frame bounds and aggregate types. Coverage of the state-setting lines and correct AVG output are separate observations.

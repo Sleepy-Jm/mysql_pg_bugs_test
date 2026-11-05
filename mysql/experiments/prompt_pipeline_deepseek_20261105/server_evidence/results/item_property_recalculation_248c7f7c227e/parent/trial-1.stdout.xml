@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+
+<resultset statement="
+-- Buffering window function (RANGE frame, not the ROWS UNBOUNDED PRECEDING..CURRENT ROW
+-- default) whose argument tree contains an IN-subquery. This forces
+-- Item_in_optimizer / Item_in_subselect / Item_ref accumulation inside a
+-- window function argument, and forces window output materialization through
+-- CreateFramebufferTable.
+SELECT
+  s.k,
+  s.v,
+  SUM(CASE WHEN s.k IN (SELECT k FROM wf_prop_sub) THEN s.v ELSE 0 END)
+    OVER (PARTITION BY s.k ORDER BY s.v RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+    AS win_sum
+FROM wf_prop_src AS s
+ORDER BY s.k, s.v" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <row>
+	<field name="k">1</field>
+	<field name="v">10</field>
+	<field name="win_sum">30</field>
+  </row>
+
+  <row>
+	<field name="k">1</field>
+	<field name="v">20</field>
+	<field name="win_sum">30</field>
+  </row>
+
+  <row>
+	<field name="k">2</field>
+	<field name="v">30</field>
+	<field name="win_sum">0</field>
+  </row>
+
+  <row>
+	<field name="k">2</field>
+	<field name="v">40</field>
+	<field name="win_sum">0</field>
+  </row>
+
+  <row>
+	<field name="k">3</field>
+	<field name="v">50</field>
+	<field name="win_sum">50</field>
+  </row>
+</resultset>
+<?xml version="1.0"?>
+
+<resultset statement="
+SELECT
+  s.k,
+  s.v,
+  SUM(wf_prop_fn(s.v))
+    OVER (PARTITION BY s.k ORDER BY s.v RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+    AS win_fn_sum
+FROM wf_prop_src AS s
+ORDER BY s.k, s.v" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <row>
+	<field name="k">1</field>
+	<field name="v">10</field>
+	<field name="win_fn_sum">60</field>
+  </row>
+
+  <row>
+	<field name="k">1</field>
+	<field name="v">20</field>
+	<field name="win_fn_sum">60</field>
+  </row>
+
+  <row>
+	<field name="k">2</field>
+	<field name="v">30</field>
+	<field name="win_fn_sum">140</field>
+  </row>
+
+  <row>
+	<field name="k">2</field>
+	<field name="v">40</field>
+	<field name="win_fn_sum">140</field>
+  </row>
+
+  <row>
+	<field name="k">3</field>
+	<field name="v">50</field>
+	<field name="win_fn_sum">100</field>
+  </row>
+</resultset>

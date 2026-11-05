@@ -1,0 +1,34 @@
+Target
+item_property_recalculation_248c7f7c227e
+Revision: 248c7f7c227e76f3422378ca3b9e10d141dcfc86
+Parent revision: 15980860ac2639f41dfbda2f7fffb7aeeab32921
+Exercise Item property recalculation when expressions containing window functions and subqueries are wrapped, materialized or reused. Construct two independent candidate families rather than treating all failures at this commit as one defect.
+
+Source-required conditions
+- sql/item_func.cc:708-719 resets m_accum_properties and accumulates properties from the current args array after each child's update_used_tables. sql/item.h:3179-3218 and 3443-3465 define accumulation, has_wf and the distinct subquery/window/aggregation flags. Used-table dependencies and accumulated properties are different state.
+- sql/item.h:5738-5755 shows Item_ref property refresh from ref_item(), preserving the rollup bit. The actual reference target at the time of recalculation matters.
+- sql/item_cmpfunc.h:472-504 shows the IN wrapper with the Item_in_subselect object in args[0]. sql/item_cmpfunc.cc:2138-2153 and 2173-2193 show initial handling of the separate left_expr and its properties. Compare that with update_used_tables at lines 2410-2419 and sql/item_subselect.cc:2537-2541; reaching any ordinary scalar IN predicate alone is insufficient for a window-property test.
+- sql/sql_select.cc:4106-4147 uses has_wf() for framebuffer field exclusion and materialized-expression replacement. Lines 4654-4687 show temporary-field rewriting, reference-slice changes and optional framebuffer creation. These consumers make expression phase and reference lifetime relevant.
+- sql/item_func.cc:8410-8415 explicitly restores the stored-program property after a base-class refresh. This is supporting context for property handling, not proof that a stored procedure call is required.
+
+Candidate construction
+Family A: reuse of an expression containing a window function.
+- Use a small InnoDB table with a unique ordering key, a partition key and exact numeric values. Put a window function inside an arithmetic or comparison expression in the SELECT list, instead of testing only a bare window function. Choose explicit partitions, deterministic ordering and a buffered frame where appropriate.
+- Prepare the statement once and execute it at least three times in the same connection without re-preparing, changing data or reconnecting. Provide a separate stored-procedure variant that creates the procedure once and calls it repeatedly, since the reuse paths need not be identical. Include correct client delimiter handling for procedure creation.
+- Compare each execution with a direct-query control and a hand-derived expected table. Keep the initial and later executions separately labeled; do not claim that every prepared window query reaches the relevant refresh.
+
+Family B: window-bearing left operand of IN.
+- Place a legal window expression in the SELECT list as the left operand of IN (SELECT ...), using a correlated inner query where useful to preserve an Item_in_optimizer path. Wrap the predicate in CASE and include another window expression to exercise window materialization.
+- Use explicit ROWS frames and unique ordering keys. Do not place a window function in WHERE or nest window functions. Keep correlated names qualified and ensure scalar/row arity matches.
+- Begin with non-NULL, small data and membership outcomes that can be enumerated. One useful invariant is CASE WHEN predicate THEN a non-NULL payload column ELSE the same payload column END: the result must equal that payload whether the predicate is true, false or unknown. Include a companion CASE with distinguishable branches and known membership so the test also detects branch-selection errors.
+- Add a plain-column left operand control, a window-expression-without-IN control, then NULL and empty-inner-result variants separately. These controls do not guarantee that the optimizer chooses the same internal representation.
+For both families, record version and session settings. Use uniquely named objects, complete setup and cleanup, and restore any changed settings. Do not introduce optimizer switches without establishing why the specific candidate needs them.
+
+Correctness oracle
+For Family A, enumerate partition rows and window frames and calculate the wrapped expression independently; all repeated executions on unchanged data must match the same ordered expected rows. For Family B, derive each window result, IN membership including three-valued logic, and CASE output. The identical-branch CASE invariant is an additional strong check; distinguish a NULL column value from an empty result set. An independent non-window reference query or manual arithmetic should anchor expectations, not a second execution of the same affected expression. Treat crashes, errors and wrong results as different outcomes.
+
+Coverage observation
+Instrument Item_func::update_used_tables at sql/item_func.cc:708-719, recording object identity, dynamic item type, arg_count and accumulated properties before reset and after accumulation. For Family A, correlate repeated executions with Item_ref::update_used_tables, ref_item() identity and the active materialization/reference phase. For Family B, record the IN wrapper, args[0], left_expr, their flags before and after refresh, and the wrapper's has_wf result. Observe the downstream has_wf consumers in sql/sql_select.cc:4117 and 4140. EXPLAIN is only a plan clue; proving a flag transition requires runtime observation.
+
+Uncertainty
+The excerpts do not include the complete update call graph, prepared-statement/stored-procedure lifecycle, reference-slice restoration, or all decisions selecting the IN strategy. These missing links must be inspected or instrumented before claiming either candidate reaches a specific failure path. Sharing an introducing commit does not establish a shared root cause. These are authored source-guided seed requirements; no newly generated SQL or branch coverage has been executed or measured.

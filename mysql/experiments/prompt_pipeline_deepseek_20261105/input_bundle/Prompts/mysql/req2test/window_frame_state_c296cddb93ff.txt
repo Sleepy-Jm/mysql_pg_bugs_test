@@ -1,0 +1,95 @@
+### Example task
+Generate a self-contained MySQL SQL test and its inputs from the requirements below. Include setup, deterministic queries, independently derived expected results, and cleanup. Explain how to observe the source target separately from checking SQL results.
+
+# Description of requirements
+Target
+MySQL revision fac72fe1704c542ba476ef065dee03d2c1da83ae, sql/sql_optimizer.cc:3198-3199: the INTERSECT/EXCEPT materialized-table branch that selects JT_ALL. This is a source-derived candidate, not an executed reproduction.
+
+Source-required conditions
+The current JOIN_TAB is neither JT_CONST nor JT_SYSTEM (line 3188). Its TABLE reports is_intersect() or is_except() (line 3198). The branch assigns JT_ALL (line 3199).
+
+Candidate construction
+Join a derived table containing INTERSECT ALL with a small outer table on an integer key. Give the left input three copies of 1 and one copy of 2, the right input two copies of 1 and one copy of 3, and the outer table two copies of 1 and one copy of 2. This exposes duplicate multiplicities. The equality join is a candidate for presenting the materialized table as a join input; it does not guarantee a particular optimizer plan. INTERSECT ALL is the concrete demonstration; EXCEPT and DISTINCT are optional separate variants.
+
+Correctness oracle
+For each key k, INTERSECT ALL has min(left_count(k), right_count(k)) rows. An equality join multiplies that by outer_count(k). The stated data therefore produces exactly four rows containing 1. Derive this from the inserted data, not from the other server version's output.
+
+Coverage observation
+On the specified revision, use a breakpoint or instrumentation at sql/sql_optimizer.cc:3198-3199 and identify the derived TABLE for this query. Record its set-operation flags, incoming JOIN_TAB type, and the JT_ALL assignment. EXPLAIN alone is only a plan clue.
+
+Uncertainty
+The local excerpt does not establish the full SQL-to-TABLE construction path. If the query does not reach the target, inspect materialization and join-planning callers before revising the candidate. Coverage and correct output are separate observations.
+
+# Test
+Prerequisites
+Use a disposable, already selected schema on a MySQL build supporting INTERSECT ALL. The source coverage target is revision fac72fe1704c542ba476ef065dee03d2c1da83ae; do not infer that every release has identical source locations. Use a fresh session with no existing objects named wf_demo_a, wf_demo_b, or wf_demo_c.
+
+SQL
+```sql
+CREATE TEMPORARY TABLE wf_demo_a (k INT NOT NULL);
+CREATE TEMPORARY TABLE wf_demo_b (k INT NOT NULL);
+CREATE TEMPORARY TABLE wf_demo_c (k INT NOT NULL);
+INSERT INTO wf_demo_a VALUES (1), (1), (1), (2);
+INSERT INTO wf_demo_b VALUES (1), (1), (3);
+INSERT INTO wf_demo_c VALUES (1), (1), (2);
+
+SELECT d.k
+FROM (
+  SELECT k FROM wf_demo_a
+  INTERSECT ALL
+  SELECT k FROM wf_demo_b
+) AS d
+JOIN wf_demo_c AS c ON d.k = c.k
+ORDER BY d.k;
+
+DROP TEMPORARY TABLE wf_demo_c;
+DROP TEMPORARY TABLE wf_demo_b;
+DROP TEMPORARY TABLE wf_demo_a;
+```
+
+Expected results and oracle
+The SELECT returns four rows, each with k=1. The intersection contains min(3,2)=2 copies of 1 and no other keys; joining the two outer copies produces 2*2=4 rows. Compare row multiplicities, not just distinct values. If setup or the SELECT fails, retain that failure separately; close the session to release remaining temporary tables.
+
+Coverage observation
+Observe sql/sql_optimizer.cc:3198-3199 at the specified revision. Identify d's materialized TABLE, verify its is_intersect() flag and nonconstant JOIN_TAB, and record the JT_ALL assignment. The expected result does not itself prove this branch was reached.
+
+Execution status
+Authored one-shot demonstration; SQL and branch coverage have not been executed or measured.
+
+### Current task
+Generate a new MySQL test that satisfies the following requirements. Follow the example's format, but use the current target's operations and data. Supply complete SQL without placeholders, expected rows with a derivation, cleanup, and a separate coverage observation plan. Use an already selected disposable test schema; use temporary tables when compatible with the target, otherwise use uniquely named ordinary tables and clean up only objects created by the test. Specify session ordering if multiple connections are required. If an essential precondition is unresolved, state it instead of claiming guaranteed coverage. Do not execute the test or describe generated SQL as a reproduced bug. Output only: Prerequisites; SQL; Expected results and oracle; Coverage observation; Execution status.
+
+# Description of requirements
+Target
+window_frame_state_c296cddb93ff
+Revision: c296cddb93ffc631f9b43d3b1ff769604e7469d7
+Parent revision: 74c7ccfa27f482576412300e5f92fd3dbeb54cfa
+Exercise buffered, optimized ROWS-frame transitions and their interaction with AVG's divisor and FIRST_VALUE/LAST_VALUE state. Use this introducing revision as the source target.
+
+Source-required conditions
+- sql/window.h:477-490 distinguishes the partition-relative row being visited from the frame-relative current-row number; lines 1299-1311 expose rowno_in_frame access. Do not assume row position always equals frame cardinality.
+- sql/item_sum.cc:410-426 requires buffering except for ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW for this aggregate semantic check.
+- sql/iterators/window_iterators.cc:683-699 selects mutually exclusive static, ROWS-optimized and RANGE-optimized strategies. Lines 1084-1107 show the row_optimizable && aggregates_primed gate, lower/upper bounds, remove_previous_first_row and new_last_row.
+- Lines 1145-1165 update rowno_in_frame and is_last_row_in_frame while removing a previous first row with no new last row, before calling framing functions. Lines 1167-1226 contain the FIRST_VALUE, LAST_VALUE, NTH_VALUE and new-last-row handling. A candidate must reach the intended state transition, not just contain OVER syntax.
+- sql/item_sum.cc:2279-2293 and 2350-2365 use rowno_in_frame minus the frame NULL count in buffered AVG evaluation. Lines 2324-2347 show decimal accumulation/removal and NULL accounting.
+- sql/item_sum.cc:1913-1933 restricts moving-frame inversion for REAL_RESULT using windowing_use_high_precision. DECIMAL and DOUBLE candidates therefore need distinct configuration and coverage reasoning.
+
+Candidate construction
+- Primary case: exact DECIMAL values with a unique increasing key, an explicit partition key, and AVG(value) OVER (PARTITION BY partition_key ORDER BY unique_key ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING). Use at least four rows in one partition so several nonempty frames shrink before an empty final frame.
+- A suitable seed partition has values 6, 18, 30, 42 in key order. The successive future frames are {18,30,42}, {30,42}, {42}, and empty; the expected averages are 30, 36, 42, and NULL. The generator may use fresh values but must derive every expected row explicitly.
+- Test AVG alone first, then separate variants adding FIRST_VALUE and LAST_VALUE with the same explicit frame. Compute their expectations from frame membership; their presence is a variation, not an assumed prerequisite for the AVG path.
+- Add multiple partitions, a single-row partition, mixed NULLs and an all-NULL nonempty frame. Keep ordering deterministic and distinguish empty frames from all-NULL frames. NULL values do not contribute to AVG's divisor.
+- Include ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING and a bounded moving-frame control, plus the nonbuffered UNBOUNDED PRECEDING/CURRENT ROW control. Keep these as distinct tests with independently computed expected rows.
+- Add a DOUBLE variant only after the exact-numeric case. Save the session windowing_use_high_precision setting, test OFF to permit the relevant moving-frame inversion, compare with ON as a control, and restore the setting. Use a stated absolute/relative tolerance for approximate numeric results; do not attribute a large arithmetic discrepancy to normal rounding.
+- Use an already selected disposable schema, record version and settings, supply complete data and cleanup, and order the final query output explicitly.
+
+Correctness oracle
+For each output row enumerate precisely the rows in its partition and frame, discard NULL values for AVG, and divide their sum by their count. An empty or all-NULL frame yields NULL. Compute FIRST_VALUE/LAST_VALUE from the ordered frame, including ordinary MySQL NULL behavior. Use manual arithmetic and, where practical, a non-window correlated aggregate over the base data as an independent oracle. SUM(...) OVER / COUNT(...) OVER is useful as a diagnostic, but is not the sole oracle because the window functions may share faulty frame state. Comparison with the parent revision supplements rather than defines correct semantics.
+
+Coverage observation
+Instrument sql/iterators/window_iterators.cc:1092-1107 and 1150-1156 to record row_optimizable, aggregates_primed, current_row, lower_limit, upper, rows_in_frame, remove_previous_first_row, new_last_row, rowno_in_frame, inverse and last-row flags. Observe AVG at sql/item_sum.cc:2286-2290 or 2350-2356, capturing the matching Window object, count, NULL count and divisor. For FIRST_VALUE/LAST_VALUE variants also observe the adjacent one-row-function branches. Show that the state producer and AVG consumer are on the same execution path. EXPLAIN alone cannot prove this.
+
+Uncertainty
+Complete window-strategy selection and every aggregate's optimization restrictions are outside these excerpts. A frame that needs buffering need not use inversion, especially for DOUBLE with high precision enabled or when other functions alter strategy eligibility. Validate the actual branch rather than assuming it. These requirements are authored seeds, not output from a newly executed LLM prompt, SQL reproduction or coverage experiment.
+
+# Test
