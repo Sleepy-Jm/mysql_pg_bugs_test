@@ -1,0 +1,61 @@
+--- two_stage_compact_source_20261112/stage1
++++ two_stage_path_and_failure_20261112/stage1
+@@ -1,19 +1,16 @@
+-Stage 1: Derive test constructions from source code.
+-
+-Role: You are a source-guided database test analyst. Translate the supplied parent/target code into construction requirements that a SQL author can implement, preserving which input expression becomes which internal object. Analyze the current target only.
+-
+-Use concise natural language and symbolic patterns, as in the unrelated example. Produce these three sections:
+-
+-1. Construction and object mapping
+-Identify the object consumed by the changed operation and trace its supplied producers/callers back toward a SQL construct. Describe one coherent candidate using symbolic expressions and their relationships, not a list of features. For each essential link, give: SQL position or operation -> corresponding internal object -> how that same object reaches the next operation, with source references. Include the shown path prerequisites and earlier transformations that can bypass or change this mapping. Distinguish links established by supplied code from candidates based on database knowledge. Preserve what is known even when another link is missing. Do not generate a complete SQL example for the current target.
+-
+-2. Input conditions and observable effect
+-For the same object and initial state, compare the parent and target operations under their actual enclosing branches. Derive the input properties that could distinguish those operations; explain where those inputs must occur in the construction above. Attach each requirement to its source basis and the object mapping it depends on. Include a small contrast only when its behavior follows from that comparison. Explain how an operation difference could reach a SQL-visible result, separating established behavior from a hypothesis. Express properties and relationships rather than hard-coding an expected bug result.
+-
+-3. Handoff and missing links
+-Give a compact Stage 2 handoff: construction pattern, essential requirements, semantic oracle, and unresolved mappings. For each unresolved mapping, identify the specific missing caller/helper/representation fact or runtime observation that would resolve it. A source object name alone does not establish SQL syntax or a setting. Do not turn an unresolved link into a mandatory SQL choice or discard it if the target depends on it. Label an incomplete construction as a candidate, and say if no defensible construction is available from the supplied material. State how execution could confirm the target object and branch, separately from comparing query results.
+-
+-The goal is an implementable causal construction, not a source-code summary or a claim of verified coverage. No test has been executed by this analysis.
++Stage 1: Derive how to reach the modification and how an input could expose an error.
++
++Role: You are a source-guided database test analyst. Use the supplied parent/target code to derive SQL construction requirements. Keep the execution path and the sensitive input connected through the same expression object. Analyze only the current target, using concise natural language and symbolic patterns rather than a complete SQL example.
++
++Output two sections; together they are the Stage 2 handoff:
++
++1. How to reach the modified path
++Trace a candidate SQL structure to the internal object consumed by the modified operation: SQL expression position -> object producer or binding -> relevant callers and guards -> target operation. Explain the configuration, operation order, and preservation conditions needed for this chain, including shown transformations that can bypass it. Cite the supplied source for the links, distinguish established links from construction hypotheses, and identify the specific evidence needed for any missing link. State what execution must observe to confirm the intended object and branch.
++
++2. Sensitive inputs and possible errors after reaching that path
++For each supported candidate, assign an ID and follow the object from section 1. Fix the same input and state in both versions, evaluate the relevant guards and operations, and derive an input property that could make the modification violate the original SQL semantics. Explain the actual operation difference, including relevant helper behavior when supplied; a different call or a reachable branch alone does not establish an error. Keep distinct, evidence-backed candidates rather than selecting one preferred condition merely because its path is easier to describe.
++
++Express each candidate as one causal construction: SQL structure -> target object/path -> sensitive property at that object -> parent/target operation difference -> possible semantic violation -> SQL-visible observation and independent correctness oracle. State the source basis and unresolved step within that construction. If the difference is not established, retain a clearly identified hypothesis instead of upgrading it to a necessary condition. This section is the construction handoff itself; do not rewrite it into a separate list of preferred requirements. No execution or bug reproduction is claimed.
+ 
+ <unrelated_example>
+ Synthetic teaching example, not MySQL implementation and not evidence about the current target. Assume only the toy translation rules below.
+@@ -27,13 +24,13 @@
+ Both versions start total at zero. The aggregate result is returned to the client. Only nonempty input of small, non-NULL integers is in scope.
+ 
+ Example Stage 1 output:
+-1. Construction and object mapping
++1. How to reach the modified path
+ Pattern: Scan(T) -> Filter(Y >= 0) -> Aggregate(SUM(X)) -> returned total.
+-The SQL aggregate argument X becomes SumSlot.argument (bind.cc:10). For each row surviving the predicate on Y (plan.cc:20), eval(X, row) supplies v to sum_step (exec.cc:30). Thus the value to distinguish the two operations must be produced by X on a surviving row; a value in another column or an excluded row does not meet this requirement. These links are established by the supplied toy rules.
+-2. Input conditions and observable effect
+-For v < 0, the parent adds v and the target skips it (sum.cc:40). Choose a surviving row whose X is negative, with other surviving X values small and positive. A row excluded by Y may contain a distracting value but contributes in neither version. An all-positive surviving set is a contrast where both operations add the same values. The independent oracle is the mathematical sum of X over surviving rows; the target's omission is an inferred deviation, not the oracle.
+-3. Handoff and missing links
+-Generate one aggregate query implementing the pattern, with data linking the negative operand to a surviving row, plus the all-positive contrast. Observe the aggregate slot's argument, the row's filter outcome, and the v received by sum_step. The toy rules establish this mapping; a real implementation would require evidence that earlier rewrites preserve it. If bind.cc:10 were absent, the mapping from SUM(X) to this slot would be unresolved and would require that binding rule, rather than an invented configuration command.
++X becomes SumSlot.argument (bind.cc:10); each row surviving the predicate on Y supplies eval(X, row) as v to sum_step (plan.cc:20; exec.cc:30). Preserve this object relationship. A value in another column or an excluded row does not reach the operation as v. Observe the slot argument, row survival, and received operand. These links follow from the supplied toy rules. Without bind.cc:10, the SQL-to-slot link would need that binding evidence before it could be claimed as established.
++
++2. Sensitive inputs and possible errors after reaching that path
++C1: The aggregate pattern above -> X on a surviving row -> negative v -> parent adds v while target skips it -> returned total may exceed the mathematical sum -> observe the total and compare it with the sum of X over surviving rows.
++The negative-input condition follows from substituting the same v into both guards at sum.cc:40. Use small values so arithmetic range does not introduce another cause. An all-positive surviving set is a contrast where both versions add the same operands. An excluded negative row is a path contrast, not another candidate error mechanism. The oracle comes from SUM semantics, not from assuming the parent is correct. This example establishes one candidate relationship; renaming columns or repeating it with equivalent values would not establish additional mechanisms. Runtime reachability has not been measured.
+ </unrelated_example>
+ 
+ <current_source_material>
+@@ -655,4 +652,4 @@
+ 
+ </current_source_material>
+ 
+-Return only the three Stage 1 sections.
++Return only the two Stage 1 sections.

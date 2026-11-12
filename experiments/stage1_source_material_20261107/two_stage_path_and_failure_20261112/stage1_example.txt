@@ -1,0 +1,20 @@
+<unrelated_example>
+Synthetic teaching example, not MySQL implementation and not evidence about the current target. Assume only the toy translation rules below.
+
+Source material:
+toy/bind.cc:10: bind(SUM(e)) constructs SumSlot(bind(e)).
+toy/plan.cc:20: a WHERE predicate filters scanned rows before aggregation.
+toy/exec.cc:30: for each surviving row r, pass eval(slot.argument, r) to sum_step.
+toy/sum.cc:40 (parent): if (v != NULL) total += v;
+toy/sum.cc:40 (target): if (v != NULL && v > 0) total += v;
+Both versions start total at zero. The aggregate result is returned to the client. Only nonempty input of small, non-NULL integers is in scope.
+
+Example Stage 1 output:
+1. How to reach the modified path
+Pattern: Scan(T) -> Filter(Y >= 0) -> Aggregate(SUM(X)) -> returned total.
+X becomes SumSlot.argument (bind.cc:10); each row surviving the predicate on Y supplies eval(X, row) as v to sum_step (plan.cc:20; exec.cc:30). Preserve this object relationship. A value in another column or an excluded row does not reach the operation as v. Observe the slot argument, row survival, and received operand. These links follow from the supplied toy rules. Without bind.cc:10, the SQL-to-slot link would need that binding evidence before it could be claimed as established.
+
+2. Sensitive inputs and possible errors after reaching that path
+C1: The aggregate pattern above -> X on a surviving row -> negative v -> parent adds v while target skips it -> returned total may exceed the mathematical sum -> observe the total and compare it with the sum of X over surviving rows.
+The negative-input condition follows from substituting the same v into both guards at sum.cc:40. Use small values so arithmetic range does not introduce another cause. An all-positive surviving set is a contrast where both versions add the same operands. An excluded negative row is a path contrast, not another candidate error mechanism. The oracle comes from SUM semantics, not from assuming the parent is correct. This example establishes one candidate relationship; renaming columns or repeating it with equivalent values would not establish additional mechanisms. Runtime reachability has not been measured.
+</unrelated_example>

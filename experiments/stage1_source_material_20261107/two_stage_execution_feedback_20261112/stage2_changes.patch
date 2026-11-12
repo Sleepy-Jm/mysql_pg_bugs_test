@@ -1,0 +1,29 @@
+--- two_stage_path_and_failure_20261112/stage2_sql_prompt_template.txt
++++ two_stage_execution_feedback_20261112/stage2_sql_prompt_template.txt
+@@ -1,10 +1,15 @@
+ Stage 2: Implement the construction requirements as SQL.
+ 
+-Role: You are a database test implementation engineer. Use the current test objective and the actual Stage 1 handoff to produce a small executable test. Preserve the specified expression positions, object relationships, path conditions, and input properties together in the same target query.
++Role: You are a database test implementation engineer. Use the current test objective, the actual Stage 1 handoff, and any verified execution feedback to produce executable tests. Preserve the specified expression positions, object relationships, path conditions, and input properties together in the same target query.
+ 
+-For the current task, aim to generate five target SQL tests, T1-T5, covering different, evidence-backed candidate relationships from Stage 1. For each test, identify its candidate ID and explain what distinct branch/operand relationship, sensitivity mechanism, or input boundary with a different predicted effect it examines. Tests may share established path prerequisites, but five cosmetic variants of one unverified premise do not constitute five supported candidates. Renaming objects or changing values without explaining a different causal effect does not establish diversity. Setup, diagnostics, and controls do not count toward the five target tests. If fewer supported relationships are available, state the shortfall and the missing evidence rather than inventing candidates. Five tests does not imply five different outputs or five successful reproductions.
++For the current task, aim to generate five target SQL tests, T1-T5, covering different, evidence-backed candidate relationships from Stage 1 and the supplied execution feedback. For each test, identify its candidate ID and explain what distinct branch/operand relationship, sensitivity mechanism, or input boundary with a different predicted effect it examines. Tests may share established path prerequisites, but five cosmetic variants of one unverified premise do not constitute five supported candidates. Renaming objects or changing values without explaining a different causal effect does not establish diversity. Setup, diagnostics, and controls do not count toward the five target tests. If fewer supported relationships are available, state the shortfall and the missing evidence rather than inventing candidates. Five tests does not imply five different outputs or five successful reproductions.
+ 
+ When the trigger conditions depend on sensitive inputs, prefer unusual but valid inputs that exercise the specific operation difference identified by Stage 1, rather than only typical values. Choose relevant boundary or atypical properties from the handoff, explain their effect, and ensure the sensitive value belongs to the object processed on the intended path. Do not choose arbitrary exotic data unrelated to those conditions. Apply these requirements to the current task; the unrelated example illustrates a single construction only.
++
++Execution feedback for subsequent generation
++Use the supplied execution feedback as additional examples, keeping its evidence labels. PATH_REACHED means the intended object and modified path were observed; it does not imply an error. ANOMALY_OBSERVED means an actual correctness deviation or runtime failure was recorded with its expected/observed behavior; record path confirmation and attribution to the target change separately. A parent/target difference alone is a discrepancy to investigate, not a confirmed bug. Unexecuted SQL and unverified path claims are candidates, not successful examples.
++
++For a PATH_REACHED example, preserve the demonstrated path construction and explore different source-supported sensitive relationships. For an ANOMALY_OBSERVED example, preserve its observed mechanism when supported, then vary meaningful inputs or structures and include contrasts to investigate its boundary. Identify the example ID used, what evidence is retained, and what new hypothesis each generated test examines. Each new SQL variant is unverified until executed; it does not inherit the example's success label. Retain the five-test diversity objective. If no verified examples are supplied, generate from Stage 1 without inventing feedback.
+ 
+ Output three sections:
+ 
+@@ -50,4 +55,8 @@
+ {{STAGE1_OUTPUT}}
+ </stage1_handoff>
+ 
++<execution_feedback>
++{{EXECUTION_FEEDBACK}}
++</execution_feedback>
++
+ Return only the three Stage 2 sections.

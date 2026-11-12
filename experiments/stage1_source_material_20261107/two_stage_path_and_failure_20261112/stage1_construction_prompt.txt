@@ -1,0 +1,655 @@
+Stage 1: Derive how to reach the modification and how an input could expose an error.
+
+Role: You are a source-guided database test analyst. Use the supplied parent/target code to derive SQL construction requirements. Keep the execution path and the sensitive input connected through the same expression object. Analyze only the current target, using concise natural language and symbolic patterns rather than a complete SQL example.
+
+Output two sections; together they are the Stage 2 handoff:
+
+1. How to reach the modified path
+Trace a candidate SQL structure to the internal object consumed by the modified operation: SQL expression position -> object producer or binding -> relevant callers and guards -> target operation. Explain the configuration, operation order, and preservation conditions needed for this chain, including shown transformations that can bypass it. Cite the supplied source for the links, distinguish established links from construction hypotheses, and identify the specific evidence needed for any missing link. State what execution must observe to confirm the intended object and branch.
+
+2. Sensitive inputs and possible errors after reaching that path
+For each supported candidate, assign an ID and follow the object from section 1. Fix the same input and state in both versions, evaluate the relevant guards and operations, and derive an input property that could make the modification violate the original SQL semantics. Explain the actual operation difference, including relevant helper behavior when supplied; a different call or a reachable branch alone does not establish an error. Keep distinct, evidence-backed candidates rather than selecting one preferred condition merely because its path is easier to describe.
+
+Express each candidate as one causal construction: SQL structure -> target object/path -> sensitive property at that object -> parent/target operation difference -> possible semantic violation -> SQL-visible observation and independent correctness oracle. State the source basis and unresolved step within that construction. If the difference is not established, retain a clearly identified hypothesis instead of upgrading it to a necessary condition. This section is the construction handoff itself; do not rewrite it into a separate list of preferred requirements. No execution or bug reproduction is claimed.
+
+<unrelated_example>
+Synthetic teaching example, not MySQL implementation and not evidence about the current target. Assume only the toy translation rules below.
+
+Source material:
+toy/bind.cc:10: bind(SUM(e)) constructs SumSlot(bind(e)).
+toy/plan.cc:20: a WHERE predicate filters scanned rows before aggregation.
+toy/exec.cc:30: for each surviving row r, pass eval(slot.argument, r) to sum_step.
+toy/sum.cc:40 (parent): if (v != NULL) total += v;
+toy/sum.cc:40 (target): if (v != NULL && v > 0) total += v;
+Both versions start total at zero. The aggregate result is returned to the client. Only nonempty input of small, non-NULL integers is in scope.
+
+Example Stage 1 output:
+1. How to reach the modified path
+Pattern: Scan(T) -> Filter(Y >= 0) -> Aggregate(SUM(X)) -> returned total.
+X becomes SumSlot.argument (bind.cc:10); each row surviving the predicate on Y supplies eval(X, row) as v to sum_step (plan.cc:20; exec.cc:30). Preserve this object relationship. A value in another column or an excluded row does not reach the operation as v. Observe the slot argument, row survival, and received operand. These links follow from the supplied toy rules. Without bind.cc:10, the SQL-to-slot link would need that binding evidence before it could be claimed as established.
+
+2. Sensitive inputs and possible errors after reaching that path
+C1: The aggregate pattern above -> X on a surviving row -> negative v -> parent adds v while target skips it -> returned total may exceed the mathematical sum -> observe the total and compare it with the sum of X over surviving rows.
+The negative-input condition follows from substituting the same v into both guards at sum.cc:40. Use small values so arithmetic range does not introduce another cause. An all-positive surviving set is a contrast where both versions add the same operands. An excluded negative row is a path contrast, not another candidate error mechanism. The oracle comes from SUM semantics, not from assuming the parent is correct. This example establishes one candidate relationship; renaming columns or repeating it with equivalent values would not establish additional mechanisms. Runtime reachability has not been measured.
+</unrelated_example>
+
+<current_source_material>
+<commit_metadata>
+Repository: https://github.com/mysql/mysql-server
+Commit: 4d2da251cb536340d19438cc0039bb2846f9a634
+Parent: e248166db3c95b4fc998ca14cff914f1fdafbe7b
+Commit URL: https://github.com/mysql/mysql-server/commit/4d2da251cb536340d19438cc0039bb2846f9a634
+Commit date: 2022-09-22T14:23:00Z
+
+Original commit message:
+Bug#34359297: Incorrect work of query with union in inner select
+
+The problem here is with condition pushdown into a UNION.
+A string literal inside a LIKE clause does not preserve the correct
+character set.
+
+The fix is in parse_expression(), preserve the character set prefix
+for any literal character string that is cloned.
+
+Change-Id: I33ef7e6e9900566623fe399e161ff92a8b5c243c
+</commit_metadata>
+
+
+# Target and source code
+Target: derived_condition_charset_4d2da251cb53
+Target observation: Expression serialization and reparsing while cloning a derived-table expression during condition pushdown
+Revision: 4d2da251cb536340d19438cc0039bb2846f9a634
+Parent revision: e248166db3c95b4fc998ca14cff914f1fdafbe7b
+Source repository: https://github.com/mysql/mysql-server
+Scope: local excerpts of the target revision; omitted callers/helpers are not assumed known.
+Line numbers below refer to the upstream file at this revision.
+
+# Code: sql/sql_derived.cc
+Blob: 85e57e802b720146f09d6a1086e8653e2f1c1258
+Source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/sql/sql_derived.cc
+```cpp
+550: static Item *parse_expression(THD *thd, Item *item, Query_block *query_block) {
+551:   // Set up for parsing item
+552:   LEX *const old_lex = thd->lex;
+553:   LEX *new_lex = new (thd->mem_root) st_lex_local;
+554: 
+555:   thd->lex = new_lex;
+556:   if (lex_start(thd)) {
+557:     thd->lex = old_lex;
+558:     return nullptr;  // OOM
+559:   }
+560:   // Take care not to print the variable index for stored procedure variables.
+561:   // Also do not write a cloned stored procedure variable to query logs.
+562:   thd->lex->reparse_derived_table_condition = true;
+563:   // Get the printout of the expression
+564:   StringBuffer<1024> str;
+565:   // For printing parameters we need to specify the flag QT_NO_DATA_EXPANSION
+566:   // because for a case when statement gets reprepared during execution, we
+567:   // still need Item_param::print() to print the '?' rather than the actual data
+568:   // specified for the parameter.
+569:   // The flag QT_TO_ARGUMENT_CHARSET is required for printing character string
+570:   // literals with correct character set introducer.
+571:   item->print(thd, &str,
+572:               enum_query_type(QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET));
+573:   str.append('\0');
+574: 
+575:   Derived_expr_parser_state parser_state;
+```
+```cpp
+617:   // Get a newly created item from parser
+618:   bool result = parse_sql(thd, &parser_state, nullptr);
+619: 
+620:   thd->lex->reparse_derived_table_condition = false;
+621:   // Delete the vector contents:
+622:   std::vector<uint>().swap(thd->lex->reparse_derived_table_params_at);
+623:   // thd->lex is now in a MEM_ROOT, so we need to delete:
+624:   delete thd->lex->sroutines.release();
+625: 
+626:   // lex_end() would try to destroy sphead if set. So we reset it.
+627:   thd->lex->set_sp_current_parsing_ctx(nullptr);
+628:   thd->lex->sphead = nullptr;
+629:   // End of parsing.
+630:   lex_end(thd->lex);
+631:   thd->lex = old_lex;
+632:   thd->parsing_system_view = parsing_system_view_saved;
+633:   if (result) return nullptr;
+634: 
+635:   return parser_state.result;
+```
+```cpp
+734: Item *Query_block::clone_expression(THD *thd, Item *item) {
+735:   Item *cloned_item = parse_expression(thd, item, this);
+736:   if (cloned_item == nullptr) return nullptr;
+737:   if (item->item_name.is_set())
+738:     cloned_item->item_name.set(item->item_name.ptr(), item->item_name.length());
+739: 
+740:   // Collect details like table reference, field etc from the fields in the
+741:   // original expression. Assign it to the corresponding field in the cloned
+742:   // expression.
+743:   if (copy_field_info(thd, item, cloned_item)) return nullptr;
+744:   return resolve_expression(thd, cloned_item, this);
+745: }
+```
+```cpp
+976: bool TABLE_LIST::can_push_condition_to_derived(THD *thd) {
+977:   Query_expression const *unit = derived_query_expression();
+978:   return hint_table_state(thd, this, DERIVED_CONDITION_PUSHDOWN_HINT_ENUM,
+979:                           OPTIMIZER_SWITCH_DERIVED_CONDITION_PUSHDOWN) &&  // 1
+980:          !unit->has_any_limit() &&                                         // 2
+981:          !is_inner_table_of_outer_join() &&                                // 3
+982:          !(common_table_expr() &&
+983:            (common_table_expr()->references.size() >= 2 ||
+984:             common_table_expr()->recursive)) &&   // 4
+985:          (thd->lex->set_var_list.elements == 0);  // 5
+```
+
+# Code: sql/item.cc
+Blob: c23b13dc01f3bb968af124595e991115caac6c49
+Source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/sql/item.cc
+```cpp
+1042: Item *Item_field::replace_with_derived_expr(uchar *arg) {
+1043:   Condition_pushdown::Derived_table_info *dti =
+1044:       pointer_cast<Condition_pushdown::Derived_table_info *>(arg);
+1045: 
+1046:   // This column's table reference should be same as the derived table from
+1047:   // where the replacement is retrieved. If not, it is presumed that the
+1048:   // column has already been replaced with derived table expression (Maybe
+1049:   // there was an earlier reference to the same column in the condition that
+1050:   // is being pushed down). There is no need to do anything in such a case.
+1051:   TABLE_LIST *derived_table = dti->m_derived_table;
+1052:   if (derived_table != table_ref) return this;
+1053:   Query_block *query_block = dti->m_derived_query_block;
+1054:   return query_block->clone_expression(
+1055:       current_thd, query_block->get_derived_expr(field->field_index()));
+1056: }
+```
+```cpp
+3426: void Item_string::print(const THD *, String *str,
+3427:                         enum_query_type query_type) const {
+3428:   if (query_type & QT_NORMALIZED_FORMAT) {
+3429:     str->append("?");
+3430:     return;
+3431:   }
+3432: 
+3433:   const bool print_introducer =
+3434:       (query_type & QT_FORCE_INTRODUCERS) ||
+3435:       (!(query_type & QT_WITHOUT_INTRODUCERS) && is_cs_specified());
+3436: 
+3437:   if (print_introducer) {
+3438:     str->append('_');
+3439:     str->append(collation.collation->csname);
+3440:   }
+3441: 
+3442:   str->append('\'');
+3443: 
+3444:   if (query_type & QT_TO_SYSTEM_CHARSET) {
+3445:     if (print_introducer) {
+3446:       /*
+3447:         Because we wrote an introducer, we must print str_value in its
+3448:         charset, and the resulting bytes must not be changed until they
+3449:         reach the end client.
+3450:         But the caller is asking for system_charset_info, and may later
+3451:         convert into character_set_results. That means two conversions: we
+3452:         must ensure that they don't change our printed bytes.
+3453:         So we print str_value in the least common denominator of the three
+3454:         charsets involved: ASCII. Non-ASCII characters are printed as \xFF
+3455:         sequences (which is ASCII too). This way, our bytes will not be
+3456:         changed.
+3457:       */
+3458:       ErrConvString tmp(str_value.ptr(), str_value.length(), &my_charset_bin);
+3459:       str->append(tmp.ptr());
+3460:     } else {
+3461:       // Convert to system charset.
+3462:       convert_and_print(&str_value, str, system_charset_info);
+3463:     }
+3464:   } else if (query_type & QT_TO_ARGUMENT_CHARSET) {
+3465:     if (print_introducer)
+3466:       convert_and_print(&str_value, str, collation.collation);
+3467:     else
+3468:       /*
+3469:         Convert the string literals to str->charset(),
+3470:         which is typically equal to charset_set_client.
+3471:       */
+3472:       convert_and_print(&str_value, str, str->charset());
+3473:   } else {
+3474:     // Caller wants a result in the charset of str_value.
+3475:     str_value.print(str);
+3476:   }
+3477: 
+3478:   str->append('\'');
+3479: }
+```
+
+# Code: include/sql_string.h
+Blob: 32d0e43d13248025d980d5acc875e4ed4ff633d3
+Source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/include/sql_string.h
+```cpp
+629: class StringBuffer : public String {
+630:   char buff[buff_sz];
+631: 
+632:  public:
+633:   StringBuffer() : String(buff, buff_sz, &my_charset_bin) { length(0); }
+634:   explicit StringBuffer(const CHARSET_INFO *cs) : String(buff, buff_sz, cs) {
+635:     length(0);
+636:   }
+637:   StringBuffer(const char *str, size_t length, const CHARSET_INFO *cs)
+638:       : String(buff, buff_sz, cs) {
+639:     set(str, length, cs);
+```
+
+# Inline source content for the current commit references
+The revision IDs and URLs above identify the source. The following embeds the production-code diff and complete changed-function versions for the current target; no external retrieval is needed for these supplied materials. Source excerpts already supplied above remain unchanged.
+
+## Production-code diff
+```diff
+比较：e248166db3c95b4fc998ca14cff914f1fdafbe7b -> 4d2da251cb536340d19438cc0039bb2846f9a634
+
+diff --git a/sql/sql_derived.cc b/sql/sql_derived.cc
+index a5dcf95bde4..85e57e802b7 100644
+--- a/sql/sql_derived.cc
++++ b/sql/sql_derived.cc
+@@ -566,7 +566,10 @@ static Item *parse_expression(THD *thd, Item *item, Query_block *query_block) {
+   // because for a case when statement gets reprepared during execution, we
+   // still need Item_param::print() to print the '?' rather than the actual data
+   // specified for the parameter.
+-  item->print(thd, &str, QT_NO_DATA_EXPANSION);
++  // The flag QT_TO_ARGUMENT_CHARSET is required for printing character string
++  // literals with correct character set introducer.
++  item->print(thd, &str,
++              enum_query_type(QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET));
+   str.append('\0');
+ 
+   Derived_expr_parser_state parser_state;
+```
+
+## Complete changed-function versions
+父提交版本：parse_expression
+Revision: e248166db3c95b4fc998ca14cff914f1fdafbe7b
+Path: sql/sql_derived.cc
+Blob SHA: a5dcf95bde4a0a23f8033b3c0c2dce3c8a838013
+Source: https://github.com/mysql/mysql-server/blob/e248166db3c95b4fc998ca14cff914f1fdafbe7b/sql/sql_derived.cc#L540-L633
+
+540: /**
+541:   Given an item and a query block, this function creates a clone of the
+542:   item (unresolved) by reparsing the item.
+543: 
+544:   @param thd            Current thread.
+545:   @param item           Item to be reparsed to get a clone.
+546:   @param query_block    query block where expression is being parsed
+547: 
+548:   @returns A copy of the original item (unresolved) on success else nullptr.
+549: */
+550: static Item *parse_expression(THD *thd, Item *item, Query_block *query_block) {
+551:   // Set up for parsing item
+552:   LEX *const old_lex = thd->lex;
+553:   LEX *new_lex = new (thd->mem_root) st_lex_local;
+554: 
+555:   thd->lex = new_lex;
+556:   if (lex_start(thd)) {
+557:     thd->lex = old_lex;
+558:     return nullptr;  // OOM
+559:   }
+560:   // Take care not to print the variable index for stored procedure variables.
+561:   // Also do not write a cloned stored procedure variable to query logs.
+562:   thd->lex->reparse_derived_table_condition = true;
+563:   // Get the printout of the expression
+564:   StringBuffer<1024> str;
+565:   // For printing parameters we need to specify the flag QT_NO_DATA_EXPANSION
+566:   // because for a case when statement gets reprepared during execution, we
+567:   // still need Item_param::print() to print the '?' rather than the actual data
+568:   // specified for the parameter.
+569:   item->print(thd, &str, QT_NO_DATA_EXPANSION);
+570:   str.append('\0');
+571: 
+572:   Derived_expr_parser_state parser_state;
+573:   parser_state.init(thd, str.ptr(), str.length());
+574: 
+575:   // Native functions introduced for INFORMATION_SCHEMA system views are
+576:   // allowed to be invoked from *only* INFORMATION_SCHEMA system views.
+577:   // THD::parsing_system_view is set if the view being parsed is
+578:   // INFORMATION_SCHEMA system view and is allowed to invoke native function.
+579:   // If not, error ER_NO_ACCESS_TO_NATIVE_FCT is reported.
+580:   // Since we are cloning a condition here, we set it unconditionally
+581:   // to avoid the errors.
+582:   bool parsing_system_view_saved = thd->parsing_system_view;
+583:   thd->parsing_system_view = true;
+584: 
+585:   // Set the correct query block to parse the item. In some cases, like
+586:   // fulltext functions, parser needs to add them to ftfunc_list of the
+587:   // query block.
+588:   thd->lex->unit = query_block->master_query_expression();
+589:   thd->lex->set_current_query_block(query_block);
+590:   // If this query block is part of a stored procedure, we might have to
+591:   // parse a stored procedure variable (if present). Set the context
+592:   // correctly.
+593:   thd->lex->set_sp_current_parsing_ctx(old_lex->get_sp_current_parsing_ctx());
+594:   thd->lex->sphead = old_lex->sphead;
+595: 
+596:   // If this is a prepare statement, we need to set prepare_mode correctly
+597:   // so that parser does not raise errors for "params(?)".
+598:   parser_state.m_lip.stmt_prepare_mode =
+599:       (old_lex->context_analysis_only & CONTEXT_ANALYSIS_ONLY_PREPARE);
+600:   if (parser_state.m_lip.stmt_prepare_mode) {
+601:     // Collect positions of all parameters in the "item". Used to create
+602:     // clones for the original parameters(Item_param::m_clones).
+603:     WalkItem(item, enum_walk::POSTFIX, [&thd](Item *inner_item) {
+604:       if (inner_item->type() == Item::PARAM_ITEM) {
+605:         thd->lex->reparse_derived_table_params_at.push_back(
+606:             down_cast<Item_param *>(inner_item)->pos_in_query);
+607:         return false;
+608:       }
+609:       return false;
+610:     });
+611:     thd->lex->param_list = old_lex->param_list;
+612:   }
+613: 
+614:   // Get a newly created item from parser
+615:   bool result = parse_sql(thd, &parser_state, nullptr);
+616: 
+617:   thd->lex->reparse_derived_table_condition = false;
+618:   // Delete the vector contents:
+619:   std::vector<uint>().swap(thd->lex->reparse_derived_table_params_at);
+620:   // thd->lex is now in a MEM_ROOT, so we need to delete:
+621:   delete thd->lex->sroutines.release();
+622: 
+623:   // lex_end() would try to destroy sphead if set. So we reset it.
+624:   thd->lex->set_sp_current_parsing_ctx(nullptr);
+625:   thd->lex->sphead = nullptr;
+626:   // End of parsing.
+627:   lex_end(thd->lex);
+628:   thd->lex = old_lex;
+629:   thd->parsing_system_view = parsing_system_view_saved;
+630:   if (result) return nullptr;
+631: 
+632:   return parser_state.result;
+633: }
+
+目标提交版本：parse_expression
+Revision: 4d2da251cb536340d19438cc0039bb2846f9a634
+Path: sql/sql_derived.cc
+Blob SHA: 85e57e802b720146f09d6a1086e8653e2f1c1258
+Source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/sql/sql_derived.cc#L540-L636
+
+540: /**
+541:   Given an item and a query block, this function creates a clone of the
+542:   item (unresolved) by reparsing the item.
+543: 
+544:   @param thd            Current thread.
+545:   @param item           Item to be reparsed to get a clone.
+546:   @param query_block    query block where expression is being parsed
+547: 
+548:   @returns A copy of the original item (unresolved) on success else nullptr.
+549: */
+550: static Item *parse_expression(THD *thd, Item *item, Query_block *query_block) {
+551:   // Set up for parsing item
+552:   LEX *const old_lex = thd->lex;
+553:   LEX *new_lex = new (thd->mem_root) st_lex_local;
+554: 
+555:   thd->lex = new_lex;
+556:   if (lex_start(thd)) {
+557:     thd->lex = old_lex;
+558:     return nullptr;  // OOM
+559:   }
+560:   // Take care not to print the variable index for stored procedure variables.
+561:   // Also do not write a cloned stored procedure variable to query logs.
+562:   thd->lex->reparse_derived_table_condition = true;
+563:   // Get the printout of the expression
+564:   StringBuffer<1024> str;
+565:   // For printing parameters we need to specify the flag QT_NO_DATA_EXPANSION
+566:   // because for a case when statement gets reprepared during execution, we
+567:   // still need Item_param::print() to print the '?' rather than the actual data
+568:   // specified for the parameter.
+569:   // The flag QT_TO_ARGUMENT_CHARSET is required for printing character string
+570:   // literals with correct character set introducer.
+571:   item->print(thd, &str,
+572:               enum_query_type(QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET));
+573:   str.append('\0');
+574: 
+575:   Derived_expr_parser_state parser_state;
+576:   parser_state.init(thd, str.ptr(), str.length());
+577: 
+578:   // Native functions introduced for INFORMATION_SCHEMA system views are
+579:   // allowed to be invoked from *only* INFORMATION_SCHEMA system views.
+580:   // THD::parsing_system_view is set if the view being parsed is
+581:   // INFORMATION_SCHEMA system view and is allowed to invoke native function.
+582:   // If not, error ER_NO_ACCESS_TO_NATIVE_FCT is reported.
+583:   // Since we are cloning a condition here, we set it unconditionally
+584:   // to avoid the errors.
+585:   bool parsing_system_view_saved = thd->parsing_system_view;
+586:   thd->parsing_system_view = true;
+587: 
+588:   // Set the correct query block to parse the item. In some cases, like
+589:   // fulltext functions, parser needs to add them to ftfunc_list of the
+590:   // query block.
+591:   thd->lex->unit = query_block->master_query_expression();
+592:   thd->lex->set_current_query_block(query_block);
+593:   // If this query block is part of a stored procedure, we might have to
+594:   // parse a stored procedure variable (if present). Set the context
+595:   // correctly.
+596:   thd->lex->set_sp_current_parsing_ctx(old_lex->get_sp_current_parsing_ctx());
+597:   thd->lex->sphead = old_lex->sphead;
+598: 
+599:   // If this is a prepare statement, we need to set prepare_mode correctly
+600:   // so that parser does not raise errors for "params(?)".
+601:   parser_state.m_lip.stmt_prepare_mode =
+602:       (old_lex->context_analysis_only & CONTEXT_ANALYSIS_ONLY_PREPARE);
+603:   if (parser_state.m_lip.stmt_prepare_mode) {
+604:     // Collect positions of all parameters in the "item". Used to create
+605:     // clones for the original parameters(Item_param::m_clones).
+606:     WalkItem(item, enum_walk::POSTFIX, [&thd](Item *inner_item) {
+607:       if (inner_item->type() == Item::PARAM_ITEM) {
+608:         thd->lex->reparse_derived_table_params_at.push_back(
+609:             down_cast<Item_param *>(inner_item)->pos_in_query);
+610:         return false;
+611:       }
+612:       return false;
+613:     });
+614:     thd->lex->param_list = old_lex->param_list;
+615:   }
+616: 
+617:   // Get a newly created item from parser
+618:   bool result = parse_sql(thd, &parser_state, nullptr);
+619: 
+620:   thd->lex->reparse_derived_table_condition = false;
+621:   // Delete the vector contents:
+622:   std::vector<uint>().swap(thd->lex->reparse_derived_table_params_at);
+623:   // thd->lex is now in a MEM_ROOT, so we need to delete:
+624:   delete thd->lex->sroutines.release();
+625: 
+626:   // lex_end() would try to destroy sphead if set. So we reset it.
+627:   thd->lex->set_sp_current_parsing_ctx(nullptr);
+628:   thd->lex->sphead = nullptr;
+629:   // End of parsing.
+630:   lex_end(thd->lex);
+631:   thd->lex = old_lex;
+632:   thd->parsing_system_view = parsing_system_view_saved;
+633:   if (result) return nullptr;
+634: 
+635:   return parser_state.result;
+636: }
+
+
+<object_source_context>
+Production-source excerpts. Code and comments in each shown range are identical between the listed parent and target ranges; displayed line numbers refer to the target.
+
+[O1] Condition_pushdown::make_cond_for_derived
+Path: sql/sql_derived.cc
+Parent: e248166db3c95b4fc998ca14cff914f1fdafbe7b, lines 992-1074
+Target: 4d2da251cb536340d19438cc0039bb2846f9a634, lines 995-1077
+Parent source: https://github.com/mysql/mysql-server/blob/e248166db3c95b4fc998ca14cff914f1fdafbe7b/sql/sql_derived.cc#L992-L1074
+Target source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/sql/sql_derived.cc#L995-L1077
+```cpp
+995: bool Condition_pushdown::make_cond_for_derived() {
+996:   Opt_trace_object trace_wrapper(trace);
+997:   Opt_trace_object trace_cond(trace, "condition_pushdown_to_derived");
+998:   trace_cond.add_utf8_table(m_derived_table);
+999:   trace_cond.add("original_condition", m_cond_to_check);
+1000: 
+1001:   Query_expression *derived_query_expression =
+1002:       m_derived_table->derived_query_expression();
+1003: 
+1004:   // Check if a part or full condition can be pushed down to the derived table.
+1005:   m_checking_purpose = CHECK_FOR_DERIVED;
+1006: 
+1007:   m_cond_to_push = extract_cond_for_table(m_cond_to_check);
+1008: 
+1009:   // Condition could not be pushed down to derived table (even partially)
+1010:   if (m_cond_to_push == nullptr) {
+1011:     m_remainder_cond = m_cond_to_check;
+1012:   } else {
+1013:     // Make the remainder condition that could not be pushed down. This is
+1014:     // left in the outer query block.
+1015:     if (make_remainder_cond(m_cond_to_check, &m_remainder_cond)) return true;
+1016:   }
+1017:   trace_cond.add("condition_to_push", m_cond_to_push);
+1018:   trace_cond.add("remaining_condition", m_remainder_cond);
+1019:   if (m_cond_to_push == nullptr) return false;
+1020: 
+1021:   Opt_trace_array trace_steps(trace, "pushdown_to_query_blocks");
+1022:   Item *orig_cond_to_push = m_cond_to_push;
+1023:   for (Query_block *qb = derived_query_expression->first_query_block();
+1024:        qb != nullptr; qb = qb->next_query_block()) {
+1025:     // Make a copy that can be pushed to this query block
+1026:     if (derived_query_expression->is_set_operation()) {
+1027:       m_cond_to_push =
+1028:           derived_query_expression->outer_query_block()->clone_expression(
+1029:               thd, orig_cond_to_push);
+1030:       if (m_cond_to_push == nullptr) return true;
+1031:       m_cond_to_push->apply_is_true();
+1032:     }
+1033:     m_query_block = qb;
+1034: 
+1035:     // Analyze the condition that needs to be pushed, to push past window
+1036:     // functions and GROUP BY. The condition to be pushed, could be split
+1037:     // into HAVING condition, WHERE condition and remainder condition based
+1038:     // on the presence of window functions and GROUP BY.
+1039:     Opt_trace_object qb_wrapper(trace);
+1040: 
+1041:     qb_wrapper.add("query_block", m_query_block->select_number);
+1042:     if (push_past_window_functions()) return true;
+1043:     if (m_having_cond == nullptr) continue;
+1044:     if (push_past_group_by()) return true;
+1045:     qb_wrapper.add("pushed_having_condition", m_having_cond);
+1046:     qb_wrapper.add("pushed_where_condition", m_where_cond);
+1047:     qb_wrapper.add("remaining_condition", m_remainder_cond);
+1048: 
+1049:     // If this condition has a semi-join condition, remove expressions from
+1050:     // semi-join expression lists. Replace columns in the condition with
+1051:     // derived table expressions.
+1052:     if (m_having_cond != nullptr) {
+1053:       check_and_remove_sj_exprs(m_having_cond);
+1054:       if (replace_columns_in_cond(&m_having_cond, true)) return true;
+1055:     }
+1056:     if (m_where_cond != nullptr) {
+1057:       check_and_remove_sj_exprs(m_where_cond);
+1058:       if (replace_columns_in_cond(&m_where_cond, false)) return true;
+1059:     }
+1060: 
+1061:     // Attach the conditions to the derived table query block.
+1062:     if (m_having_cond &&
+1063:         attach_cond_to_derived(qb->having_cond(), m_having_cond, true))
+1064:       return true;
+1065:     if (m_where_cond &&
+1066:         attach_cond_to_derived(qb->where_cond(), m_where_cond, false))
+1067:       return true;
+1068:     m_where_cond = nullptr;
+1069:     m_having_cond = nullptr;
+1070:   }
+1071:   if (m_remainder_cond != nullptr && !m_remainder_cond->fixed &&
+1072:       m_remainder_cond->fix_fields(thd, &m_remainder_cond))
+1073:     return true;
+1074: 
+1075:   assert(!thd->is_error());
+1076:   return false;
+1077: }
+```
+
+[O2] Condition_pushdown::replace_columns_in_cond
+Path: sql/sql_derived.cc
+Parent: e248166db3c95b4fc998ca14cff914f1fdafbe7b, lines 1328-1367
+Target: 4d2da251cb536340d19438cc0039bb2846f9a634, lines 1331-1370
+Parent source: https://github.com/mysql/mysql-server/blob/e248166db3c95b4fc998ca14cff914f1fdafbe7b/sql/sql_derived.cc#L1328-L1367
+Target source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/sql/sql_derived.cc#L1331-L1370
+```cpp
+1331: /**
+1332:  Replace columns in a condition that will be pushed to this derived table
+1333:  with the derived table expressions.
+1334: 
+1335:  If there is a HAVING condition that needs to be pushed down, we replace
+1336:  columns in the condition with references to the corresponding derived table
+1337:  expressions and for WHERE condition, we replace columns with derived table
+1338:  expressions.
+1339: */
+1340: 
+1341: bool Condition_pushdown::replace_columns_in_cond(Item **cond, bool is_having) {
+1342:   // For a view reference, the underlying expression could be shared if the
+1343:   // expression is referenced elsewhere in the query. So we clone the expression
+1344:   // before replacing it with derived table expression.
+1345:   bool view_ref = false;
+1346:   WalkItem((*cond), enum_walk::PREFIX, [&view_ref](Item *inner_item) {
+1347:     if (inner_item->type() == Item::REF_ITEM &&
+1348:         down_cast<Item_ref *>(inner_item)->ref_type() == Item_ref::VIEW_REF) {
+1349:       view_ref = true;
+1350:       return true;
+1351:     }
+1352:     return false;
+1353:   });
+1354:   Derived_table_info dti(m_derived_table, m_query_block);
+1355: 
+1356:   if (view_ref) {
+1357:     (*cond) = (*cond)->transform(&Item::replace_view_refs_with_clone,
+1358:                                  pointer_cast<uchar *>(&dti));
+1359:     if (*cond == nullptr) return true;
+1360:   }
+1361:   Item *new_cond =
+1362:       is_having ? (*cond)->transform(&Item::replace_with_derived_expr_ref,
+1363:                                      pointer_cast<uchar *>(&dti))
+1364:                 : (*cond)->transform(&Item::replace_with_derived_expr,
+1365:                                      pointer_cast<uchar *>(&dti));
+1366:   if (new_cond == nullptr) return true;
+1367:   new_cond->update_used_tables();
+1368:   (*cond) = new_cond;
+1369:   return false;
+1370: }
+```
+
+[O3] Query_block::get_derived_expr
+Path: sql/sql_derived.cc
+Parent: e248166db3c95b4fc998ca14cff914f1fdafbe7b, lines 1180-1205
+Target: 4d2da251cb536340d19438cc0039bb2846f9a634, lines 1183-1208
+Parent source: https://github.com/mysql/mysql-server/blob/e248166db3c95b4fc998ca14cff914f1fdafbe7b/sql/sql_derived.cc#L1180-L1205
+Target source: https://github.com/mysql/mysql-server/blob/4d2da251cb536340d19438cc0039bb2846f9a634/sql/sql_derived.cc#L1183-L1208
+```cpp
+1183: /**
+1184:  Get the expression from this query block using its position in
+1185:  the fields list of the derived table this query block is part of.
+1186:  Note that the field's position in a derived table does not always
+1187:  reflect the position in the visible field list of the query block.
+1188:  Creation of temporary table for a materialized derived table alters
+1189:  the field position whenever the temporary table adds a hidden field.
+1190: 
+1191:  @param[in] field_index  position in the fields list of the derived table.
+1192: 
+1193:  @returns expression from the derived table's query block.
+1194: */
+1195: 
+1196: Item *Query_block::get_derived_expr(uint field_index) {
+1197:   // In some cases (noticed when derived table has multiple query blocks),
+1198:   // "field_index" does not always represent the index in the visible
+1199:   // field list. So, we adjust the index accordingly.
+1200:   TABLE_LIST *derived_table = master_query_expression()->derived_table;
+1201:   uint adjusted_field_index =
+1202:       field_index - derived_table->get_hidden_field_count_for_derived();
+1203:   for (auto item : visible_fields())
+1204:     if (adjusted_field_index-- == 0) return item;
+1205: 
+1206:   assert(false);
+1207:   return nullptr;
+1208: }
+```
+
+</object_source_context>
+
+</current_source_material>
+
+Return only the two Stage 1 sections.
