@@ -1,0 +1,123 @@
+1. Construction realization
+
+Stage 1 supplies two source-supported object paths (C1: outer `LIKE` literal cloned through set-operation condition pushdown; C2: derived-list `LIKE` literal cloned during column replacement) and one unresolved link: the excerpts do not show `Item_func_like::print()` propagating `query_type` to the pattern `Item_string::print()`, nor the concrete `is_cs_specified()`/`str_value` charset/`collation.collation` of the literal. The five tests below are therefore exploratory candidates: each is a distinct, executable probe of a different operand/branch relationship, but none is claimed to satisfy the requirement until the printing-path propagation and literal metadata are observed.
+
+Mapping (source-supported vs. implementation candidate):
+
+- Source-supported: `parse_expression()` at `sql/sql_derived.cc:550-572` calls `item->print(thd,&str, QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET)`; `str` is `StringBuffer<1024>` with `my_charset_bin`; result is reparsed via `parser_state.init()`/`parse_sql()`. C1 requires `is_set_operation()` true and `m_cond_to_push` to contain the `LIKE`; C2 requires `replace_columns_in_cond()` → `Item_field::replace_with_derived_expr` → `clone_expression(get_derived_expr(field_index))`.
+- Implementation candidate (unverified): that the `LIKE` pattern `Item_string` is the object whose `print()` branch differs, and that its charset/collation is not preserved across serialize/reparse. Each test isolates a different literal property (introducer vs. no introducer, non-ASCII bytes, connection-charset dependence, derived-list vs. outer position, and a pure-ASCII control) so that a differing observation across tests discriminates which property drives the branch.
+
+T1 (C1, explicit introducer, non-ASCII bytes): outer `LIKE _utf8mb4'...'` over a UNION derived table. Sensitive property: `is_cs_specified()` true and `str_value` bytes not equal to the introduced charset's encoding of the same characters — the parent `else` branch prints raw bytes with introducer, target converts to `collation.collation`. Distinct effect: introducer-present branch of `Item_string::print()`.
+
+T2 (C1, no introducer, coerced collation): outer `LIKE` with a literal whose collation is coerced to the column's collation, differing from the connection default. Sensitive property: `is_cs_specified()` false, so target takes `convert_and_print(..., str->charset())` while parent prints raw bytes. Distinct effect: the no-introducer branch, and dependence on `str->charset()` (the `my_charset_bin` buffer) rather than `collation.collation`.
+
+T3 (C1, connection-charset boundary): same shape as T1 but the literal is written in a non-default connection charset so that the literal's `str_value` charset equals the connection charset, not utf8mb4. Sensitive property: whether the reparse default charset (connection) coincides with the literal charset. Distinct effect: isolates the "reparse default" operand from the introducer operand.
+
+T4 (C2, derived-list `LIKE`): derived select-list expression `base.col LIKE <literal>` referenced by an outer predicate, forcing `replace_columns_in_cond()` → `clone_expression(get_derived_expr(...))`. Sensitive property: the serialized `Item` is the derived select-list expression, not the outer condition. Distinct effect: different object identity reaching `parse_expression()` (C2 vs. C1), same `Item_string::print()` branch.
+
+T5 (control, pure ASCII, default charset): C1 shape with an ASCII pattern in the default connection charset. Sensitive property: `str_value` bytes are already valid in both `collation.collation` and `str->charset()`, so parent and target serializations should be equivalent. Distinct effect: negative control — a differing result here would falsify the "charset-loss" premise rather than support it.
+
+Shortfall statement: five distinct candidates are not available from Stage 1. Only C1 and C2 are source-supported object paths; T1–T3 and T5 are four input-property variants of C1, and T4 is the single C2 variant. The missing evidence is (a) `Item_func_like::print()` propagation of `query_type` to the pattern, and (b) concrete `is_cs_specified()`/`str_value` charset/`collation.collation` for each literal. The tests below are exploratory probes of those unresolved links, not confirmations.
+
+2. SQL
+
+T1 — C1, explicit introducer, non-ASCII bytes:
+```sql
+CREATE DATABASE IF NOT EXISTS t1db CHARACTER SET utf8mb4;
+USE t1db;
+DROP TABLE IF EXISTS t1a, t1b;
+CREATE TABLE t1a (c VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin);
+CREATE TABLE t1b (c VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin);
+INSERT INTO t1a VALUES ('Ä'),('A'),('ä');
+INSERT INTO t1b VALUES ('Ä'),('A'),('ä');
+SET optimizer_switch='derived_condition_pushdown=on';
+SELECT dt.c FROM (SELECT c FROM t1a UNION ALL SELECT c FROM t1b) AS dt
+ WHERE dt.c LIKE _utf8mb4'Ä';
+SELECT dt.c FROM (SELECT c FROM t1a UNION ALL SELECT c FROM t1b) AS dt
+ WHERE dt.c LIKE 'Ä';
+DROP TABLE t1a, t1b;
+```
+
+T2 — C1, no introducer, coerced collation:
+```sql
+CREATE DATABASE IF NOT EXISTS t2db CHARACTER SET utf8mb4;
+USE t2db;
+DROP TABLE IF EXISTS t2a, t2b;
+CREATE TABLE t2a (c VARCHAR(32) CHARACTER SET latin1 COLLATE latin1_bin);
+CREATE TABLE t2b (c VARCHAR(32) CHARACTER SET latin1 COLLATE latin1_bin);
+INSERT INTO t2a VALUES ('A'),('B');
+INSERT INTO t2b VALUES ('A'),('B');
+SET optimizer_switch='derived_condition_pushdown=on';
+SELECT dt.c FROM (SELECT c FROM t2a UNION ALL SELECT c FROM t2b) AS dt
+ WHERE dt.c LIKE 'A';
+SELECT dt.c FROM (SELECT c FROM t2a UNION ALL SELECT c FROM t2b) AS dt
+ WHERE dt.c LIKE _latin1'A';
+DROP TABLE t2a, t2b;
+```
+
+T3 — C1, connection-charset boundary:
+```sql
+CREATE DATABASE IF NOT EXISTS t3db CHARACTER SET utf8mb4;
+USE t3db;
+DROP TABLE IF EXISTS t3a, t3b;
+CREATE TABLE t3a (c VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin);
+CREATE TABLE t3b (c VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin);
+INSERT INTO t3a VALUES ('Ä'),('A');
+INSERT INTO t3b VALUES ('Ä'),('A');
+SET NAMES latin1;
+SET optimizer_switch='derived_condition_pushdown=on';
+SELECT dt.c FROM (SELECT c FROM t3a UNION ALL SELECT c FROM t3b) AS dt
+ WHERE dt.c LIKE 'Ä';
+SET NAMES utf8mb4;
+DROP TABLE t3a, t3b;
+```
+
+T4 — C2, derived-list `LIKE`:
+```sql
+CREATE DATABASE IF NOT EXISTS t4db CHARACTER SET utf8mb4;
+USE t4db;
+DROP TABLE IF EXISTS t4a, t4b;
+CREATE TABLE t4a (c VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin);
+CREATE TABLE t4b (c VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin);
+INSERT INTO t4a VALUES ('Ä'),('A');
+INSERT INTO t4b VALUES ('Ä'),('A');
+SET optimizer_switch='derived_condition_pushdown=on';
+SELECT dt.m FROM (
+  SELECT (c LIKE _utf8mb4'Ä') AS m FROM t4a
+  UNION ALL
+  SELECT (c LIKE _utf8mb4'Ä') AS m FROM t4b
+) AS dt WHERE dt.m = 1;
+SELECT dt.m FROM (
+  SELECT (c LIKE 'Ä') AS m FROM t4a
+  UNION ALL
+  SELECT (c LIKE 'Ä') AS m FROM t4b
+) AS dt WHERE dt.m = 1;
+DROP TABLE t4a, t4b;
+```
+
+T5 — control, pure ASCII, default charset:
+```sql
+CREATE DATABASE IF NOT EXISTS t5db CHARACTER SET utf8mb4;
+USE t5db;
+DROP TABLE IF EXISTS t5a, t5b;
+CREATE TABLE t5a (c VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin);
+CREATE TABLE t5b (c VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin);
+INSERT INTO t5a VALUES ('abc'),('abd');
+INSERT INTO t5b VALUES ('abc'),('abd');
+SET optimizer_switch='derived_condition_pushdown=on';
+SELECT dt.c FROM (SELECT c FROM t5a UNION ALL SELECT c FROM t5b) AS dt
+ WHERE dt.c LIKE 'abc';
+DROP TABLE t5a, t5b;
+```
+
+3. Expected results and path observations
+
+Derived from SQL semantics of the original outer/derived predicates (independent oracle), not from either revision's output:
+
+- T1: `_utf8mb4'Ä'` matches only `'Ä'` under `utf8mb4_bin`; the second query with `'Ä'` under the connection charset (utf8mb4) matches the same row. Expected rows: one row `Ä` from each query. If the parent serializes the introducer literal as raw bytes without conversion and the reparse default differs, the parent may return zero rows or a different row; the target should return `Ä`. Observation needed: confirm the `Item` passed to `parse_expression()` is the outer `Item_func_like`, that `str` contains `_utf8mb4'Ä'` with the introducer, and that the reparsed `Item_string` has `utf8mb4_bin`.
+- T2: `latin1_bin` column with `'A'` matches `'A'` only. Expected: one row `A` per query. The no-introducer branch is the discriminator; observation needed is whether the reparsed literal's charset equals `latin1` (column coercion) or the connection default.
+- T3: with `SET NAMES latin1`, the literal `'Ä'` is encoded in latin1; the column is utf8mb4. Expected: the comparison coerces per SQL rules; the row `Ä` should match. Observation needed: whether the reparse default charset (latin1) coincides with the literal charset, and whether the target's `convert_and_print(..., str->charset())` (bin buffer) changes the bytes.
+- T4: derived column `m` is 1 exactly for `'Ä'`; outer `dt.m = 1` should return one row `1` per query. Observation needed: confirm `get_derived_expr(field_index)` returns the `LIKE` expression and that the cloned expression's pattern literal retains `utf8mb4_bin`.
+- T5: control; expected one row `abc`. A difference between parent and target here would falsify the charset-loss premise.
+
+Distinctions to record: valid execution (query runs), target-path observation (the intended `Item` reaches `parse_expression()` and `str` contains the literal with expected introducer/charset), and parent/target output difference (row sets differ). None of these has been executed or instrumented here; no runtime reachability, plan, or output is claimed. The unresolved links from Stage 1 — `Item_func_like::print()` propagation and concrete literal metadata — remain to be observed before any candidate is treated as satisfied.

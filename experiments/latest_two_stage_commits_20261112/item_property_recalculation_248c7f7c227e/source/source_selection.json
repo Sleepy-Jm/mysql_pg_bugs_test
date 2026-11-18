@@ -1,0 +1,140 @@
+{
+  "key": "item_property_recalculation_248c7f7c227e",
+  "target": "248c7f7c227e76f3422378ca3b9e10d141dcfc86",
+  "parent": "15980860ac2639f41dfbda2f7fffb7aeeab32921",
+  "files": [
+    "sql/item_func.cc",
+    "sql/item_cmpfunc.cc",
+    "sql/item_func.h",
+    "sql/sql_resolver.cc"
+  ],
+  "message": "Bug#35060385 Item::update_used_tables should also update the PROP_SUBQUERY - for transforms\n\nMissing update of flag PROP_SUBQUERY when we replace subqueries with\nfields: update_used_tables didn't do it (right).  Cf. the call in\nQuery_block::replace_subquery_in_expr:\n\n   new_item->update_used_tables();\n\ndidn't get the correct result earlier.\n\nThe solution is to properly update all other accumulated properties\nthat may be changed due to item substitution.\n\nChange-Id: I8df46a7325303885829dc10e73902cacb71d671b",
+  "date": "2023-02-09T23:41:08Z",
+  "commit_url": "https://github.com/mysql/mysql-server/commit/248c7f7c227e76f3422378ca3b9e10d141dcfc86",
+  "production_files": [
+    {
+      "filename": "sql/item_cmpfunc.cc",
+      "patch": "@@ -5955,12 +5955,11 @@ longlong Item_cond_or::val_int() {\n }\n \n void Item_func_isnull::update_used_tables() {\n+  args[0]->update_used_tables();\n+  set_accum_properties(args[0]);\n   if (!args[0]->is_nullable()) {\n     used_tables_cache = 0;\n   } else {\n-    args[0]->update_used_tables();\n-    set_accum_properties(args[0]);\n-\n     used_tables_cache = args[0]->used_tables();\n     if (!const_item()) cache_used = false;\n   }"
+    },
+    {
+      "filename": "sql/item_func.cc",
+      "patch": "@@ -708,6 +708,7 @@ void Item_func::split_sum_func(THD *thd, Ref_item_array ref_item_array,\n void Item_func::update_used_tables() {\n   used_tables_cache = get_initial_pseudo_tables();\n   not_null_tables_cache = 0;\n+  m_accum_properties = 0;\n \n   for (uint i = 0; i < arg_count; i++) {\n     args[i]->update_used_tables();"
+    },
+    {
+      "filename": "sql/item_func.h",
+      "patch": "@@ -1632,6 +1632,10 @@ class Item_rollup_group_item final : public Item_func {\n                ? (args[0]->used_tables() | RAND_TABLE_BIT)\n                : args[0]->used_tables();\n   }\n+  void update_used_tables() override {\n+    Item_func::update_used_tables();\n+    set_rollup_expr();\n+  }\n   Item_result result_type() const override { return args[0]->result_type(); }\n   bool resolve_type(THD *) override {\n     // needn't handle dynamic parameter as its const_item() is false."
+    }
+  ],
+  "excerpts": [
+    {
+      "purpose": "Modified operation: Item_func::update_used_tables",
+      "version": "target",
+      "revision": "248c7f7c227e76f3422378ca3b9e10d141dcfc86",
+      "path": "sql/item_func.cc",
+      "start": 708,
+      "end": 719,
+      "blob": "31b9dfba5f1fc85c2383f49175759daad498d990",
+      "url": "https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item_func.cc",
+      "code": "void Item_func::update_used_tables() {\n  used_tables_cache = get_initial_pseudo_tables();\n  not_null_tables_cache = 0;\n  m_accum_properties = 0;\n\n  for (uint i = 0; i < arg_count; i++) {\n    args[i]->update_used_tables();\n    used_tables_cache |= args[i]->used_tables();\n    if (null_on_null) not_null_tables_cache |= args[i]->not_null_tables();\n    add_accum_properties(args[i]);\n  }\n}"
+    },
+    {
+      "purpose": "Modified operation: Item_func::update_used_tables",
+      "version": "parent",
+      "revision": "15980860ac2639f41dfbda2f7fffb7aeeab32921",
+      "path": "sql/item_func.cc",
+      "start": 708,
+      "end": 718,
+      "blob": "b9bc13b25a67b74729d2f29bb5be432492607d28",
+      "url": "https://github.com/mysql/mysql-server/blob/15980860ac2639f41dfbda2f7fffb7aeeab32921/sql/item_func.cc",
+      "code": "void Item_func::update_used_tables() {\n  used_tables_cache = get_initial_pseudo_tables();\n  not_null_tables_cache = 0;\n\n  for (uint i = 0; i < arg_count; i++) {\n    args[i]->update_used_tables();\n    used_tables_cache |= args[i]->used_tables();\n    if (null_on_null) not_null_tables_cache |= args[i]->not_null_tables();\n    add_accum_properties(args[i]);\n  }\n}"
+    },
+    {
+      "purpose": "Modified operation: Item_func_isnull::update_used_tables",
+      "version": "target",
+      "revision": "248c7f7c227e76f3422378ca3b9e10d141dcfc86",
+      "path": "sql/item_cmpfunc.cc",
+      "start": 5957,
+      "end": 5970,
+      "blob": "57c367f4470d918ab9f3ed89899c6cb9b150a44f",
+      "url": "https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item_cmpfunc.cc",
+      "code": "void Item_func_isnull::update_used_tables() {\n  args[0]->update_used_tables();\n  set_accum_properties(args[0]);\n  if (!args[0]->is_nullable()) {\n    used_tables_cache = 0;\n  } else {\n    used_tables_cache = args[0]->used_tables();\n    if (!const_item()) cache_used = false;\n  }\n\n  not_null_tables_cache = 0;\n  if (null_on_null && !const_item())\n    not_null_tables_cache |= args[0]->not_null_tables();\n}"
+    },
+    {
+      "purpose": "Modified operation: Item_func_isnull::update_used_tables",
+      "version": "parent",
+      "revision": "15980860ac2639f41dfbda2f7fffb7aeeab32921",
+      "path": "sql/item_cmpfunc.cc",
+      "start": 5955,
+      "end": 5971,
+      "blob": "002fbf27162429bd2711c83bf90a771e9b77a1ed",
+      "url": "https://github.com/mysql/mysql-server/blob/15980860ac2639f41dfbda2f7fffb7aeeab32921/sql/item_cmpfunc.cc",
+      "code": "}\n\nvoid Item_func_isnull::update_used_tables() {\n  if (!args[0]->is_nullable()) {\n    used_tables_cache = 0;\n  } else {\n    args[0]->update_used_tables();\n    set_accum_properties(args[0]);\n\n    used_tables_cache = args[0]->used_tables();\n    if (!const_item()) cache_used = false;\n  }\n\n  not_null_tables_cache = 0;\n  if (null_on_null && !const_item())\n    not_null_tables_cache |= args[0]->not_null_tables();\n}"
+    },
+    {
+      "purpose": "Object constructor and added rollup property override",
+      "version": "target",
+      "revision": "248c7f7c227e76f3422378ca3b9e10d141dcfc86",
+      "path": "sql/item_func.h",
+      "start": 1605,
+      "end": 1639,
+      "blob": "3518ebc2f499ba5061d8e7eab95c91ebcfc622dc",
+      "url": "https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item_func.h",
+      "code": "class Item_rollup_group_item final : public Item_func {\n public:\n  Item_rollup_group_item(int min_rollup_level, Item *inner_item)\n      : Item_func(inner_item), m_min_rollup_level(min_rollup_level) {\n    item_name = inner_item->item_name;\n    set_data_type_from_item(inner_item);\n    // We're going to replace inner_item in the SELECT list, so copy its hidden\n    // status. (We could have done this in the caller, but it fits naturally in\n    // with all the other copying done here.)\n    hidden = inner_item->hidden;\n    set_nullable(true);\n    set_rollup_expr();\n  }\n  double val_real() override;\n  longlong val_int() override;\n  String *val_str(String *str) override;\n  my_decimal *val_decimal(my_decimal *dec) override;\n  bool val_json(Json_wrapper *result) override;\n  bool get_date(MYSQL_TIME *ltime, my_time_flags_t fuzzydate) override;\n  bool get_time(MYSQL_TIME *ltime) override;\n  const char *func_name() const override { return \"rollup_group_item\"; }\n  table_map used_tables() const override {\n    /*\n      If underlying item is non-constant, return its used_tables value.\n      Otherwise, ensure it is non-constant by adding RAND_TABLE_BIT.\n    */\n    return args[0]->const_for_execution()\n               ? (args[0]->used_tables() | RAND_TABLE_BIT)\n               : args[0]->used_tables();\n  }\n  void update_used_tables() override {\n    Item_func::update_used_tables();\n    set_rollup_expr();\n  }\n  Item_result result_type() const override { return args[0]->result_type(); }"
+    },
+    {
+      "purpose": "Object constructor and added rollup property override",
+      "version": "parent",
+      "revision": "15980860ac2639f41dfbda2f7fffb7aeeab32921",
+      "path": "sql/item_func.h",
+      "start": 1605,
+      "end": 1637,
+      "blob": "879110b723a83e941b13ff1652bf1c443aa9b38a",
+      "url": "https://github.com/mysql/mysql-server/blob/15980860ac2639f41dfbda2f7fffb7aeeab32921/sql/item_func.h",
+      "code": "class Item_rollup_group_item final : public Item_func {\n public:\n  Item_rollup_group_item(int min_rollup_level, Item *inner_item)\n      : Item_func(inner_item), m_min_rollup_level(min_rollup_level) {\n    item_name = inner_item->item_name;\n    set_data_type_from_item(inner_item);\n    // We're going to replace inner_item in the SELECT list, so copy its hidden\n    // status. (We could have done this in the caller, but it fits naturally in\n    // with all the other copying done here.)\n    hidden = inner_item->hidden;\n    set_nullable(true);\n    set_rollup_expr();\n  }\n  double val_real() override;\n  longlong val_int() override;\n  String *val_str(String *str) override;\n  my_decimal *val_decimal(my_decimal *dec) override;\n  bool val_json(Json_wrapper *result) override;\n  bool get_date(MYSQL_TIME *ltime, my_time_flags_t fuzzydate) override;\n  bool get_time(MYSQL_TIME *ltime) override;\n  const char *func_name() const override { return \"rollup_group_item\"; }\n  table_map used_tables() const override {\n    /*\n      If underlying item is non-constant, return its used_tables value.\n      Otherwise, ensure it is non-constant by adding RAND_TABLE_BIT.\n    */\n    return args[0]->const_for_execution()\n               ? (args[0]->used_tables() | RAND_TABLE_BIT)\n               : args[0]->used_tables();\n  }\n  Item_result result_type() const override { return args[0]->result_type(); }\n  bool resolve_type(THD *) override {\n    // needn't handle dynamic parameter as its const_item() is false."
+    },
+    {
+      "purpose": "Expression replacement and update_used_tables caller",
+      "version": "target",
+      "revision": "248c7f7c227e76f3422378ca3b9e10d141dcfc86",
+      "path": "sql/sql_resolver.cc",
+      "start": 6498,
+      "end": 6556,
+      "blob": "f418cb5dc62eae824bf9a53c8322ac37bd2af676",
+      "url": "https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/sql_resolver.cc",
+      "code": "/**\n  A minion of transform_scalar_subqueries_to_join_with_derived.\n\n  A transform creates a field representing the value of the derived table and\n  adds it as a hidden field to the select list.  Next, it replaces the subquery\n  in the item tree with this field.  If we replace in a HAVING condition, we\n  build an Item_ref, cf. PTI_simple_ident_ident::itemize which also creates a\n  Item_ref for a field reference in HAVING, because we may need to access the\n  field in a tmp table.\n\n  @param      thd       The session context\n  @param      subquery  The scalar subquery\n  @param      tr        The table reference for the derived table\n  @param      expr      The expression we are replacing (in)\n*/\nbool Query_block::replace_subquery_in_expr(THD *thd, Item::Css_info *subquery,\n                                           Table_ref *tr, Item **expr) {\n  if (!(*expr)->has_subquery()) return false;\n\n  Item_singlerow_subselect::Scalar_subquery_replacement info(\n      subquery->item,\n      // make sure to not replace with one of the hidden fields, if present,\n      // e.g. for INTERSECT:\n      tr->table->field[tr->table->hidden_field_count], this,\n      subquery->m_add_coalesce);\n\n  // ROLLUP wrappers might have been added to the expression at this point. Take\n  // care to transform the inner item and keep the rollup wrappers as is.\n  bool with_rollup_wrapper = is_rollup_group_wrapper(*expr);\n  Item *orig_unwrapped_item = unwrap_rollup_group(*expr);\n  Item *new_item = (*expr)->transform(&Item::replace_scalar_subquery,\n                                      pointer_cast<uchar *>(&info));\n  if (new_item == nullptr) return true;\n\n  // If we replaced an item contained in the transformed query block,\n  // retain its name so the metadata column name remains correct.\n  if (*expr != new_item) {\n    new_item->item_name.set((*expr)->item_name.ptr());\n    *expr = new_item;\n  } else if (with_rollup_wrapper) {\n    // If the original expression was a rollup group item, the inner item of the\n    // expression might have changed.\n    Item *new_unwrapped_item = unwrap_rollup_group(new_item);\n    if (new_unwrapped_item != orig_unwrapped_item)\n      new_unwrapped_item->item_name.set((*expr)->item_name.ptr());\n  }\n\n  new_item->update_used_tables();\n\n  // If this expression has aggregation and we have replaced a subquery\n  // with a field, we need to recompute split_sum_func\n  if ((new_item->has_aggregation() &&\n       !(new_item->type() == Item::SUM_FUNC_ITEM &&\n         !new_item->m_is_window_function)) ||  //(1)\n      new_item->has_wf())                      // (2)\n    new_item->split_sum_func(thd, base_ref_items, &fields);\n  if (thd->is_error()) return true;\n  return false;\n}"
+    },
+    {
+      "purpose": "Expression replacement and update_used_tables caller",
+      "version": "parent",
+      "revision": "15980860ac2639f41dfbda2f7fffb7aeeab32921",
+      "path": "sql/sql_resolver.cc",
+      "start": 6498,
+      "end": 6556,
+      "blob": "f418cb5dc62eae824bf9a53c8322ac37bd2af676",
+      "url": "https://github.com/mysql/mysql-server/blob/15980860ac2639f41dfbda2f7fffb7aeeab32921/sql/sql_resolver.cc",
+      "code": "/**\n  A minion of transform_scalar_subqueries_to_join_with_derived.\n\n  A transform creates a field representing the value of the derived table and\n  adds it as a hidden field to the select list.  Next, it replaces the subquery\n  in the item tree with this field.  If we replace in a HAVING condition, we\n  build an Item_ref, cf. PTI_simple_ident_ident::itemize which also creates a\n  Item_ref for a field reference in HAVING, because we may need to access the\n  field in a tmp table.\n\n  @param      thd       The session context\n  @param      subquery  The scalar subquery\n  @param      tr        The table reference for the derived table\n  @param      expr      The expression we are replacing (in)\n*/\nbool Query_block::replace_subquery_in_expr(THD *thd, Item::Css_info *subquery,\n                                           Table_ref *tr, Item **expr) {\n  if (!(*expr)->has_subquery()) return false;\n\n  Item_singlerow_subselect::Scalar_subquery_replacement info(\n      subquery->item,\n      // make sure to not replace with one of the hidden fields, if present,\n      // e.g. for INTERSECT:\n      tr->table->field[tr->table->hidden_field_count], this,\n      subquery->m_add_coalesce);\n\n  // ROLLUP wrappers might have been added to the expression at this point. Take\n  // care to transform the inner item and keep the rollup wrappers as is.\n  bool with_rollup_wrapper = is_rollup_group_wrapper(*expr);\n  Item *orig_unwrapped_item = unwrap_rollup_group(*expr);\n  Item *new_item = (*expr)->transform(&Item::replace_scalar_subquery,\n                                      pointer_cast<uchar *>(&info));\n  if (new_item == nullptr) return true;\n\n  // If we replaced an item contained in the transformed query block,\n  // retain its name so the metadata column name remains correct.\n  if (*expr != new_item) {\n    new_item->item_name.set((*expr)->item_name.ptr());\n    *expr = new_item;\n  } else if (with_rollup_wrapper) {\n    // If the original expression was a rollup group item, the inner item of the\n    // expression might have changed.\n    Item *new_unwrapped_item = unwrap_rollup_group(new_item);\n    if (new_unwrapped_item != orig_unwrapped_item)\n      new_unwrapped_item->item_name.set((*expr)->item_name.ptr());\n  }\n\n  new_item->update_used_tables();\n\n  // If this expression has aggregation and we have replaced a subquery\n  // with a field, we need to recompute split_sum_func\n  if ((new_item->has_aggregation() &&\n       !(new_item->type() == Item::SUM_FUNC_ITEM &&\n         !new_item->m_is_window_function)) ||  //(1)\n      new_item->has_wf())                      // (2)\n    new_item->split_sum_func(thd, base_ref_items, &fields);\n  if (thd->is_error()) return true;\n  return false;\n}"
+    },
+    {
+      "purpose": "SQL expression locations supplied to the replacement helper",
+      "version": "target",
+      "revision": "248c7f7c227e76f3422378ca3b9e10d141dcfc86",
+      "path": "sql/sql_resolver.cc",
+      "start": 7654,
+      "end": 7693,
+      "blob": "f418cb5dc62eae824bf9a53c8322ac37bd2af676",
+      "url": "https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/sql_resolver.cc",
+      "code": "    /*\n      Replace the subquery with a field in the materialized tmp table\n      in WHERE, JOIN conditions, HAVING clause or SELECT expressions (could be\n      optimized by keeping track in which expression the subquery was found)\n    */\n\n    // Replace in WHERE clause?\n    if (subquery.m_location & Item::Collect_scalar_subquery_info::L_WHERE) {\n      if (*where_expr_p != nullptr &&\n          replace_subquery_in_expr(thd, &subquery, tl, where_expr_p))\n        return true; /* purecov: inspected */\n    }\n\n    // Replace in join conditions?\n    if (subquery.m_location & Item::Collect_scalar_subquery_info::L_JOIN_COND) {\n      if (walk_join_conditions(\n              m_table_nest,\n              [&](Item **expr_p) mutable -> bool {\n                subqueries.m_location =\n                    Item::Collect_scalar_subquery_info::L_JOIN_COND;\n                if (*expr_p != nullptr &&\n                    replace_subquery_in_expr(thd, &subquery, tl, expr_p))\n                  return true; /* purecov: inspected */\n                return false;\n              },\n              &subqueries))\n        return true; /* purecov: inspected */\n    }\n\n    size_t old_size;\n    do {\n      old_size = fields.size();\n      for (Item *&select_expr : fields) {\n        // At this time, expression could be wrapped in a rollup group\n        // wrapper. It is the inner item of the rollup group item that\n        // gets replaced. We take care to retain the rollup wrappers.\n        Item *prev_value = unwrap_rollup_group(select_expr);\n        if (replace_subquery_in_expr(thd, &subquery, tl, &select_expr))\n          return true;\n        Item *unwrapped_select_expr = unwrap_rollup_group(select_expr);"
+    },
+    {
+      "purpose": "SQL expression locations supplied to the replacement helper",
+      "version": "parent",
+      "revision": "15980860ac2639f41dfbda2f7fffb7aeeab32921",
+      "path": "sql/sql_resolver.cc",
+      "start": 7654,
+      "end": 7693,
+      "blob": "f418cb5dc62eae824bf9a53c8322ac37bd2af676",
+      "url": "https://github.com/mysql/mysql-server/blob/15980860ac2639f41dfbda2f7fffb7aeeab32921/sql/sql_resolver.cc",
+      "code": "    /*\n      Replace the subquery with a field in the materialized tmp table\n      in WHERE, JOIN conditions, HAVING clause or SELECT expressions (could be\n      optimized by keeping track in which expression the subquery was found)\n    */\n\n    // Replace in WHERE clause?\n    if (subquery.m_location & Item::Collect_scalar_subquery_info::L_WHERE) {\n      if (*where_expr_p != nullptr &&\n          replace_subquery_in_expr(thd, &subquery, tl, where_expr_p))\n        return true; /* purecov: inspected */\n    }\n\n    // Replace in join conditions?\n    if (subquery.m_location & Item::Collect_scalar_subquery_info::L_JOIN_COND) {\n      if (walk_join_conditions(\n              m_table_nest,\n              [&](Item **expr_p) mutable -> bool {\n                subqueries.m_location =\n                    Item::Collect_scalar_subquery_info::L_JOIN_COND;\n                if (*expr_p != nullptr &&\n                    replace_subquery_in_expr(thd, &subquery, tl, expr_p))\n                  return true; /* purecov: inspected */\n                return false;\n              },\n              &subqueries))\n        return true; /* purecov: inspected */\n    }\n\n    size_t old_size;\n    do {\n      old_size = fields.size();\n      for (Item *&select_expr : fields) {\n        // At this time, expression could be wrapped in a rollup group\n        // wrapper. It is the inner item of the rollup group item that\n        // gets replaced. We take care to retain the rollup wrappers.\n        Item *prev_value = unwrap_rollup_group(select_expr);\n        if (replace_subquery_in_expr(thd, &subquery, tl, &select_expr))\n          return true;\n        Item *unwrapped_select_expr = unwrap_rollup_group(select_expr);"
+    }
+  ]
+}

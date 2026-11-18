@@ -1,0 +1,360 @@
+<?xml version="1.0"?>
+
+<resultset statement="SELECT id, v FROM t1_outer
+ WHERE (v + (SELECT w FROM t1_inner WHERE t1_inner.id = t1_outer.id)) &gt; 20" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <row>
+	<field name="id">2</field>
+	<field name="v">20</field>
+  </row>
+
+  <row>
+	<field name="id">3</field>
+	<field name="v">30</field>
+  </row>
+</resultset>
+<?xml version="1.0"?>
+
+<resultset statement="SELECT id, v FROM t1_outer WHERE v + 5 &gt; 20" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <row>
+	<field name="id">2</field>
+	<field name="v">20</field>
+  </row>
+
+  <row>
+	<field name="id">3</field>
+	<field name="v">30</field>
+  </row>
+</resultset>
+<?xml version="1.0"?>
+
+<resultset statement="SELECT id, v FROM t1_outer
+ WHERE (v + (SELECT w FROM t1_inner WHERE t1_inner.id = t1_outer.id)) &gt; 20" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <row>
+	<field name="id">2</field>
+	<field name="v">20</field>
+  </row>
+
+  <row>
+	<field name="id">3</field>
+	<field name="v">30</field>
+  </row>
+</resultset>
+<?xml version="1.0"?>
+
+<resultset statement="SELECT TRACE FROM information_schema.OPTIMIZER_TRACE" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <row>
+	<field name="TRACE">{
+  &quot;steps&quot;: [
+    {
+      &quot;join_preparation&quot;: {
+        &quot;select#&quot;: 1,
+        &quot;steps&quot;: [
+          {
+            &quot;join_preparation&quot;: {
+              &quot;select#&quot;: 2,
+              &quot;steps&quot;: [
+                {
+                  &quot;expanded_query&quot;: &quot;/* select#2 */ select `t1_inner`.`w` from `t1_inner` where (`t1_inner`.`id` = `t1_outer`.`id`)&quot;
+                }
+              ]
+            }
+          },
+          {
+            &quot;expanded_query&quot;: &quot;/* select#1 */ select `t1_outer`.`id` AS `id`,`t1_outer`.`v` AS `v` from `t1_outer` where ((`t1_outer`.`v` + (/* select#2 */ select `t1_inner`.`w` from `t1_inner` where (`t1_inner`.`id` = `t1_outer`.`id`))) &gt; 20)&quot;
+          }
+        ]
+      }
+    },
+    {
+      &quot;join_optimization&quot;: {
+        &quot;select#&quot;: 1,
+        &quot;steps&quot;: [
+          {
+            &quot;condition_processing&quot;: {
+              &quot;condition&quot;: &quot;WHERE&quot;,
+              &quot;original_condition&quot;: &quot;((`t1_outer`.`v` + (/* select#2 */ select `t1_inner`.`w` from `t1_inner` where (`t1_inner`.`id` = `t1_outer`.`id`))) &gt; 20)&quot;,
+              &quot;steps&quot;: [
+                {
+                  &quot;transformation&quot;: &quot;equality_propagation&quot;,
+                  &quot;subselect_evaluation&quot;: [
+                  ],
+                  &quot;resulting_condition&quot;: &quot;((`t1_outer`.`v` + (/* select#2 */ select `t1_inner`.`w` from `t1_inner` where (`t1_inner`.`id` = `t1_outer`.`id`))) &gt; 20)&quot;
+                },
+                {
+                  &quot;transformation&quot;: &quot;constant_propagation&quot;,
+                  &quot;subselect_evaluation&quot;: [
+                  ],
+                  &quot;resulting_condition&quot;: &quot;((`t1_outer`.`v` + (/* select#2 */ select `t1_inner`.`w` from `t1_inner` where (`t1_inner`.`id` = `t1_outer`.`id`))) &gt; 20)&quot;
+                },
+                {
+                  &quot;transformation&quot;: &quot;trivial_condition_removal&quot;,
+                  &quot;subselect_evaluation&quot;: [
+                  ],
+                  &quot;resulting_condition&quot;: &quot;((`t1_outer`.`v` + (/* select#2 */ select `t1_inner`.`w` from `t1_inner` where (`t1_inner`.`id` = `t1_outer`.`id`))) &gt; 20)&quot;
+                }
+              ]
+            }
+          },
+          {
+            &quot;substitute_generated_columns&quot;: {
+            }
+          },
+          {
+            &quot;table_dependencies&quot;: [
+              {
+                &quot;table&quot;: &quot;`t1_outer`&quot;,
+                &quot;row_may_be_null&quot;: false,
+                &quot;map_bit&quot;: 0,
+                &quot;depends_on_map_bits&quot;: [
+                ]
+              }
+            ]
+          },
+          {
+            &quot;ref_optimizer_key_uses&quot;: [
+            ]
+          },
+          {
+            &quot;rows_estimation&quot;: [
+              {
+                &quot;table&quot;: &quot;`t1_outer`&quot;,
+                &quot;table_scan&quot;: {
+                  &quot;rows&quot;: 3,
+                  &quot;cost&quot;: 0.25
+                }
+              }
+            ]
+          },
+          {
+            &quot;considered_execution_plans&quot;: [
+              {
+                &quot;plan_prefix&quot;: [
+                ],
+                &quot;table&quot;: &quot;`t1_outer`&quot;,
+                &quot;best_access_path&quot;: {
+                  &quot;considered_access_paths&quot;: [
+                    {
+                      &quot;rows_to_scan&quot;: 3,
+                      &quot;access_type&quot;: &quot;scan&quot;,
+                      &quot;resulting_rows&quot;: 3,
+                      &quot;cost&quot;: 0.55,
+                      &quot;chosen&quot;: true
+                    }
+                  ]
+                },
+                &quot;condition_filtering_pct&quot;: 100,
+                &quot;rows_for_plan&quot;: 3,
+                &quot;cost_for_plan&quot;: 0.55,
+                &quot;chosen&quot;: true
+              }
+            ]
+          },
+          {
+            &quot;attaching_conditions_to_tables&quot;: {
+              &quot;original_condition&quot;: &quot;((`t1_outer`.`v` + (/* select#2 */ select `t1_inner`.`w` from `t1_inner` where (`t1_inner`.`id` = `t1_outer`.`id`))) &gt; 20)&quot;,
+              &quot;attached_conditions_computation&quot;: [
+              ],
+              &quot;attached_conditions_summary&quot;: [
+                {
+                  &quot;table&quot;: &quot;`t1_outer`&quot;,
+                  &quot;attached&quot;: &quot;((`t1_outer`.`v` + (/* select#2 */ select `t1_inner`.`w` from `t1_inner` where (`t1_inner`.`id` = `t1_outer`.`id`))) &gt; 20)&quot;
+                }
+              ]
+            }
+          },
+          {
+            &quot;finalizing_table_conditions&quot;: [
+              {
+                &quot;table&quot;: &quot;`t1_outer`&quot;,
+                &quot;original_table_condition&quot;: &quot;((`t1_outer`.`v` + (/* select#2 */ select `t1_inner`.`w` from `t1_inner` where (`t1_inner`.`id` = `t1_outer`.`id`))) &gt; 20)&quot;,
+                &quot;final_table_condition   &quot;: &quot;((`t1_outer`.`v` + (/* select#2 */ select `t1_inner`.`w` from `t1_inner` where (`t1_inner`.`id` = `t1_outer`.`id`))) &gt; 20)&quot;
+              }
+            ]
+          },
+          {
+            &quot;refine_plan&quot;: [
+              {
+                &quot;table&quot;: &quot;`t1_outer`&quot;
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      &quot;join_optimization&quot;: {
+        &quot;select#&quot;: 2,
+        &quot;steps&quot;: [
+          {
+            &quot;condition_processing&quot;: {
+              &quot;condition&quot;: &quot;WHERE&quot;,
+              &quot;original_condition&quot;: &quot;(`t1_inner`.`id` = `t1_outer`.`id`)&quot;,
+              &quot;steps&quot;: [
+                {
+                  &quot;transformation&quot;: &quot;equality_propagation&quot;,
+                  &quot;resulting_condition&quot;: &quot;(`t1_inner`.`id` = `t1_outer`.`id`)&quot;
+                },
+                {
+                  &quot;transformation&quot;: &quot;constant_propagation&quot;,
+                  &quot;resulting_condition&quot;: &quot;(`t1_inner`.`id` = `t1_outer`.`id`)&quot;
+                },
+                {
+                  &quot;transformation&quot;: &quot;trivial_condition_removal&quot;,
+                  &quot;resulting_condition&quot;: &quot;(`t1_inner`.`id` = `t1_outer`.`id`)&quot;
+                }
+              ]
+            }
+          },
+          {
+            &quot;substitute_generated_columns&quot;: {
+            }
+          },
+          {
+            &quot;table_dependencies&quot;: [
+              {
+                &quot;table&quot;: &quot;`t1_inner`&quot;,
+                &quot;row_may_be_null&quot;: false,
+                &quot;map_bit&quot;: 0,
+                &quot;depends_on_map_bits&quot;: [
+                ]
+              }
+            ]
+          },
+          {
+            &quot;ref_optimizer_key_uses&quot;: [
+              {
+                &quot;table&quot;: &quot;`t1_inner`&quot;,
+                &quot;field&quot;: &quot;id&quot;,
+                &quot;equals&quot;: &quot;`t1_outer`.`id`&quot;,
+                &quot;null_rejecting&quot;: true
+              }
+            ]
+          },
+          {
+            &quot;rows_estimation&quot;: [
+              {
+                &quot;table&quot;: &quot;`t1_inner`&quot;,
+                &quot;table_scan&quot;: {
+                  &quot;rows&quot;: 3,
+                  &quot;cost&quot;: 0.25
+                }
+              }
+            ]
+          },
+          {
+            &quot;considered_execution_plans&quot;: [
+              {
+                &quot;plan_prefix&quot;: [
+                ],
+                &quot;table&quot;: &quot;`t1_inner`&quot;,
+                &quot;best_access_path&quot;: {
+                  &quot;considered_access_paths&quot;: [
+                    {
+                      &quot;access_type&quot;: &quot;eq_ref&quot;,
+                      &quot;index&quot;: &quot;PRIMARY&quot;,
+                      &quot;rows&quot;: 1,
+                      &quot;cost&quot;: 0.35,
+                      &quot;chosen&quot;: true,
+                      &quot;cause&quot;: &quot;clustered_pk_chosen_by_heuristics&quot;
+                    },
+                    {
+                      &quot;access_type&quot;: &quot;scan&quot;,
+                      &quot;cost&quot;: 0.55,
+                      &quot;rows&quot;: 3,
+                      &quot;chosen&quot;: false,
+                      &quot;cause&quot;: &quot;cost&quot;
+                    }
+                  ]
+                },
+                &quot;condition_filtering_pct&quot;: 100,
+                &quot;rows_for_plan&quot;: 1,
+                &quot;cost_for_plan&quot;: 0.35,
+                &quot;chosen&quot;: true
+              }
+            ]
+          },
+          {
+            &quot;attaching_conditions_to_tables&quot;: {
+              &quot;original_condition&quot;: &quot;(`t1_inner`.`id` = `t1_outer`.`id`)&quot;,
+              &quot;attached_conditions_computation&quot;: [
+              ],
+              &quot;attached_conditions_summary&quot;: [
+                {
+                  &quot;table&quot;: &quot;`t1_inner`&quot;,
+                  &quot;attached&quot;: &quot;(`t1_inner`.`id` = `t1_outer`.`id`)&quot;
+                }
+              ]
+            }
+          },
+          {
+            &quot;finalizing_table_conditions&quot;: [
+              {
+                &quot;table&quot;: &quot;`t1_inner`&quot;,
+                &quot;original_table_condition&quot;: &quot;(`t1_inner`.`id` = `t1_outer`.`id`)&quot;,
+                &quot;final_table_condition   &quot;: null
+              }
+            ]
+          },
+          {
+            &quot;refine_plan&quot;: [
+              {
+                &quot;table&quot;: &quot;`t1_inner`&quot;
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      &quot;join_execution&quot;: {
+        &quot;select#&quot;: 1,
+        &quot;steps&quot;: [
+          {
+            &quot;subselect_execution&quot;: {
+              &quot;select#&quot;: 2,
+              &quot;steps&quot;: [
+                {
+                  &quot;join_execution&quot;: {
+                    &quot;select#&quot;: 2,
+                    &quot;steps&quot;: [
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            &quot;subselect_execution&quot;: {
+              &quot;select#&quot;: 2,
+              &quot;steps&quot;: [
+                {
+                  &quot;join_execution&quot;: {
+                    &quot;select#&quot;: 2,
+                    &quot;steps&quot;: [
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            &quot;subselect_execution&quot;: {
+              &quot;select#&quot;: 2,
+              &quot;steps&quot;: [
+                {
+                  &quot;join_execution&quot;: {
+                    &quot;select#&quot;: 2,
+                    &quot;steps&quot;: [
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}</field>
+  </row>
+</resultset>

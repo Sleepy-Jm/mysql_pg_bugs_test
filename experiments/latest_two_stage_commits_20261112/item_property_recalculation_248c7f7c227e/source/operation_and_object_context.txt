@@ -1,0 +1,277 @@
+Selected operation and object-source excerpts. Ranges are literal upstream source, including comments. Some ranges are partial functions; omitted code is not claimed to be supplied.
+
+## Modified operation: Item_func::update_used_tables
+### Parent
+Source: https://github.com/mysql/mysql-server/blob/15980860ac2639f41dfbda2f7fffb7aeeab32921/sql/item_func.cc#L708
+Blob: b9bc13b25a67b74729d2f29bb5be432492607d28
+```cpp
+708: void Item_func::update_used_tables() {
+709:   used_tables_cache = get_initial_pseudo_tables();
+710:   not_null_tables_cache = 0;
+711: 
+712:   for (uint i = 0; i < arg_count; i++) {
+713:     args[i]->update_used_tables();
+714:     used_tables_cache |= args[i]->used_tables();
+715:     if (null_on_null) not_null_tables_cache |= args[i]->not_null_tables();
+716:     add_accum_properties(args[i]);
+717:   }
+718: }
+```
+
+### Target
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item_func.cc#L708
+Blob: 31b9dfba5f1fc85c2383f49175759daad498d990
+```cpp
+708: void Item_func::update_used_tables() {
+709:   used_tables_cache = get_initial_pseudo_tables();
+710:   not_null_tables_cache = 0;
+711:   m_accum_properties = 0;
+712: 
+713:   for (uint i = 0; i < arg_count; i++) {
+714:     args[i]->update_used_tables();
+715:     used_tables_cache |= args[i]->used_tables();
+716:     if (null_on_null) not_null_tables_cache |= args[i]->not_null_tables();
+717:     add_accum_properties(args[i]);
+718:   }
+719: }
+```
+
+## Modified operation: Item_func_isnull::update_used_tables
+### Parent
+Source: https://github.com/mysql/mysql-server/blob/15980860ac2639f41dfbda2f7fffb7aeeab32921/sql/item_cmpfunc.cc#L5955
+Blob: 002fbf27162429bd2711c83bf90a771e9b77a1ed
+```cpp
+5955: }
+5956: 
+5957: void Item_func_isnull::update_used_tables() {
+5958:   if (!args[0]->is_nullable()) {
+5959:     used_tables_cache = 0;
+5960:   } else {
+5961:     args[0]->update_used_tables();
+5962:     set_accum_properties(args[0]);
+5963: 
+5964:     used_tables_cache = args[0]->used_tables();
+5965:     if (!const_item()) cache_used = false;
+5966:   }
+5967: 
+5968:   not_null_tables_cache = 0;
+5969:   if (null_on_null && !const_item())
+5970:     not_null_tables_cache |= args[0]->not_null_tables();
+5971: }
+```
+
+### Target
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item_cmpfunc.cc#L5957
+Blob: 57c367f4470d918ab9f3ed89899c6cb9b150a44f
+```cpp
+5957: void Item_func_isnull::update_used_tables() {
+5958:   args[0]->update_used_tables();
+5959:   set_accum_properties(args[0]);
+5960:   if (!args[0]->is_nullable()) {
+5961:     used_tables_cache = 0;
+5962:   } else {
+5963:     used_tables_cache = args[0]->used_tables();
+5964:     if (!const_item()) cache_used = false;
+5965:   }
+5966: 
+5967:   not_null_tables_cache = 0;
+5968:   if (null_on_null && !const_item())
+5969:     not_null_tables_cache |= args[0]->not_null_tables();
+5970: }
+```
+
+## Object constructor and added rollup property override
+### Parent
+Source: https://github.com/mysql/mysql-server/blob/15980860ac2639f41dfbda2f7fffb7aeeab32921/sql/item_func.h#L1605
+Blob: 879110b723a83e941b13ff1652bf1c443aa9b38a
+```cpp
+1605: class Item_rollup_group_item final : public Item_func {
+1606:  public:
+1607:   Item_rollup_group_item(int min_rollup_level, Item *inner_item)
+1608:       : Item_func(inner_item), m_min_rollup_level(min_rollup_level) {
+1609:     item_name = inner_item->item_name;
+1610:     set_data_type_from_item(inner_item);
+1611:     // We're going to replace inner_item in the SELECT list, so copy its hidden
+1612:     // status. (We could have done this in the caller, but it fits naturally in
+1613:     // with all the other copying done here.)
+1614:     hidden = inner_item->hidden;
+1615:     set_nullable(true);
+1616:     set_rollup_expr();
+1617:   }
+1618:   double val_real() override;
+1619:   longlong val_int() override;
+1620:   String *val_str(String *str) override;
+1621:   my_decimal *val_decimal(my_decimal *dec) override;
+1622:   bool val_json(Json_wrapper *result) override;
+1623:   bool get_date(MYSQL_TIME *ltime, my_time_flags_t fuzzydate) override;
+1624:   bool get_time(MYSQL_TIME *ltime) override;
+1625:   const char *func_name() const override { return "rollup_group_item"; }
+1626:   table_map used_tables() const override {
+1627:     /*
+1628:       If underlying item is non-constant, return its used_tables value.
+1629:       Otherwise, ensure it is non-constant by adding RAND_TABLE_BIT.
+1630:     */
+1631:     return args[0]->const_for_execution()
+1632:                ? (args[0]->used_tables() | RAND_TABLE_BIT)
+1633:                : args[0]->used_tables();
+1634:   }
+1635:   Item_result result_type() const override { return args[0]->result_type(); }
+1636:   bool resolve_type(THD *) override {
+1637:     // needn't handle dynamic parameter as its const_item() is false.
+```
+
+### Target
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/item_func.h#L1605
+Blob: 3518ebc2f499ba5061d8e7eab95c91ebcfc622dc
+```cpp
+1605: class Item_rollup_group_item final : public Item_func {
+1606:  public:
+1607:   Item_rollup_group_item(int min_rollup_level, Item *inner_item)
+1608:       : Item_func(inner_item), m_min_rollup_level(min_rollup_level) {
+1609:     item_name = inner_item->item_name;
+1610:     set_data_type_from_item(inner_item);
+1611:     // We're going to replace inner_item in the SELECT list, so copy its hidden
+1612:     // status. (We could have done this in the caller, but it fits naturally in
+1613:     // with all the other copying done here.)
+1614:     hidden = inner_item->hidden;
+1615:     set_nullable(true);
+1616:     set_rollup_expr();
+1617:   }
+1618:   double val_real() override;
+1619:   longlong val_int() override;
+1620:   String *val_str(String *str) override;
+1621:   my_decimal *val_decimal(my_decimal *dec) override;
+1622:   bool val_json(Json_wrapper *result) override;
+1623:   bool get_date(MYSQL_TIME *ltime, my_time_flags_t fuzzydate) override;
+1624:   bool get_time(MYSQL_TIME *ltime) override;
+1625:   const char *func_name() const override { return "rollup_group_item"; }
+1626:   table_map used_tables() const override {
+1627:     /*
+1628:       If underlying item is non-constant, return its used_tables value.
+1629:       Otherwise, ensure it is non-constant by adding RAND_TABLE_BIT.
+1630:     */
+1631:     return args[0]->const_for_execution()
+1632:                ? (args[0]->used_tables() | RAND_TABLE_BIT)
+1633:                : args[0]->used_tables();
+1634:   }
+1635:   void update_used_tables() override {
+1636:     Item_func::update_used_tables();
+1637:     set_rollup_expr();
+1638:   }
+1639:   Item_result result_type() const override { return args[0]->result_type(); }
+```
+
+## Expression replacement and update_used_tables caller
+Identical excerpt independently retrieved from both revisions.
+Parent: https://github.com/mysql/mysql-server/blob/15980860ac2639f41dfbda2f7fffb7aeeab32921/sql/sql_resolver.cc#L6498; blob f418cb5dc62eae824bf9a53c8322ac37bd2af676.
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/sql_resolver.cc#L6498
+Blob: f418cb5dc62eae824bf9a53c8322ac37bd2af676
+```cpp
+6498: /**
+6499:   A minion of transform_scalar_subqueries_to_join_with_derived.
+6500: 
+6501:   A transform creates a field representing the value of the derived table and
+6502:   adds it as a hidden field to the select list.  Next, it replaces the subquery
+6503:   in the item tree with this field.  If we replace in a HAVING condition, we
+6504:   build an Item_ref, cf. PTI_simple_ident_ident::itemize which also creates a
+6505:   Item_ref for a field reference in HAVING, because we may need to access the
+6506:   field in a tmp table.
+6507: 
+6508:   @param      thd       The session context
+6509:   @param      subquery  The scalar subquery
+6510:   @param      tr        The table reference for the derived table
+6511:   @param      expr      The expression we are replacing (in)
+6512: */
+6513: bool Query_block::replace_subquery_in_expr(THD *thd, Item::Css_info *subquery,
+6514:                                            Table_ref *tr, Item **expr) {
+6515:   if (!(*expr)->has_subquery()) return false;
+6516: 
+6517:   Item_singlerow_subselect::Scalar_subquery_replacement info(
+6518:       subquery->item,
+6519:       // make sure to not replace with one of the hidden fields, if present,
+6520:       // e.g. for INTERSECT:
+6521:       tr->table->field[tr->table->hidden_field_count], this,
+6522:       subquery->m_add_coalesce);
+6523: 
+6524:   // ROLLUP wrappers might have been added to the expression at this point. Take
+6525:   // care to transform the inner item and keep the rollup wrappers as is.
+6526:   bool with_rollup_wrapper = is_rollup_group_wrapper(*expr);
+6527:   Item *orig_unwrapped_item = unwrap_rollup_group(*expr);
+6528:   Item *new_item = (*expr)->transform(&Item::replace_scalar_subquery,
+6529:                                       pointer_cast<uchar *>(&info));
+6530:   if (new_item == nullptr) return true;
+6531: 
+6532:   // If we replaced an item contained in the transformed query block,
+6533:   // retain its name so the metadata column name remains correct.
+6534:   if (*expr != new_item) {
+6535:     new_item->item_name.set((*expr)->item_name.ptr());
+6536:     *expr = new_item;
+6537:   } else if (with_rollup_wrapper) {
+6538:     // If the original expression was a rollup group item, the inner item of the
+6539:     // expression might have changed.
+6540:     Item *new_unwrapped_item = unwrap_rollup_group(new_item);
+6541:     if (new_unwrapped_item != orig_unwrapped_item)
+6542:       new_unwrapped_item->item_name.set((*expr)->item_name.ptr());
+6543:   }
+6544: 
+6545:   new_item->update_used_tables();
+6546: 
+6547:   // If this expression has aggregation and we have replaced a subquery
+6548:   // with a field, we need to recompute split_sum_func
+6549:   if ((new_item->has_aggregation() &&
+6550:        !(new_item->type() == Item::SUM_FUNC_ITEM &&
+6551:          !new_item->m_is_window_function)) ||  //(1)
+6552:       new_item->has_wf())                      // (2)
+6553:     new_item->split_sum_func(thd, base_ref_items, &fields);
+6554:   if (thd->is_error()) return true;
+6555:   return false;
+6556: }
+```
+
+## SQL expression locations supplied to the replacement helper
+Identical excerpt independently retrieved from both revisions.
+Parent: https://github.com/mysql/mysql-server/blob/15980860ac2639f41dfbda2f7fffb7aeeab32921/sql/sql_resolver.cc#L7654; blob f418cb5dc62eae824bf9a53c8322ac37bd2af676.
+Source: https://github.com/mysql/mysql-server/blob/248c7f7c227e76f3422378ca3b9e10d141dcfc86/sql/sql_resolver.cc#L7654
+Blob: f418cb5dc62eae824bf9a53c8322ac37bd2af676
+```cpp
+7654:     /*
+7655:       Replace the subquery with a field in the materialized tmp table
+7656:       in WHERE, JOIN conditions, HAVING clause or SELECT expressions (could be
+7657:       optimized by keeping track in which expression the subquery was found)
+7658:     */
+7659: 
+7660:     // Replace in WHERE clause?
+7661:     if (subquery.m_location & Item::Collect_scalar_subquery_info::L_WHERE) {
+7662:       if (*where_expr_p != nullptr &&
+7663:           replace_subquery_in_expr(thd, &subquery, tl, where_expr_p))
+7664:         return true; /* purecov: inspected */
+7665:     }
+7666: 
+7667:     // Replace in join conditions?
+7668:     if (subquery.m_location & Item::Collect_scalar_subquery_info::L_JOIN_COND) {
+7669:       if (walk_join_conditions(
+7670:               m_table_nest,
+7671:               [&](Item **expr_p) mutable -> bool {
+7672:                 subqueries.m_location =
+7673:                     Item::Collect_scalar_subquery_info::L_JOIN_COND;
+7674:                 if (*expr_p != nullptr &&
+7675:                     replace_subquery_in_expr(thd, &subquery, tl, expr_p))
+7676:                   return true; /* purecov: inspected */
+7677:                 return false;
+7678:               },
+7679:               &subqueries))
+7680:         return true; /* purecov: inspected */
+7681:     }
+7682: 
+7683:     size_t old_size;
+7684:     do {
+7685:       old_size = fields.size();
+7686:       for (Item *&select_expr : fields) {
+7687:         // At this time, expression could be wrapped in a rollup group
+7688:         // wrapper. It is the inner item of the rollup group item that
+7689:         // gets replaced. We take care to retain the rollup wrappers.
+7690:         Item *prev_value = unwrap_rollup_group(select_expr);
+7691:         if (replace_subquery_in_expr(thd, &subquery, tl, &select_expr))
+7692:           return true;
+7693:         Item *unwrapped_select_expr = unwrap_rollup_group(select_expr);
+```

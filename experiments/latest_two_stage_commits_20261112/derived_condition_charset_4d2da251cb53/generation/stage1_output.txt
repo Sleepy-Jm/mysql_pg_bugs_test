@@ -1,0 +1,133 @@
+## 1. How to reach the modified path
+
+The modified operation is `parse_expression()` at `sql/sql_derived.cc:550-572`. The target-specific behavior is the call
+
+```text
+item->print(
+    thd, &str,
+    enum_query_type(QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET))
+```
+
+at lines 571-572. That serializes the `Item` into `str`, a `StringBuffer<1024>` default-constructed with `my_charset_bin` (`include/sql_string.h:629-635`). The serialized SQL is then handed to `parser_state.init()` at line 576 and reparsed by `parse_sql()` at line 618.
+
+There are two source-supported object paths for reaching this modified operation with a string literal inside a `LIKE` expression.
+
+### Path A — outer `LIKE` condition cloned for a UNION/set-operation derived table
+
+Symbolic SQL shape:
+
+```text
+outer predicate:
+    dt.col LIKE <string-literal>
+
+derived table:
+    ( SELECT ... UNION SELECT ... ) AS dt
+```
+
+Established chain from the supplied source:
+
+1. Condition pushdown must be permitted. The guard is in `TABLE_LIST::can_push_condition_to_derived()` at `sql_derived.cc:976-985`: the optimizer switch/hint must allow derived condition pushdown, the derived unit must have no row limit, the derived table must not be an inner table of an outer join, and the other conditions in that function must hold.
+2. `Condition_pushdown::make_cond_for_derived()` obtains a pushdown candidate via `extract_cond_for_table()` at line 1007. The candidate `m_cond_to_push` must contain the `LIKE` predicate, not leave it in `m_remainder_cond`.
+3. In the query-block loop, `derived_query_expression->is_set_operation()` is true (`sql/sql_derived.cc:1026`). Therefore the code clones the whole outer condition once per query block:
+   ```text
+   m_cond_to_push =
+       derived_query_expression->outer_query_block()->clone_expression(
+           thd, orig_cond_to_push);
+   ```
+   at lines 1028-1029.
+4. `Query_block::clone_expression()` calls `parse_expression(thd, item, this)` at line 735. Here `item` is the whole outer condition tree, including the `Item_func_like` and its `Item_string` pattern.
+5. `parse_expression()` serializes that tree with the modified `item->print` call and reparses it.
+
+Thus the sensitive object is the outer `LIKE` predicate’s string literal, serialized during the set-operation clone before `replace_columns_in_cond()` later replaces the derived-table column references.
+
+A bypass for this path is a non-set-operation derived table: in that case the whole-condition clone at lines 1026-1030 is skipped, and this exact outer-literal serialization does not occur through this loop.
+
+### Path B — derived-list `LIKE` expression cloned during column replacement
+
+Symbolic SQL shape:
+
+```text
+derived column expression:
+    base.col LIKE <string-literal>
+
+outer predicate:
+    dt.derived_col = 1   (or another predicate referencing that column)
+```
+
+Established chain:
+
+1. `Condition_pushdown::make_cond_for_derived()` reaches `replace_columns_in_cond()` for the pushed `WHERE` or `HAVING` condition at `sql/sql_derived.cc:1052-1059`.
+2. `replace_columns_in_cond()` creates `Derived_table_info dti(m_derived_table, m_query_block)` at line 1354 and invokes `Item_field::replace_with_derived_expr` through `transform()` at lines 1361-1365.
+3. `Item_field::replace_with_derived_expr()` checks that the field belongs to the derived table (`item.cc:1051-1052`), then calls:
+   ```text
+   query_block->clone_expression(
+       current_thd, query_block->get_derived_expr(field->field_index()));
+   ```
+   at `item.cc:1053-1055`.
+4. `Query_block::get_derived_expr()` returns the underlying select-list expression at `sql/sql_derived.cc:1196-1207`.
+5. `clone_expression()` again calls `parse_expression()` at line 735, so the derived expression containing `LIKE <string-literal>` is serialized and reparsed.
+
+This path is distinct because the serialized `Item` is a derived select-list expression, not the outer condition itself.
+
+The call chains above are established from the supplied excerpts. A missing link is that the excerpts do not show `Item_func_like::print()`, so it remains to be confirmed that the top-level `query_type` passed to `item->print()` is propagated unchanged to the pattern `Item_string::print()` in both parent and target. Execution observation should verify that:
+
+- the `Item` passed to `parse_expression()` actually contains the intended `LIKE` string literal;
+- the serialized `str` contains the literal and any associated introducer/charset context;
+- the reparsed `parser_state.result` contains an `Item_string` under `LIKE` with the expected charset/collation.
+
+## 2. Sensitive inputs and possible errors after reaching that path
+
+The parent revision passes only `QT_NO_DATA_EXPANSION` to `item->print()`. The target revision passes `QT_NO_DATA_EXPANSION | QT_TO_ARGUMENT_CHARSET`.
+
+In `Item_string::print()` (`sql/item.cc:3426-3479`), this changes the branch taken:
+
+- Parent with no `QT_TO_ARGUMENT_CHARSET` takes the final `else` branch:
+  ```text
+  str_value.print(str)
+  ```
+  at lines 3473-3475.
+- Target with `QT_TO_ARGUMENT_CHARSET` takes the `else if` branch:
+  ```text
+  if (print_introducer)
+      convert_and_print(&str_value, str, collation.collation);
+  else
+      convert_and_print(&str_value, str, str->charset());
+  ```
+  at lines 3464-3472.
+
+Therefore the modification does not merely make the path reachable; it changes how a character string literal is serialized. A semantic error can arise only if the serialized literal reparses with a different character set/collation than the original literal had.
+
+### Candidate C1 — outer `LIKE` literal cloned through set-operation condition pushdown
+
+**Construction:** `outer WHERE dt.col LIKE <literal>` over a `UNION` derived table → `m_cond_to_push` contains the `LIKE` predicate → set-operation loop clones the whole predicate with `clone_expression()` → `parse_expression()` → `Item_string::print()` is reached with the modified flag.
+
+**Sensitive input property:** The pattern literal has a character set/collation that is not exactly reproduced by the parent serialization/reparsing. The strongest cases are:
+
+- the literal has an explicit introducer such as `_utf8mb4'pattern'`, and `str_value` bytes and `collation.collation` are not already equivalent, so parent prints an introducer followed by raw bytes that are not converted to the introduced charset; or
+- the literal has no explicit introducer but has been coerced to an argument/column collation different from the reparsing default, so parent prints raw bytes without a charset prefix.
+
+Pure ASCII patterns in the default connection charset are a contrast where the parent and target likely serialize equivalently and no visible semantic error appears.
+
+**Parent/target operation difference:** Parent serializes with the `else` branch `str_value.print(str)`. Target serializes with the `QT_TO_ARGUMENT_CHARSET` branch, either converting to `collation.collation` when an introducer is printed or converting to `str->charset()` otherwise. If the reparsed pattern gets a different character set/collation, then the `LIKE` comparison itself changes, not merely the cloned item structure.
+
+**Possible semantic violation:** The pushed condition in each union query block would compare the pattern under the wrong charset/collation, so rows may match or fail to match differently from the original outer predicate.
+
+**SQL-visible observation:** A query with a pattern whose matching depends on the original literal charset/collation returns different rows in parent and target. The independent correctness oracle is the SQL semantics of the original outer `LIKE` predicate applied to the derived table: the pushed copy into each union branch must preserve the original string literal’s character set.
+
+**Unresolved step:** The excerpt does not show that `Item_func_like::print()` passes the `query_type` unchanged to its pattern `Item_string`. Also, the concrete `is_cs_specified()`, `str_value` charset, and `collation.collation` for the target literal need to be observed before the semantic violation is established rather than constructionally inferred.
+
+### Candidate C2 — derived-list `LIKE` literal cloned during column replacement
+
+**Construction:** derived select expression contains `base.col LIKE <literal>`; outer predicate references the corresponding derived column → `replace_columns_in_cond()` replaces the field with `clone_expression(get_derived_expr(...))` → `parse_expression()` → `Item_string::print()` is reached with the modified flag.
+
+**Sensitive input property:** The `LIKE` pattern literal in the derived expression has a non-default or explicitly introduced charset/collation whose reparse can differ between parent and target.
+
+**Parent/target operation difference:** The same `Item_string::print()` branch difference applies. Parent serializes the cloned derived expression without `QT_TO_ARGUMENT_CHARSET`; target serializes it with `QT_TO_ARGUMENT_CHARSET`. If the derived expression’s pattern literal reparses with the wrong character set/collation, the replacement condition pushed into the union branch is not semantically equivalent to the original derived column expression.
+
+**Possible semantic violation:** The pushed condition evaluates `base.col LIKE <literal>` differently in each union branch, changing the rows that satisfy the outer predicate over the derived table.
+
+**SQL-visible observation:** A query where the derived column is defined by a charset-sensitive `LIKE` expression returns different rows in parent and target. The oracle is the original derived-table semantics: replacing the outer reference with the derived expression must preserve the original expression’s string literal character set.
+
+**Unresolved step:** It must be confirmed that the referenced `field_index` maps to the `LIKE` expression via `get_derived_expr()`, that the condition reaches `replace_columns_in_cond()` in the relevant `WHERE` or `HAVING` form, and that the cloned expression preserves or loses the pattern charset in the same way as C1. Without observing the concrete literal metadata, this remains a source-guided construction hypothesis.
+
+No runtime reachability has been measured; the candidates above are source-guided constructions from the supplied excerpts, and the charset-loss error is inferred from the parent/target serialization difference plus the unresolved printing path.

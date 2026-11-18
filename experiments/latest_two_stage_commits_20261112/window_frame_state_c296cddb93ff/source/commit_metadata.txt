@@ -1,0 +1,33 @@
+Repository: https://github.com/mysql/mysql-server
+Commit: c296cddb93ffc631f9b43d3b1ff769604e7469d7
+Parent: 74c7ccfa27f482576412300e5f92fd3dbeb54cfa
+Commit URL: https://github.com/mysql/mysql-server/commit/c296cddb93ffc631f9b43d3b1ff769604e7469d7
+Commit date: 2022-11-03T12:40:42Z
+
+Original commit message:
+Bug#34431996 mysql window function first_value wrong
+
+Another case of window functions interfering with each other.  Framing
+window functions are potentially attempted evaluated several times on
+the current row during buffered optimized evauation.
+
+The execution state variables are supposed to make sure they are only
+*actually* (re)evaluated via copy_funcs called (from
+processes_buffered_windowing_rescord) for frame rows read back
+(cf. bring_back_frame_row) when it is relevant to do so.
+
+For example FIRST_VALUE should not be reevaluated when we are
+handling LAST_VALUE (or NTH_VALUE != 1), as happens in this bug.
+
+The execution state variables in this case made FIRST_VALUE reevaluate
+itself based on the wrong record just having been fetched back via
+bring_back_frame_row for LAST_VALUE/NTH_VALUE, due to wrong setting of
+m_window->rowno_being_visited(): it was 0, which is supposed to apply
+only for the case of "No FROM; one const row".
+
+Unfortunately, setting m_rowno_being_visited correctly before
+evaluating FIRST_VALUE/LAST_VALUE revealed other inconsistencies (for
+optimized MIN/MAX evaluation), so further changes had to be made to
+bring those in line.
+
+Change-Id: Ic84bcdecfa99c11294f927aab2997f2b80a69218

@@ -1,0 +1,134 @@
+Stage 2: Implement the construction requirements as SQL.
+
+Role: You are a database test implementation engineer. Use the current test objective and the actual Stage 1 handoff to produce a small executable test. Preserve the specified expression positions, object relationships, path conditions, and input properties together in the same target query.
+
+For the current task, aim to generate five target SQL tests, T1-T5, covering different, evidence-backed candidate relationships from Stage 1. For each test, identify its candidate ID and explain what distinct branch/operand relationship, sensitivity mechanism, or input boundary with a different predicted effect it examines. Tests may share established path prerequisites, but five cosmetic variants of one unverified premise do not constitute five supported candidates. Renaming objects or changing values without explaining a different causal effect does not establish diversity. Setup, diagnostics, and controls do not count toward the five target tests. If fewer supported relationships are available, state the shortfall and the missing evidence rather than inventing candidates. Five tests does not imply five different outputs or five successful reproductions.
+
+When the trigger conditions depend on sensitive inputs, prefer unusual but valid inputs that exercise the specific operation difference identified by Stage 1, rather than only typical values. Choose relevant boundary or atypical properties from the handoff, explain their effect, and ensure the sensitive value belongs to the object processed on the intended path. Do not choose arbitrary exotic data unrelated to those conditions. Apply these requirements to the current task; the unrelated example illustrates a single construction only.
+
+Output three sections:
+
+1. Construction realization
+Map the essential Stage 1 requirements to the SQL expressions, data, settings, and operation sequence you choose. Explain which expression supplies the object processed by the target operation; merely including the named features somewhere in the script is insufficient. Keep source-supported mappings separate from implementation candidates. If Stage 1 leaves an essential mapping unresolved, retain it and identify the evidence needed. You may propose an exploratory SQL candidate with an explicit mapping hypothesis, but do not call the requirement satisfied. If no defensible candidate is possible, report the missing link instead of inventing SQL or settings.
+
+2. SQL
+For the supported construction or clearly labeled exploratory candidate, provide minimal setup, data, target queries, useful contrasts, and cleanup. Use actual values supported by the database's syntax and encoding. Separate target queries from contrasts and diagnostic statements. Do not silently replace the supplied mechanism with an unrelated test.
+
+3. Expected results and path observations
+Derive the expected rows or values from the script's data and SQL semantics, independently of either version's output. State precisely what remains to be observed to confirm that the intended object reaches the target branch. Distinguish a valid execution, target-path observation, and a parent/target output difference. A plan clue or matching outputs alone does not establish the object mapping. Do not claim execution or instrumentation that has not occurred.
+
+<unrelated_example>
+Synthetic example using a toy implementation; it is not evidence about MySQL or the current target.
+
+Stage 1 handoff:
+Scan(T) -> Filter(Y >= 0) -> Aggregate(SUM(X)) -> returned total.
+The supplied toy binder maps X to the aggregate slot argument; the executor passes its value on surviving rows to sum_step. Parent adds every non-NULL value; target adds only positive values. Use a surviving negative X, positive surviving values, and an all-positive contrast. Observe the argument identity, row survival, and step operand; the independent oracle is the mathematical sum.
+
+Example Stage 2 output:
+1. Construction realization
+SUM(x) binds the sensitive operand. y >= 0 retains (-2, 1) and (5, 1) but excludes (100, -1). The negative x therefore reaches the step, rather than merely occurring somewhere in the table. The contrast keeps only the positive surviving row. The mapping follows the supplied toy rules and has not been measured at runtime.
+2. SQL
+```sql
+CREATE TEMPORARY TABLE mapping_demo (x INT NOT NULL, y INT NOT NULL);
+INSERT INTO mapping_demo VALUES (-2, 1), (5, 1), (100, -1);
+SELECT SUM(x) AS total FROM mapping_demo WHERE y >= 0;
+SELECT SUM(x) AS total FROM mapping_demo WHERE y >= 0 AND x > 0;
+DROP TEMPORARY TABLE mapping_demo;
+```
+3. Expected results and path observations
+Target query: one row, total = -2 + 5 = 3. Contrast: one row, total = 5. The toy target operation predicts an erroneous target-query total of 5; this prediction is not the correctness oracle. At toy/exec.cc:30, observe that the slot argument is x and the target query supplies v=-2 and v=5. At toy/sum.cc:40, record the selected branch. No execution or observation is claimed.
+</unrelated_example>
+
+<test_objective>
+Target: item_property_recalculation_248c7f7c227e
+Target observation: Accumulated Item property recalculation across ordinary arguments, references and IN-subquery wrappers, and its use by window materialization
+Revision: 248c7f7c227e76f3422378ca3b9e10d141dcfc86
+Parent revision: 15980860ac2639f41dfbda2f7fffb7aeeab32921
+</test_objective>
+
+<stage1_handoff>
+## 1. How to reach the modified path
+
+Pattern:
+
+```
+scalar subquery inside expression E
+  -> Query_block::replace_subquery_in_expr
+      guard: E->has_subquery()
+      transform subquery to hidden derived-table field
+      new_item->update_used_tables()
+        -> modified update_used_tables override
+```
+
+The supplied caller locations are `WHERE`, `JOIN` conditions, and `SELECT` expressions (`sql_resolver.cc:7654-7693`), which all call `replace_subquery_in_expr`. The transform guard is `(*expr)->has_subquery()` (`sql_resolver.cc:6515`), and the post-transform call is `new_item->update_used_tables()` (`sql_resolver.cc:6545`). For `SELECT` expressions, the code explicitly unwraps rollup wrappers before replacement and retains them afterward (`sql_resolver.cc:7687-7693`).
+
+The object reaching the modified operations is therefore the post-replacement item:
+
+- If `new_item` is an ordinary `Item_func`, target `Item_func::update_used_tables()` (`sql/item_func.cc:708-719`) executes. It first sets `m_accum_properties = 0`, then loops over `args[i]`, calls each child’s `update_used_tables()`, and ORs child properties through `add_accum_properties()`. This is the central point that clears stale properties after substitution.
+- If `new_item` is an `IS NULL` expression, target `Item_func_isnull::update_used_tables()` (`sql/item_cmpfunc.cc:5957-5970`) executes. It now always calls `args[0]->update_used_tables()` and `set_accum_properties(args[0])` before checking `is_nullable()`. Parent only did this in the nullable branch.
+- If `new_item` is a rollup wrapper, target `Item_rollup_group_item::update_used_tables()` (`sql/item_func.h:1635-1638`) calls the base `Item_func::update_used_tables()` and then re-applies `set_rollup_expr()`, because the base reset now clears `PROP_ROLLUP_EXPR`.
+
+Supporting property propagation links:
+
+- `PROP_SUBQUERY` can be set by `Item_in_optimizer`’s constructor (`sql/item_cmpfunc.h:501-504`) and is accumulated upward through `add_accum_properties()` (`sql/item.h:3185-3188`). `has_subquery()` reads this property (`sql/item.h:3197-3198`).
+- `Item_ref::update_used_tables()` resets all accumulated properties except `PROP_ROLLUP_EXPR`, then adds properties from the referenced item (`sql/item.h:5747-5755`). Thus an `Item_ref` follows the referenced item, not the old wrapper state.
+- `Item_in_subselect::update_used_tables()` updates the subselect plus `left_expr` (`sql/item_subselect.cc:2537-2541`), and `Item_in_optimizer::update_used_tables()` delegates to `Item_func::update_used_tables()` (`sql/item_cmpfunc.cc:2410-2419`), so the base reset is also relevant to IN-subquery wrappers.
+- `Item_func_sp::update_used_tables()` shows the required preservation pattern for subclasses that set a property outside ordinary argument accumulation: base update, then `set_stored_program()` (`sql/item_func.cc:8410-8415`).
+
+Transformations that bypass the modified path:
+
+- If the post-replacement item is a bare `Item_field` or another non-`Item_func`, `Item_func::update_used_tables()` is not called.
+- If `E` does not initially have `has_subquery()`, `replace_subquery_in_expr()` returns early (`sql_resolver.cc:6515`), so no post-replacement update occurs.
+- For `Item_func_isnull`, the parent already propagated properties when `args[0]->is_nullable()` was true; the changed behavior matters only for the non-nullable branch.
+- For rollup, the override matters only when the post-replacement item is actually an `Item_rollup_group_item`.
+
+Execution must observe the post-replacement item’s dynamic type, the initial presence of a property such as `PROP_SUBQUERY` before replacement, and the child properties after replacement. The supplied source establishes the link from `replace_subquery_in_expr` to `update_used_tables`. The remaining missing link for user-visible error is the downstream consumer of the stale or missing property, except where window materialization explicitly consumes `has_wf()`.
+
+## 2. Sensitive inputs and possible errors after reaching that path
+
+### C1: Stale `PROP_SUBQUERY` on an ordinary `Item_func` after scalar-subquery replacement
+
+SQL structure -> `WHERE`/`JOIN`/`SELECT` expression containing a scalar subquery inside a function or operator, such as `f((SELECT ...), col)` or `col + (SELECT ...)` -> post-replacement root is an `Item_func` -> `replace_subquery_in_expr()` calls `new_item->update_used_tables()` (`sql_resolver.cc:6545`) -> target `Item_func::update_used_tables()` resets `m_accum_properties` before re-accumulating from children (`sql/item_func.cc:708-719`).
+
+Sensitive property: `PROP_SUBQUERY` is true on the root before replacement, but after replacement the children are fields with no subquery. The desired post-replacement state is `has_subquery() == false`.
+
+Parent/target difference: parent `Item_func::update_used_tables()` did not reset `m_accum_properties`; it only ORed child properties into the existing value. Therefore stale `PROP_SUBQUERY` survived. Target clears it and recomputes from children.
+
+Possible semantic violation: after substitution, the expression still reports `has_subquery() == true`. A downstream pass that uses `has_subquery()` can treat an already-replaced expression as if it still contained a subquery, potentially changing subsequent rewrite or optimization behavior.
+
+SQL-visible observation and oracle: the item property after scalar-subquery replacement should be false when no descendant subquery remains. An optimizer trace or `EXPLAIN` difference showing residual subquery handling would be the observable. Row-result impact is not established from the supplied excerpts because no downstream `has_subquery()` consumer is shown; that is the unresolved step for this candidate.
+
+Source basis: `sql_resolver.cc:6513-6545`, `sql/item_func.cc:708-719` parent/target, `sql/item.h:3196-3198`.
+
+### C2: `Item_func_isnull` over a non-nullable window-function child in a buffered window
+
+SQL structure -> `IS NULL(wf_expr OVER (...))`, where the child is non-nullable and carries `PROP_WINDOW_FUNCTION` -> object is `Item_func_isnull` -> target `Item_func_isnull::update_used_tables()` (`sql/item_cmpfunc.cc:5957-5970`) always calls `args[0]->update_used_tables()` and `set_accum_properties(args[0])` -> later window materialization tests `orig_item->has_wf()` and `ptr.func()->has_wf()` (`sql/sql_select.cc:4116-4119`, `4139-4143`).
+
+Sensitive property: `PROP_WINDOW_FUNCTION` on the `IS NULL` wrapper. Target propagates it from the child; parent did not propagate it in the non-nullable branch.
+
+Parent/target difference: parent skipped `args[0]->update_used_tables()` and `set_accum_properties(args[0])` when `args[0]->is_nullable()` was false. Consequently the wrapper could have `has_wf() == false` even though its child contains a window function. Target makes `has_wf()` true.
+
+Possible semantic violation: in `CreateFramebufferTable()`, items with `has_wf()` are deliberately removed from `fb_fields` to avoid storing/restoring window-function expressions (`sql/sql_select.cc:4106-4123`), and `ReplaceMaterializedItems()` is applied only to functions with `has_wf()` (`sql/sql_select.cc:4139-4145`). A false `has_wf()` on the `IS NULL` wrapper can leave it in the framebuffer and skip argument replacement, so frame buffering may restore an item it should not restore or evaluate the window function against the wrong item references.
+
+SQL-visible observation and oracle: in a query with a buffered window, the value of `IS NULL(wf_expr OVER (...))` or other restored columns can differ from the semantics of evaluating the window function over its `OVER` input. The independent correctness oracle is the window function result over the original input rows, with the `IS NULL` wrapper applied afterward; materialization must not alter that value.
+
+Source basis: `sql/item_cmpfunc.cc:5957-5970` parent/target, `sql/item.h:3214-3218`, `sql/sql_select.cc:4106-4142`. Unresolved step: the exact non-nullable window-function child and plan that reaches `needs_buffering()` / `CreateFramebufferTable()` must be confirmed; the supplied excerpts establish that `has_wf()` controls frame-buffer filtering and replacement, but not a complete plan trace.
+
+### C3: `Item_rollup_group_item` rollup-property preservation after the base reset
+
+SQL structure -> `SELECT` list expression under `WITH ROLLUP`, containing a scalar subquery -> expression is wrapped as `Item_rollup_group_item` -> `replace_subquery_in_expr()` unwraps for replacement, reuses the wrapper, and calls `new_item->update_used_tables()` (`sql_resolver.cc:6524-6545`) -> target `Item_rollup_group_item::update_used_tables()` (`sql/item_func.h:1635-1638`) runs the base reset and then `set_rollup_expr()`.
+
+Sensitive property: `PROP_ROLLUP_EXPR` on the rollup wrapper. The constructor sets it (`sql/item_func.h:1616`). The new base reset would clear it, and the override restores it.
+
+Parent/target difference: parent `Item_func::update_used_tables()` did not reset `m_accum_properties`, so the constructor-set rollup property naturally survived. Target must explicitly re-set it after the base reset; the target override does so. Therefore this is a preservation invariant, not an established parent/target semantic difference.
+
+Possible semantic violation hypothesis: if `PROP_ROLLUP_EXPR` were lost, downstream uses of `has_rollup_expr()` could treat the rolled-up wrapper as an ordinary item, for example altering non-constant handling in `Item_ref::used_tables()` (`sql/item.h:5739-5746`). This is not established by the supplied source because no downstream `has_rollup_expr()` consumer is shown.
+
+SQL-visible observation and oracle: optimizer trace or item-property inspection showing `PROP_ROLLUP_EXPR` remains set after `update_used_tables()`. No row-visible parent/target difference is established for this candidate.
+
+Source basis: `sql/item_func.h:1605-1638`, `sql/item_func.cc:708-719` target, `sql/item.h:3451-3465`, `sql/sql_resolver.cc:6524-6545`. Unresolved step: downstream consumer of `has_rollup_expr()` and any resulting SQL-visible behavior.
+</stage1_handoff>
+
+Return only the three Stage 2 sections.
+
+Return only the three requested sections. Do not emit chain-of-thought or extended reasoning. Start immediately with section 1. Use exactly five executable fenced SQL blocks labelled T1 through T5 if defensible.

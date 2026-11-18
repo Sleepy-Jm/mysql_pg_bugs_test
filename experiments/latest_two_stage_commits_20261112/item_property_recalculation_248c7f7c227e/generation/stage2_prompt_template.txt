@@ -1,0 +1,55 @@
+Stage 2: Implement the construction requirements as SQL.
+
+Role: You are a database test implementation engineer. Use the current test objective and the actual Stage 1 handoff to produce a small executable test. Preserve the specified expression positions, object relationships, path conditions, and input properties together in the same target query.
+
+For the current task, aim to generate five target SQL tests, T1-T5, covering different, evidence-backed candidate relationships from Stage 1. For each test, identify its candidate ID and explain what distinct branch/operand relationship, sensitivity mechanism, or input boundary with a different predicted effect it examines. Tests may share established path prerequisites, but five cosmetic variants of one unverified premise do not constitute five supported candidates. Renaming objects or changing values without explaining a different causal effect does not establish diversity. Setup, diagnostics, and controls do not count toward the five target tests. If fewer supported relationships are available, state the shortfall and the missing evidence rather than inventing candidates. Five tests does not imply five different outputs or five successful reproductions.
+
+When the trigger conditions depend on sensitive inputs, prefer unusual but valid inputs that exercise the specific operation difference identified by Stage 1, rather than only typical values. Choose relevant boundary or atypical properties from the handoff, explain their effect, and ensure the sensitive value belongs to the object processed on the intended path. Do not choose arbitrary exotic data unrelated to those conditions. Apply these requirements to the current task; the unrelated example illustrates a single construction only.
+
+Output three sections:
+
+1. Construction realization
+Map the essential Stage 1 requirements to the SQL expressions, data, settings, and operation sequence you choose. Explain which expression supplies the object processed by the target operation; merely including the named features somewhere in the script is insufficient. Keep source-supported mappings separate from implementation candidates. If Stage 1 leaves an essential mapping unresolved, retain it and identify the evidence needed. You may propose an exploratory SQL candidate with an explicit mapping hypothesis, but do not call the requirement satisfied. If no defensible candidate is possible, report the missing link instead of inventing SQL or settings.
+
+2. SQL
+For the supported construction or clearly labeled exploratory candidate, provide minimal setup, data, target queries, useful contrasts, and cleanup. Use actual values supported by the database's syntax and encoding. Separate target queries from contrasts and diagnostic statements. Do not silently replace the supplied mechanism with an unrelated test.
+
+3. Expected results and path observations
+Derive the expected rows or values from the script's data and SQL semantics, independently of either version's output. State precisely what remains to be observed to confirm that the intended object reaches the target branch. Distinguish a valid execution, target-path observation, and a parent/target output difference. A plan clue or matching outputs alone does not establish the object mapping. Do not claim execution or instrumentation that has not occurred.
+
+<unrelated_example>
+Synthetic example using a toy implementation; it is not evidence about MySQL or the current target.
+
+Stage 1 handoff:
+Scan(T) -> Filter(Y >= 0) -> Aggregate(SUM(X)) -> returned total.
+The supplied toy binder maps X to the aggregate slot argument; the executor passes its value on surviving rows to sum_step. Parent adds every non-NULL value; target adds only positive values. Use a surviving negative X, positive surviving values, and an all-positive contrast. Observe the argument identity, row survival, and step operand; the independent oracle is the mathematical sum.
+
+Example Stage 2 output:
+1. Construction realization
+SUM(x) binds the sensitive operand. y >= 0 retains (-2, 1) and (5, 1) but excludes (100, -1). The negative x therefore reaches the step, rather than merely occurring somewhere in the table. The contrast keeps only the positive surviving row. The mapping follows the supplied toy rules and has not been measured at runtime.
+2. SQL
+```sql
+CREATE TEMPORARY TABLE mapping_demo (x INT NOT NULL, y INT NOT NULL);
+INSERT INTO mapping_demo VALUES (-2, 1), (5, 1), (100, -1);
+SELECT SUM(x) AS total FROM mapping_demo WHERE y >= 0;
+SELECT SUM(x) AS total FROM mapping_demo WHERE y >= 0 AND x > 0;
+DROP TEMPORARY TABLE mapping_demo;
+```
+3. Expected results and path observations
+Target query: one row, total = -2 + 5 = 3. Contrast: one row, total = 5. The toy target operation predicts an erroneous target-query total of 5; this prediction is not the correctness oracle. At toy/exec.cc:30, observe that the slot argument is x and the target query supplies v=-2 and v=5. At toy/sum.cc:40, record the selected branch. No execution or observation is claimed.
+</unrelated_example>
+
+<test_objective>
+Target: item_property_recalculation_248c7f7c227e
+Target observation: Accumulated Item property recalculation across ordinary arguments, references and IN-subquery wrappers, and its use by window materialization
+Revision: 248c7f7c227e76f3422378ca3b9e10d141dcfc86
+Parent revision: 15980860ac2639f41dfbda2f7fffb7aeeab32921
+</test_objective>
+
+<stage1_handoff>
+{{STAGE1_OUTPUT}}
+</stage1_handoff>
+
+Return only the three Stage 2 sections.
+
+Return only the three requested sections. Do not emit chain-of-thought or extended reasoning. Start immediately with section 1. Use exactly five executable fenced SQL blocks labelled T1 through T5 if defensible.

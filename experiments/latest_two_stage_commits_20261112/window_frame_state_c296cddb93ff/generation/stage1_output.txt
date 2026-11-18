@@ -1,0 +1,67 @@
+## 1. How to reach the modified path
+
+The primary target chain is:
+
+SQL window expression -> `Item_sum` object bound to the window -> shared `Window` object -> `process_buffered_windowing_record` optimized ROWS branch -> `copy_funcs` -> `Item_sum_avg::val_*` or `Item_sum_hybrid::compute`.
+
+A SQL expression such as `AVG(X) OVER W` or `MIN(X) OVER W` / `MAX(X) OVER W` is itemized as an `Item_sum` subclass. `Item_sum::itemize` stores `m_window` and marks the item as a window function when `m_window` is present (`sql/item_sum.cc`: 98-105). The executor side uses that same `Window` through `param->m_window` (`sql/iterators/window_iterators.cc`: 653-660). Preserving the same `Window` object between the parsed expression and the iterator is required for the modified state to reach the operation.
+
+The modified path is reached under these conditions:
+
+- The window has a buffered ROWS frame.
+- `row_optimizable = w.optimizable_row_aggregates()` is true (`window_iterators.cc`: 691).
+- The optimized branch `row_optimizable && w.aggregates_primed()` executes (`window_iterators.cc`: 1092).
+- The frame is not `UNBOUNDED PRECEDING AND CURRENT ROW`, so `needs_buffering()` is true.
+
+Execution order in the target revision:
+
+1. Compute `lower_limit` for the current ROWS frame.
+2. Set `w.set_first_rowno_in_rows_frame(lower_limit)` before any `copy_funcs` in the optimized branch (`window_iterators.cc`: 1103-1104).
+3. If a previous first row leaves the frame, call `bring_back_frame_row(thd, &w, lower_limit - 1, FIRST_IN_FRAME)` (`window_iterators.cc`: 1145-1148). Target `bring_back_frame_row` sets `m_rowno_being_visited` to the fetched row number before copying (`window_iterators.cc`: 411).
+4. Set inverse state and, when `!new_last_row`, assign
+   `w.set_rowno_in_frame(current_row - lower_limit + 1)`
+   and
+   `w.set_is_last_row_in_frame(true)`
+   before `copy_funcs(CFT_WF_FRAMING)` (`window_iterators.cc`: 1150-1156).
+5. `copy_funcs` evaluates framing window functions. For `AVG`, this reaches `Item_sum_avg::val_real` / `val_decimal`, which consume `m_window->rowno_in_frame()` as the divisor when `needs_buffering()` and `is_last_row_in_frame()` are true (`sql/item_sum.cc`: 2286-2290, 2350-2356).
+6. For `MIN`/`MAX`, the relevant `Item_sum_hybrid::compute` consumes `rowno_being_visited`, `first_rowno_in_rows_frame`, `rowno_in_frame`, and `optimizable_row_aggregates` (`sql/item_sum.cc`: 2814-2931). The direct `copy_funcs` -> `compute` dispatch is a construction hypothesis because `copy_funcs` itself is not excerpted.
+
+Known bypasses:
+
+- `static_aggregate` or `range_optimizable` paths do not use the same optimized ROWS block; they may not set `first_rowno_in_rows_frame`.
+- If `new_last_row` is true, the final division for `AVG` occurs later in the new-last-row branch where `rowno_in_frame` is `upper - lower_limit + 1`.
+- If `needs_buffering()` is false, `AVG` uses `m_count` rather than `rowno_in_frame`.
+- `Item_sum_hybrid::compute` returns immediately when `do_inverse()` is true, so its modified logic is only reached when inverse is false.
+
+Execution must observe that the SQL expression uses the same `Window` as `param->m_window`, that `row_optimizable` and `aggregates_primed()` are true, and that the relevant `copy_funcs` call occurs with the target-updated `rowno_in_frame` / `rowno_being_visited` / `first_rowno_in_rows_frame` values.
+
+## 2. Sensitive inputs and possible errors after reaching that path
+
+### C1: `AVG` divides by the current row offset instead of the frame row count during optimized inverse finalization
+
+SQL structure -> target object/path -> sensitive property -> parent/target operation difference -> possible semantic violation -> SQL-visible observation/oracle.
+
+- **Reach:** Windowed `AVG(X) OVER ( ... ROWS ... )` reaches the optimized ROWS branch and then the inverse finalization path at `window_iterators.cc`: 1150-1156 when `remove_previous_first_row` is true and `new_last_row` is false.
+- **Sensitive property:** At that call, the actual frame is `[lower_limit, upper]` with frame size `upper - lower_limit + 1`, but the target sets
+  `rowno_in_frame = current_row - lower_limit + 1`.
+  An input property that exposes this is a frame that contains at least one row after the current row, i.e. `upper > current_row`, while the frame end has stopped advancing because the partition/cache end has been reached. Then
+  `current_row - lower_limit + 1 < upper - lower_limit + 1`.
+- **Parent/target difference:** Parent set `rowno_in_frame` to `rn_in_frame = upper - lower_limit + 1`, the frame size. Target changed it to the current row’s position within the frame. The `AVG` divisor is `rowno_in_frame - m_frame_null_count`, so target can divide by a smaller number of rows than exist in the frame.
+- **Semantic violation:** The average of the frame is computed with too small a divisor, producing a value whose magnitude is too large when the frame sum is nonzero.
+- **Observation/oracle:** Observe the returned windowed `AVG(X)` and compare it with the arithmetic mean of all non-NULL `X` values over exactly the frame rows `[lower_limit, upper]`. Use small numeric values to avoid overflow/precision noise. This is established from the supplied target state assignment and the supplied `AVG` divisor consumption. The remaining missing link is the exact `copy_funcs` dispatch to `Item_sum_avg::val_*`, but the comment at `window_iterators.cc`: 1154 explicitly ties that branch to final `AVG` division.
+
+### H2: Missed MIN/MAX cache due to a stale `first_rowno_in_rows_frame` or stale `rowno_being_visited` outside the supplied optimized ROWS block
+
+SQL structure -> target object/path -> sensitive property -> parent/target operation difference -> possible semantic violation -> SQL-visible observation/oracle.
+
+- **Reach:** `MIN(X) OVER (...)` / `MAX(X) OVER (...)` reaches `Item_sum_hybrid::compute` with `m_window->optimizable_row_aggregates() == true`. The target changed cases (2)/(3) to require
+  `visiting_first_in_frame`
+  when `rowno_in_frame() == 1 && m_want_first`, and changed case (1) to use `first_rowno_in_rows_frame()` as the frame start for `arg_cache` reuse.
+- **Possible sensitive property:** An error would require an evaluation where either:
+  - `rowno_in_frame() == 1` and `m_want_first` is true, but
+    `rowno_being_visited() != first_rowno_in_rows_frame()`
+    even though the visited row is the true first row of the frame; or
+  - case (1) is reached with `is_last_row_in_frame()` true while `first_rowno_in_rows_frame()` does not equal the actual frame start.
+- **Parent/target difference:** In those states, the parent would cache or reuse the cached value, while the target would not cache the first value or would use the wrong frame-start boundary for reuse.
+- **Semantic violation:** The result would be a NULL or stale MIN/MAX value when a non-NULL value in the current frame should have been selected. The SQL-visible observation would be a windowed `MIN(X)`/`MAX(X)` result different from the true non-NULL extremum over the frame.
+- **Status:** This is a construction hypothesis. The supplied optimized ROWS block maintains both invariants: `first_rowno_in_rows_frame` is set to `lower_limit` before `copy_funcs`, and `bring_back_frame_row` sets `rowno_being_visited` to the fetched row. No supplied path demonstrates a branch where these invariants break without an intervening `bring_back_frame_row`. Missing evidence: a caller/guard that evaluates `Item_sum_hybrid` with `optimizable_row_aggregates()` true but without having updated `first_rowno_in_rows_frame` or `rowno_being_visited` correctly.
