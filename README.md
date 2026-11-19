@@ -1,5 +1,7 @@
 # mysql_bugs_test
 
+补充归档：[Item 无错误 SQL 重跑证据](experiments/latest_two_stage_commits_20261112/item_property_recalculation_248c7f7c227e/sql_rerun_20261118/README.md)。5 个脚本、30 次执行及 15 组无差异比较均可离线复核；保留 Stage2 模型身份未接受标记。
+
 新增归档：[最新无反馈两阶段提示词的三组提交实测](experiments/latest_two_stage_commits_20261112/README.md)。保存实际完整 Stage1→Stage2 请求、15 个 SQL 脚本及父子各三轮的 90 次执行证据；6 个脚本稳定差异、6 个无差异、3 个目标查询语法错误。2026-11-18 仅整理上传已有实验，没有重新执行数据库，不并入主集合或独立漏洞统计。
 
 新增独立的 [commit 分析与候选种子流程](docs/commit_analysis_pipeline.md)：前后变更 → 事实/假设 → DeepSeek 候选测试，按 10×10 预算与上一轮经验证命中反馈组织。默认离线预览，目标观测与独立 oracle 分开；工程测试和模型目录查询不算数据库实验，旧实验与主集合统计保持原样。

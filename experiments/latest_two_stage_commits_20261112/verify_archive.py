@@ -3,6 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent
@@ -49,3 +50,4 @@ for meta in load(ROOT / 'summary.json')['targets']:
                 executions += 1
 assert (scripts, executions, differences, invalid) == (15, 90, 6, 3)
 print(f'PASS: {len(manifest["files"])} file hashes; complete Stage1 handoffs; {scripts} scripts, {executions} executions; {differences} stable differences; {invalid} SQL-error cases')
+runpy.run_path(str(ROOT / 'item_property_recalculation_248c7f7c227e/sql_rerun_20261118/verify.py'), run_name='__main__')
