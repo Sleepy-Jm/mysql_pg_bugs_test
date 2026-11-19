@@ -1,0 +1,37 @@
+2026-11-19 05:30:44.320 UTC [45679] LOG:  starting PostgreSQL 16devel on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-11-19 05:30:44.320 UTC [45679] LOG:  listening on Unix socket "/var/tmp/stage12pg/runtime/socket/.s.PGSQL.57439"
+2026-11-19 05:30:44.322 UTC [45682] LOG:  database system was shut down at 2026-11-19 05:30:43 UTC
+2026-11-19 05:30:44.323 UTC [45679] LOG:  database system is ready to accept connections
+2026-11-19 05:30:44.585 UTC [45688] ERROR:  syntax error at or near "(" at character 42
+2026-11-19 05:30:44.585 UTC [45688] STATEMENT:  CREATE COLLATION t2_override FROM t2_src (rules = '&a < z');
+2026-11-19 05:30:44.589 UTC [45688] LOG:  duration: 0.046 ms  plan:
+	Query Text: SELECT collname, collicurules
+	FROM pg_collation
+	WHERE collname IN ('t2_src', 't2_inherit', 't2_override')
+	ORDER BY collname;
+	Index Scan using pg_collation_name_enc_nsp_index on pg_collation  (cost=0.28..20.53 rows=3 width=96)
+	  Index Cond: (collname = ANY ('{t2_src,t2_inherit,t2_override}'::name[]))
+2026-11-19 05:30:44.592 UTC [45688] LOG:  duration: 0.044 ms  plan:
+	Query Text: SELECT 'src' AS which, v FROM (VALUES ('a'), ('z')) t(v)
+	ORDER BY v COLLATE t2_src;
+	Sort  (cost=0.04..0.04 rows=2 width=96)
+	  Sort Key: "*VALUES*".column1 COLLATE t2_src
+	  ->  Values Scan on "*VALUES*"  (cost=0.00..0.03 rows=2 width=96)
+2026-11-19 05:30:44.593 UTC [45688] LOG:  duration: 0.100 ms  plan:
+	Query Text: SELECT 'inherit' AS which, v FROM (VALUES ('a'), ('z')) t(v)
+	ORDER BY v COLLATE t2_inherit;
+	Sort  (cost=0.04..0.04 rows=2 width=96)
+	  Sort Key: "*VALUES*".column1 COLLATE t2_inherit
+	  ->  Values Scan on "*VALUES*"  (cost=0.00..0.03 rows=2 width=96)
+2026-11-19 05:30:44.594 UTC [45688] ERROR:  collation "t2_override" for encoding "UTF8" does not exist at character 74
+2026-11-19 05:30:44.594 UTC [45688] STATEMENT:  SELECT 'override' AS which, v FROM (VALUES ('a'), ('z')) t(v)
+	ORDER BY v COLLATE t2_override;
+2026-11-19 05:30:44.595 UTC [45688] ERROR:  collation "t2_override" for encoding "UTF8" does not exist
+2026-11-19 05:30:44.595 UTC [45688] STATEMENT:  DROP COLLATION t2_override;
+2026-11-19 05:30:44.680 UTC [45679] LOG:  received fast shutdown request
+2026-11-19 05:30:44.680 UTC [45679] LOG:  aborting any active transactions
+2026-11-19 05:30:44.681 UTC [45679] LOG:  background worker "logical replication launcher" (PID 45685) exited with exit code 1
+2026-11-19 05:30:44.681 UTC [45680] LOG:  shutting down
+2026-11-19 05:30:44.681 UTC [45680] LOG:  checkpoint starting: shutdown immediate
+2026-11-19 05:30:44.682 UTC [45680] LOG:  checkpoint complete: wrote 16 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.002 s; sync files=0, longest=0.000 s, average=0.000 s; distance=2 kB, estimate=2 kB; lsn=0/190C318, redo lsn=0/190C318
+2026-11-19 05:30:44.686 UTC [45679] LOG:  database system is shut down

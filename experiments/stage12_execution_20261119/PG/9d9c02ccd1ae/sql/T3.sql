@@ -1,0 +1,24 @@
+-- 准备
+CREATE TEMP TABLE t3 (a int);
+INSERT INTO t3 VALUES (1),(2),(3),(4),(5);
+
+-- 目标 SELECT：递减 count(*)，外层 cnt >= 3
+SELECT a, cnt
+FROM (
+  SELECT a,
+         count(*) OVER (ORDER BY a ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS cnt
+  FROM t3
+) s
+WHERE cnt >= 3
+ORDER BY a;
+
+-- 对照
+WITH w AS MATERIALIZED (
+  SELECT a,
+         count(*) OVER (ORDER BY a ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS cnt
+  FROM t3
+)
+SELECT a, cnt FROM w WHERE cnt >= 3 ORDER BY a;
+
+-- 清理
+DROP TABLE t3;

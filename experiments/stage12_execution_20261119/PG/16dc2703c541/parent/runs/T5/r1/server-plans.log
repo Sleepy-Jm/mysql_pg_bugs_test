@@ -1,0 +1,59 @@
+2026-11-19 05:27:29.110 UTC [14562] LOG:  starting PostgreSQL 16devel on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-11-19 05:27:29.110 UTC [14562] LOG:  listening on Unix socket "/var/tmp/stage12pg/runtime/socket/.s.PGSQL.57439"
+2026-11-19 05:27:29.112 UTC [14565] LOG:  database system was shut down at 2026-11-19 05:27:25 UTC
+2026-11-19 05:27:29.114 UTC [14562] LOG:  database system is ready to accept connections
+2026-11-19 05:27:29.326 UTC [14571] LOG:  duration: 0.085 ms  plan:
+	Query Text: INSERT INTO t5_drv VALUES (1),(2);
+	Insert on t5_drv  (cost=0.00..0.03 rows=0 width=0)
+	  ->  Values Scan on "*VALUES*"  (cost=0.00..0.03 rows=2 width=4)
+2026-11-19 05:27:29.327 UTC [14571] LOG:  duration: 0.057 ms  plan:
+	Query Text: INSERT INTO t5_l VALUES (1,10),(2,20),(3,30);
+	Insert on t5_l  (cost=0.00..0.04 rows=0 width=0)
+	  ->  Values Scan on "*VALUES*"  (cost=0.00..0.04 rows=3 width=8)
+2026-11-19 05:27:29.327 UTC [14571] LOG:  duration: 0.052 ms  plan:
+	Query Text: INSERT INTO t5_r VALUES (100,10),(101,20);
+	Insert on t5_r  (cost=0.00..0.03 rows=0 width=0)
+	  ->  Values Scan on "*VALUES*"  (cost=0.00..0.03 rows=2 width=8)
+2026-11-19 05:27:29.328 UTC [14571] LOG:  duration: 0.067 ms  plan:
+	Query Text: SELECT d.d, x.id, x.k
+	FROM t5_drv d
+	CROSS JOIN LATERAL (
+	  SELECT l.id, l.k
+	  FROM t5_l l
+	  WHERE NOT EXISTS (SELECT 1 FROM t5_r r WHERE r.k = l.k AND d.d > 0)
+	) x
+	ORDER BY d.d, x.id;
+	Sort  (cost=1081197.37..1093201.50 rows=4801650 width=12)
+	  Sort Key: d.d, l.id
+	  ->  Nested Loop  (cost=60.85..384209.89 rows=4801650 width=12)
+	        ->  Seq Scan on t5_drv d  (cost=0.00..35.50 rows=2550 width=4)
+	        ->  Hash Anti Join  (cost=60.85..131.83 rows=1883 width=8)
+	              Hash Cond: (l.k = r.k)
+	              Join Filter: (d.d > 0)
+	              ->  Seq Scan on t5_l l  (cost=0.00..32.60 rows=2260 width=8)
+	              ->  Hash  (cost=32.60..32.60 rows=2260 width=4)
+	                    ->  Seq Scan on t5_r r  (cost=0.00..32.60 rows=2260 width=4)
+2026-11-19 05:27:29.333 UTC [14571] LOG:  duration: 0.056 ms  plan:
+	Query Text: SELECT d.d, l.id, l.k
+	FROM t5_drv d
+	CROSS JOIN t5_l l
+	WHERE NOT EXISTS (SELECT 1 FROM t5_r r WHERE r.k = l.k AND d.d > 0)
+	ORDER BY d.d, l.id;
+	Sort  (cost=867138.98..879145.23 rows=4802500 width=12)
+	  Sort Key: d.d, l.id
+	  ->  Hash Anti Join  (cost=60.85..170023.04 rows=4802500 width=12)
+	        Hash Cond: (l.k = r.k)
+	        Join Filter: (d.d > 0)
+	        ->  Nested Loop  (cost=0.00..72111.25 rows=5763000 width=12)
+	              ->  Seq Scan on t5_drv d  (cost=0.00..35.50 rows=2550 width=4)
+	              ->  Materialize  (cost=0.00..43.90 rows=2260 width=8)
+	                    ->  Seq Scan on t5_l l  (cost=0.00..32.60 rows=2260 width=8)
+	        ->  Hash  (cost=32.60..32.60 rows=2260 width=4)
+	              ->  Seq Scan on t5_r r  (cost=0.00..32.60 rows=2260 width=4)
+2026-11-19 05:27:29.595 UTC [14562] LOG:  received fast shutdown request
+2026-11-19 05:27:29.595 UTC [14562] LOG:  aborting any active transactions
+2026-11-19 05:27:29.596 UTC [14562] LOG:  background worker "logical replication launcher" (PID 14568) exited with exit code 1
+2026-11-19 05:27:29.596 UTC [14563] LOG:  shutting down
+2026-11-19 05:27:29.596 UTC [14563] LOG:  checkpoint starting: shutdown immediate
+2026-11-19 05:27:29.599 UTC [14563] LOG:  checkpoint complete: wrote 30 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.002 s, sync=0.001 s, total=0.003 s; sync files=0, longest=0.000 s, average=0.000 s; distance=18 kB, estimate=18 kB; lsn=0/1919310, redo lsn=0/1919310
+2026-11-19 05:27:29.604 UTC [14562] LOG:  database system is shut down

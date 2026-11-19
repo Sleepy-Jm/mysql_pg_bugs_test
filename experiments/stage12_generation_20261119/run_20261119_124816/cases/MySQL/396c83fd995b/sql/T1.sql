@@ -1,0 +1,19 @@
+-- 准备
+DROP TABLE IF EXISTS t1;
+CREATE TABLE t1 (id INT PRIMARY KEY, a INT NOT NULL);
+INSERT INTO t1 VALUES (1,1),(2,2),(3,3),(4,4),(5,5),(6,6);
+
+-- 目标 SELECT：别名 x 被 GROUP BY 引用
+SELECT a+2 AS x, COUNT(*) AS c
+FROM t1
+GROUP BY x+3
+ORDER BY x;
+
+-- 对照：语义等价，不使用别名
+SELECT a+2 AS x, COUNT(*) AS c
+FROM t1
+GROUP BY (a+2)+3
+ORDER BY x;
+
+-- 清理
+DROP TABLE IF EXISTS t1;

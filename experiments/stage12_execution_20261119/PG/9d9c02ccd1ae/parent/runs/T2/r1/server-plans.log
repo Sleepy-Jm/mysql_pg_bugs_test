@@ -1,0 +1,45 @@
+2026-11-19 05:35:06.476 UTC [86068] LOG:  starting PostgreSQL 15devel on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-11-19 05:35:06.476 UTC [86068] LOG:  listening on Unix socket "/var/tmp/stage12pg/runtime/socket/.s.PGSQL.57439"
+2026-11-19 05:35:06.477 UTC [86071] LOG:  database system was shut down at 2026-11-19 05:35:05 UTC
+2026-11-19 05:35:06.480 UTC [86068] LOG:  database system is ready to accept connections
+2026-11-19 05:35:06.692 UTC [86077] LOG:  duration: 0.167 ms  plan:
+	Query Text: INSERT INTO t2 VALUES
+	  (1,1),(1,2),(1,3),(1,4),
+	  (2,1),(2,2),(2,3),(2,4);
+	Insert on t2  (cost=0.00..0.10 rows=0 width=0)
+	  ->  Values Scan on "*VALUES*"  (cost=0.00..0.10 rows=8 width=8)
+2026-11-19 05:35:06.693 UTC [86077] LOG:  duration: 0.077 ms  plan:
+	Query Text: SELECT g, a, rn
+	FROM (
+	  SELECT g, a, row_number() OVER (PARTITION BY g ORDER BY a) AS rn
+	  FROM t2
+	) s
+	WHERE rn <= 2
+	ORDER BY g, a;
+	Subquery Scan on s  (cost=244.76..318.21 rows=753 width=16)
+	  Filter: (s.rn <= 2)
+	  ->  WindowAgg  (cost=244.76..289.96 rows=2260 width=16)
+	        ->  Sort  (cost=244.76..250.41 rows=2260 width=8)
+	              Sort Key: t2.g, t2.a
+	              ->  Seq Scan on t2  (cost=0.00..32.60 rows=2260 width=8)
+2026-11-19 05:35:06.699 UTC [86077] LOG:  duration: 0.042 ms  plan:
+	Query Text: WITH w AS MATERIALIZED (
+	  SELECT g, a, row_number() OVER (PARTITION BY g ORDER BY a) AS rn FROM t2
+	)
+	SELECT g, a, rn FROM w WHERE rn <= 2 ORDER BY g, a;
+	Sort  (cost=402.96..404.84 rows=753 width=16)
+	  Sort Key: w.g, w.a
+	  CTE w
+	    ->  WindowAgg  (cost=244.76..289.96 rows=2260 width=16)
+	          ->  Sort  (cost=244.76..250.41 rows=2260 width=8)
+	                Sort Key: t2.g, t2.a
+	                ->  Seq Scan on t2  (cost=0.00..32.60 rows=2260 width=8)
+	  ->  CTE Scan on w  (cost=0.00..50.85 rows=753 width=16)
+	        Filter: (rn <= 2)
+2026-11-19 05:35:06.850 UTC [86068] LOG:  received fast shutdown request
+2026-11-19 05:35:06.850 UTC [86068] LOG:  aborting any active transactions
+2026-11-19 05:35:06.851 UTC [86068] LOG:  background worker "logical replication launcher" (PID 86074) exited with exit code 1
+2026-11-19 05:35:06.851 UTC [86069] LOG:  shutting down
+2026-11-19 05:35:06.851 UTC [86069] LOG:  checkpoint starting: shutdown immediate
+2026-11-19 05:35:06.852 UTC [86069] LOG:  checkpoint complete: wrote 25 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.001 s; sync files=0, longest=0.000 s, average=0.000 s; distance=6 kB, estimate=6 kB
+2026-11-19 05:35:06.853 UTC [86068] LOG:  database system is shut down

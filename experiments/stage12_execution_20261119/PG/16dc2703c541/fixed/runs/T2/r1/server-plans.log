@@ -1,0 +1,42 @@
+2026-11-19 05:39:42.611 UTC [37860] LOG:  starting PostgreSQL 18devel on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-11-19 05:39:42.611 UTC [37860] LOG:  listening on Unix socket "/var/tmp/stage12pg/runtime/socket/.s.PGSQL.57439"
+2026-11-19 05:39:42.612 UTC [37863] LOG:  database system was shut down at 2026-11-19 05:39:41 UTC
+2026-11-19 05:39:42.613 UTC [37860] LOG:  database system is ready to accept connections
+2026-11-19 05:39:42.738 UTC [37869] LOG:  duration: 0.110 ms  plan:
+	Query Text: INSERT INTO t2_l VALUES (1,10),(2,20),(3,30);
+	Insert on t2_l  (cost=0.00..0.04 rows=0 width=0)
+	  ->  Values Scan on "*VALUES*"  (cost=0.00..0.04 rows=3 width=8)
+2026-11-19 05:39:42.738 UTC [37869] LOG:  duration: 0.039 ms  plan:
+	Query Text: INSERT INTO t2_r VALUES (100,10),(101,NULL);
+	Insert on t2_r  (cost=0.00..0.03 rows=0 width=0)
+	  ->  Values Scan on "*VALUES*"  (cost=0.00..0.03 rows=2 width=8)
+2026-11-19 05:39:42.739 UTC [37869] LOG:  duration: 0.088 ms  plan:
+	Query Text: SELECT l.id, l.k
+	FROM t2_l l
+	WHERE l.k NOT IN (SELECT r.k FROM t2_r r)
+	ORDER BY l.id;
+	Sort  (cost=133.80..136.63 rows=1130 width=8)
+	  Sort Key: l.id
+	  ->  Seq Scan on t2_l l  (cost=38.25..76.50 rows=1130 width=8)
+	        Filter: (NOT (ANY (k = (hashed SubPlan 1).col1)))
+	        SubPlan 1
+	          ->  Seq Scan on t2_r r  (cost=0.00..32.60 rows=2260 width=4)
+2026-11-19 05:39:42.741 UTC [37869] LOG:  duration: 0.028 ms  plan:
+	Query Text: SELECT l.id, l.k
+	FROM t2_l l
+	WHERE l.k NOT IN (SELECT r.k FROM t2_r r WHERE r.k IS NOT NULL)
+	ORDER BY l.id;
+	Sort  (cost=133.78..136.60 rows=1130 width=8)
+	  Sort Key: l.id
+	  ->  Seq Scan on t2_l l  (cost=38.22..76.47 rows=1130 width=8)
+	        Filter: (NOT (ANY (k = (hashed SubPlan 1).col1)))
+	        SubPlan 1
+	          ->  Seq Scan on t2_r r  (cost=0.00..32.60 rows=2249 width=4)
+	                Filter: (k IS NOT NULL)
+2026-11-19 05:39:42.787 UTC [37860] LOG:  received fast shutdown request
+2026-11-19 05:39:42.787 UTC [37860] LOG:  aborting any active transactions
+2026-11-19 05:39:42.787 UTC [37860] LOG:  background worker "logical replication launcher" (PID 37866) exited with exit code 1
+2026-11-19 05:39:42.788 UTC [37861] LOG:  shutting down
+2026-11-19 05:39:42.788 UTC [37861] LOG:  checkpoint starting: shutdown immediate
+2026-11-19 05:39:42.788 UTC [37861] LOG:  checkpoint complete: wrote 30 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.001 s; sync files=0, longest=0.000 s, average=0.000 s; distance=13 kB, estimate=13 kB; lsn=0/190CFF0, redo lsn=0/190CFF0
+2026-11-19 05:39:42.790 UTC [37860] LOG:  database system is shut down

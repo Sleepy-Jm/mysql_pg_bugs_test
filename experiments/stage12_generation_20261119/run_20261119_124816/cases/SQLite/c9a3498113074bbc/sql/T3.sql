@@ -1,0 +1,19 @@
+-- 准备
+CREATE TABLE t4(a TEXT);
+INSERT INTO t4 VALUES ('A'),('b'),('C'),('d');
+CREATE TABLE t5(k TEXT);
+INSERT INTO t5 VALUES ('a'),('B');
+
+-- 目标 SELECT：外层 IN 的 LHS 带 NOCASE collation，可被下推
+SELECT a FROM (SELECT a FROM t4) AS s
+WHERE a COLLATE NOCASE IN (SELECT k FROM t5)
+ORDER BY a;
+
+-- 对照：等价改写，逻辑上只有一个 IN 条件，collation 显式
+SELECT a FROM t4
+WHERE a COLLATE NOCASE IN (SELECT k FROM t5)
+ORDER BY a;
+
+-- 清理
+DROP TABLE t4;
+DROP TABLE t5;

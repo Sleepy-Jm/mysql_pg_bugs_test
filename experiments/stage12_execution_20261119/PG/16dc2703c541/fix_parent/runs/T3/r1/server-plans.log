@@ -1,0 +1,49 @@
+2026-11-19 05:39:18.614 UTC [31246] LOG:  starting PostgreSQL 18devel on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-11-19 05:39:18.614 UTC [31246] LOG:  listening on Unix socket "/var/tmp/stage12pg/runtime/socket/.s.PGSQL.57439"
+2026-11-19 05:39:18.615 UTC [31249] LOG:  database system was shut down at 2026-11-19 05:39:17 UTC
+2026-11-19 05:39:18.616 UTC [31246] LOG:  database system is ready to accept connections
+2026-11-19 05:39:18.747 UTC [31255] LOG:  duration: 0.060 ms  plan:
+	Query Text: INSERT INTO t3_l VALUES (1,1),(2,2),(3,3);
+	Insert on t3_l  (cost=0.00..0.04 rows=0 width=0)
+	  ->  Values Scan on "*VALUES*"  (cost=0.00..0.04 rows=3 width=8)
+2026-11-19 05:39:18.748 UTC [31255] LOG:  duration: 0.137 ms  plan:
+	Query Text: INSERT INTO t3_r SELECT g, g FROM generate_series(1,200) g;
+	Insert on t3_r  (cost=0.00..2.00 rows=0 width=0)
+	  ->  Function Scan on generate_series g  (cost=0.00..2.00 rows=200 width=8)
+2026-11-19 05:39:18.748 UTC [31255] WARNING:  SET LOCAL can only be used in transaction blocks
+2026-11-19 05:39:18.750 UTC [31255] LOG:  duration: 0.076 ms  plan:
+	Query Text: SELECT l.id, l.k
+	FROM t3_l l
+	WHERE NOT EXISTS (SELECT 1 FROM t3_r r WHERE r.k = l.k)
+	ORDER BY l.id;
+	Sort  (cost=194.68..197.51 rows=1130 width=8)
+	  Sort Key: l.id
+	  ->  Hash Anti Join  (cost=60.85..137.38 rows=1130 width=8)
+	        Hash Cond: (l.k = r.k)
+	        ->  Seq Scan on t3_l l  (cost=0.00..32.60 rows=2260 width=8)
+	        ->  Hash  (cost=32.60..32.60 rows=2260 width=4)
+	              ->  Seq Scan on t3_r r  (cost=0.00..32.60 rows=2260 width=4)
+2026-11-19 05:39:18.752 UTC [31255] LOG:  duration: 0.091 ms  plan:
+	Query Text: SELECT l.id, l.k
+	FROM t3_l l
+	LEFT JOIN t3_r r ON r.k = l.k
+	WHERE r.id IS NULL
+	ORDER BY l.id;
+	Sort  (cost=715.86..716.18 rows=128 width=8)
+	  Sort Key: l.id
+	  ->  Merge Left Join  (cost=317.01..711.38 rows=128 width=8)
+	        Merge Cond: (l.k = r.k)
+	        Filter: (r.id IS NULL)
+	        ->  Sort  (cost=158.51..164.16 rows=2260 width=8)
+	              Sort Key: l.k
+	              ->  Seq Scan on t3_l l  (cost=0.00..32.60 rows=2260 width=8)
+	        ->  Sort  (cost=158.51..164.16 rows=2260 width=8)
+	              Sort Key: r.k
+	              ->  Seq Scan on t3_r r  (cost=0.00..32.60 rows=2260 width=8)
+2026-11-19 05:39:18.801 UTC [31246] LOG:  received fast shutdown request
+2026-11-19 05:39:18.801 UTC [31246] LOG:  aborting any active transactions
+2026-11-19 05:39:18.802 UTC [31246] LOG:  background worker "logical replication launcher" (PID 31252) exited with exit code 1
+2026-11-19 05:39:18.802 UTC [31247] LOG:  shutting down
+2026-11-19 05:39:18.802 UTC [31247] LOG:  checkpoint starting: shutdown immediate
+2026-11-19 05:39:18.803 UTC [31247] LOG:  checkpoint complete: wrote 30 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.001 s; sync files=0, longest=0.000 s, average=0.000 s; distance=25 kB, estimate=25 kB; lsn=0/19101A0, redo lsn=0/19101A0
+2026-11-19 05:39:18.804 UTC [31246] LOG:  database system is shut down

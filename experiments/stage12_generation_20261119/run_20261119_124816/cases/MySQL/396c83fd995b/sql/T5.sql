@@ -1,0 +1,19 @@
+-- 准备
+DROP TABLE IF EXISTS t5;
+CREATE TABLE t5 (id INT PRIMARY KEY, g INT NOT NULL, v INT NOT NULL);
+INSERT INTO t5 VALUES (1,1,10),(2,1,20),(3,2,30),(4,2,40),(5,3,50);
+
+-- 目标 SELECT：窗口函数 + 聚合 + 别名被 ORDER BY 引用
+SELECT g, SUM(v) AS s, SUM(SUM(v)) OVER (ORDER BY g) AS running
+FROM t5
+GROUP BY g
+ORDER BY s DESC;
+
+-- 对照：不使用别名，ORDER BY 直接写 SUM(v)
+SELECT g, SUM(v) AS s, SUM(SUM(v)) OVER (ORDER BY g) AS running
+FROM t5
+GROUP BY g
+ORDER BY SUM(v) DESC;
+
+-- 清理
+DROP TABLE IF EXISTS t5;

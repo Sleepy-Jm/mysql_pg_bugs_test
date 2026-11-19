@@ -1,0 +1,21 @@
+-- 准备：t1 含重复值，使 DISTINCT 与物理行数不同
+CREATE TABLE t1(x INTEGER);
+CREATE TABLE t2(y INTEGER);
+INSERT INTO t1 VALUES (1),(1),(2),(NULL),(NULL);
+INSERT INTO t2 VALUES (7),(8);
+
+-- 目标 SELECT：内层第一项带 DISTINCT
+SELECT count(*)
+FROM (
+    SELECT DISTINCT x FROM t1
+    UNION ALL
+    SELECT y FROM t2
+);
+
+-- 对照：按原始语义手工等价形式
+SELECT (SELECT count(*) FROM (SELECT DISTINCT x FROM t1))
+     + (SELECT count(*) FROM t2);
+
+-- 清理
+DROP TABLE t1;
+DROP TABLE t2;
